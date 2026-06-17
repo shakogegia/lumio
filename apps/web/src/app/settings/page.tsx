@@ -1,0 +1,38 @@
+import { getStatus } from "@/lib/status-service";
+import { Card } from "@/components/ui/card";
+import { RescanButton } from "./rescan-button";
+
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const status = await getStatus();
+
+  return (
+    <main className="mx-auto max-w-3xl space-y-6 p-4">
+      <h1 className="text-2xl font-semibold">Settings</h1>
+
+      <Card className="space-y-3 p-4">
+        <Row label="Photos directory" value={status.photosDir} />
+        <Row label="Indexed photos" value={String(status.photoCount)} />
+        <Row label="Last indexed" value={status.lastIndexedAt ?? "never"} />
+      </Card>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-medium">Indexing</h2>
+        <p className="text-sm text-muted-foreground">
+          Trigger a full rescan of the photos directory.
+        </p>
+        <RescanButton />
+      </div>
+    </main>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="truncate text-right font-mono">{value}</span>
+    </div>
+  );
+}
