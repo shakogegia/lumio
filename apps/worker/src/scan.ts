@@ -1,15 +1,8 @@
-import { readdir, rm } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@lumio/db";
-import { PhotoSource } from "@lumio/shared";
-import {
-  PHOTOS_DIR,
-  SUPPORTED_EXTENSIONS,
-  THUMBNAILS_DIR,
-  thumbnailPath,
-} from "./config.js";
-import { processImage } from "./pipeline/process.js";
-import { storePhoto } from "./pipeline/store.js";
+import { PHOTOS_DIR, SUPPORTED_EXTENSIONS } from "./config.js";
+import { ingestPath, removePath } from "./ingest.js";
 
 export interface ScanSummary {
   processed: number;
@@ -37,11 +30,7 @@ export async function scanAndIngest(): Promise<ScanSummary> {
 
   for (const relPath of relPaths) {
     try {
-      const processed = await processImage(path.join(PHOTOS_DIR, relPath));
-      await storePhoto(
-        { path: relPath, source: PhotoSource.filesystem, processed },
-        { db: prisma, thumbnailsDir: THUMBNAILS_DIR },
-      );
+      await ingestPath(relPath);
       summary.processed++;
     } catch (err) {
       summary.skipped++;
@@ -52,11 +41,9 @@ export async function scanAndIngest(): Promise<ScanSummary> {
   const existing = await prisma.photo.findMany({ select: { id: true, path: true } });
   const onDisk = new Set(relPaths);
   const toDelete = new Set(reconcileDeletions(existing.map((p) => p.path), onDisk));
-  const idsToDelete = existing.filter((p) => toDelete.has(p.path)).map((p) => p.id);
 
-  for (const id of idsToDelete) {
-    await prisma.photo.delete({ where: { id } });
-    await rm(thumbnailPath(id), { force: true });
+  for (const row of existing.filter((p) => toDelete.has(p.path))) {
+    await removePath(row.path);
     summary.removed++;
   }
 

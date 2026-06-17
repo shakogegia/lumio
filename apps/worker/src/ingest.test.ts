@@ -1,0 +1,107 @@
+import { access, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import sharp from "sharp";
+import { ingestPath, removePath } from "./ingest.js";
+
+// Create temp directories for photos and thumbnails
+const tmpBase = await mkdtemp(path.join(tmpdir(), "lumio-ingest-"));
+const tmpPhotos = path.join(tmpBase, "photos");
+const tmpThumbs = path.join(tmpBase, "thumbs");
+await mkdir(tmpPhotos, { recursive: true });
+await mkdir(tmpThumbs, { recursive: true });
+
+// Create a fixture image: sub/img.jpg with EXIF
+const subDir = path.join(tmpPhotos, "sub");
+await mkdir(subDir, { recursive: true });
+const fixturePath = path.join(subDir, "img.jpg");
+await sharp({ create: { width: 320, height: 240, channels: 3, background: "#123456" } })
+  .withExif({
+    IFD0: { Make: "Lumio", Model: "X" },
+    IFD2: { DateTimeOriginal: "2024:03:14 09:26:53" },
+  })
+  .jpeg()
+  .toFile(fixturePath);
+
+afterAll(async () => rm(tmpBase, { recursive: true, force: true }));
+
+describe("ingestPath", () => {
+  it("calls upsert with the correct path and writes a thumbnail named by id", async () => {
+    const calls: unknown[] = [];
+    const fakeDb = {
+      photo: {
+        upsert: async (args: unknown) => {
+          calls.push(args);
+          return { id: "pX" };
+        },
+      },
+    };
+
+    await ingestPath("sub/img.jpg", {
+      db: fakeDb as never,
+      thumbnailsDir: tmpThumbs,
+      photosDir: tmpPhotos,
+    });
+
+    expect(calls).toHaveLength(1);
+    expect((calls[0] as { where: { path: string } }).where).toEqual({ path: "sub/img.jpg" });
+
+    // Thumbnail should exist at tmpThumbs/pX.webp
+    await expect(access(path.join(tmpThumbs, "pX.webp"))).resolves.toBeUndefined();
+  });
+});
+
+describe("removePath", () => {
+  it("deletes the DB row and removes the thumbnail file", async () => {
+    const deleteCalls: unknown[] = [];
+
+    // Pre-create the thumbnail so rm can remove it
+    const thumbFile = path.join(tmpThumbs, "pX.webp");
+    await sharp({ create: { width: 10, height: 10, channels: 3, background: "#000" } })
+      .webp()
+      .toFile(thumbFile);
+
+    const fakeDb = {
+      photo: {
+        findUnique: async (_args: unknown) => ({ id: "pX" }),
+        delete: async (args: unknown) => {
+          deleteCalls.push(args);
+          return { id: "pX" };
+        },
+      },
+    };
+
+    await removePath("sub/img.jpg", {
+      db: fakeDb as never,
+      thumbnailsDir: tmpThumbs,
+    });
+
+    expect(deleteCalls).toHaveLength(1);
+    expect((deleteCalls[0] as { where: { id: string } }).where).toEqual({ id: "pX" });
+
+    // Thumbnail should be gone
+    await expect(access(thumbFile)).rejects.toThrow();
+  });
+
+  it("is a no-op when the path is not in the DB", async () => {
+    const deleteCalls: unknown[] = [];
+
+    const fakeDb = {
+      photo: {
+        findUnique: async (_args: unknown) => null,
+        delete: async (args: unknown) => {
+          deleteCalls.push(args);
+          return { id: "noop" };
+        },
+      },
+    };
+
+    await removePath("nonexistent/img.jpg", {
+      db: fakeDb as never,
+      thumbnailsDir: tmpThumbs,
+    });
+
+    expect(deleteCalls).toHaveLength(0);
+  });
+});
