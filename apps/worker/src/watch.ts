@@ -50,6 +50,6 @@ export async function watchAndIngest(): Promise<void> {
     await prisma.$disconnect();
     process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 }
