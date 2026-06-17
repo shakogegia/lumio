@@ -25,6 +25,7 @@ export async function storePhoto(
   const data = {
     source,
     takenAt: processed.takenAt,
+    sortDate: processed.takenAt ?? new Date(),
     width: processed.width,
     height: processed.height,
     hash: processed.hash,
