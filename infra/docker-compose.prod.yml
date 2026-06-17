@@ -1,0 +1,66 @@
+# Production stack: Postgres + web + worker.
+# Lives in infra/ alongside the dev DB compose; paths are relative to this file,
+# so the build context and bind mounts point up one level at the repo root.
+# Run from the repo root via the Makefile (`make up`), or directly:
+#   docker compose -f infra/docker-compose.prod.yml up -d
+name: lumio
+
+x-db-url: &db-url
+  DATABASE_URL: postgresql://${POSTGRES_USER:-lumio}:${POSTGRES_PASSWORD:-lumio}@db:5432/${POSTGRES_DB:-lumio}?schema=public
+
+# Shared by web + worker: one image, run as two containers (different command).
+x-lumio: &lumio
+  image: ${IMAGE:-shakogegia/lumio:latest}
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lumio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lumio}
+      POSTGRES_DB: ${POSTGRES_DB:-lumio}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumio} -d ${POSTGRES_DB:-lumio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    <<: *lumio
+    command: ["web"]
+    environment:
+      <<: *db-url
+      PHOTOS_DIR: /data/photos
+      CACHE_DIR: /data/cache
+      PORT: "3000"
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ${PHOTOS_DIR:-../photos}:/data/photos:ro
+      - ${CACHE_DIR:-../cache}:/data/cache
+
+  worker:
+    <<: *lumio
+    command: ["worker"]
+    environment:
+      <<: *db-url
+      PHOTOS_DIR: /data/photos
+      CACHE_DIR: /data/cache
+    volumes:
+      - ${PHOTOS_DIR:-../photos}:/data/photos
+      - ${CACHE_DIR:-../cache}:/data/cache
+
+volumes:
+  pgdata:
