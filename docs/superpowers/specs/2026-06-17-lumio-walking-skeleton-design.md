@@ -50,7 +50,8 @@ one pass.
 /infra
   docker-compose.yml   Postgres service (dev)
 /photos       synthetic sample images (committed; path via PHOTOS_DIR)
-/cache/thumbnails   generated thumbnails — regenerable, gitignored
+/cache        derived/regenerable artifacts root (CACHE_DIR; gitignored)
+  /thumbnails   generated thumbnails
 ```
 
 ## 2. Packages
@@ -115,8 +116,8 @@ model AlbumPhoto {
 }
 ```
 
-- **Thumbnail path is derived** from `id` (`<THUMBNAILS_DIR>/<id>.webp`) — no
-  column needed.
+- **Thumbnail path is derived** from `id` (`<CACHE_DIR>/thumbnails/<id>.webp`) —
+  no column needed.
 - Cursor pagination orders by `(takenAt DESC, id DESC)`; the cursor encodes the
   last seen `(takenAt, id)`.
 
@@ -134,7 +135,7 @@ IngestionInput (filesystem) → normalize → process → store
               sharp thumbnail → webp (fit inside THUMBNAIL_MAX)
               sha256 hash of file bytes
   store     : upsert Photo by unique `path`; thumbnail written to
-              <THUMBNAILS_DIR>/<id>.webp after the row's id is known
+              <CACHE_DIR>/thumbnails/<id>.webp after the row's id is known
 ```
 
 `IngestionInput` is a discriminated union; the filesystem variant is
@@ -221,7 +222,7 @@ Sheet, Button, Badge, Tabs) and keep the rest ready.
 - `.env.example`:
   - `DATABASE_URL=postgresql://lumio:lumio@localhost:5432/lumio`
   - `PHOTOS_DIR=./photos`
-  - `THUMBNAILS_DIR=./cache/thumbnails`
+  - `CACHE_DIR=./cache`  (thumbnails live at `${CACHE_DIR}/thumbnails`)
   - `THUMBNAIL_MAX=400`
 - Root scripts:
   - `db:up` → `docker compose -f infra/docker-compose.yml up -d`
