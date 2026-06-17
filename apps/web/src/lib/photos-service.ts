@@ -11,7 +11,7 @@ export async function listPhotos(
   const rows = await db.photo.findMany({
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: [{ takenAt: "desc" }, { id: "desc" }],
+    orderBy: [{ sortDate: "desc" }, { id: "desc" }],
   });
 
   const nextCursor =

@@ -7,6 +7,7 @@ function row(id: string) {
     path: `${id}.jpg`,
     source: "filesystem" as const,
     takenAt: new Date("2024-01-01T00:00:00.000Z"),
+    sortDate: new Date("2024-01-01T00:00:00.000Z"),
     width: 10,
     height: 10,
     hash: null,
@@ -17,9 +18,14 @@ function row(id: string) {
 }
 
 function fakeDb(rows: ReturnType<typeof row>[]) {
+  const calls: Array<{ take: number; orderBy?: unknown }> = [];
   return {
+    calls,
     photo: {
-      findMany: async (args: { take: number }) => rows.slice(0, args.take),
+      findMany: async (args: { take: number; orderBy?: unknown }) => {
+        calls.push(args);
+        return rows.slice(0, args.take);
+      },
     },
   };
 }
@@ -30,6 +36,7 @@ describe("listPhotos", () => {
     const page = await listPhotos({ limit: 2 }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
     expect(page.nextCursor).toBe("b");
+    expect(db.calls[0]?.orderBy).toEqual([{ sortDate: "desc" }, { id: "desc" }]);
   });
 
   it("returns nextCursor = null when fewer than limit are returned", async () => {
