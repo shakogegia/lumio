@@ -10,6 +10,16 @@ if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
     && git -C "$CONDUCTOR_ROOT_PATH" pull --ff-only || true
 fi
 
+# Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, PHOTOS_DIR and
+# CACHE_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
+# real .env from the root checkout when one is present; this is the fallback for
+# fresh setups (no root .env), seeded from the committed .env.example. We never
+# clobber an existing .env.
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "setup: created .env from .env.example"
+fi
+
 # Install dependencies and generate the Prisma client so typecheck/build/tests
 # work immediately in the fresh workspace.
 pnpm install
