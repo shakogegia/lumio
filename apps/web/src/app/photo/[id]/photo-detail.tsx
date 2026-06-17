@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { PhotoDTO } from "@lumio/shared";
+import { useRouter } from "next/navigation";
+import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-export function PhotoDetail({ photo }: { photo: PhotoDTO }) {
+export function PhotoDetail({
+  photo,
+  regularAlbums,
+}: {
+  photo: PhotoDTO;
+  regularAlbums: AlbumSummaryDTO[];
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -45,8 +52,70 @@ export function PhotoDetail({ photo }: { photo: PhotoDTO }) {
               {JSON.stringify(photo.exif, null, 2)}
             </pre>
           </div>
+          {regularAlbums.length > 0 && (
+            <AlbumMembership photo={photo} regularAlbums={regularAlbums} />
+          )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function AlbumMembership({
+  photo,
+  regularAlbums,
+}: {
+  photo: PhotoDTO;
+  regularAlbums: AlbumSummaryDTO[];
+}) {
+  const router = useRouter();
+  const [pending, setPending] = useState<string | null>(null);
+
+  async function toggle(album: AlbumSummaryDTO) {
+    const isMember = photo.albumIds?.includes(album.id) ?? false;
+    setPending(album.id);
+    try {
+      if (isMember) {
+        await fetch(`/api/albums/${album.id}/photos/${photo.id}`, {
+          method: "DELETE",
+        });
+      } else {
+        await fetch(`/api/albums/${album.id}/photos`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoId: photo.id }),
+        });
+      }
+      router.refresh();
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="border-t px-4 pt-4 pb-4">
+      <p className="mb-2 text-sm font-medium">Albums</p>
+      <div className="space-y-2">
+        {regularAlbums.map((album) => {
+          const checked = photo.albumIds?.includes(album.id) ?? false;
+          const isPending = pending === album.id;
+          return (
+            <label
+              key={album.id}
+              className="flex cursor-pointer items-center gap-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={isPending}
+                onChange={() => void toggle(album)}
+                className="h-4 w-4 rounded border-input accent-primary"
+              />
+              <span>{album.name}</span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
