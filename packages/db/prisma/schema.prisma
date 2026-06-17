@@ -17,6 +17,7 @@ model Photo {
   path      String       @unique
   source    PhotoSource
   takenAt   DateTime?
+  sortDate  DateTime     @default(now())
   width     Int
   height    Int
   hash      String?
@@ -25,7 +26,7 @@ model Photo {
   updatedAt DateTime     @updatedAt
   albums    AlbumPhoto[]
 
-  @@index([takenAt, id])
+  @@index([sortDate, id])
 }
 
 model Album {
