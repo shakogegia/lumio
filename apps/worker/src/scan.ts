@@ -51,8 +51,8 @@ export async function scanAndIngest(): Promise<ScanSummary> {
 
   const existing = await prisma.photo.findMany({ select: { id: true, path: true } });
   const onDisk = new Set(relPaths);
-  const toDelete = reconcileDeletions(existing.map((p) => p.path), onDisk);
-  const idsToDelete = existing.filter((p) => toDelete.includes(p.path)).map((p) => p.id);
+  const toDelete = new Set(reconcileDeletions(existing.map((p) => p.path), onDisk));
+  const idsToDelete = existing.filter((p) => toDelete.has(p.path)).map((p) => p.id);
 
   for (const id of idsToDelete) {
     await prisma.photo.delete({ where: { id } });
