@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type { PhotoDTO, PhotosPage } from "@lumio/shared";
-import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
+import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
 
 const OVERSCAN_ROWS = 3;
+// Placeholder tiles rendered before the first page loads. Generous enough to
+// fill a large (4K) viewport; the container clips overflow to the viewport, so
+// the extras are harmless on smaller screens.
+const SKELETON_TILES = 120;
 
 async function fetchPage(endpoint: string, cursor: string | null): Promise<PhotosPage> {
   const params = new URLSearchParams({ limit: "50" });
@@ -43,6 +47,13 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
   const columns = computeColumns(width);
   const tileSize = width > 0 ? (width - GRID_GAP * (columns - 1)) / columns : 0;
   const rows = rowCount(photos.length, columns);
+
+  // Warm-grey placeholder shown until the first page loads. Rendered with pure
+  // CSS (auto-fill columns + square tiles) so it needs no measured width — it's
+  // in the server HTML and paints on the first frame, even on a fast refresh
+  // before hydration. auto-fill with the same MIN_TILE/GRID_GAP yields the same
+  // column count as the real grid, so the swap to real photos is seamless.
+  const showSkeleton = photos.length === 0 && !done && !error;
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || done) return;
@@ -95,6 +106,24 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
     );
   }
 
+  if (showSkeleton) {
+    return (
+      <div ref={listRef} style={{ maxHeight: "100vh", overflow: "hidden" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(auto-fill, minmax(${MIN_TILE}px, 1fr))`,
+            gap: GRID_GAP,
+          }}
+        >
+          {Array.from({ length: SKELETON_TILES }).map((_, i) => (
+            <div key={i} className="bg-skeleton aspect-square" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div ref={listRef}>
       <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
@@ -121,7 +150,7 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
                 <Link
                   key={photo.id}
                   href={`/photo/${photo.id}`}
-                  className="block h-full outline-none focus:outline-none focus-visible:outline-none"
+                  className="block h-full bg-skeleton outline-none focus:outline-none focus-visible:outline-none"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
