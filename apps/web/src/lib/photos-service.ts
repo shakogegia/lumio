@@ -20,6 +20,7 @@ export async function listPhotos(
 }
 
 export async function getPhoto(id: string, db: Db = prisma) {
-  const row = await db.photo.findUnique({ where: { id } });
-  return row ? toPhotoDTO(row) : null;
+  const row = await db.photo.findUnique({ where: { id }, include: { albums: { select: { albumId: true } } } });
+  if (!row) return null;
+  return { ...toPhotoDTO(row), albumIds: row.albums.map((a) => a.albumId) };
 }

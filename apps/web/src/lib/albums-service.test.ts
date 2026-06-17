@@ -1,0 +1,133 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  addPhotoToAlbum,
+  listAlbumPhotos,
+  listAlbumSummaries,
+  SmartAlbumMutationError,
+} from "./albums-service.js";
+
+// Minimal Album row shape for tests
+function albumRow(overrides: Partial<{
+  id: string;
+  name: string;
+  isSmart: boolean;
+  rules: object | null;
+  createdAt: Date;
+  updatedAt: Date;
+}> = {}) {
+  return {
+    id: "alb1",
+    name: "Test Album",
+    isSmart: false,
+    rules: null,
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+    ...overrides,
+  };
+}
+
+function photoRow(id: string) {
+  return {
+    id,
+    path: `${id}.jpg`,
+    source: "filesystem" as const,
+    takenAt: new Date("2024-01-01T00:00:00.000Z"),
+    sortDate: new Date("2024-01-01T00:00:00.000Z"),
+    width: 10,
+    height: 10,
+    hash: null,
+    exif: {},
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+  };
+}
+
+describe("listAlbumSummaries", () => {
+  it("returns photoCount and coverPhotoId for a regular album", async () => {
+    const fakeDb = {
+      album: {
+        findMany: async () => [albumRow()],
+      },
+      albumPhoto: {
+        count: async () => 3,
+        findFirst: async () => ({ photoId: "p9" }),
+      },
+      photo: {
+        count: async () => 0,
+        findFirst: async () => null,
+      },
+    };
+
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]?.photoCount).toBe(3);
+    expect(summaries[0]?.coverPhotoId).toBe("p9");
+  });
+});
+
+describe("listAlbumPhotos", () => {
+  it("returns page with nextCursor when full page returned", async () => {
+    const rows = [photoRow("p1"), photoRow("p2")];
+    const fakeDb = {
+      album: {
+        findUnique: async () => albumRow(),
+      },
+      albumPhoto: {},
+      photo: {
+        findMany: async () => rows,
+        count: async () => 0,
+        findFirst: async () => null,
+      },
+    };
+
+    const page = await listAlbumPhotos("alb1", { limit: 2 }, fakeDb as never);
+    expect(page).not.toBeNull();
+    expect(page!.items.map((p) => p.id)).toEqual(["p1", "p2"]);
+    expect(page!.nextCursor).toBe("p2");
+  });
+
+  it("returns null when album not found", async () => {
+    const fakeDb = {
+      album: {
+        findUnique: async () => null,
+      },
+      albumPhoto: {},
+      photo: {},
+    };
+
+    const page = await listAlbumPhotos("missing", { limit: 10 }, fakeDb as never);
+    expect(page).toBeNull();
+  });
+});
+
+describe("addPhotoToAlbum", () => {
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: {
+        findUnique: async () => ({ isSmart: true }),
+      },
+      albumPhoto: {},
+      photo: {},
+    };
+
+    await expect(addPhotoToAlbum("alb1", "p1", fakeDb as never)).rejects.toBeInstanceOf(
+      SmartAlbumMutationError,
+    );
+  });
+
+  it("calls albumPhoto.upsert once for a regular album", async () => {
+    const upsert = vi.fn().mockResolvedValue({});
+    const fakeDb = {
+      album: {
+        findUnique: async () => ({ isSmart: false }),
+      },
+      albumPhoto: {
+        upsert,
+      },
+      photo: {},
+    };
+
+    await addPhotoToAlbum("alb1", "p1", fakeDb as never);
+    expect(upsert).toHaveBeenCalledOnce();
+  });
+});
