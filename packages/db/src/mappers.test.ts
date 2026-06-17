@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PhotoSource } from "@lumio/shared";
-import { toPhotoDTO } from "./mappers.js";
+import { MatchType, PhotoSource, RuleOp } from "@lumio/shared";
+import { toAlbumDTO, toPhotoDTO } from "./mappers.js";
 
 describe("toPhotoDTO", () => {
   it("maps a Prisma photo row to a PhotoDTO with ISO dates", () => {
@@ -41,5 +41,40 @@ describe("toPhotoDTO", () => {
     });
     expect(dto.takenAt).toBeNull();
     expect(dto.hash).toBeNull();
+  });
+});
+
+describe("toAlbumDTO", () => {
+  it("maps a regular album with null rules", () => {
+    const dto = toAlbumDTO({
+      id: "a1",
+      name: "Vacation",
+      isSmart: false,
+      rules: null,
+      createdAt: new Date("2024-02-01T00:00:00.000Z"),
+      updatedAt: new Date("2024-02-02T00:00:00.000Z"),
+    });
+    expect(dto.id).toBe("a1");
+    expect(dto.name).toBe("Vacation");
+    expect(dto.isSmart).toBe(false);
+    expect(dto.rules).toBeNull();
+    expect(dto.createdAt).toBe("2024-02-01T00:00:00.000Z");
+  });
+
+  it("maps a smart album, passing rules JSON through", () => {
+    const rules = {
+      match: MatchType.all,
+      rules: [{ field: "exif.cameraModel", op: RuleOp.eq, value: "iPhone" }],
+    };
+    const dto = toAlbumDTO({
+      id: "a2",
+      name: "iPhone shots",
+      isSmart: true,
+      rules: rules as never,
+      createdAt: new Date("2024-02-01T00:00:00.000Z"),
+      updatedAt: new Date("2024-02-01T00:00:00.000Z"),
+    });
+    expect(dto.isSmart).toBe(true);
+    expect(dto.rules).toEqual(rules);
   });
 });
