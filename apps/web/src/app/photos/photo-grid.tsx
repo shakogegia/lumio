@@ -8,15 +8,15 @@ import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
 
 const OVERSCAN_ROWS = 3;
 
-async function fetchPage(cursor: string | null): Promise<PhotosPage> {
+async function fetchPage(endpoint: string, cursor: string | null): Promise<PhotosPage> {
   const params = new URLSearchParams({ limit: "50" });
   if (cursor) params.set("cursor", cursor);
-  const res = await fetch(`/api/photos?${params.toString()}`);
+  const res = await fetch(`${endpoint}?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to load photos");
   return res.json();
 }
 
-export function PhotoGrid() {
+export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
   const [photos, setPhotos] = useState<PhotoDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -49,7 +49,7 @@ export function PhotoGrid() {
     loadingRef.current = true;
     setError(false);
     try {
-      const page = await fetchPage(cursor);
+      const page = await fetchPage(endpoint, cursor);
       setPhotos((prev) => [...prev, ...page.items]);
       setCursor(page.nextCursor);
       if (!page.nextCursor) setDone(true);
@@ -58,7 +58,7 @@ export function PhotoGrid() {
     } finally {
       loadingRef.current = false;
     }
-  }, [cursor, done]);
+  }, [endpoint, cursor, done]);
 
   useEffect(() => {
     void loadMore();
