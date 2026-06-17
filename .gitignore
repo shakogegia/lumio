@@ -6,3 +6,4 @@ dist/
 /cache/
 /data/
 *.tsbuildinfo
+.DS_Store
