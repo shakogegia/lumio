@@ -58,10 +58,13 @@ one pass.
 
 ### `/packages/shared`
 - DTO types: `Photo`, `Album`, `AlbumPhoto`.
-- `PhotoSource` union: `'filesystem' | 'upload'` (extensible for future sources).
+- `PhotoSource` **string enum**: `filesystem | upload` (mirrors the Prisma
+  enum 1:1; extensible for future sources).
 - `ExifData` interface (normalized subset: `takenAt`, camera make/model,
   orientation, etc.).
-- Smart-album rule types (the JSON rule shape only — no evaluation engine).
+- Smart-album rule types — the JSON rule shape only (no evaluation engine), with
+  enums for `match` (`MatchType`: `all | any`) and rule `op` (`RuleOp`: `eq`,
+  `last_30_days`, …).
 - **Zod schemas** for API request params and response envelopes:
   - cursor pagination params (`limit`, `cursor`)
   - `PhotoDTO`, `AlbumDTO`
@@ -72,17 +75,23 @@ one pass.
 ### `/packages/db`
 - Owns `prisma/schema.prisma` and the generated Prisma client.
 - Exports a **singleton** Prisma client.
-- Exports DTO mappers, e.g. `prismaPhoto → PhotoDTO`.
+- Exports DTO mappers, e.g. `prismaPhoto → PhotoDTO`. The Prisma `PhotoSource`
+  enum maps 1:1 to the shared `PhotoSource` enum (identical string values).
 - The **only** module that touches Postgres — enforces "no client accesses the
   DB directly." Consumed by the worker and the web's server layer.
 
 ## 3. Data model (Prisma)
 
 ```prisma
+enum PhotoSource {
+  filesystem
+  upload
+}
+
 model Photo {
-  id        String   @id @default(cuid())
-  path      String   @unique
-  source    String   // 'filesystem' | 'upload'
+  id        String      @id @default(cuid())
+  path      String      @unique
+  source    PhotoSource
   takenAt   DateTime?
   width     Int
   height    Int
@@ -116,6 +125,15 @@ model AlbumPhoto {
 }
 ```
 
+- **Single `Album` model for both kinds**, discriminated by `isSmart`:
+  - **Regular** (`isSmart = false`, `rules = null`): membership = rows in the
+    `AlbumPhoto` join table.
+  - **Smart** (`isSmart = true`, `rules = {...}`): membership is **computed at
+    query time** from the rule JSON; it has **no** `AlbumPhoto` rows.
+  - Rationale: both kinds *are* "an album with a name and a set of photos"; only
+    how membership is resolved differs. One model → one listing endpoint, one
+    set of mappers, no union types. (Rule evaluation itself is a follow-up; the
+    skeleton only stores/returns the rule JSON.)
 - **Thumbnail path is derived** from `id` (`<CACHE_DIR>/thumbnails/<id>.webp`) —
   no column needed.
 - Cursor pagination orders by `(takenAt DESC, id DESC)`; the cursor encodes the
