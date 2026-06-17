@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "ingest": "dotenv -e ../../.env -- tsx src/main.ts",
+    "watch": "dotenv -e ../../.env -- tsx src/watch-main.ts",
     "seed": "tsx scripts/seed-photos.ts",
     "test": "TZ=UTC vitest run",
     "typecheck": "tsc --noEmit"
@@ -12,13 +13,14 @@
   "dependencies": {
     "@lumio/db": "workspace:*",
     "@lumio/shared": "workspace:*",
+    "chokidar": "^5.0.0",
     "exifr": "^7",
     "sharp": "^0.33"
   },
   "devDependencies": {
-    "tsx": "^4",
-    "vitest": "^2",
+    "@types/node": "^22",
     "dotenv-cli": "^8",
-    "@types/node": "^22"
+    "tsx": "^4",
+    "vitest": "^2"
   }
 }
