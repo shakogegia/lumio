@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { addPhotoSchema, photosQuerySchema } from "@lumio/shared";
-import { addPhotoToAlbum, listAlbumPhotos, SmartAlbumMutationError } from "@/lib/albums-service";
+import {
+  addPhotoToAlbum,
+  AlbumNotFoundError,
+  listAlbumPhotos,
+  SmartAlbumMutationError,
+} from "@/lib/albums-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +44,7 @@ export async function POST(
     if (err instanceof SmartAlbumMutationError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
-    if (err instanceof Error && err.message === "album not found") {
+    if (err instanceof AlbumNotFoundError) {
       return NextResponse.json({ error: "Album not found" }, { status: 404 });
     }
     throw err;

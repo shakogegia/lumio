@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteAlbum, getAlbum } from "@/lib/albums-service";
+import { AlbumNotFoundError, deleteAlbum, getAlbum } from "@/lib/albums-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +21,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   const { id } = await params;
-  await deleteAlbum(id);
+  try {
+    await deleteAlbum(id);
+  } catch (err) {
+    if (err instanceof AlbumNotFoundError) {
+      return NextResponse.json({ error: "Album not found" }, { status: 404 });
+    }
+    throw err;
+  }
   return new NextResponse(null, { status: 204 });
 }

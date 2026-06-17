@@ -63,6 +63,39 @@ describe("listAlbumSummaries", () => {
     expect(summaries[0]?.photoCount).toBe(3);
     expect(summaries[0]?.coverPhotoId).toBe("p9");
   });
+
+  it("evaluates smart albums via photo.* (not albumPhoto.*)", async () => {
+    const fakeDb = {
+      album: {
+        findMany: async () => [
+          albumRow({
+            id: "s1",
+            name: "Cam",
+            isSmart: true,
+            rules: {
+              match: "all",
+              rules: [{ field: "exif.cameraModel", op: "eq", value: "TestCam 1" }],
+            },
+          }),
+        ],
+      },
+      albumPhoto: {
+        // These would yield 99 / "wrong" if (incorrectly) used for a smart album.
+        count: async () => 99,
+        findFirst: async () => ({ photoId: "wrong" }),
+      },
+      photo: {
+        count: async () => 2,
+        findFirst: async () => ({ id: "pX" }),
+      },
+    };
+
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]?.isSmart).toBe(true);
+    expect(summaries[0]?.photoCount).toBe(2);
+    expect(summaries[0]?.coverPhotoId).toBe("pX");
+  });
 });
 
 describe("listAlbumPhotos", () => {
