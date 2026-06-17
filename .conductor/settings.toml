@@ -1,0 +1,26 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+# Copy local, gitignored env files into each new workspace so DATABASE_URL,
+# DB_PORT, PHOTOS_DIR and CACHE_DIR are present. Conductor copies these from the
+# repository's root checkout, so make sure a `.env` exists there.
+file_include_globs = ".env*"
+
+[scripts]
+# Prepare a new workspace: keep the root checkout current (so the workspace
+# branches from the latest main), install dependencies, and generate the Prisma
+# client so typecheck/build/tests work immediately. No DB or Docker access here.
+setup = "git -C \"$CONDUCTOR_ROOT_PATH\" fetch --prune origin && git -C \"$CONDUCTOR_ROOT_PATH\" pull --ff-only || true; pnpm install && pnpm --filter @lumio/db run generate"
+
+# Start the dev stack: bring up the shared dev Postgres (idempotent — every
+# workspace shares the one Docker Compose project "infra" on the host port from
+# .env), then run the Next.js dev server on this workspace's allocated port.
+run = "pnpm db:up && pnpm --filter @lumio/web run dev -- --port $CONDUCTOR_PORT"
+
+# Web servers bind unique CONDUCTOR_PORTs and all share the one Postgres, so
+# multiple workspaces can safely run at the same time.
+run_mode = "concurrent"
+
+# Postgres is shared across workspaces (compose project "infra"), so there is no
+# per-workspace external resource to remove here. Intentionally a no-op — do NOT
+# `docker compose down`, which would stop the DB for every other workspace.
+archive = "true"
