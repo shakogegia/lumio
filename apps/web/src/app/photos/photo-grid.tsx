@@ -113,6 +113,7 @@ export function PhotoGrid() {
                 transform: `translateY(${vrow.start - virtualizer.options.scrollMargin}px)`,
                 display: "grid",
                 gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                gridAutoRows: `${tileSize}px`,
                 gap: GRID_GAP,
               }}
             >
