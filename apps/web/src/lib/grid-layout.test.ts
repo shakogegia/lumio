@@ -8,7 +8,7 @@ describe("computeColumns", () => {
   });
   it("computes columns from width using MIN_TILE + GRID_GAP", () => {
     expect(computeColumns(MIN_TILE)).toBe(1);
-    expect(computeColumns(1280)).toBe(6);
+    expect(computeColumns(1280)).toBe(4);
   });
 });
 

@@ -118,7 +118,11 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
               }}
             >
               {rowPhotos.map((photo) => (
-                <Link key={photo.id} href={`/photo/${photo.id}`} className="block h-full">
+                <Link
+                  key={photo.id}
+                  href={`/photo/${photo.id}`}
+                  className="block h-full outline-none focus:outline-none focus-visible:outline-none"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/thumbnails/${photo.id}`}
@@ -126,7 +130,7 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
                     loading="lazy"
                     width={photo.width}
                     height={photo.height}
-                    className="h-full w-full rounded-md object-cover transition-opacity hover:opacity-90"
+                    className="h-full w-full object-cover transition-opacity hover:opacity-90"
                   />
                 </Link>
               ))}

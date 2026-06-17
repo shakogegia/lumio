@@ -3,7 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { PHOTOS_DIR } from "../src/config.js";
 
-const COUNT = 12;
+const COUNT = 200;
 const COLORS = [
   "#e63946", "#f1faee", "#a8dadc", "#457b9d", "#1d3557", "#2a9d8f",
   "#e9c46a", "#f4a261", "#e76f51", "#264653", "#8ecae6", "#ffb703",
@@ -21,7 +21,7 @@ async function main(): Promise<void> {
     const width = 600 + (i % 4) * 100;
     const height = 400 + (i % 3) * 100;
     const dateTimeOriginal = `2024:0${(i % 9) + 1}:${pad((i % 27) + 1)} 1${i % 9}:30:00`;
-    const filename = `sample-${pad(i + 1)}.jpg`;
+    const filename = `sample-${String(i + 1).padStart(3, "0")}.jpg`;
 
     await sharp({
       create: {

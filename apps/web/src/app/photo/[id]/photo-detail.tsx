@@ -32,7 +32,9 @@ export function PhotoDetail({
         className="max-h-[80vh] w-full rounded-lg object-contain"
       />
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger render={<Button variant="secondary">Details</Button>} />
+        <SheetTrigger asChild>
+          <Button variant="secondary">Details</Button>
+        </SheetTrigger>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>{photo.path}</SheetTitle>
