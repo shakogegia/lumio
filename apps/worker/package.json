@@ -1,0 +1,24 @@
+{
+  "name": "@lumio/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest": "dotenv -e ../../.env -- tsx src/main.ts",
+    "seed": "tsx scripts/seed-photos.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lumio/db": "workspace:*",
+    "@lumio/shared": "workspace:*",
+    "exifr": "^7",
+    "sharp": "^0.33"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "vitest": "^2",
+    "dotenv-cli": "^8",
+    "@types/node": "^22"
+  }
+}
