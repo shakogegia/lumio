@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PhotoSource {
+  filesystem
+  upload
+}
+
+model Photo {
+  id        String       @id @default(cuid())
+  path      String       @unique
+  source    PhotoSource
+  takenAt   DateTime?
+  width     Int
+  height    Int
+  hash      String?
+  exif      Json
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  albums    AlbumPhoto[]
+
+  @@index([takenAt, id])
+}
+
+model Album {
+  id        String       @id @default(cuid())
+  name      String
+  isSmart   Boolean      @default(false)
+  rules     Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  photos    AlbumPhoto[]
+}
+
+model AlbumPhoto {
+  albumId String
+  photoId String
+  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  photo   Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, photoId])
+  @@index([photoId])
+}
