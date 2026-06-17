@@ -1,11 +1,11 @@
-import type { AlbumDTO } from "@lumio/shared";
-import { listAlbums } from "@/lib/albums-service";
+import type { AlbumSummaryDTO } from "@lumio/shared";
+import { listAlbumSummaries } from "@/lib/albums-service";
 import { Card } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlbumsPage() {
-  const albums = await listAlbums();
+  const albums = await listAlbumSummaries();
   const regular = albums.filter((a) => !a.isSmart);
   const smart = albums.filter((a) => a.isSmart);
 
@@ -23,7 +23,7 @@ function Section({
   empty,
 }: {
   title: string;
-  albums: AlbumDTO[];
+  albums: AlbumSummaryDTO[];
   empty: string;
 }) {
   return (
