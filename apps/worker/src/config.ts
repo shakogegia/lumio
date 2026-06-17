@@ -30,4 +30,4 @@ export function thumbnailPath(id: string): string {
 }
 
 /** Image extensions the scanner ingests. */
-export const SUPPORTED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
+export const SUPPORTED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".jxl", ".heic", ".heif"]);

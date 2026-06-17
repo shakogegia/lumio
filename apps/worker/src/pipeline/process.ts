@@ -4,6 +4,7 @@ import exifr from "exifr";
 import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
 import { THUMBNAIL_MAX } from "../config.js";
+import { decodeToReadable } from "./decode.js";
 
 export interface ProcessedPhoto {
   width: number;
@@ -21,35 +22,30 @@ function parseExifDate(value: unknown): Date | null {
 
 /** Read an image and derive everything the store layer needs. No DB or FS writes. */
 export async function processImage(absPath: string): Promise<ProcessedPhoto> {
-  const buffer = await readFile(absPath);
+  const original = await readFile(absPath); // for hash + EXIF (original format)
+  const decoded = await decodeToReadable(absPath);
+  try {
+    const meta = await sharp(decoded.path).metadata();
 
-  const image = sharp(buffer);
-  const meta = await image.metadata();
+    const raw = (await exifr.parse(original).catch(() => null)) ?? {};
+    const takenAt = parseExifDate(raw.DateTimeOriginal ?? raw.CreateDate);
+    const exif: ExifData = {
+      takenAt: takenAt ? takenAt.toISOString() : undefined,
+      cameraMake: typeof raw.Make === "string" ? raw.Make.trim() : undefined,
+      cameraModel: typeof raw.Model === "string" ? raw.Model.trim() : undefined,
+      orientation: typeof raw.Orientation === "number" ? raw.Orientation : undefined,
+    };
 
-  const raw = (await exifr.parse(buffer).catch(() => null)) ?? {};
-  const takenAt = parseExifDate(raw.DateTimeOriginal ?? raw.CreateDate);
+    const thumbnail = await sharp(decoded.path)
+      .rotate()
+      .resize(THUMBNAIL_MAX, THUMBNAIL_MAX, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
 
-  const exif: ExifData = {
-    takenAt: takenAt ? takenAt.toISOString() : undefined,
-    cameraMake: typeof raw.Make === "string" ? raw.Make.trim() : undefined,
-    cameraModel: typeof raw.Model === "string" ? raw.Model.trim() : undefined,
-    orientation: typeof raw.Orientation === "number" ? raw.Orientation : undefined,
-  };
+    const hash = createHash("sha256").update(original).digest("hex");
 
-  const thumbnail = await sharp(buffer)
-    .rotate()
-    .resize(THUMBNAIL_MAX, THUMBNAIL_MAX, { fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 80 })
-    .toBuffer();
-
-  const hash = createHash("sha256").update(buffer).digest("hex");
-
-  return {
-    width: meta.width ?? 0,
-    height: meta.height ?? 0,
-    takenAt,
-    hash,
-    exif,
-    thumbnail,
-  };
+    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, exif, thumbnail };
+  } finally {
+    await decoded.cleanup();
+  }
 }
