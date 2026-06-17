@@ -1,7 +1,7 @@
 import path from "node:path";
 
 // Next runs from apps/web; the monorepo root is two levels up.
-const ROOT = path.resolve(process.cwd(), "..", "..");
+export const ROOT = path.resolve(process.cwd(), "..", "..");
 
 export const PHOTOS_DIR = path.resolve(ROOT, process.env.PHOTOS_DIR ?? "./photos");
 export const CACHE_DIR = path.resolve(ROOT, process.env.CACHE_DIR ?? "./cache");

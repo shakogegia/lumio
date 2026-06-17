@@ -1,11 +1,8 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
 import { NextResponse } from "next/server";
+import { ROOT } from "@/lib/paths";
 
 export const runtime = "nodejs";
-
-// Next runs from apps/web; the monorepo root is two levels up.
-const ROOT = path.resolve(process.cwd(), "..", "..");
 
 export async function POST(): Promise<NextResponse> {
   // Heavy ingestion stays in the worker process (per spec). Fire-and-forget.
