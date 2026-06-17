@@ -1,0 +1,34 @@
+import type { Album, Photo } from "@prisma/client";
+import {
+  type AlbumDTO,
+  type ExifData,
+  PhotoSource,
+  type PhotoDTO,
+  type SmartAlbumRules,
+} from "@lumio/shared";
+
+export function toPhotoDTO(row: Photo): PhotoDTO {
+  return {
+    id: row.id,
+    path: row.path,
+    source: row.source as PhotoSource,
+    takenAt: row.takenAt ? row.takenAt.toISOString() : null,
+    width: row.width,
+    height: row.height,
+    hash: row.hash,
+    exif: (row.exif ?? {}) as ExifData,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toAlbumDTO(row: Album): AlbumDTO {
+  return {
+    id: row.id,
+    name: row.name,
+    isSmart: row.isSmart,
+    rules: (row.rules as SmartAlbumRules | null) ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
