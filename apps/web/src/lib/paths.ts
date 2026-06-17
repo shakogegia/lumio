@@ -10,6 +10,10 @@ export function thumbnailPath(id: string): string {
   return path.join(CACHE_DIR, "thumbnails", `${id}.webp`);
 }
 
+export function displayPath(id: string): string {
+  return path.join(CACHE_DIR, "displays", `${id}.webp`);
+}
+
 export function originalPath(relPath: string): string {
   // Guard against path traversal: the resolved path must stay within PHOTOS_DIR.
   const resolved = path.resolve(PHOTOS_DIR, relPath);

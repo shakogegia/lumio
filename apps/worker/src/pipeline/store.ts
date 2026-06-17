@@ -13,9 +13,13 @@ export interface StoreInput {
 export interface StoreDeps {
   db: Pick<PrismaClient, "photo">;
   thumbnailsDir: string;
+  displaysDir: string;
 }
 
-/** Upsert a photo by its unique path, then write its thumbnail to <dir>/<id>.webp. */
+/**
+ * Upsert a photo by its unique path, then write its thumbnail and display
+ * rendition to <thumbnailsDir>/<id>.webp and <displaysDir>/<id>.webp.
+ */
 export async function storePhoto(
   input: StoreInput,
   deps: StoreDeps,
@@ -41,6 +45,9 @@ export async function storePhoto(
 
   await mkdir(deps.thumbnailsDir, { recursive: true });
   await writeFile(path.join(deps.thumbnailsDir, `${row.id}.webp`), processed.thumbnail);
+
+  await mkdir(deps.displaysDir, { recursive: true });
+  await writeFile(path.join(deps.displaysDir, `${row.id}.webp`), processed.display);
 
   return { id: row.id };
 }

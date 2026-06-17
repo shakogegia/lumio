@@ -36,6 +36,21 @@ describe("processImage", () => {
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(400);
   });
 
+  it("produces a webp display rendition capped at DISPLAY_MAX", async () => {
+    const big = path.join(dir, "big.jpg");
+    await sharp({ create: { width: 3000, height: 2000, channels: 3, background: "#abcdef" } })
+      .jpeg()
+      .toFile(big);
+
+    const result = await processImage(big);
+
+    const meta = await sharp(result.display).metadata();
+    expect(meta.format).toBe("webp");
+    expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBe(2048);
+    // The display is a higher-resolution rendition than the thumbnail.
+    expect(result.display.length).toBeGreaterThan(result.thumbnail.length);
+  });
+
   it("returns null takenAt when EXIF has no date", async () => {
     const noexif = path.join(dir, "noexif.png");
     await sharp({ create: { width: 10, height: 10, channels: 3, background: "#000" } })

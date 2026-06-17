@@ -16,6 +16,7 @@ const processed: ProcessedPhoto = {
   hash: "deadbeef",
   exif: { cameraMake: "Lumio" },
   thumbnail: Buffer.from("fake-webp-bytes"),
+  display: Buffer.from("fake-display-bytes"),
 };
 
 function fakeDb(returnedId: string) {
@@ -32,17 +33,21 @@ function fakeDb(returnedId: string) {
 }
 
 describe("storePhoto", () => {
-  it("upserts by path and writes the thumbnail named by id", async () => {
+  it("upserts by path and writes the thumbnail and display named by id", async () => {
     const db = fakeDb("photo123");
+    const thumbs = path.join(dir, "thumbs");
+    const displays = path.join(dir, "displays");
 
     const result = await storePhoto(
       { path: "vacation/img.jpg", source: PhotoSource.filesystem, processed },
-      { db: db as never, thumbnailsDir: dir },
+      { db: db as never, thumbnailsDir: thumbs, displaysDir: displays },
     );
 
     expect(result.id).toBe("photo123");
-    const onDisk = await readFile(path.join(dir, "photo123.webp"));
-    expect(onDisk.equals(processed.thumbnail)).toBe(true);
+    const thumbOnDisk = await readFile(path.join(thumbs, "photo123.webp"));
+    expect(thumbOnDisk.equals(processed.thumbnail)).toBe(true);
+    const displayOnDisk = await readFile(path.join(displays, "photo123.webp"));
+    expect(displayOnDisk.equals(processed.display)).toBe(true);
     expect(db.calls).toHaveLength(1);
   });
 });

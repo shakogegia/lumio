@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import exifr from "exifr";
 import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
-import { THUMBNAIL_MAX } from "../config.js";
+import { DISPLAY_MAX, THUMBNAIL_MAX } from "../config.js";
 import { decodeToReadable } from "./decode.js";
 
 export interface ProcessedPhoto {
@@ -13,6 +13,7 @@ export interface ProcessedPhoto {
   hash: string;
   exif: ExifData;
   thumbnail: Buffer;
+  display: Buffer;
 }
 
 function parseExifDate(value: unknown): Date | null {
@@ -42,9 +43,17 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
       .webp({ quality: 80 })
       .toBuffer();
 
+    // Browser-renderable rendition for the detail view: non-native formats
+    // (JXL/HEIC) decode to webp here, and large originals stay a sane size.
+    const display = await sharp(decoded.path)
+      .rotate()
+      .resize(DISPLAY_MAX, DISPLAY_MAX, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+
     const hash = createHash("sha256").update(original).digest("hex");
 
-    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, exif, thumbnail };
+    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, exif, thumbnail, display };
   } finally {
     await decoded.cleanup();
   }

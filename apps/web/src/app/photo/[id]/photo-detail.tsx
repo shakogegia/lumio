@@ -20,7 +20,7 @@ export function PhotoDetail({ photo }: { photo: PhotoDTO }) {
     <div className="space-y-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/api/photos/${photo.id}/original`}
+        src={`/api/photos/${photo.id}/display`}
         alt={photo.path}
         className="max-h-[80vh] w-full rounded-lg object-contain"
       />
