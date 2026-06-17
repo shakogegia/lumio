@@ -132,7 +132,7 @@ IngestionInput (filesystem) → normalize → process → store
   normalize : resolve canonical path within PHOTOS_DIR
   process   : sharp (width/height)
               exifr (takenAt from DateTimeOriginal, camera, orientation, …)
-              sharp thumbnail → webp (fit inside THUMBNAIL_MAX)
+              sharp thumbnail → webp (fit inside THUMBNAIL_MAX constant = 400px)
               sha256 hash of file bytes
   store     : upsert Photo by unique `path`; thumbnail written to
               <CACHE_DIR>/thumbnails/<id>.webp after the row's id is known
@@ -223,7 +223,9 @@ Sheet, Button, Badge, Tabs) and keep the rest ready.
   - `DATABASE_URL=postgresql://lumio:lumio@localhost:5432/lumio`
   - `PHOTOS_DIR=./photos`
   - `CACHE_DIR=./cache`  (thumbnails live at `${CACHE_DIR}/thumbnails`)
-  - `THUMBNAIL_MAX=400`
+  - (thumbnail size is a code constant `THUMBNAIL_MAX = 400`, not an env var —
+    it's a build-time decision, since changing it requires regenerating the
+    whole thumbnail cache)
 - Root scripts:
   - `db:up` → `docker compose -f infra/docker-compose.yml up -d`
   - `db:migrate` → `prisma migrate dev` (in `/packages/db`)
