@@ -50,7 +50,7 @@ one pass.
 /infra
   docker-compose.yml   Postgres service (dev)
 /photos       synthetic sample images (committed; path via PHOTOS_DIR)
-/data/thumbnails   generated thumbnails (gitignored)
+/cache/thumbnails   generated thumbnails — regenerable, gitignored
 ```
 
 ## 2. Packages
@@ -221,7 +221,7 @@ Sheet, Button, Badge, Tabs) and keep the rest ready.
 - `.env.example`:
   - `DATABASE_URL=postgresql://lumio:lumio@localhost:5432/lumio`
   - `PHOTOS_DIR=./photos`
-  - `THUMBNAILS_DIR=./data/thumbnails`
+  - `THUMBNAILS_DIR=./cache/thumbnails`
   - `THUMBNAIL_MAX=400`
 - Root scripts:
   - `db:up` → `docker compose -f infra/docker-compose.yml up -d`
