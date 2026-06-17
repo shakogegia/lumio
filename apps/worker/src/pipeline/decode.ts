@@ -71,7 +71,14 @@ export async function decodeToReadable(absPath: string): Promise<Decoded> {
   }
   const dir = await mkdtemp(path.join(tmpdir(), "lumio-decode-"));
   const out = path.join(dir, "decoded.png");
-  await execFileAsync(converter.bin, converter.args(absPath, out));
+  try {
+    await execFileAsync(converter.bin, converter.args(absPath, out));
+  } catch (err) {
+    // The caller never receives a Decoded (so can't cleanup); remove the temp
+    // dir here so a corrupt file doesn't leak a dir on every scan cycle.
+    await rm(dir, { recursive: true, force: true });
+    throw err;
+  }
   return {
     path: out,
     cleanup: async () => {
