@@ -24,7 +24,7 @@ export function PhotoDetail({ photo }: { photo: PhotoDTO }) {
         alt={photo.path}
         className="max-h-[80vh] w-full rounded-lg object-contain"
       />
-      <Sheet open={open} onOpenChange={(o) => setOpen(o)}>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger render={<Button variant="secondary">Details</Button>} />
         <SheetContent>
           <SheetHeader>

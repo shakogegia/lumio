@@ -18,10 +18,12 @@ export function PhotoGrid() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
   const sentinel = useRef<HTMLDivElement>(null);
 
   const loadMore = useCallback(async () => {
-    if (loading || done) return;
+    if (loadingRef.current || done) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const page = await fetchPage(cursor);
@@ -29,9 +31,10 @@ export function PhotoGrid() {
       setCursor(page.nextCursor);
       if (!page.nextCursor) setDone(true);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  }, [cursor, done, loading]);
+  }, [cursor, done]);
 
   useEffect(() => {
     const el = sentinel.current;
