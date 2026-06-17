@@ -98,7 +98,6 @@ function AlbumMembership({
       <div className="space-y-2">
         {regularAlbums.map((album) => {
           const checked = photo.albumIds?.includes(album.id) ?? false;
-          const isPending = pending === album.id;
           return (
             <label
               key={album.id}
@@ -107,7 +106,7 @@ function AlbumMembership({
               <input
                 type="checkbox"
                 checked={checked}
-                disabled={isPending}
+                disabled={pending !== null}
                 onChange={() => void toggle(album)}
                 className="h-4 w-4 rounded border-input accent-primary"
               />
