@@ -5,22 +5,11 @@
 # repository's root checkout, so make sure a `.env` exists there.
 file_include_globs = ".env*"
 
+# Lifecycle commands live in versioned scripts under scripts/conductor/ so they
+# stay readable, reviewable, and runnable on their own. They run from the
+# workspace directory.
 [scripts]
-# Prepare a new workspace: keep the root checkout current (so the workspace
-# branches from the latest main), install dependencies, and generate the Prisma
-# client so typecheck/build/tests work immediately. No DB or Docker access here.
-setup = "git -C \"$CONDUCTOR_ROOT_PATH\" fetch --prune origin && git -C \"$CONDUCTOR_ROOT_PATH\" pull --ff-only || true; pnpm install && pnpm --filter @lumio/db run generate"
-
-# Start the dev stack: bring up the shared dev Postgres (idempotent — every
-# workspace shares the one Docker Compose project "infra" on the host port from
-# .env), then run the Next.js dev server on this workspace's allocated port.
-run = "pnpm db:up && pnpm --filter @lumio/web run dev -- --port $CONDUCTOR_PORT"
-
-# Web servers bind unique CONDUCTOR_PORTs and all share the one Postgres, so
-# multiple workspaces can safely run at the same time.
+setup = "bash scripts/conductor/setup.sh"
+run = "bash scripts/conductor/run.sh"
 run_mode = "concurrent"
-
-# Postgres is shared across workspaces (compose project "infra"), so there is no
-# per-workspace external resource to remove here. Intentionally a no-op — do NOT
-# `docker compose down`, which would stop the DB for every other workspace.
-archive = "true"
+archive = "bash scripts/conductor/archive.sh"
