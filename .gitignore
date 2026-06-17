@@ -5,5 +5,6 @@ dist/
 .env.local
 /cache/
 /data/
+/photos/
 *.tsbuildinfo
 .DS_Store
