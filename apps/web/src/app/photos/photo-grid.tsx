@@ -78,6 +78,10 @@ export function PhotoGrid() {
   }, [tileSize, columns]);
 
   const items = virtualizer.getVirtualItems();
+  // Fetch more while the last loaded row is within OVERSCAN of the end. This
+  // fills the viewport on first load, then becomes scroll-driven once loaded
+  // rows exceed the visible area (the last virtual row index drops below the
+  // threshold). The loadingRef guard + `done` prevent redundant fetches.
   useEffect(() => {
     const last = items[items.length - 1];
     if (last && last.index >= rows - OVERSCAN_ROWS) void loadMore();
