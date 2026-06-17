@@ -20,6 +20,7 @@ export interface PhotoDTO {
   exif: ExifData;
   createdAt: string;
   updatedAt: string;
+  albumIds?: string[];
 }
 
 export interface SmartAlbumRule {
@@ -40,4 +41,9 @@ export interface AlbumDTO {
   rules: SmartAlbumRules | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AlbumSummaryDTO extends AlbumDTO {
+  photoCount: number;
+  coverPhotoId: string | null;
 }
