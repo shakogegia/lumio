@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lumio
+      POSTGRES_PASSWORD: lumio
+      POSTGRES_DB: lumio
+    ports:
+      - "5432:5432"
+    volumes:
+      - lumio_pgdata:/var/lib/postgresql/data
+
+volumes:
+  lumio_pgdata:
