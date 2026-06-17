@@ -1,0 +1,21 @@
+{
+  "name": "lumio",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:migrate": "pnpm --filter @lumio/db migrate",
+    "db:generate": "pnpm --filter @lumio/db generate",
+    "seed:photos": "pnpm --filter @lumio/worker seed",
+    "ingest": "pnpm --filter @lumio/worker ingest",
+    "dev": "pnpm --filter @lumio/web dev",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsx": "^4",
+    "vitest": "^2"
+  }
+}
