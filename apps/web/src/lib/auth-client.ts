@@ -1,4 +1,5 @@
 "use client";
+// Client-only. Server code reads sessions via @/lib/server-session, not this module.
 
 import { createAuthClient } from "better-auth/react";
 
