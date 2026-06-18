@@ -34,6 +34,23 @@ Open http://localhost:3000 → redirects to `/photos`.
 TanStack Virtual grid · chokidar watching · album/smart-album rule engine ·
 HEIC decode · uploads · auth.
 
+## Deployment
+
+In production Lumio runs the same image as two containers (`web` + `worker`)
+plus Postgres, via [`infra/docker-compose.prod.yml`](infra/docker-compose.prod.yml).
+
+- **Portainer:** follow the **[Portainer deployment guide](docs/deployment/portainer.md)** —
+  paste the stack, set a few env vars, deploy.
+- **Docker Compose (CLI):** build (or pull) the image, then bring the stack up
+  with an absolute `PHOTOS_DIR`:
+
+  ```bash
+  make build                                # or: make push DOCKER_REPO=you/lumio
+  make up PHOTOS_DIR=/abs/path/to/photos    # PHOTOS_DIR must be an absolute path
+  ```
+
+Either way, set the `BETTER_AUTH_*` vars below.
+
 ## Authentication
 
 Lumio requires login. Set two env vars (compose reads them from your shell or a

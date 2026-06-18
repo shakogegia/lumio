@@ -15,11 +15,11 @@ IMAGE       := $(DOCKER_REPO):$(TAG)
 # --- runtime config (consumed by infra/docker-compose.prod.yml) ---
 COMPOSE     := docker compose -f infra/docker-compose.prod.yml
 PORT        ?= 3000
-# Absolute so the compose bind mounts resolve correctly no matter the cwd.
+# Absolute so the photos bind mount resolves correctly no matter the cwd.
+# (Cache lives in a named volume, so no host path is needed for it.)
 PHOTOS_DIR  ?= $(CURDIR)/photos
-CACHE_DIR   ?= $(CURDIR)/cache
 
-export IMAGE PORT PHOTOS_DIR CACHE_DIR
+export PORT PHOTOS_DIR
 
 .PHONY: dev build push up down logs shell migrate seed clean
 
@@ -35,7 +35,8 @@ build:
 push:
 	docker buildx build --platform $(PLATFORMS) -t $(IMAGE) --push .
 
-# Run the full stack (builds the image if missing).
+# Run the full stack (pulls shakogegia/lumio:latest; run `make build` first to
+# use a locally-built image instead).
 up:
 	$(COMPOSE) up -d
 	@echo "Lumio running at http://localhost:$(PORT)"
@@ -58,7 +59,7 @@ migrate:
 seed:
 	$(COMPOSE) run --rm worker seed
 
-# Stop the stack and remove the image + the Postgres volume.
+# Stop the stack and remove the image + the Postgres and cache volumes.
 clean: down
 	-docker rmi $(IMAGE)
-	-docker volume rm lumio_pgdata
+	-docker volume rm lumio_pgdata lumio_cache
