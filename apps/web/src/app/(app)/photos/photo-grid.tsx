@@ -232,7 +232,7 @@ export function PhotoGrid({
                       <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
                         {thumb}
                       </div>
-                      <span className="absolute left-2 top-2 rounded-full bg-background/70 text-foreground">
+                      <span className="absolute left-2 top-2 rounded-full bg-background text-foreground">
                         {isSelected ? (
                           <CheckCircle2 className="size-5 text-primary" />
                         ) : (
