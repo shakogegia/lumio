@@ -67,6 +67,15 @@ export function AppSidebar() {
   const router = useRouter();
   const onPhotoDetail = pathname.startsWith("/photo/");
 
+  // On a soft navigation into the photo overlay there's an in-app history entry
+  // to pop, and popping it restores the grid's scroll position. But on a fresh
+  // load of the standalone page (refresh or direct link) nothing was pushed, so
+  // router.back() has no destination — fall back to the grid explicitly.
+  const handleBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push("/photos");
+  };
+
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex h-dvh w-[76px] flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
       {/* Brand — becomes a back button on the photo detail page */}
@@ -74,7 +83,7 @@ export function AppSidebar() {
         <button
           type="button"
           title="Back"
-          onClick={() => router.back()}
+          onClick={handleBack}
           className="group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground transition-colors hover:bg-muted"
         >
           <ArrowLeft
