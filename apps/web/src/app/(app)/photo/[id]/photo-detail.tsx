@@ -1,22 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { AlbumSummaryDTO, PhotoDTO, PhotoNeighbors } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import { photoHref } from "@/lib/photo-href";
+import { FilmStrip } from "./film-strip";
 
 export function PhotoDetail({
   photo,
   regularAlbums,
+  neighbors,
+  albumId,
+  overlay = false,
 }: {
   photo: PhotoDTO;
   regularAlbums: AlbumSummaryDTO[];
+  neighbors: PhotoNeighbors;
+  albumId: string | null;
+  /** Rendered inside the intercepted-route modal. When true, prev/next replace
+   *  history instead of pushing, so Escape/back closes the overlay to the grid
+   *  rather than stepping back through every photo visited in the modal. */
+  overlay?: boolean;
 }) {
+  const router = useRouter();
   const filename = photo.path.split("/").pop() || photo.path;
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
+
+  const prevHref = neighbors.prevId ? photoHref(neighbors.prevId, albumId) : null;
+  const nextHref = neighbors.nextId ? photoHref(neighbors.nextId, albumId) : null;
+
+  // Arrow-key navigation. Lives here (not in RouteOverlay) so it works on the
+  // standalone page as well as in the modal. Ignore keys while typing in a field.
+  useEffect(() => {
+    const go = (href: string) =>
+      overlay ? router.replace(href) : router.push(href);
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
+      // Don't hijack the browser's history shortcuts (Cmd+←/→ on macOS,
+      // Alt+←/→ on Windows/Linux) or other modified arrow presses.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key === "ArrowLeft" && prevHref) go(prevHref);
+      if (e.key === "ArrowRight" && nextHref) go(nextHref);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [prevHref, nextHref, overlay, router]);
 
   // The layout fills its container edge to edge (full viewport height, padding
   // owned by each side rather than an outer frame), so the standalone page and
@@ -26,13 +63,29 @@ export function PhotoDetail({
   // which is what makes only the image side read as translucent in the modal.
   return (
     <div className="flex flex-col lg:h-dvh lg:flex-row">
-      <div className="min-w-0 flex-1 p-4 lg:flex lg:items-center lg:justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/api/photos/${photo.id}/display`}
-          alt={photo.path}
-          className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-        />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/photos/${photo.id}/display`}
+            alt={photo.path}
+            className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+          />
+          {prevHref && (
+            <NavArrow side="left" href={prevHref} label="Previous photo" replace={overlay} />
+          )}
+          {nextHref && (
+            <NavArrow side="right" href={nextHref} label="Next photo" replace={overlay} />
+          )}
+        </div>
+        {neighbors.strip.length > 1 && (
+          <FilmStrip
+            items={neighbors.strip}
+            currentId={photo.id}
+            hrefFor={(id) => photoHref(id, albumId)}
+            replace={overlay}
+          />
+        )}
       </div>
       <aside className="w-full shrink-0 border-t bg-background p-4 text-sm lg:h-dvh lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
         <div className="space-y-1">
@@ -71,6 +124,38 @@ export function PhotoDetail({
           </pre>
         </details>
       </aside>
+    </div>
+  );
+}
+
+function NavArrow({
+  side,
+  href,
+  label,
+  replace = false,
+}: {
+  side: "left" | "right";
+  href: string;
+  label: string;
+  replace?: boolean;
+}) {
+  const Icon = side === "left" ? ChevronLeft : ChevronRight;
+  // The absolute centering (-translate-y-1/2) lives on this wrapper, not the
+  // Button: the shadcn Button toggles `translate-y-px` on :active, which writes
+  // the same transform and would otherwise wipe out the vertical centering on
+  // click. Keeping them on separate elements lets the press-nudge coexist.
+  return (
+    <div
+      className={cn(
+        "absolute top-1/2 -translate-y-1/2",
+        side === "left" ? "left-2" : "right-2",
+      )}
+    >
+      <Button asChild variant="outline" size="icon" className="backdrop-blur">
+        <Link href={href} replace={replace} aria-label={label}>
+          <Icon className="size-5" />
+        </Link>
+      </Button>
     </div>
   );
 }

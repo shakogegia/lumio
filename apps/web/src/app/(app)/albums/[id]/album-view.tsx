@@ -112,6 +112,7 @@ export function AlbumView({
       <PhotoGrid
         key={reloadKey}
         endpoint={`/api/albums/${albumId}/photos`}
+        albumId={albumId}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}

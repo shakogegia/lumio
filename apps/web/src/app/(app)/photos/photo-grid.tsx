@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, Images } from "lucide-react";
 import type { PhotoDTO, PhotosPage } from "@lumio/shared";
 import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
+import { photoHref } from "@/lib/photo-href";
 import { cn } from "@/lib/utils";
 import {
   Empty,
@@ -48,12 +49,14 @@ async function fetchPage(endpoint: string, cursor: string | null): Promise<Photo
 
 export function PhotoGrid({
   endpoint = "/api/photos",
+  albumId,
   empty = PHOTOS_EMPTY,
   selectMode = false,
   selectedIds,
   onSelectionChange,
 }: {
   endpoint?: string;
+  albumId?: string;
   empty?: React.ReactNode;
   selectMode?: boolean;
   selectedIds?: Set<string>;
@@ -246,7 +249,7 @@ export function PhotoGrid({
                 return (
                   <Link
                     key={photo.id}
-                    href={`/photo/${photo.id}`}
+                    href={photoHref(photo.id, albumId)}
                     className="block h-full outline-none focus:outline-none focus-visible:outline-none"
                   >
                     {thumb}

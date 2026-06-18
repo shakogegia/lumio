@@ -1,4 +1,4 @@
-import { type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
+import { type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
 import {
   type AlbumDTO,
   type AlbumSummaryDTO,
@@ -7,10 +7,9 @@ import {
   type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
+import { PHOTO_ORDER } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
-
-const PHOTO_ORDER = [{ sortDate: "desc" as const }, { id: "desc" as const }];
 
 export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryDTO[]> {
   const albums = await db.album.findMany({ orderBy: { createdAt: "asc" } });
@@ -61,17 +60,30 @@ export async function deleteAlbum(id: string, db: Db = prisma): Promise<void> {
   await db.album.delete({ where: { id } });
 }
 
+/**
+ * Prisma `where` selecting the photos in an album's navigation scope: explicit
+ * membership for a regular album, or the smart-album rule predicate for a smart
+ * one. Returns null when the album does not exist.
+ */
+export async function albumPhotoWhere(
+  albumId: string,
+  db: Pick<PrismaClient, "album"> = prisma,
+): Promise<Prisma.PhotoWhereInput | null> {
+  const album = await db.album.findUnique({ where: { id: albumId } });
+  if (!album) return null;
+  const dto = toAlbumDTO(album);
+  return dto.isSmart
+    ? smartAlbumWhere(dto.rules as SmartAlbumRules, new Date())
+    : { albums: { some: { albumId } } };
+}
+
 export async function listAlbumPhotos(
   id: string,
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage | null> {
-  const album = await db.album.findUnique({ where: { id } });
-  if (!album) return null;
-  const dto = toAlbumDTO(album);
-  const where = dto.isSmart
-    ? smartAlbumWhere(dto.rules as SmartAlbumRules, new Date())
-    : { albums: { some: { albumId: id } } };
+  const where = await albumPhotoWhere(id, db);
+  if (where === null) return null;
   const { limit, cursor } = params;
   const rows = await db.photo.findMany({
     where,

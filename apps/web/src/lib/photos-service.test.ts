@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { listPhotos, purgeAllPhotos } from "./photos-service.js";
+import { getPhotoNeighbors, listPhotos, purgeAllPhotos } from "./photos-service.js";
 
 function row(id: string) {
   return {
@@ -105,5 +105,133 @@ describe("purgeAllPhotos", () => {
 
     const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
     expect(result).toEqual({ deleted: 1 });
+  });
+});
+
+// Simulates Prisma cursor pagination over an array that is already in PHOTO_ORDER.
+// Positive take = rows after the cursor; negative take = rows before it (returned
+// in array order, matching Prisma's "paginate backwards").
+function keysetDb(ordered: Array<{ id: string; path: string }>) {
+  return {
+    photo: {
+      findMany: async (args: { cursor: { id: string }; skip: number; take: number }) => {
+        const idx = ordered.findIndex((r) => r.id === args.cursor.id);
+        if (idx === -1) return [];
+        if (args.take >= 0) {
+          return ordered.slice(idx + args.skip, idx + args.skip + args.take);
+        }
+        // skip:1 excludes the cursor itself; guard so the fake can't mask a skip change.
+        if (args.skip !== 1) throw new Error(`expected skip:1, got skip:${args.skip}`);
+        const end = idx;
+        return ordered.slice(Math.max(0, end + args.take), end);
+      },
+    },
+  };
+}
+
+// Wraps keysetDb so the same ordered set also answers album.findUnique with a
+// regular (non-smart) album — exercises the albumId != null / albumPhotoWhere path.
+function albumKeysetDb(albumId: string, ordered: Array<{ id: string; path: string }>) {
+  return {
+    ...keysetDb(ordered),
+    album: {
+      findUnique: async () => ({
+        id: albumId,
+        name: "Scoped",
+        isSmart: false,
+        rules: null,
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+      }),
+    },
+  };
+}
+
+const strip = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ id: `p${i}`, path: `p${i}.jpg` }));
+
+describe("getPhotoNeighbors", () => {
+  it("returns the immediate prev/next and a centered strip (library scope)", async () => {
+    const ordered = strip(5); // p0 (newest) .. p4 (oldest), already in PHOTO_ORDER
+    const db = keysetDb(ordered);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
+  });
+
+  it("nulls prevId at the start and nextId at the end", async () => {
+    const ordered = strip(3);
+    const db = keysetDb(ordered);
+    const first = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    expect(first.prevId).toBeNull();
+    expect(first.nextId).toBe("p1");
+    const last = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    expect(last.prevId).toBe("p1");
+    expect(last.nextId).toBeNull();
+  });
+
+  it("clamps the window near an edge", async () => {
+    const ordered = strip(10);
+    const db = keysetDb(ordered);
+    const n = await getPhotoNeighbors({ id: "p1", path: "p1.jpg" }, null, 2, db as never);
+    // window=2: before is clamped to [p0], after is [p2, p3]
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3"]);
+    expect(n.prevId).toBe("p0");
+    expect(n.nextId).toBe("p2");
+  });
+
+  it("returns a single-item strip with no neighbors when the photo is alone", async () => {
+    const db = keysetDb(strip(1));
+    const n = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    expect(n.prevId).toBeNull();
+    expect(n.nextId).toBeNull();
+    expect(n.strip.map((s) => s.id)).toEqual(["p0"]);
+  });
+
+  it("degrades to a single-item strip when the album is missing", async () => {
+    const db = {
+      album: { findUnique: async () => null },
+      photo: {
+        findMany: async () => {
+          throw new Error("should not query photos");
+        },
+      },
+    };
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "ghost", 10, db as never);
+    expect(n).toEqual({ prevId: null, nextId: null, strip: [{ id: "p2", path: "p2.jpg" }] });
+  });
+
+  it("scopes neighbors to an album (regular album)", async () => {
+    const ordered = strip(5); // the album's photos, already in PHOTO_ORDER
+    const db = albumKeysetDb("alb1", ordered);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "alb1", 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
+  });
+
+  it("scopes neighbors to a smart album (rule-based where, no throw)", async () => {
+    const ordered = strip(5); // the photos the smart rule matches, in PHOTO_ORDER
+    const db = {
+      ...keysetDb(ordered),
+      album: {
+        findUnique: async () => ({
+          id: "smart1",
+          name: "Smart",
+          isSmart: true,
+          rules: {
+            match: "all",
+            rules: [{ field: "exif.cameraModel", op: "eq", value: "TestCam" }],
+          },
+          createdAt: new Date("2024-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+        }),
+      },
+    };
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "smart1", 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
   });
 });
