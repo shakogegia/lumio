@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@lumio/db", "@lumio/shared"],
+  transpilePackages: ["@lumio/db", "@lumio/shared", "@lumio/ingest"],
+  serverExternalPackages: ["sharp"],
   webpack: (config) => {
     config.resolve.extensionAlias = {
       ".js": [".ts", ".tsx", ".js"],

@@ -12,7 +12,9 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@lumio/db": "workspace:*",
+    "@lumio/ingest": "workspace:*",
     "@lumio/shared": "workspace:*",
+    "sharp": "^0.33",
     "@tanstack/react-virtual": "^3.14.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
