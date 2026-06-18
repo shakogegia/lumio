@@ -48,3 +48,9 @@ model AlbumPhoto {
   @@id([albumId, photoId])
   @@index([photoId])
 }
+
+model AppSettings {
+  id             Int      @id @default(1)
+  uploadTemplate String   @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
+  updatedAt      DateTime @updatedAt
+}
