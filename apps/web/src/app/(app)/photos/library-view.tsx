@@ -6,6 +6,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid } from "./photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
+import { HeaderBar } from "./header-bar";
 
 export function LibraryView() {
   const sel = useGridSelection();
@@ -25,12 +26,12 @@ export function LibraryView() {
           }
         />
       ) : (
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <HeaderBar>
           <h1 className="text-2xl font-semibold">Library</h1>
           <Button variant="outline" size="sm" onClick={sel.enter}>
             Select
           </Button>
-        </div>
+        </HeaderBar>
       )}
 
       <PhotoGrid
