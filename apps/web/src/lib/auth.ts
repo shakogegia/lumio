@@ -9,6 +9,9 @@ const baseURL = process.env.BETTER_AUTH_URL;
 // Extra origins to trust for CSRF beyond baseURL — comma-separated. Lets a
 // Conductor workspace accept BOTH its portless subdomain (the baseURL) and the
 // direct http://localhost:<port> origin. Empty in plain/prod setups.
+// Note: cookies are Secure (set via the https baseURL), so they won't flow over
+// the http://localhost:<port> origin — direct-port access is handy for API
+// tooling/tests but not for full browser sessions; use the subdomain for those.
 const extraTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
