@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   addPhotosToAlbum,
+  AlbumNotFoundError,
   listAlbumPhotos,
   listAlbumSummaries,
   removePhotosFromAlbum,
@@ -163,6 +164,17 @@ describe("addPhotosToAlbum", () => {
       skipDuplicates: true,
     });
   });
+
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      addPhotosToAlbum("missing", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
 });
 
 describe("removePhotosFromAlbum", () => {
@@ -189,5 +201,16 @@ describe("removePhotosFromAlbum", () => {
     expect(deleteMany).toHaveBeenCalledWith({
       where: { albumId: "alb1", photoId: { in: ["p1", "p2"] } },
     });
+  });
+
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
   });
 });

@@ -81,6 +81,12 @@ export function PhotoGrid({
     onSelectionChange(next);
   }
 
+  // Drop the shift-range anchor when leaving select mode so re-entering and
+  // shift-clicking doesn't extend from a stale index.
+  useEffect(() => {
+    if (!selectMode) anchorRef.current = null;
+  }, [selectMode]);
+
   const listRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);

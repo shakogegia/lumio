@@ -31,6 +31,12 @@ export function AlbumView({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  function handleCancel() {
+    setRemoveError(null);
+    sel.cancel();
+  }
 
   async function handleRemove() {
     const ids = [...sel.selected];
@@ -38,6 +44,7 @@ export function AlbumView({
     const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
     if (!confirm(`Remove ${label} from this album?`)) return;
     setRemoving(true);
+    setRemoveError(null);
     try {
       const res = await fetch(`/api/albums/${albumId}/photos`, {
         method: "DELETE",
@@ -48,7 +55,11 @@ export function AlbumView({
         sel.cancel();
         setReloadKey((k) => k + 1);
         router.refresh();
+      } else {
+        setRemoveError("Failed to remove photos from this album.");
       }
+    } catch {
+      setRemoveError("Failed to remove photos from this album.");
     } finally {
       setRemoving(false);
     }
@@ -60,7 +71,7 @@ export function AlbumView({
         <SelectionToolbar
           title={albumName}
           count={sel.count}
-          onCancel={sel.cancel}
+          onCancel={handleCancel}
           actions={
             <>
               <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
@@ -89,6 +100,10 @@ export function AlbumView({
             <DeleteAlbumButton albumId={albumId} />
           </div>
         </div>
+      )}
+
+      {removeError && (
+        <p className="mb-4 text-sm text-destructive">{removeError}</p>
       )}
 
       <PhotoGrid
