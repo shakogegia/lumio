@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Aperture, ArrowLeft, Images, GalleryVerticalEnd, Settings, ImageUp } from "lucide-react";
+import { ArrowLeft, Images, GalleryVerticalEnd, Settings, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
 
 type NavItem = {
@@ -89,11 +90,7 @@ export function AppSidebar() {
           title="Lumio"
           className="mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground"
         >
-          <Aperture
-            className="h-7 w-7 transition-transform duration-500 ease-out hover:rotate-90"
-            strokeWidth={1.9}
-            aria-hidden
-          />
+          <Logo className="h-7 w-7 transition-transform duration-500 ease-out hover:rotate-90" />
           <span className="sr-only">Lumio</span>
         </Link>
       )}
