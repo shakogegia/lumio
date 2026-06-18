@@ -8,7 +8,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid } from "@/app/(app)/photos/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
-import { HeaderBar } from "@/app/(app)/photos/header-bar";
+import { HeaderBar } from "@/components/header-bar";
 import {
   Empty,
   EmptyDescription,
@@ -92,15 +92,17 @@ export function AlbumView({
           }
         />
       ) : (
-        <HeaderBar>
-          <h1 className="text-2xl font-semibold">{albumName}</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={sel.enter}>
-              Select
-            </Button>
-            <DeleteAlbumButton albumId={albumId} />
-          </div>
-        </HeaderBar>
+        <HeaderBar
+          title={albumName}
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={sel.enter}>
+                Select
+              </Button>
+              <DeleteAlbumButton albumId={albumId} />
+            </>
+          }
+        />
       )}
 
       {removeError && (

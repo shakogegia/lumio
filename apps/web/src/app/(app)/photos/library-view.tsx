@@ -6,7 +6,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid } from "./photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
-import { HeaderBar } from "./header-bar";
+import { HeaderBar } from "@/components/header-bar";
 
 export function LibraryView() {
   const sel = useGridSelection();
@@ -26,12 +26,14 @@ export function LibraryView() {
           }
         />
       ) : (
-        <HeaderBar>
-          <h1 className="text-2xl font-semibold">Library</h1>
-          <Button variant="outline" size="sm" onClick={sel.enter}>
-            Select
-          </Button>
-        </HeaderBar>
+        <HeaderBar
+          title="Library"
+          actions={
+            <Button variant="outline" size="sm" onClick={sel.enter}>
+              Select
+            </Button>
+          }
+        />
       )}
 
       <PhotoGrid
