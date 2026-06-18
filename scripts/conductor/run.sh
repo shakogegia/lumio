@@ -14,6 +14,17 @@ export PORT="${CONDUCTOR_PORT:-3000}"
 # the container is already running.
 pnpm db:up
 
+# Register a stable, named URL for this workspace with the shared portless proxy
+# (https://<workspace>.lumio.localhost:1355 -> the dev server on $PORT). We only
+# add the alias against the already-running proxy; we never start or restart it,
+# so other projects sharing the one proxy daemon are unaffected. Skipped when
+# portless isn't installed or we're outside Conductor (CI, plain local runs),
+# so the dev server still comes up normally. archive.sh removes the alias.
+if command -v portless >/dev/null 2>&1 && [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
+  portless alias "${CONDUCTOR_WORKSPACE_NAME}.lumio" "$PORT" --force || true
+  echo "==> Lumio workspace URL: https://${CONDUCTOR_WORKSPACE_NAME}.lumio.localhost:1355"
+fi
+
 # Start the Next.js dev server on $PORT. `exec` so Conductor's stop signal goes
 # straight to the dev server process.
 exec pnpm --filter @lumio/web run dev
