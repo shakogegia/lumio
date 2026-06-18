@@ -45,6 +45,8 @@ services:
       PHOTOS_DIR: /data/photos
       CACHE_DIR: /data/cache
       PORT: "3000"
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
     ports:
       - "${PORT:-3000}:3000"
     volumes:

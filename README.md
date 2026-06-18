@@ -33,3 +33,28 @@ Open http://localhost:3000 → redirects to `/photos`.
 ## Deferred follow-ups
 TanStack Virtual grid · chokidar watching · album/smart-album rule engine ·
 HEIC decode · uploads · auth.
+
+## Authentication
+
+Lumio requires login. Set two env vars (compose reads them from your shell or a
+root `.env`):
+
+- `BETTER_AUTH_SECRET` — generate with `openssl rand -base64 32`.
+- `BETTER_AUTH_URL` — the **public HTTPS origin** the app is served from
+  (e.g. `https://photos.example.com`). Behind a Cloudflare tunnel this MUST be
+  the external hostname, or session cookies / CSRF checks will fail
+  (`{"code":"INVALID_ORIGIN"}`).
+
+On first launch (no users yet) the app redirects to `/setup` so you can create
+the single admin account. After that, account creation is permanently closed
+and only `/login` is reachable.
+
+### Cloudflare tunnel
+Point your `cloudflared` ingress at the web container:
+
+    ingress:
+      - hostname: photos.example.com
+        service: http://web:3000
+      - service: http_status:404
+
+Then set `BETTER_AUTH_URL=https://photos.example.com`.
