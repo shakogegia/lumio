@@ -9,11 +9,17 @@ set -euo pipefail
 # `dotenv -- next` separator, so we set PORT instead.)
 export PORT="${CONDUCTOR_PORT:-3000}"
 
-# Better Auth's baseURL / trustedOrigins must match the actual serving origin, or
-# sign-in fails the CSRF/origin check (INVALID_ORIGIN). dotenv-cli does NOT override
-# an env var that's already exported, so this wins over the .env value and always
-# matches the port we're actually serving on (per-workspace in Conductor).
-export BETTER_AUTH_URL="http://localhost:${PORT}"
+# Better Auth's baseURL / trustedOrigins must match the origin the browser uses,
+# or sign-in fails the CSRF/origin check (INVALID_ORIGIN). Behind the portless
+# proxy the browser origin is the https subdomain, so that's the baseURL; we also
+# trust the direct http://localhost:<port> origin so both access paths work.
+# dotenv-cli does NOT override already-exported vars, so these win over .env.
+if command -v portless >/dev/null 2>&1 && [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
+  export BETTER_AUTH_URL="https://${CONDUCTOR_WORKSPACE_NAME}.lumio.localhost:1355"
+  export BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:${PORT}"
+else
+  export BETTER_AUTH_URL="http://localhost:${PORT}"
+fi
 
 # Bring up the shared dev Postgres. Idempotent: every workspace shares the one
 # Docker Compose project "infra" (host port from .env), so this is a no-op when

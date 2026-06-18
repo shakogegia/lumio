@@ -6,10 +6,22 @@ import { assertSignupAllowed } from "./signup-gate.js";
 
 const baseURL = process.env.BETTER_AUTH_URL;
 
+// Extra origins to trust for CSRF beyond baseURL — comma-separated. Lets a
+// Conductor workspace accept BOTH its portless subdomain (the baseURL) and the
+// direct http://localhost:<port> origin. Empty in plain/prod setups.
+const extraTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const trustedOrigins = [
+  ...new Set([...(baseURL ? [baseURL] : []), ...extraTrustedOrigins]),
+];
+
 export const auth = betterAuth({
   baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: baseURL ? [baseURL] : [],
+  trustedOrigins,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
