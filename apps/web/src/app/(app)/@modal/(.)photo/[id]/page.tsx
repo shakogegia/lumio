@@ -19,9 +19,7 @@ export default async function PhotoIntercept({
 
   return (
     <RouteOverlay>
-      <main className="p-4">
-        <PhotoDetail photo={photo} regularAlbums={regularAlbums} />
-      </main>
+      <PhotoDetail photo={photo} regularAlbums={regularAlbums} />
     </RouteOverlay>
   );
 }
