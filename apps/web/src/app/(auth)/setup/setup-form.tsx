@@ -75,7 +75,6 @@ export function SetupForm({ className }: { className?: string }) {
             name="confirm"
             type="password"
             autoComplete="new-password"
-            minLength={8}
             required
           />
         </div>
