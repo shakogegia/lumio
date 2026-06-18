@@ -569,51 +569,117 @@ git commit -m "feat(auth): proxy request gate (Next 16 proxy.ts)"
 
 ---
 
-## Task 8: Protect every data API route with `requireSession`
+## Task 8: Protect every data API route with a `withAuth` wrapper
 
-**Files (all under `apps/web/src/app/api/`):**
-- Modify: `photos/route.ts` (GET)
-- Modify: `photos/[id]/route.ts` (GET)
-- Modify: `photos/[id]/display/route.ts` (GET)
-- Modify: `photos/[id]/original/route.ts` (GET)
-- Modify: `photos/purge/route.ts` (POST)
-- Modify: `albums/route.ts` (GET, POST)
-- Modify: `albums/[id]/route.ts` (GET, DELETE)
-- Modify: `albums/[id]/photos/route.ts` (GET, POST)
-- Modify: `albums/[id]/photos/[photoId]/route.ts` (DELETE)
-- Modify: `rescan/route.ts` (POST)
-- Modify: `settings/route.ts` (PUT)
-- Modify: `thumbnails/[id]/route.ts` (GET)
-- Modify: `uploads/route.ts` (POST)
+Route handlers (`/api/*`) are NOT covered by layouts or the proxy's optimistic check, so each must verify the session itself. To keep that DRY, wrap each handler in a `withAuth` higher-order function that runs `requireSession`, returns the 401 when unauthenticated, and otherwise calls the handler with the validated session.
+
+**Files:**
+- Create: `apps/web/src/lib/with-auth.ts`
+- Create: `apps/web/src/lib/with-auth.test.ts`
+- Modify (refactor each handler to `withAuth`, all under `apps/web/src/app/api/`):
+  `photos/route.ts` (GET) · `photos/[id]/route.ts` (GET) · `photos/[id]/display/route.ts` (GET) · `photos/[id]/original/route.ts` (GET) · `photos/purge/route.ts` (POST) · `albums/route.ts` (GET, POST) · `albums/[id]/route.ts` (GET, DELETE) · `albums/[id]/photos/route.ts` (GET, POST) · `albums/[id]/photos/[photoId]/route.ts` (DELETE) · `rescan/route.ts` (POST) · `settings/route.ts` (PUT) · `thumbnails/[id]/route.ts` (GET) · `uploads/route.ts` (POST)
 
 Do NOT touch `api/auth/[...all]/route.ts` — Better Auth owns it.
 
-- [ ] **Step 1: Add the guard to each handler**
+> Note: Task 8 was first implemented with an inline `requireSession()` guard in each handler; this task refactors all of them to the `withAuth` wrapper. `requireSession`/`getServerSession` stay in `server-session.ts` (the wrapper and the `(app)` layout both use them).
 
-For EVERY file listed above, add this import near the top:
+- [ ] **Step 1: Write the failing test for the wrapper**
+
+Create `apps/web/src/lib/with-auth.test.ts` (mocks `server-session` so no DB/`server-only` is loaded):
+```ts
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const requireSessionMock = vi.fn();
+vi.mock("./server-session.js", () => ({
+  requireSession: () => requireSessionMock(),
+}));
+
+import { withAuth } from "./with-auth.js";
+
+describe("withAuth", () => {
+  beforeEach(() => requireSessionMock.mockReset());
+
+  it("returns the 401 response and does NOT call the handler when unauthenticated", async () => {
+    const response = new Response("no", { status: 401 });
+    requireSessionMock.mockResolvedValue({ session: null, response });
+    const handler = vi.fn();
+    const result = await withAuth(handler)(new Request("http://x/api"), {});
+    expect(result).toBe(response);
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("calls the handler with (request, context, session) when authenticated", async () => {
+    const session = { user: { id: "u1" } };
+    requireSessionMock.mockResolvedValue({ session, response: null });
+    const ok = new Response("ok");
+    const handler = vi.fn().mockResolvedValue(ok);
+    const req = new Request("http://x/api");
+    const ctx = { params: Promise.resolve({ id: "p1" }) };
+    const result = await withAuth(handler)(req, ctx);
+    expect(result).toBe(ok);
+    expect(handler).toHaveBeenCalledWith(req, ctx, session);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it FAILS**
+
+Run: `pnpm --filter @lumio/web exec vitest run src/lib/with-auth.test.ts`
+Expected: FAIL — cannot resolve `./with-auth.js`.
+
+- [ ] **Step 3: Implement the wrapper**
+
+Create `apps/web/src/lib/with-auth.ts` (no direct `server-only` import — it's protected transitively via `server-session`, and omitting it lets the wrapper be unit-tested with a mock):
 ```ts
 import { requireSession } from "@/lib/server-session";
-```
-and insert these two lines as the **first statements inside each exported handler** (`GET`/`POST`/`PUT`/`DELETE`):
-```ts
-  const guard = await requireSession();
-  if (guard.response) return guard.response;
+
+// The authenticated session type, derived from requireSession's success branch.
+type AuthedSession = Extract<
+  Awaited<ReturnType<typeof requireSession>>,
+  { response: null }
+>["session"];
+
+type AuthedHandler<Ctx> = (
+  request: Request,
+  context: Ctx,
+  session: AuthedSession,
+) => Promise<Response> | Response;
+
+/**
+ * Wraps a route handler so it only runs for authenticated requests. Returns a
+ * 401 (from requireSession) otherwise. The wrapped handler receives the
+ * validated session as its third argument. Ctx is inferred from the handler's
+ * own context parameter, so dynamic-route `{ params }` typing is preserved.
+ */
+export function withAuth<Ctx = unknown>(handler: AuthedHandler<Ctx>) {
+  return async (request: Request, context: Ctx): Promise<Response> => {
+    const guard = await requireSession();
+    if (guard.response) return guard.response;
+    return handler(request, context, guard.session);
+  };
+}
 ```
 
-Concrete example — `apps/web/src/app/api/photos/route.ts` becomes:
+- [ ] **Step 4: Run the test to verify it PASSES**
+
+Run: `pnpm --filter @lumio/web exec vitest run src/lib/with-auth.test.ts`
+Expected: PASS (2 tests).
+
+- [ ] **Step 5: Refactor every route handler to `withAuth`**
+
+In each route file: remove the `requireSession` import + the two inline guard lines, add `import { withAuth } from "@/lib/with-auth";`, and convert each `export async function METHOD(...) {...}` into `export const METHOD = withAuth(async (...) => {...});`. Keep the `runtime`/`dynamic` exports and all body logic unchanged. Handlers that don't need the user can omit the third (`session`) parameter.
+
+Static route — `apps/web/src/app/api/photos/route.ts`:
 ```ts
 import { NextResponse } from "next/server";
 import { photosQuerySchema } from "@lumio/shared";
 import { listPhotos } from "@/lib/photos-service";
-import { requireSession } from "@/lib/server-session";
+import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request): Promise<NextResponse> {
-  const guard = await requireSession();
-  if (guard.response) return guard.response;
-
+export const GET = withAuth(async (request) => {
   const { searchParams } = new URL(request.url);
   const parsed = photosQuerySchema.safeParse(Object.fromEntries(searchParams));
   if (!parsed.success) {
@@ -621,29 +687,44 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   const page = await listPhotos(parsed.data);
   return NextResponse.json(page);
-}
+});
 ```
-Apply the identical guard pattern to every handler in the file list (each file, each method). For routes whose handler returns a non-`NextResponse` type (e.g. `Response` for streamed images), the guard still works because `guard.response` is a `NextResponse` (a `Response` subclass) — just `return guard.response;`.
 
-- [ ] **Step 2: Typecheck**
-
-Run: `pnpm --filter @lumio/web exec tsc --noEmit`
-Expected: no errors.
-
-- [ ] **Step 3: Manually verify a couple of routes return 401 when logged out**
-
-Run: `pnpm dev` then:
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/photos
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/settings -X PUT
+Dynamic route — keep the `{ params }` annotation so Next's route types still validate (example shape for `photos/[id]/route.ts`):
+```ts
+export const GET = withAuth(
+  async (request, { params }: { params: Promise<{ id: string }> }) => {
+    const { id } = await params;
+    // ...existing body...
+  },
+);
 ```
-Expected: `401` for both (the proxy short-circuits before the handler — that's fine, both layers agree). Stop dev server.
+For `albums/[id]/photos/[photoId]/route.ts` the params type is `{ params: Promise<{ id: string; photoId: string }> }`. Multi-method files (`albums/route.ts`, `albums/[id]/route.ts`, `albums/[id]/photos/route.ts`) wrap BOTH exported methods.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Verify types (incl. Next route-handler validation) + tests + live 401s**
+
+Run:
+```bash
+pnpm --filter @lumio/web exec tsc --noEmit
+pnpm --filter @lumio/web build      # validates the generated route-handler types for the wrapped exports
+pnpm -r test
+```
+Expected: clean typecheck, successful build (route types accept the `withAuth(...)` exports), all tests pass.
+
+Then live-check a few routes are still 401 when logged out (DB is up; serve on a known port):
+```bash
+export PORT=3000; export BETTER_AUTH_URL=http://localhost:3000
+( pnpm --filter @lumio/web dev & ) ; sleep 9
+for p in /api/photos /api/albums "/api/photos/x/display"; do curl -s -o /dev/null -w "$p:%{http_code}\n" "http://localhost:3000$p"; done
+pkill -f "next dev"   # leave NO dev server running; confirm with: pgrep -f "next dev"
+```
+Expected: all `401`.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/src/app/api
-git commit -m "feat(auth): require session on all data API routes"
+git add apps/web/src/lib/with-auth.ts apps/web/src/lib/with-auth.test.ts apps/web/src/app/api
+git commit -m "refactor(auth): protect data API routes via withAuth wrapper"
 ```
 
 ---
