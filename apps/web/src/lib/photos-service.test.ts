@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { listPhotos, purgeAllPhotos } from "./photos-service.js";
+import { getPhotoNeighbors, listPhotos, purgeAllPhotos } from "./photos-service.js";
 
 function row(id: string) {
   return {
@@ -105,5 +105,59 @@ describe("purgeAllPhotos", () => {
 
     const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
     expect(result).toEqual({ deleted: 1 });
+  });
+});
+
+// Simulates Prisma cursor pagination over an array that is already in PHOTO_ORDER.
+// Positive take = rows after the cursor; negative take = rows before it (returned
+// in array order, matching Prisma's "paginate backwards").
+function keysetDb(ordered: Array<{ id: string; path: string }>) {
+  return {
+    photo: {
+      findMany: async (args: { cursor: { id: string }; skip: number; take: number }) => {
+        const idx = ordered.findIndex((r) => r.id === args.cursor.id);
+        if (idx === -1) return [];
+        if (args.take >= 0) {
+          return ordered.slice(idx + args.skip, idx + args.skip + args.take);
+        }
+        const end = idx; // skip:1 excludes the cursor itself
+        return ordered.slice(Math.max(0, end + args.take), end);
+      },
+    },
+  };
+}
+
+const strip = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ id: `p${i}`, path: `p${i}.jpg` }));
+
+describe("getPhotoNeighbors", () => {
+  it("returns the immediate prev/next and a centered strip (library scope)", async () => {
+    const ordered = strip(5); // p0 (newest) .. p4 (oldest), already in PHOTO_ORDER
+    const db = keysetDb(ordered);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
+  });
+
+  it("nulls prevId at the start and nextId at the end", async () => {
+    const ordered = strip(3);
+    const db = keysetDb(ordered);
+    const first = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    expect(first.prevId).toBeNull();
+    expect(first.nextId).toBe("p1");
+    const last = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    expect(last.prevId).toBe("p1");
+    expect(last.nextId).toBeNull();
+  });
+
+  it("clamps the window near an edge", async () => {
+    const ordered = strip(10);
+    const db = keysetDb(ordered);
+    const n = await getPhotoNeighbors({ id: "p1", path: "p1.jpg" }, null, 2, db as never);
+    // window=2: before is clamped to [p0], after is [p2, p3]
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3"]);
+    expect(n.prevId).toBe("p0");
+    expect(n.nextId).toBe("p2");
   });
 });
