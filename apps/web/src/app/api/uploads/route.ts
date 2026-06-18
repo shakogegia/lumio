@@ -3,11 +3,15 @@ import { NextResponse } from "next/server";
 import { getSettings, prisma } from "@lumio/db";
 import { handleUpload } from "@/lib/upload-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
+import { requireSession } from "@/lib/server-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const guard = await requireSession();
+  if (guard.response) return guard.response;
+
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { getPhoto } from "@/lib/photos-service";
 import { originalPath } from "@/lib/paths";
+import { requireSession } from "@/lib/server-session";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  const guard = await requireSession();
+  if (guard.response) return guard.response;
+
   const { id } = await params;
   const photo = await getPhoto(id);
   if (!photo) {

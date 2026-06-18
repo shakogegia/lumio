@@ -6,6 +6,7 @@ import {
   listAlbumPhotos,
   SmartAlbumMutationError,
 } from "@/lib/albums-service";
+import { requireSession } from "@/lib/server-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  const guard = await requireSession();
+  if (guard.response) return guard.response;
+
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const parsed = photosQuerySchema.safeParse(Object.fromEntries(searchParams));
@@ -31,6 +35,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
+  const guard = await requireSession();
+  if (guard.response) return guard.response;
+
   const { id } = await params;
   const body: unknown = await request.json();
   const parsed = addPhotoSchema.safeParse(body);
