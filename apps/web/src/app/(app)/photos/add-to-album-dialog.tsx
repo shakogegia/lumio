@@ -37,6 +37,7 @@ export function AddToAlbumDialog({
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAlbums(null);
     setLoadError(false);
@@ -44,10 +45,16 @@ export function AddToAlbumDialog({
     setError(null);
     fetch("/api/albums")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
-      .then((data: { items: AlbumSummaryDTO[] }) =>
-        setAlbums(data.items.filter((a) => !a.isSmart && a.id !== excludeAlbumId)),
-      )
-      .catch(() => setLoadError(true));
+      .then((data: { items: AlbumSummaryDTO[] }) => {
+        if (!cancelled)
+          setAlbums(data.items.filter((a) => !a.isSmart && a.id !== excludeAlbumId));
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, excludeAlbumId]);
 
   async function postPhotos(albumId: string) {
@@ -109,6 +116,7 @@ export function AddToAlbumDialog({
 
         <form onSubmit={(e) => void handleCreate(e)} className="flex gap-2">
           <Input
+            autoFocus
             placeholder="New album from selection"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
