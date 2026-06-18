@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getPhoto } from "@/lib/photos-service";
 import { listAlbumSummaries } from "@/lib/albums-service";
 import { RouteOverlay } from "@/components/route-overlay";
-import { PhotoDetail } from "@/app/photo/[id]/photo-detail";
+import { PhotoDetail } from "@/app/(app)/photo/[id]/photo-detail";
 
 export const dynamic = "force-dynamic";
 

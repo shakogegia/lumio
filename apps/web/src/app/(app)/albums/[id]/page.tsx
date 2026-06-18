@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getAlbum } from "@/lib/albums-service";
-import { PhotoGrid } from "@/app/photos/photo-grid";
+import { PhotoGrid } from "@/app/(app)/photos/photo-grid";
 import { DeleteAlbumButton } from "./delete-album-button";
 
 export const dynamic = "force-dynamic";

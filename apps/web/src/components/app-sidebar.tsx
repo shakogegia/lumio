@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Aperture, ArrowLeft, Images, GalleryVerticalEnd, Settings, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/logout-button";
 
 type NavItem = {
   href: string;
@@ -109,6 +110,7 @@ export function AppSidebar() {
         {SECONDARY.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
         ))}
+        <LogoutButton />
       </div>
     </aside>
   );
