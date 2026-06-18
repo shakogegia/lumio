@@ -25,7 +25,10 @@ fi
 # secret is missing or still a "change-me" placeholder, generate a real one.
 if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*change-me' .env; then
   secret="$(openssl rand -base64 32)"
-  grep -v '^BETTER_AUTH_SECRET=' .env > .env.tmp && mv .env.tmp .env
+  # `|| true`: grep -v exits 1 if it filters out every line (a .env containing
+  # only the secret) — harmless here, but it would trip `set -e`.
+  grep -v '^BETTER_AUTH_SECRET=' .env > .env.tmp || true
+  mv .env.tmp .env
   printf 'BETTER_AUTH_SECRET="%s"\n' "$secret" >> .env
   echo "setup: generated BETTER_AUTH_SECRET"
 fi
