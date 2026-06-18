@@ -5,10 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 
 /**
  * Renders intercepted-route content in the main content area (to the right of
- * the 76px sidebar) so it looks identical to the standalone detail page — but
- * because it arrives via soft navigation, the page underneath stays mounted and
- * its scroll position is preserved when you go back (sidebar back arrow, browser
- * back, or Escape). No backdrop or popup chrome: this is the full-page view.
+ * the 76px sidebar) so it looks like the standalone detail page — but because it
+ * arrives via soft navigation, the page underneath stays mounted and its scroll
+ * position is preserved when you go back (sidebar back arrow, browser back, or
+ * Escape). The overlay background is a macOS-style translucent material: a
+ * semi-transparent tint over a heavy backdrop blur, so the still-mounted photo
+ * grid shows through as frosted glass. (The standalone page has no overlay, so
+ * it stays fully opaque.)
  *
  * Parallel-route slots keep their last content on soft navigation, so when you
  * navigate away via the sidebar (e.g. to /photos) the @modal slot would still
@@ -77,7 +80,7 @@ export function RouteOverlay({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-y-0 left-[76px] right-0 z-40 overflow-y-auto bg-background"
+      className="fixed inset-y-0 left-[76px] right-0 z-40 overflow-y-auto bg-background/96 backdrop-blur-md backdrop-saturate-105 supports-[backdrop-filter]:bg-background/92"
     >
       {children}
     </div>
