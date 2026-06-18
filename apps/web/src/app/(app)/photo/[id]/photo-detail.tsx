@@ -85,7 +85,7 @@ function AlbumMembership({
         await fetch(`/api/albums/${album.id}/photos`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoId: photo.id }),
+          body: JSON.stringify({ photoIds: [photo.id] }),
         });
       }
       router.refresh();

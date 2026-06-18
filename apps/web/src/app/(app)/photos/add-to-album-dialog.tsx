@@ -87,6 +87,7 @@ export function AddToAlbumDialog({
     if (!name || pending) return;
     setPending(true);
     setError(null);
+    let albumId: string;
     try {
       const res = await fetch("/api/albums", {
         method: "POST",
@@ -94,12 +95,20 @@ export function AddToAlbumDialog({
         body: JSON.stringify({ name, isSmart: false }),
       });
       if (!res.ok) throw new Error();
-      const album = (await res.json()) as { id: string };
-      await postPhotos(album.id);
+      albumId = ((await res.json()) as { id: string }).id;
+    } catch {
+      setError("Failed to create the album.");
+      setPending(false);
+      return;
+    }
+    // The album now exists; a failure past this point is an add failure, not a
+    // create failure, so report it as such rather than leaving it ambiguous.
+    try {
+      await postPhotos(albumId);
       router.refresh();
       onAdded();
     } catch {
-      setError("Failed to create the album.");
+      setError("Album created, but adding the photos failed.");
     } finally {
       setPending(false);
     }
