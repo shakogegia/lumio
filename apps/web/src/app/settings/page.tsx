@@ -1,6 +1,7 @@
 import { getSettings } from "@lumio/db";
 import { getStatus } from "@/lib/status-service";
 import { Card } from "@/components/ui/card";
+import { DeleteAllPhotos } from "./danger-zone";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
 
@@ -34,6 +35,24 @@ export default async function SettingsPage() {
           Trigger a full rescan of the photos directory.
         </p>
         <RescanButton />
+      </div>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-medium text-destructive">Danger zone</h2>
+        <p className="text-sm text-muted-foreground">
+          Irreversible actions. Proceed with caution.
+        </p>
+        <Card className="space-y-4 border-destructive/30 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">Delete all photos</p>
+              <p className="text-sm text-muted-foreground">
+                Remove every photo from the database and filesystem, including cached thumbnails.
+              </p>
+            </div>
+            <DeleteAllPhotos photoCount={status.photoCount} />
+          </div>
+        </Card>
       </div>
     </main>
   );
