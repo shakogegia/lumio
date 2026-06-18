@@ -6,7 +6,7 @@ export interface ExifData {
   cameraMake?: string;
   cameraModel?: string;
   orientation?: number;
-  [key: string]: unknown; // raw passthrough allowed
+  [key: string]: unknown; // full sanitized metadata dump (all EXIF/GPS/XMP/IPTC tags)
 }
 
 export interface PhotoDTO {

@@ -9,13 +9,6 @@ export const THUMBNAIL_MAX = 400;
  */
 export const DISPLAY_MAX = 2048;
 
-/** Image extensions the pipeline ingests. */
-export const SUPPORTED_EXTENSIONS = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".webp",
-  ".jxl",
-  ".heic",
-  ".heif",
-]);
+// Re-exported from @lumio/shared so the browser upload UI can import the list
+// without pulling the Node-only ingest pipeline into the client bundle.
+export { SUPPORTED_EXTENSIONS } from "@lumio/shared";
