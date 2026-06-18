@@ -11,7 +11,12 @@ const fixture = path.join(dir, "fixture.jpg");
 await sharp({ create: { width: 320, height: 240, channels: 3, background: "#123456" } })
   .withExif({
     IFD0: { Make: "Lumio", Model: "FixtureCam" },
-    IFD2: { DateTimeOriginal: "2024:03:14 09:26:53" },
+    IFD2: {
+      DateTimeOriginal: "2024:03:14 09:26:53",
+      FNumber: "28/10",
+      ISOSpeedRatings: "400",
+      FocalLength: "50/1",
+    },
   })
   .jpeg()
   .toFile(fixture);
@@ -28,6 +33,9 @@ describe("processImage", () => {
     expect(result.height).toBe(240);
     expect(result.exif.cameraMake).toBe("Lumio");
     expect(result.exif.cameraModel).toBe("FixtureCam");
+    expect(result.exif.FNumber).toBe(2.8);
+    expect(result.exif.ISO).toBe(400);
+    expect(result.exif.FocalLength).toBe(50);
     expect(result.takenAt?.toISOString()).toBe("2024-03-14T09:26:53.000Z");
     expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
 

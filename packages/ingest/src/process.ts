@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import exifr from "exifr";
+import { extractMetadata } from "./metadata.js";
 import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
 import { DISPLAY_MAX, THUMBNAIL_MAX } from "./constants.js";
@@ -16,11 +16,6 @@ export interface ProcessedPhoto {
   display: Buffer;
 }
 
-function parseExifDate(value: unknown): Date | null {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
-  return null;
-}
-
 /** Read an image and derive everything the store layer needs. No DB or FS writes. */
 export async function processImage(absPath: string): Promise<ProcessedPhoto> {
   const original = await readFile(absPath); // for hash + EXIF (original format)
@@ -28,14 +23,7 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
   try {
     const meta = await sharp(decoded.path).metadata();
 
-    const raw = (await exifr.parse(original).catch(() => null)) ?? {};
-    const takenAt = parseExifDate(raw.DateTimeOriginal ?? raw.CreateDate);
-    const exif: ExifData = {
-      takenAt: takenAt ? takenAt.toISOString() : undefined,
-      cameraMake: typeof raw.Make === "string" ? raw.Make.trim() : undefined,
-      cameraModel: typeof raw.Model === "string" ? raw.Model.trim() : undefined,
-      orientation: typeof raw.Orientation === "number" ? raw.Orientation : undefined,
-    };
+    const { exif, takenAt } = await extractMetadata(original);
 
     const thumbnail = await sharp(decoded.path)
       .rotate()
