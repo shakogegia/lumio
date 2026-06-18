@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   addPhotosToAlbum,
+  albumPhotoWhere,
   AlbumNotFoundError,
   listAlbumPhotos,
   listAlbumSummaries,
@@ -212,5 +213,30 @@ describe("removePhotosFromAlbum", () => {
     await expect(
       removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
     ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+});
+
+describe("albumPhotoWhere", () => {
+  it("returns a membership where for a regular album", async () => {
+    const db = { album: { findUnique: async () => albumRow({ id: "alb1", isSmart: false }) } };
+    const where = await albumPhotoWhere("alb1", db as never);
+    expect(where).toEqual({ albums: { some: { albumId: "alb1" } } });
+  });
+
+  it("returns null for a missing album", async () => {
+    const db = { album: { findUnique: async () => null } };
+    const where = await albumPhotoWhere("nope", db as never);
+    expect(where).toBeNull();
+  });
+
+  it("returns a smart-album where (not a membership clause)", async () => {
+    const rules = { match: "all", rules: [{ field: "exif.cameraModel", op: "eq", value: "X" }] };
+    const db = {
+      album: { findUnique: async () => albumRow({ id: "s1", isSmart: true, rules }) },
+    };
+    const where = await albumPhotoWhere("s1", db as never);
+    // Smart albums filter on photo fields, never on album membership.
+    expect(where).not.toBeNull();
+    expect((where as Record<string, unknown>).albums).toBeUndefined();
   });
 });
