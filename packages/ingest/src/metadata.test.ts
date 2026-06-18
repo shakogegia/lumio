@@ -34,4 +34,14 @@ describe("sanitizeMetadata", () => {
     const out = sanitizeMetadata({ d: new Date(), buf: Buffer.from([1]), bad: NaN });
     expect(() => JSON.stringify(out)).not.toThrow();
   });
+
+  it("passes null through unchanged", () => {
+    expect(sanitizeMetadata(null)).toBeNull();
+    expect(sanitizeMetadata({ gps: null })).toEqual({ gps: null });
+  });
+
+  it("drops invalid Dates", () => {
+    expect(sanitizeMetadata(new Date("not a date"))).toBeUndefined();
+    expect(sanitizeMetadata({ ts: new Date("not a date") })).toEqual({});
+  });
 });
