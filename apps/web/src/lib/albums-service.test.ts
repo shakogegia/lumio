@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  addPhotoToAlbum,
+  addPhotosToAlbum,
+  AlbumNotFoundError,
   listAlbumPhotos,
   listAlbumSummaries,
+  removePhotosFromAlbum,
   SmartAlbumMutationError,
 } from "./albums-service.js";
 
@@ -133,34 +135,82 @@ describe("listAlbumPhotos", () => {
   });
 });
 
-describe("addPhotoToAlbum", () => {
+describe("addPhotosToAlbum", () => {
   it("throws SmartAlbumMutationError for smart albums", async () => {
     const fakeDb = {
-      album: {
-        findUnique: async () => ({ isSmart: true }),
-      },
+      album: { findUnique: async () => ({ isSmart: true }) },
       albumPhoto: {},
       photo: {},
     };
-
-    await expect(addPhotoToAlbum("alb1", "p1", fakeDb as never)).rejects.toBeInstanceOf(
-      SmartAlbumMutationError,
-    );
+    await expect(
+      addPhotosToAlbum("alb1", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
   });
 
-  it("calls albumPhoto.upsert once for a regular album", async () => {
-    const upsert = vi.fn().mockResolvedValue({});
+  it("createMany with skipDuplicates and returns the inserted count", async () => {
+    const createMany = vi.fn().mockResolvedValue({ count: 2 });
     const fakeDb = {
-      album: {
-        findUnique: async () => ({ isSmart: false }),
-      },
-      albumPhoto: {
-        upsert,
-      },
+      album: { findUnique: async () => ({ isSmart: false }) },
+      albumPhoto: { createMany },
       photo: {},
     };
+    const count = await addPhotosToAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(count).toBe(2);
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        { albumId: "alb1", photoId: "p1" },
+        { albumId: "alb1", photoId: "p2" },
+      ],
+      skipDuplicates: true,
+    });
+  });
 
-    await addPhotoToAlbum("alb1", "p1", fakeDb as never);
-    expect(upsert).toHaveBeenCalledOnce();
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      addPhotosToAlbum("missing", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+});
+
+describe("removePhotosFromAlbum", () => {
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: true }) },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      removePhotosFromAlbum("alb1", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
+  });
+
+  it("deleteMany on the given ids and returns the removed count", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }) },
+      albumPhoto: { deleteMany },
+      photo: {},
+    };
+    const count = await removePhotosFromAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(count).toBe(2);
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { albumId: "alb1", photoId: { in: ["p1", "p2"] } },
+    });
+  });
+
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
   });
 });

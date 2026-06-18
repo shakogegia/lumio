@@ -87,17 +87,35 @@ export class SmartAlbumMutationError extends Error {}
 
 export class AlbumNotFoundError extends Error {}
 
-export async function addPhotoToAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+  await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
+}
+
+export async function addPhotosToAlbum(
+  albumId: string,
+  photoIds: string[],
+  db: Db = prisma,
+): Promise<number> {
   const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
   if (!album) throw new AlbumNotFoundError();
   if (album.isSmart) throw new SmartAlbumMutationError("cannot add photos to a smart album");
-  await db.albumPhoto.upsert({
-    where: { albumId_photoId: { albumId, photoId } },
-    create: { albumId, photoId },
-    update: {},
+  const result = await db.albumPhoto.createMany({
+    data: photoIds.map((photoId) => ({ albumId, photoId })),
+    skipDuplicates: true,
   });
+  return result.count;
 }
 
-export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
-  await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
+export async function removePhotosFromAlbum(
+  albumId: string,
+  photoIds: string[],
+  db: Db = prisma,
+): Promise<number> {
+  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+  if (!album) throw new AlbumNotFoundError();
+  if (album.isSmart) throw new SmartAlbumMutationError("cannot remove photos from a smart album");
+  const result = await db.albumPhoto.deleteMany({
+    where: { albumId, photoId: { in: photoIds } },
+  });
+  return result.count;
 }

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { Images } from "lucide-react";
+import { CheckCircle2, Circle, Images } from "lucide-react";
 import type { PhotoDTO, PhotosPage } from "@lumio/shared";
 import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
+import { computeSelection } from "@/lib/grid-selection";
+import { cn } from "@/lib/utils";
 import {
   Empty,
   EmptyDescription,
@@ -47,15 +49,43 @@ async function fetchPage(endpoint: string, cursor: string | null): Promise<Photo
 export function PhotoGrid({
   endpoint = "/api/photos",
   empty = PHOTOS_EMPTY,
+  selectMode = false,
+  selectedIds,
+  onSelectionChange,
 }: {
   endpoint?: string;
   empty?: React.ReactNode;
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }) {
   const [photos, setPhotos] = useState<PhotoDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
   const loadingRef = useRef(false);
+
+  // Index of the last plain-clicked tile, used as the shift-range anchor.
+  const anchorRef = useRef<number | null>(null);
+
+  function handleTileClick(index: number, e: React.MouseEvent) {
+    if (!onSelectionChange) return;
+    const next = computeSelection(
+      selectedIds ?? new Set<string>(),
+      photos.map((p) => p.id),
+      index,
+      e.shiftKey,
+      anchorRef.current,
+    );
+    if (!e.shiftKey) anchorRef.current = index;
+    onSelectionChange(next);
+  }
+
+  // Drop the shift-range anchor when leaving select mode so re-entering and
+  // shift-clicking doesn't extend from a stale index.
+  useEffect(() => {
+    if (!selectMode) anchorRef.current = null;
+  }, [selectMode]);
 
   const listRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -143,7 +173,7 @@ export function PhotoGrid({
           }}
         >
           {Array.from({ length: SKELETON_TILES }).map((_, i) => (
-            <div key={i} className="bg-skeleton aspect-square" />
+            <div key={i} className="aspect-square rounded-sm bg-skeleton" />
           ))}
         </div>
       </div>
@@ -172,23 +202,57 @@ export function PhotoGrid({
                 gap: GRID_GAP,
               }}
             >
-              {rowPhotos.map((photo) => (
-                <Link
-                  key={photo.id}
-                  href={`/photo/${photo.id}`}
-                  className="block h-full bg-skeleton outline-none focus:outline-none focus-visible:outline-none"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+              {rowPhotos.map((photo, i) => {
+                const globalIndex = start + i;
+                const thumb = (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={`/api/thumbnails/${photo.id}`}
                     alt={photo.path}
                     loading="lazy"
                     width={photo.width}
                     height={photo.height}
-                    className="h-full w-full object-cover transition-opacity hover:opacity-90"
+                    className="h-full w-full rounded-sm object-cover transition-opacity hover:opacity-90"
                   />
-                </Link>
-              ))}
+                );
+
+                if (selectMode) {
+                  const isSelected = selectedIds?.has(photo.id) ?? false;
+                  return (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={(e) => handleTileClick(globalIndex, e)}
+                      className={cn(
+                        "relative block h-full select-none rounded-sm outline-none focus:outline-none focus-visible:outline-none",
+                        isSelected && "ring-2 ring-inset ring-primary",
+                      )}
+                    >
+                      <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
+                        {thumb}
+                      </div>
+                      <span className="absolute left-2 top-2 rounded-full bg-background text-foreground">
+                        {isSelected ? (
+                          <CheckCircle2 className="size-5 text-primary" />
+                        ) : (
+                          <Circle className="size-5 text-muted-foreground" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={photo.id}
+                    href={`/photo/${photo.id}`}
+                    className="block h-full outline-none focus:outline-none focus-visible:outline-none"
+                  >
+                    {thumb}
+                  </Link>
+                );
+              })}
             </div>
           );
         })}
