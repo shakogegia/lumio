@@ -34,7 +34,7 @@ export default async function AlbumsPage() {
         <div className="grid grid-cols-3 gap-x-5 gap-y-7 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
           {albums.map((album) => (
             <Link key={album.id} href={`/albums/${album.id}`} className="group block">
-              <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-muted">
+              <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-sm bg-muted">
                 {album.coverPhotoId ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

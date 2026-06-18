@@ -173,7 +173,7 @@ export function PhotoGrid({
           }}
         >
           {Array.from({ length: SKELETON_TILES }).map((_, i) => (
-            <div key={i} className="bg-skeleton aspect-square" />
+            <div key={i} className="aspect-square rounded-sm bg-skeleton" />
           ))}
         </div>
       </div>
