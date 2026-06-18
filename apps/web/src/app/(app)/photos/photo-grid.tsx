@@ -225,7 +225,7 @@ export function PhotoGrid({
                       aria-pressed={isSelected}
                       onClick={(e) => handleTileClick(globalIndex, e)}
                       className={cn(
-                        "relative block h-full select-none bg-skeleton outline-none focus:outline-none focus-visible:outline-none",
+                        "relative block h-full select-none outline-none focus:outline-none focus-visible:outline-none",
                         isSelected && "ring-2 ring-inset ring-primary",
                       )}
                     >
@@ -247,7 +247,7 @@ export function PhotoGrid({
                   <Link
                     key={photo.id}
                     href={`/photo/${photo.id}`}
-                    className="block h-full bg-skeleton outline-none focus:outline-none focus-visible:outline-none"
+                    className="block h-full outline-none focus:outline-none focus-visible:outline-none"
                   >
                     {thumb}
                   </Link>

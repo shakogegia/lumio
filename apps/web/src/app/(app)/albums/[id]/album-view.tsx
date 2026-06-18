@@ -94,7 +94,7 @@ export function AlbumView({
         <div className="mb-6 flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{albumName}</h1>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={sel.enter}>
+            <Button variant="outline" size="sm" onClick={sel.enter}>
               Select
             </Button>
             <DeleteAlbumButton albumId={albumId} />

@@ -21,7 +21,7 @@ export function SelectionToolbar({
         {count > 0 ? `${count} selected` : title}
       </h1>
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="sm" onClick={onCancel}>
+        <Button variant="outline" size="sm" onClick={onCancel}>
           Cancel
         </Button>
         {actions}
