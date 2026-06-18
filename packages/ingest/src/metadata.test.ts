@@ -45,6 +45,18 @@ describe("sanitizeMetadata", () => {
     expect(sanitizeMetadata(new Date("not a date"))).toBeUndefined();
     expect(sanitizeMetadata({ ts: new Date("not a date") })).toEqual({});
   });
+
+  it("strips NUL bytes from strings and keys (PostgreSQL jsonb cannot store \u0000)", () => {
+    // Real-world trigger: the IPTC ApplicationRecordVersion tag parses to "\u0000".
+    expect(sanitizeMetadata("\u0000")).toBe("");
+    expect(sanitizeMetadata({ ApplicationRecordVersion: "\u0000" })).toEqual({
+      ApplicationRecordVersion: "",
+    });
+    const out = sanitizeMetadata({ note: "a\u0000b", list: ["x\u0000y"], "k\u0000ey": "v" });
+    expect(out).toEqual({ note: "ab", list: ["xy"], key: "v" });
+    // The serialized form must not contain a NUL escape (Postgres would reject it).
+    expect(JSON.stringify(out)).not.toContain("\u0000");
+  });
 });
 
 /** Splice an XMP APP1 segment (the way embedded XMP lives in a JPEG) right after SOI. */
