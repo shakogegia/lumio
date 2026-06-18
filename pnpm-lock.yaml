@@ -26,6 +26,9 @@ importers:
       '@lumio/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@lumio/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
       '@lumio/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -56,6 +59,9 @@ importers:
       shadcn:
         specifier: ^4.11.0
         version: 4.11.0(typescript@5.9.3)
+      sharp:
+        specifier: ^0.33
+        version: 0.33.5
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
