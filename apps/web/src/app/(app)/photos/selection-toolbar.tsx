@@ -16,7 +16,11 @@ export function SelectionToolbar({
   actions: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex items-center justify-between gap-4">
+    // Sticky so the actions stay reachable while scrolling a long grid. The
+    // -mt-6/pt-6 reclaim the page's `p-6` top padding so the bar sticks flush to
+    // the top (bg-background occludes photos scrolling under it) while keeping
+    // the title position and overall height identical to the normal header.
+    <div className="sticky top-0 z-20 -mt-6 mb-6 flex items-center justify-between gap-4 bg-background pt-6">
       <h1 className="text-2xl font-semibold">
         {count > 0 ? `${count} selected` : title}
       </h1>
