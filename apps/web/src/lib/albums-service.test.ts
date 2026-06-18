@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  addPhotoToAlbum,
   addPhotosToAlbum,
   listAlbumPhotos,
   listAlbumSummaries,
@@ -132,38 +131,6 @@ describe("listAlbumPhotos", () => {
 
     const page = await listAlbumPhotos("missing", { limit: 10 }, fakeDb as never);
     expect(page).toBeNull();
-  });
-});
-
-describe("addPhotoToAlbum", () => {
-  it("throws SmartAlbumMutationError for smart albums", async () => {
-    const fakeDb = {
-      album: {
-        findUnique: async () => ({ isSmart: true }),
-      },
-      albumPhoto: {},
-      photo: {},
-    };
-
-    await expect(addPhotoToAlbum("alb1", "p1", fakeDb as never)).rejects.toBeInstanceOf(
-      SmartAlbumMutationError,
-    );
-  });
-
-  it("calls albumPhoto.upsert once for a regular album", async () => {
-    const upsert = vi.fn().mockResolvedValue({});
-    const fakeDb = {
-      album: {
-        findUnique: async () => ({ isSmart: false }),
-      },
-      albumPhoto: {
-        upsert,
-      },
-      photo: {},
-    };
-
-    await addPhotoToAlbum("alb1", "p1", fakeDb as never);
-    expect(upsert).toHaveBeenCalledOnce();
   });
 });
 

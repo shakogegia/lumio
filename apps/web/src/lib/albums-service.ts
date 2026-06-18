@@ -87,17 +87,6 @@ export class SmartAlbumMutationError extends Error {}
 
 export class AlbumNotFoundError extends Error {}
 
-export async function addPhotoToAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
-  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
-  if (!album) throw new AlbumNotFoundError();
-  if (album.isSmart) throw new SmartAlbumMutationError("cannot add photos to a smart album");
-  await db.albumPhoto.upsert({
-    where: { albumId_photoId: { albumId, photoId } },
-    create: { albumId, photoId },
-    update: {},
-  });
-}
-
 export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
   await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
 }
