@@ -99,6 +99,7 @@ The `0-users → /setup` and `≥1-user → /login` redirects live in the `/logi
   - `BETTER_AUTH_SECRET` — random 32+ byte secret (document `openssl rand -base64 32`).
   - `BETTER_AUTH_URL` — the public Cloudflare hostname, e.g. `https://photos.example.com`. Drives `Secure` cookies and `trustedOrigins`/CSRF behind the tunnel.
 - **Cloudflare tunnel** runs outside the app (`cloudflared` ingress → `web:3000`). Documented in the README, not hard-wired into compose. README notes that `BETTER_AUTH_URL` **must** be the external HTTPS hostname or cookies/CSRF will misbehave.
+- **Conductor dev workspaces:** the lifecycle scripts make auth work per-workspace without manual edits. `scripts/conductor/setup.sh` generates a strong `BETTER_AUTH_SECRET` into `.env` when it's missing or still a placeholder; `scripts/conductor/run.sh` exports `BETTER_AUTH_URL=http://localhost:$PORT` (the reserved `CONDUCTOR_PORT`) so `trustedOrigins` matches the actual serving port — otherwise sign-in fails the origin/CSRF check. (`dotenv-cli` does not override an already-exported var, so the runtime export wins over `.env`.)
 - The Dockerfile already builds the whole workspace; the only addition is the new env vars at runtime. `prisma migrate deploy` (already in the entrypoint) applies the auth tables on first boot.
 
 ## Testing

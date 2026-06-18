@@ -1136,7 +1136,71 @@ git commit -m "docs(auth): production env vars + Cloudflare tunnel notes"
 
 ---
 
-## Task 13: Full verification + browser walkthrough
+## Task 13: Conductor dev workspace — generated secret + port-derived auth URL
+
+**Why:** Conductor runs each workspace's dev server on its own reserved port (`run.sh` sets `PORT=${CONDUCTOR_PORT:-3000}`), but `.env` hardcodes `BETTER_AUTH_URL=http://localhost:3000`. Since `trustedOrigins` is derived from `BETTER_AUTH_URL`, a workspace served on any other port fails sign-in on an origin/CSRF mismatch. Separately, seeding `.env` from `.env.example` leaves the placeholder `BETTER_AUTH_SECRET`. Fix both in the Conductor lifecycle scripts. (Verified: `dotenv-cli` does NOT override an already-exported env var, so exporting `BETTER_AUTH_URL` in `run.sh` wins over `.env`.)
+
+**Files:**
+- Modify: `scripts/conductor/setup.sh`
+- Modify: `scripts/conductor/run.sh`
+
+- [ ] **Step 1: Generate a real secret at setup**
+
+In `scripts/conductor/setup.sh`, add this AFTER the existing `if [ ! -f .env ] ... fi` block (so it runs whether `.env` was seeded from `.env.example` or copied from the root checkout):
+```bash
+# Auth: ensure a strong, per-workspace BETTER_AUTH_SECRET. The .env may have come
+# from the committed .env.example (placeholder) or a copied root .env; if the
+# secret is missing or still a "change-me" placeholder, generate a real one.
+if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*change-me' .env; then
+  secret="$(openssl rand -base64 32)"
+  grep -v '^BETTER_AUTH_SECRET=' .env > .env.tmp && mv .env.tmp .env
+  printf 'BETTER_AUTH_SECRET="%s"\n' "$secret" >> .env
+  echo "setup: generated BETTER_AUTH_SECRET"
+fi
+```
+
+- [ ] **Step 2: Derive BETTER_AUTH_URL from the workspace port at run time**
+
+In `scripts/conductor/run.sh`, add this immediately AFTER the existing `export PORT="${CONDUCTOR_PORT:-3000}"` line:
+```bash
+# Better Auth's baseURL / trustedOrigins must match the actual serving origin, or
+# sign-in fails the CSRF/origin check. dotenv-cli does NOT override an env var
+# that's already exported, so this wins over the .env value and always matches
+# the port we're actually serving on (per-workspace in Conductor).
+export BETTER_AUTH_URL="http://localhost:${PORT}"
+```
+
+- [ ] **Step 3: Verify the logic in isolation (don't clobber the real .env)**
+
+Run:
+```bash
+# Secret generation: seed a temp .env from the placeholder and confirm it gets replaced.
+tmp=$(mktemp -d); cp .env.example "$tmp/.env"
+( cd "$tmp"
+  if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*change-me' .env; then
+    secret="$(openssl rand -base64 32)"
+    grep -v '^BETTER_AUTH_SECRET=' .env > .env.tmp && mv .env.tmp .env
+    printf 'BETTER_AUTH_SECRET="%s"\n' "$secret" >> .env
+  fi
+  grep '^BETTER_AUTH_SECRET=' .env )
+rm -rf "$tmp"
+# Expected: one BETTER_AUTH_SECRET line with a ~44-char base64 value, NOT "change-me...".
+
+# URL derivation:
+PORT=55220 bash -c 'export BETTER_AUTH_URL="http://localhost:${PORT}"; echo "$BETTER_AUTH_URL"'
+# Expected: http://localhost:55220
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add scripts/conductor/setup.sh scripts/conductor/run.sh
+git commit -m "feat(auth): conductor setup generates secret; run derives auth URL from port"
+```
+
+---
+
+## Task 14: Full verification + browser walkthrough
 
 **Files:** none (verification only)
 
@@ -1153,22 +1217,24 @@ Expected: all tests pass; no type errors; lint clean; `next build` succeeds.
 
 - [ ] **Step 2: Browser walkthrough on a fresh DB**
 
-Start fresh so user count is zero:
+Start fresh so user count is zero. Serve on a known port and point `BETTER_AUTH_URL` at it (mirrors `run.sh`; in a Conductor workspace use `$CONDUCTOR_PORT`):
 ```bash
 pnpm db:up
 # If the DB already has a user from earlier manual testing, reset auth rows:
 #   pnpm --filter @lumio/db exec prisma migrate reset   # ⚠️ wipes ALL data incl. photos
+export PORT="${CONDUCTOR_PORT:-3000}"
+export BETTER_AUTH_URL="http://localhost:${PORT}"
 pnpm dev
 ```
-Verify in the browser (`http://localhost:3000`):
+Verify in the browser at `http://localhost:$PORT` (substitute the actual port):
 1. Visiting `/` while logged out → redirected to `/login` → which (0 users) → redirects to `/setup`.
 2. Create the admin (name + email + password + confirm) → lands in the library (`/photos`), sidebar visible.
 3. Open a photo (`/photo/[id]`) → modal interception still works.
 4. Click **Logout** in the sidebar → back at `/login` (now shows the login form, since a user exists).
 5. Navigate directly to `/setup` → redirected to `/login` (setup is closed).
-6. While logged out, `curl http://localhost:3000/api/photos` → `401`.
+6. While logged out, `curl http://localhost:$PORT/api/photos` → `401`.
 7. Log back in with the admin credentials → library loads.
-8. Attempt a second signup (registration closed): `curl -s -X POST http://localhost:3000/api/auth/sign-up/email -H 'content-type: application/json' -d '{"name":"x","email":"x@x.com","password":"password123"}'` → `403` with "Registration is closed."
+8. Attempt a second signup (registration closed): `curl -s -X POST http://localhost:$PORT/api/auth/sign-up/email -H 'content-type: application/json' -d '{"name":"x","email":"x@x.com","password":"password123"}'` → `403` with "Registration is closed."
 
 - [ ] **Step 3: Final status note (optional)**
 
@@ -1177,5 +1243,5 @@ Update `docs/STATUS.md` / memory if the project tracks progress there.
 ---
 
 ## Self-review notes (author)
-- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), middleware (T7), API protection (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), first-run setup + login↔setup redirects (T10/T11), prod env + Cloudflare docs (T12), tests/build/browser verify (T13). All spec sections map to a task.
+- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), middleware (T7), API protection (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), first-run setup + login↔setup redirects (T10/T11), prod env + Cloudflare docs (T12), Conductor dev env — generated secret + port-derived auth URL (T13), tests/build/browser verify (T14). All spec sections map to a task.
 - **Out-of-scope items** (social login, multi-user/invites, password-reset email, Expo, per-user ownership) are intentionally absent.
