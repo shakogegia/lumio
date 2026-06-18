@@ -1,3 +1,4 @@
+import { APIError } from "better-auth/api";
 import { describe, expect, it } from "vitest";
 import { assertSignupAllowed } from "./signup-gate.js";
 
@@ -7,7 +8,7 @@ describe("assertSignupAllowed", () => {
   });
 
   it("blocks signup once a user exists", () => {
-    expect(() => assertSignupAllowed("/sign-up/email", true)).toThrow();
+    expect(() => assertSignupAllowed("/sign-up/email", true)).toThrow(APIError);
   });
 
   it("ignores non-signup paths even when no user exists", () => {
