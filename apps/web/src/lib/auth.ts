@@ -21,10 +21,21 @@ const trustedOrigins = [
   ...new Set([...(baseURL ? [baseURL] : []), ...extraTrustedOrigins]),
 ];
 
+// Secure cookies only travel over HTTPS. Set USE_SECURE_COOKIES=false to keep
+// logins working over plain HTTP (e.g. http://<lan-ip>:3000 or a raw Tailscale
+// IP). Unset → Better Auth's default (Secure in production). ⚠️ Disabling drops
+// the Secure flag on ALL origins, including any public HTTPS domain, so only do
+// it on a trusted LAN/Tailscale-only deployment. The proxy gate reads the token
+// under either cookie name, so flipping this doesn't break the redirect gate.
+const secureCookiesEnv = process.env.USE_SECURE_COOKIES;
+
 export const auth = betterAuth({
   baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
+  ...(secureCookiesEnv !== undefined && {
+    advanced: { useSecureCookies: secureCookiesEnv !== "false" },
+  }),
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,

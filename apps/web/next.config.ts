@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@lumio/db", "@lumio/shared", "@lumio/ingest"],
   serverExternalPackages: ["sharp"],
+  // Max request body the app accepts — effectively the photo-upload size cap.
+  // Set MAX_UPLOAD_SIZE WITH A UNIT (e.g. "500mb", "1gb"); a bare number is
+  // bytes (so "300" = 300 B, not 300 MB). Defaults to 200mb. `next start`
+  // re-reads this on boot, so an env change + restart is enough — no rebuild.
+  experimental: {
+    proxyClientMaxBodySize: (process.env.MAX_UPLOAD_SIZE ?? "200mb") as NonNullable<
+      NextConfig["experimental"]
+    >["proxyClientMaxBodySize"],
+  },
   // When Conductor runs this workspace behind the portless proxy, the browser
   // origin is `<workspace>.lumio.localhost`, not localhost. Next 16 blocks
   // dev-server requests from other origins unless they're allow-listed here.

@@ -8,12 +8,17 @@
 ARG NODE_VERSION=24
 
 # ---- base: node + pnpm + openssl (Prisma needs libssl) ----
+# libjxl-tools (djxl) and libheif-examples (heif-convert) are the external
+# decoders the ingest pipeline shells out to for .jxl / .heic / .heif — libvips
+# can't read those. On macOS dev these come from the built-in `sips`; in this
+# Linux image they must be installed, or ingest fails with "no external decoder".
 FROM node:${NODE_VERSION}-slim AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && apt-get install -y --no-install-recommends \
+      openssl ca-certificates libjxl-tools libheif-examples \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g pnpm@9
 WORKDIR /app
@@ -23,6 +28,7 @@ FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/db/package.json      packages/db/package.json
 COPY packages/shared/package.json  packages/shared/package.json
+COPY packages/ingest/package.json  packages/ingest/package.json
 COPY apps/web/package.json         apps/web/package.json
 COPY apps/worker/package.json      apps/worker/package.json
 RUN --mount=type=cache,target=/pnpm/store \

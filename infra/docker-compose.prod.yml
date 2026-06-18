@@ -38,12 +38,22 @@ services:
       PHOTOS_DIR: /data/photos
       CACHE_DIR: /data/cache
       PORT: "3000"
+      # Max upload size (b/kb/mb/gb). Changing it only needs a container restart.
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-200mb}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+      # Comma-separated extra origins to trust beyond BETTER_AUTH_URL — list every
+      # host you reach the app from (LAN IP, Tailscale host, etc.) or login is
+      # rejected with INVALID_ORIGIN. e.g. "http://192.168.1.50:3000,https://box.tailnet.ts.net"
+      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
+      # Set false to allow logins over plain HTTP (http://<lan-ip>:3000). ⚠️ Drops
+      # the cookie Secure flag on ALL origins — use only on a trusted LAN/Tailscale.
+      USE_SECURE_COOKIES: ${USE_SECURE_COOKIES:-true}
     ports:
       - "${PORT:-3000}:3000"
     volumes:
-      - ${PHOTOS_DIR}:/data/photos:ro
+      # Read-write: the web app handles uploads, which write new originals here.
+      - ${PHOTOS_DIR}:/data/photos
       - cache:/data/cache
 
   worker:
