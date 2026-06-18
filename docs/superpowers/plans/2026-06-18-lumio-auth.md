@@ -1019,7 +1019,190 @@ git commit -m "feat(auth): login page (login-02 block, trimmed to email+password
 
 ---
 
-## Task 11: Setup page (first-run admin creation)
+## Task 11: Shared auth shell — Logo + Unsplash photo cards
+
+Login and setup share one layout. Extract a reusable `AuthShell` (two columns: brand + form on the left; a muted pane on the right holding a cluster of 3 tilted Unsplash photo cards — rough Instagram-collage inspiration, NOT a full-bleed image). Add a `Logo` component that wraps the Aperture mark and use it wherever the brand icon appears. Refactor the existing login page onto the shell.
+
+**Files:**
+- Create: `apps/web/src/components/logo.tsx`
+- Create: `apps/web/src/components/auth-photo-stack.tsx`
+- Create: `apps/web/src/components/auth-shell.tsx`
+- Modify: `apps/web/next.config.ts` (allow the Unsplash image host)
+- Modify: `apps/web/src/app/login/page.tsx` (use AuthShell)
+- Modify: `apps/web/src/components/app-sidebar.tsx` (use Logo instead of Aperture)
+
+- [ ] **Step 1: Logo component**
+
+Create `apps/web/src/components/logo.tsx`:
+```tsx
+import { Aperture } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/** The Lumio brand mark. Single source for the logo icon — swap it here later. */
+export function Logo({
+  className,
+  strokeWidth = 1.9,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
+  return (
+    <Aperture className={cn("size-6", className)} strokeWidth={strokeWidth} aria-hidden />
+  );
+}
+```
+
+- [ ] **Step 2: Photo stack (3 random Unsplash cards)**
+
+Create `apps/web/src/components/auth-photo-stack.tsx` (the 9 ids are verified-live Unsplash CDN photos; no API key needed):
+```tsx
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+
+const PHOTO_IDS = [
+  "1506744038136-46273834b3fb",
+  "1469474968028-56623f02e42e",
+  "1470071459604-3b5ec3a7fe05",
+  "1418065460487-3e41a6c84dc5",
+  "1501785888041-af3ef285b470",
+  "1441974231531-c6227db76b6e",
+  "1439066615861-d1af74d74000",
+  "1500530855697-b586d89ba3ee",
+  "1497436072909-60f360e1d4b1",
+];
+
+function src(id: string) {
+  return `https://images.unsplash.com/photo-${id}?w=480&h=600&fit=crop&q=80`;
+}
+
+/** Pick 3 distinct ids — runs per request on the force-dynamic auth pages. */
+function pickThree(): string[] {
+  const a = [...PHOTO_IDS];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, 3);
+}
+
+function Card({ id, className }: { id: string; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "absolute overflow-hidden rounded-2xl border-4 border-background bg-background shadow-xl",
+        className,
+      )}
+    >
+      <Image
+        src={src(id)}
+        alt=""
+        width={200}
+        height={250}
+        className="h-full w-full object-cover"
+      />
+    </div>
+  );
+}
+
+export function AuthPhotoStack() {
+  const [back, front, side] = pickThree();
+  return (
+    <div className="relative h-[440px] w-[360px]" aria-hidden>
+      <Card id={back} className="left-3 top-20 h-[260px] w-[190px] -rotate-6" />
+      <Card id={side} className="right-3 top-24 h-[250px] w-[185px] rotate-6" />
+      <Card
+        id={front}
+        className="left-1/2 top-8 z-10 h-[300px] w-[215px] -translate-x-1/2 -rotate-1"
+      />
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: AuthShell**
+
+Create `apps/web/src/components/auth-shell.tsx`:
+```tsx
+import { Logo } from "@/components/logo";
+import { AuthPhotoStack } from "@/components/auth-photo-stack";
+
+/** Two-column shell shared by /login and /setup: brand + form, with a photo collage. */
+export function AuthShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid min-h-dvh lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex items-center gap-2 font-medium">
+          <Logo className="size-5" /> Lumio
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-sm">{children}</div>
+        </div>
+      </div>
+      <div className="bg-muted relative hidden items-center justify-center overflow-hidden lg:flex">
+        <AuthPhotoStack />
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Allow the Unsplash image host**
+
+In `apps/web/next.config.ts`, add an `images.remotePatterns` entry alongside the existing config (keep `transpilePackages`, `serverExternalPackages`, and the `webpack` hook unchanged):
+```ts
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }],
+  },
+```
+
+- [ ] **Step 5: Refactor the login page onto AuthShell**
+
+Replace `apps/web/src/app/login/page.tsx` with:
+```tsx
+import { redirect } from "next/navigation";
+import { hasAnyUser } from "@lumio/db";
+import { AuthShell } from "@/components/auth-shell";
+import { LoginForm } from "@/components/login-form";
+
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  // Fresh install with no account yet → go create the admin.
+  if (!(await hasAnyUser())) redirect("/setup");
+  return (
+    <AuthShell>
+      <LoginForm />
+    </AuthShell>
+  );
+}
+```
+
+- [ ] **Step 6: Use Logo in the sidebar**
+
+In `apps/web/src/components/app-sidebar.tsx`: remove `Aperture` from the `lucide-react` import, add `import { Logo } from "@/components/logo";`, and replace the brand `<Aperture ... />` with:
+```tsx
+<Logo className="h-7 w-7 transition-transform duration-500 ease-out hover:rotate-90" />
+```
+(Drop the now-redundant `strokeWidth`/`aria-hidden` props — `Logo` supplies them.)
+
+- [ ] **Step 7: Verify**
+
+```bash
+pnpm --filter @lumio/web exec tsc --noEmit
+pnpm --filter @lumio/web build
+```
+Both must pass (the build validates the `next/image` remote host config). Browser verification of the cards happens in Task 15 (a user must exist for `/login` to render rather than redirect to `/setup`).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add apps/web/next.config.ts apps/web/src/components/logo.tsx apps/web/src/components/auth-photo-stack.tsx apps/web/src/components/auth-shell.tsx "apps/web/src/app/login/page.tsx" apps/web/src/components/app-sidebar.tsx
+git commit -m "feat(auth): shared AuthShell with Logo + Unsplash photo cards"
+```
+
+---
+
+## Task 12: First-run setup page (uses AuthShell)
 
 **Files:**
 - Create: `apps/web/src/components/setup-form.tsx`
@@ -1057,13 +1240,18 @@ export function SetupForm({ className }: { className?: string }) {
       return;
     }
     setPending(true);
-    const { error } = await signUp.email({ name, email, password });
-    setPending(false);
-    if (error) {
-      setError(error.message ?? "Could not create the account.");
-      return;
+    try {
+      const { error } = await signUp.email({ name, email, password });
+      if (error) {
+        setError(error.message ?? "Could not create the account.");
+        return;
+      }
+      router.replace("/photos");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
     }
-    router.replace("/photos");
   }
 
   return (
@@ -1105,7 +1293,11 @@ export function SetupForm({ className }: { className?: string }) {
             required
           />
         </div>
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Creating…" : "Create account"}
         </Button>
@@ -1117,11 +1309,11 @@ export function SetupForm({ className }: { className?: string }) {
 
 - [ ] **Step 2: Author the setup page (closes once a user exists)**
 
-Create `apps/web/src/app/setup/page.tsx`:
+Create `apps/web/src/app/setup/page.tsx` (reuses the shared `AuthShell` from Task 11):
 ```tsx
 import { redirect } from "next/navigation";
-import { Aperture } from "lucide-react";
 import { hasAnyUser } from "@lumio/db";
+import { AuthShell } from "@/components/auth-shell";
 import { SetupForm } from "@/components/setup-form";
 
 export const dynamic = "force-dynamic";
@@ -1129,25 +1321,10 @@ export const dynamic = "force-dynamic";
 export default async function SetupPage() {
   // Setup is one-time: once any account exists, send people to login.
   if (await hasAnyUser()) redirect("/login");
-
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
-      <div className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="flex items-center gap-2 font-medium">
-          <Aperture className="size-5" /> Lumio
-        </div>
-        <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-sm">
-            <SetupForm />
-          </div>
-        </div>
-      </div>
-      <div className="bg-muted relative hidden lg:block">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Aperture className="text-muted-foreground/30 size-40" strokeWidth={1} />
-        </div>
-      </div>
-    </div>
+    <AuthShell>
+      <SetupForm />
+    </AuthShell>
   );
 }
 ```
@@ -1166,7 +1343,7 @@ git commit -m "feat(auth): first-run setup page to create the admin account"
 
 ---
 
-## Task 12: Production env + deployment docs
+## Task 13: Production env + deployment docs
 
 **Files:**
 - Modify: `infra/docker-compose.prod.yml` (web service env)
@@ -1219,7 +1396,7 @@ git commit -m "docs(auth): production env vars + Cloudflare tunnel notes"
 
 ---
 
-## Task 13: Conductor dev workspace — generated secret + port-derived auth URL
+## Task 14: Conductor dev workspace — generated secret + port-derived auth URL
 
 **Why:** Conductor runs each workspace's dev server on its own reserved port (`run.sh` sets `PORT=${CONDUCTOR_PORT:-3000}`), but `.env` hardcodes `BETTER_AUTH_URL=http://localhost:3000`. Since `trustedOrigins` is derived from `BETTER_AUTH_URL`, a workspace served on any other port fails sign-in on an origin/CSRF mismatch. Separately, seeding `.env` from `.env.example` leaves the placeholder `BETTER_AUTH_SECRET`. Fix both in the Conductor lifecycle scripts. (Verified: `dotenv-cli` does NOT override an already-exported env var, so exporting `BETTER_AUTH_URL` in `run.sh` wins over `.env`.)
 
@@ -1283,7 +1460,7 @@ git commit -m "feat(auth): conductor setup generates secret; run derives auth UR
 
 ---
 
-## Task 14: Full verification + browser walkthrough
+## Task 15: Full verification + browser walkthrough
 
 **Files:** none (verification only)
 
@@ -1310,7 +1487,7 @@ export BETTER_AUTH_URL="http://localhost:${PORT}"
 pnpm dev
 ```
 Verify in the browser at `http://localhost:$PORT` (substitute the actual port):
-1. Visiting `/` while logged out → redirected to `/login` → which (0 users) → redirects to `/setup`.
+1. Visiting `/` while logged out → redirected to `/login` → which (0 users) → redirects to `/setup`. On `/setup` (desktop width) the right pane shows the cluster of 3 tilted Unsplash photo cards; the sidebar/login brand uses the `Logo` component.
 2. Create the admin (name + email + password + confirm) → lands in the library (`/photos`), sidebar visible.
 3. Open a photo (`/photo/[id]`) → modal interception still works.
 4. Click **Logout** in the sidebar → back at `/login` (now shows the login form, since a user exists).
@@ -1326,5 +1503,5 @@ Update `docs/STATUS.md` / memory if the project tracks progress there.
 ---
 
 ## Self-review notes (author)
-- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), proxy request gate (T7), API protection (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), first-run setup + login↔setup redirects (T10/T11), prod env + Cloudflare docs (T12), Conductor dev env — generated secret + port-derived auth URL (T13), tests/build/browser verify (T14). All spec sections map to a task.
+- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), proxy request gate (T7), API protection via withAuth (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), shared AuthShell + Logo + Unsplash photo cards (T11), first-run setup + login↔setup redirects (T10/T12), prod env + Cloudflare docs (T13), Conductor dev env — generated secret + port-derived auth URL (T14), tests/build/browser verify (T15). All spec sections map to a task.
 - **Out-of-scope items** (social login, multi-user/invites, password-reset email, Expo, per-user ownership) are intentionally absent.

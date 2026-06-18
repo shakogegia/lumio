@@ -89,10 +89,11 @@ The `0-users → /setup` and `≥1-user → /login` redirects live in the `/logi
 - **`requireSession()`** (`lib/require-session.ts`) — `auth.api.getSession({ headers })`; returns the session or throws/returns a `401 NextResponse`. Added to every protected API route: `GET/POST /api/photos`, `/api/photos/[id]`, `/api/photos/purge`, `/api/albums`, `/api/albums/[id]`, `/api/uploads`, `/api/settings`, `/api/rescan`, `/api/thumbnails/[id]`, and the photo `display` route. `/api/auth/*` is **not** wrapped (Better Auth owns it).
 
 ## Login / Setup UI
-- `npx shadcn add login-02` → two-column page (form + cover image) plus a `login-form` component.
-- **Trim** the form to: email, password, submit. Remove social buttons, the signup link, and the forgot-password link (no email transport yet).
-- `/login/page.tsx` renders the trimmed form, wired to `authClient.signIn.email`, with inline error display on bad credentials.
-- `/setup/page.tsx` reuses the same two-column shell with a "Create your admin account" heading and an added **confirm-password** field, wired to `authClient.signUp.email`.
+- `npx shadcn add login-02` seeds the structure; the form is **trimmed** to: email, password, submit. No social buttons, no signup link, no forgot-password link (no email transport yet).
+- **Shared `AuthShell`** (used by both `/login` and `/setup`): two-column layout — brand + form on the left; a muted pane on the right showing a cluster of **3 tilted Unsplash photo cards** (rough Instagram-collage inspiration, not a full-bleed image). The cards are picked at random per request from a curated, verified set of `images.unsplash.com` URLs (no API key); rendered with `next/image` (host allow-listed in `next.config.ts`). `/_next/image` is already exempt from the proxy gate, so the cards load on the public auth pages.
+- **`Logo` component** wraps the brand mark (Aperture icon) as the single source of the logo; used in `AuthShell` and the sidebar in place of inline `<Aperture/>`.
+- `/login/page.tsx` renders `<AuthShell><LoginForm/></AuthShell>`; `LoginForm` is wired to `authClient.signIn.email` with pending/error state (robust try/finally so it never gets stuck) and an inline `role="alert"` error.
+- `/setup/page.tsx` renders `<AuthShell><SetupForm/></AuthShell>` with a "Create your admin account" heading and an added **confirm-password** field, wired to `authClient.signUp.email`.
 
 ## Env & deployment
 - New env vars (added to `.env`, `.env.example`, and the `web` service of `infra/docker-compose.prod.yml`):
