@@ -78,3 +78,18 @@ dependencies. `Sheet` is no longer imported by this component.
 - Album checkboxes still toggle membership (add + remove) and refresh.
 - Modal overlay (soft-nav from the grid) renders identically to the standalone
   page; Escape/back still works.
+
+## Post-implementation deviations
+
+Three refinements were requested during browser verification and supersede the
+"Design" section above:
+
+1. **Full-height divider, not a card box.** The pane dropped its
+   `rounded-lg border bg-card p-4` card treatment. Image and pane are now
+   separated by a single full-height divider — `lg:border-l` on the `<aside>`
+   (which stretches to the row height), switching to a top border when stacked.
+2. **Fills the viewport.** On `lg+` the layout is `h-[calc(100dvh-2rem)]` (the
+   `2rem` offsets the `<main>` `p-4`), the image is vertically centered in the
+   left column, and the pane scrolls internally (`lg:overflow-y-auto`).
+3. **Full width.** Both `<main>` wrappers dropped `mx-auto max-w-*` so the view
+   spans the full area beside the fixed 76px sidebar.
