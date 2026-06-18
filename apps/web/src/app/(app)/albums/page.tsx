@@ -1,5 +1,13 @@
 import Link from "next/link";
+import { FolderOpen, Images } from "lucide-react";
 import { listAlbumSummaries } from "@/lib/albums-service";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { NewAlbumDialog } from "./new-album-dialog";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +23,20 @@ export default async function AlbumsPage() {
       </div>
 
       {albums.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No albums yet.</p>
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FolderOpen />
+            </EmptyMedia>
+            <EmptyTitle>No albums yet</EmptyTitle>
+            <EmptyDescription>Create an album to group your photos.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid grid-cols-3 gap-x-5 gap-y-7 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
           {albums.map((album) => (
             <Link key={album.id} href={`/albums/${album.id}`} className="group block">
-              <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted">
+              <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-muted">
                 {album.coverPhotoId ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -29,7 +45,9 @@ export default async function AlbumsPage() {
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                   />
-                ) : null}
+                ) : (
+                  <Images className="size-8 text-muted-foreground" />
+                )}
               </div>
               <div className="mt-2.5">
                 <p className="truncate text-sm font-semibold">{album.name}</p>

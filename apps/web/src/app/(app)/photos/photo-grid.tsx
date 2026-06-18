@@ -3,8 +3,32 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { Images } from "lucide-react";
 import type { PhotoDTO, PhotosPage } from "@lumio/shared";
 import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+
+// Default empty state for the all-photos view. Album views pass their own via
+// the `empty` prop since the copy differs (an empty album isn't a worker issue).
+const PHOTOS_EMPTY = (
+  <Empty>
+    <EmptyHeader>
+      <EmptyMedia variant="icon">
+        <Images />
+      </EmptyMedia>
+      <EmptyTitle>No photos yet</EmptyTitle>
+      <EmptyDescription>
+        Drop photos into your library folder, then rescan to import them.
+      </EmptyDescription>
+    </EmptyHeader>
+  </Empty>
+);
 
 const OVERSCAN_ROWS = 3;
 // Placeholder tiles rendered before the first page loads. Generous enough to
@@ -20,7 +44,13 @@ async function fetchPage(endpoint: string, cursor: string | null): Promise<Photo
   return res.json();
 }
 
-export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
+export function PhotoGrid({
+  endpoint = "/api/photos",
+  empty = PHOTOS_EMPTY,
+}: {
+  endpoint?: string;
+  empty?: React.ReactNode;
+}) {
   const [photos, setPhotos] = useState<PhotoDTO[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -99,11 +129,7 @@ export function PhotoGrid({ endpoint = "/api/photos" }: { endpoint?: string }) {
   }, [items, rows, loadMore]);
 
   if (done && photos.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        No photos yet. Run the worker to ingest <code>/photos</code>.
-      </p>
-    );
+    return <>{empty}</>;
   }
 
   if (showSkeleton) {
