@@ -9,7 +9,7 @@ import {
   placeUpload,
   SUPPORTED_EXTENSIONS,
 } from "@lumio/ingest";
-import { PhotoSource, renderTemplate } from "@lumio/shared";
+import { PhotoSource, renderTemplate, validateTemplate } from "@lumio/shared";
 
 export interface UploadDeps {
   db: Pick<PrismaClient, "photo">;
@@ -39,6 +39,13 @@ export async function handleUpload(input: UploadInput, deps: UploadDeps): Promis
   const hash = createHash("sha256").update(input.bytes).digest("hex");
   const existing = await findPhotoByHash(hash, deps.db);
   if (existing) return { status: "duplicate", id: existing.id };
+
+  // Defense in depth: the template comes from validated settings, but never
+  // render an invalid one (could yield a malformed path).
+  const templateCheck = validateTemplate(deps.template);
+  if (!templateCheck.ok) {
+    return { status: "error", message: `Invalid upload template: ${templateCheck.error}` };
+  }
 
   const date = await extractUploadDate(input.bytes, input.lastModified, deps.now ?? new Date());
   const desired = renderTemplate(deps.template, { date, originalFilename: input.originalFilename });

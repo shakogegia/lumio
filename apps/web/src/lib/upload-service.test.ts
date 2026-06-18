@@ -52,6 +52,14 @@ describe("handleUpload", () => {
     expect(result).toEqual({ status: "duplicate", id: "existing" });
   });
 
+  it("rejects an invalid template defensively", async () => {
+    const result = await handleUpload(
+      { bytes: await jpeg(), originalFilename: "IMG_2.jpg" },
+      { ...deps(null), template: "{YYYY}" }, // no {filename}/{ext}
+    );
+    expect(result.status).toBe("error");
+  });
+
   it("files a new photo using the template (lastModified date) and writes renditions", async () => {
     const lastModified = Date.UTC(2023, 4, 20); // 2023-05-20
     const result = await handleUpload(
