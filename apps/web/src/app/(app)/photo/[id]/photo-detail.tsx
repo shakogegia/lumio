@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { photoHref } from "@/lib/photo-href";
+import { exifEntries } from "@/lib/exif-entries";
 import { FilmStrip } from "./film-strip";
 
 export function PhotoDetail({
@@ -33,6 +34,7 @@ export function PhotoDetail({
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
+  const metadata = exifEntries(photo.exif);
 
   const prevHref = neighbors.prevId ? photoHref(neighbors.prevId, albumId) : null;
   const nextHref = neighbors.nextId ? photoHref(neighbors.nextId, albumId) : null;
@@ -117,11 +119,20 @@ export function PhotoDetail({
 
         <details className="group">
           <summary className="cursor-pointer text-muted-foreground select-none">
-            Show all EXIF
+            Show all metadata
           </summary>
-          <pre className="mt-2 overflow-auto rounded bg-muted p-2 text-xs">
-            {JSON.stringify(photo.exif, null, 2)}
-          </pre>
+          {metadata.length === 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">No metadata</p>
+          ) : (
+            <dl className="mt-2 space-y-1 text-xs">
+              {metadata.map(([key, value]) => (
+                <div key={key} className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-muted-foreground">{key}</dt>
+                  <dd className="min-w-0 break-all text-right font-mono">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </details>
       </aside>
     </div>
