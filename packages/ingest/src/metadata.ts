@@ -129,8 +129,11 @@ export async function extractMetadata(
   const takenAt = parseExifDate(flat.DateTimeOriginal ?? flat.CreateDate);
   const curated: ExifData = {
     takenAt: takenAt ? takenAt.toISOString() : undefined,
-    cameraMake: typeof flat.Make === "string" ? flat.Make.trim() : undefined,
-    cameraModel: typeof flat.Model === "string" ? flat.Model.trim() : undefined,
+    // Derive the camera strings from the already-sanitized `exif` (NUL-stripped),
+    // not raw `flat`, so a curated alias can never reintroduce a NUL into the
+    // jsonb-bound object.
+    cameraMake: typeof exif.Make === "string" ? exif.Make.trim() : undefined,
+    cameraModel: typeof exif.Model === "string" ? exif.Model.trim() : undefined,
     orientation: typeof flat.Orientation === "number" ? flat.Orientation : undefined,
   };
   // Curated keys are canonical aliases consumed by the sort/smart-album layer.

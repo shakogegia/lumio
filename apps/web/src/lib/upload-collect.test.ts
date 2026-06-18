@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { collectFromEntries, isSupported, partitionSupported, type FsEntry } from "./upload-collect";
+import {
+  collectFiles,
+  collectFromEntries,
+  isSupported,
+  partitionSupported,
+  type FsEntry,
+} from "./upload-collect";
 
 function fileEntry(name: string): FsEntry {
   return { isFile: true, isDirectory: false, file: (cb) => cb(new File([name], name)) };
@@ -69,5 +75,28 @@ describe("collectFromEntries", () => {
     };
     const files = await collectFromEntries([dir]);
     expect(files.map((f) => f.name).sort()).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
+  });
+});
+
+describe("collectFiles", () => {
+  it("traverses webkitGetAsEntry entries (incl. nested folders) when present", async () => {
+    const dataTransfer = {
+      items: [
+        { webkitGetAsEntry: () => fileEntry("a.jpg") },
+        { webkitGetAsEntry: () => dirEntry([fileEntry("b.png")]) },
+      ],
+      files: [],
+    } as unknown as DataTransfer;
+    const files = await collectFiles(dataTransfer);
+    expect(files.map((f) => f.name).sort()).toEqual(["a.jpg", "b.png"]);
+  });
+
+  it("falls back to dataTransfer.files when the entries API is unavailable", async () => {
+    const dataTransfer = {
+      items: [],
+      files: [new File(["x"], "x.jpg"), new File(["y"], "y.png")],
+    } as unknown as DataTransfer;
+    const files = await collectFiles(dataTransfer);
+    expect(files.map((f) => f.name)).toEqual(["x.jpg", "y.png"]);
   });
 });
