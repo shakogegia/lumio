@@ -1,4 +1,4 @@
-import { SUPPORTED_EXTENSIONS } from "@lumio/ingest";
+import { SUPPORTED_EXTENSIONS } from "@lumio/shared";
 
 /** A directory reader; yields children in batches until an empty batch. */
 export interface EntryReader {
