@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Aperture, ArrowLeft, Images, GalleryVerticalEnd, Settings, UploadCloud } from "lucide-react";
+import { Aperture, ArrowLeft, Images, GalleryVerticalEnd, Settings, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -16,7 +16,7 @@ type NavItem = {
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
-  { href: "/upload", label: "Upload", icon: UploadCloud, match: ["/upload"] },
+  { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
 
 const SECONDARY: NavItem[] = [
