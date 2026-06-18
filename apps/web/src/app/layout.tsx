@@ -24,10 +24,11 @@ export default function RootLayout({
       className={`${inter.variable} ${fontMono.variable} h-full font-sans antialiased`}
     >
       <body className="min-h-full">
-        <div className="flex min-h-dvh">
-          <AppSidebar />
-          <div className="min-w-0 flex-1">{children}</div>
-        </div>
+        {/* Sidebar is fixed (not in flow), so it stays pinned regardless of the
+            window scroll — which lets the photo overlay lock background scroll
+            without the sidebar drifting. Offset the content by its 76px width. */}
+        <AppSidebar />
+        <div className="min-h-dvh pl-[76px]">{children}</div>
         {modal}
       </body>
     </html>

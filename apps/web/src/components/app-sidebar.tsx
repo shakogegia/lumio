@@ -66,7 +66,7 @@ export function AppSidebar() {
   const onPhotoDetail = pathname.startsWith("/photo/");
 
   return (
-    <aside className="sticky top-0 z-30 flex h-dvh w-[76px] shrink-0 flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
+    <aside className="fixed inset-y-0 left-0 z-30 flex h-dvh w-[76px] flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
       {/* Brand — becomes a back button on the photo detail page */}
       {onPhotoDetail ? (
         <button
