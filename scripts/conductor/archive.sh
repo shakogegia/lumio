@@ -7,4 +7,12 @@
 # running workspace. (If this project moves to per-workspace databases, tear the
 # workspace's own container/volume down here instead.)
 set -euo pipefail
+
+# Remove this workspace's portless route so archived workspaces don't linger in
+# `portless list`. Mirrors the alias registered in run.sh. No-op (and never
+# fatal) when portless is absent or the route was never registered.
+if command -v portless >/dev/null 2>&1 && [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
+  portless alias --remove "${CONDUCTOR_WORKSPACE_NAME}.lumio" 2>/dev/null || true
+fi
+
 exit 0
