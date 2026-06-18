@@ -40,13 +40,14 @@ describe("ingestPath", () => {
       },
     };
 
-    await ingestPath("sub/img.jpg", {
+    const result = await ingestPath("sub/img.jpg", {
       db: fakeDb as never,
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
       photosDir: tmpPhotos,
     });
 
+    expect(result).toEqual({ id: "pX" });
     expect(calls).toHaveLength(1);
     expect((calls[0] as { where: { path: string } }).where).toEqual({ path: "sub/img.jpg" });
 
