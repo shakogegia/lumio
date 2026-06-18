@@ -7,10 +7,9 @@ import {
   type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
+import { PHOTO_ORDER } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
-
-const PHOTO_ORDER = [{ sortDate: "desc" as const }, { id: "desc" as const }];
 
 export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryDTO[]> {
   const albums = await db.album.findMany({ orderBy: { createdAt: "asc" } });

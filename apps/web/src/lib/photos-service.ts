@@ -4,8 +4,11 @@ import { type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
 import type { PhotoNeighbors, PhotosPage, PhotosQuery, PhotoStripItem } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
+import { PHOTO_ORDER } from "@/lib/photo-order";
 
-type Db = Pick<PrismaClient, "photo" | "album">;
+type Db = Pick<PrismaClient, "photo">;
+
+type NeighborDb = Pick<PrismaClient, "photo" | "album">;
 
 export async function listPhotos(
   params: PhotosQuery,
@@ -15,7 +18,7 @@ export async function listPhotos(
   const rows = await db.photo.findMany({
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: [{ sortDate: "desc" }, { id: "desc" }],
+    orderBy: PHOTO_ORDER,
   });
 
   const nextCursor =
@@ -29,8 +32,6 @@ export async function getPhoto(id: string, db: Db = prisma) {
   return { ...toPhotoDTO(row), albumIds: row.albums.map((a) => a.albumId) };
 }
 
-const PHOTO_ORDER = [{ sortDate: "desc" as const }, { id: "desc" as const }];
-
 /**
  * Neighbors of `current` within a navigation scope, for the detail view's arrows
  * and film strip. `albumId` null = whole library; otherwise the album's photos
@@ -43,7 +44,7 @@ export async function getPhotoNeighbors(
   current: PhotoStripItem,
   albumId: string | null,
   window = 25,
-  db: Db = prisma,
+  db: NeighborDb = prisma,
 ): Promise<PhotoNeighbors> {
   const where = albumId ? await albumPhotoWhere(albumId, db) : {};
   if (where === null) {

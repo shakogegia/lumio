@@ -120,9 +120,29 @@ function keysetDb(ordered: Array<{ id: string; path: string }>) {
         if (args.take >= 0) {
           return ordered.slice(idx + args.skip, idx + args.skip + args.take);
         }
-        const end = idx; // skip:1 excludes the cursor itself
+        // skip:1 excludes the cursor itself; guard so the fake can't mask a skip change.
+        if (args.skip !== 1) throw new Error(`expected skip:1, got skip:${args.skip}`);
+        const end = idx;
         return ordered.slice(Math.max(0, end + args.take), end);
       },
+    },
+  };
+}
+
+// Wraps keysetDb so the same ordered set also answers album.findUnique with a
+// regular (non-smart) album — exercises the albumId != null / albumPhotoWhere path.
+function albumKeysetDb(albumId: string, ordered: Array<{ id: string; path: string }>) {
+  return {
+    ...keysetDb(ordered),
+    album: {
+      findUnique: async () => ({
+        id: albumId,
+        name: "Scoped",
+        isSmart: false,
+        rules: null,
+        createdAt: new Date("2024-01-01T00:00:00.000Z"),
+        updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+      }),
     },
   };
 }
@@ -159,5 +179,35 @@ describe("getPhotoNeighbors", () => {
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3"]);
     expect(n.prevId).toBe("p0");
     expect(n.nextId).toBe("p2");
+  });
+
+  it("returns a single-item strip with no neighbors when the photo is alone", async () => {
+    const db = keysetDb(strip(1));
+    const n = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    expect(n.prevId).toBeNull();
+    expect(n.nextId).toBeNull();
+    expect(n.strip.map((s) => s.id)).toEqual(["p0"]);
+  });
+
+  it("degrades to a single-item strip when the album is missing", async () => {
+    const db = {
+      album: { findUnique: async () => null },
+      photo: {
+        findMany: async () => {
+          throw new Error("should not query photos");
+        },
+      },
+    };
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "ghost", 10, db as never);
+    expect(n).toEqual({ prevId: null, nextId: null, strip: [{ id: "p2", path: "p2.jpg" }] });
+  });
+
+  it("scopes neighbors to an album (regular album)", async () => {
+    const ordered = strip(5); // the album's photos, already in PHOTO_ORDER
+    const db = albumKeysetDb("alb1", ordered);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "alb1", 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
   });
 });
