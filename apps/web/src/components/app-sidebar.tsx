@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Images, GalleryVerticalEnd, Settings, ImageUp } from "lucide-react";
+import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
-import { LogoutButton } from "@/components/logout-button";
+import { SidebarMore } from "@/components/sidebar-more";
 
 type NavItem = {
   href: string;
@@ -21,9 +21,6 @@ const PRIMARY: NavItem[] = [
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
 
-const SECONDARY: NavItem[] = [
-  { href: "/settings", label: "Settings", icon: Settings, match: ["/settings"] },
-];
 
 function isActive(pathname: string, item: NavItem) {
   return item.match.some(
@@ -104,10 +101,7 @@ export function AppSidebar() {
 
       {/* Bottom group */}
       <div className="mb-4 flex flex-col items-center gap-1">
-        {SECONDARY.map((item) => (
-          <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
-        ))}
-        <LogoutButton />
+        <SidebarMore />
       </div>
     </aside>
   );
