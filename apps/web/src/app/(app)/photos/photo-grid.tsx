@@ -212,7 +212,7 @@ export function PhotoGrid({
                     loading="lazy"
                     width={photo.width}
                     height={photo.height}
-                    className="h-full w-full object-cover transition-opacity hover:opacity-90"
+                    className="h-full w-full rounded-sm object-cover transition-opacity hover:opacity-90"
                   />
                 );
 
@@ -225,7 +225,7 @@ export function PhotoGrid({
                       aria-pressed={isSelected}
                       onClick={(e) => handleTileClick(globalIndex, e)}
                       className={cn(
-                        "relative block h-full select-none outline-none focus:outline-none focus-visible:outline-none",
+                        "relative block h-full select-none rounded-sm outline-none focus:outline-none focus-visible:outline-none",
                         isSelected && "ring-2 ring-inset ring-primary",
                       )}
                     >
