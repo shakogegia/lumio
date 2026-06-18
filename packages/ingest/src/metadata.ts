@@ -55,6 +55,8 @@ function parseExifDate(value: unknown): Date | null {
 export async function extractMetadata(
   buffer: Buffer,
 ): Promise<{ exif: ExifData; takenAt: Date | null }> {
+  // Treat any parse failure as "no metadata" — a bad EXIF block must not
+  // prevent the image from being ingested.
   const raw = ((await exifr.parse(buffer, EXIFR_OPTIONS).catch(() => null)) ?? {}) as Record<
     string,
     unknown
@@ -68,6 +70,8 @@ export async function extractMetadata(
     cameraModel: typeof raw.Model === "string" ? raw.Model.trim() : undefined,
     orientation: typeof raw.Orientation === "number" ? raw.Orientation : undefined,
   };
+  // Curated keys are canonical aliases consumed by the sort/smart-album layer.
+  // They always take precedence over any same-named key in the raw dump.
   for (const [k, v] of Object.entries(curated)) {
     if (v !== undefined) exif[k] = v;
   }

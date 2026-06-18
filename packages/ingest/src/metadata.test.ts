@@ -105,12 +105,23 @@ describe("extractMetadata", () => {
     expect(exif.FilmISO).toBe(400);
   });
 
-  it("returns an empty object and null date for input with no metadata", async () => {
+  it("returns no takenAt for an image with no date metadata", async () => {
     const png = await sharp({ create: { width: 4, height: 4, channels: 3, background: "#000" } })
       .png()
       .toBuffer();
     const { exif, takenAt } = await extractMetadata(png);
     expect(takenAt).toBeNull();
     expect(exif.takenAt).toBeUndefined();
+  });
+
+  it("falls back to CreateDate when DateTimeOriginal is absent", async () => {
+    // sharp/libexif's input tag is DateTimeDigitized; exifr surfaces it as CreateDate.
+    const jpeg = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#222" } })
+      .withExif({ IFD2: { DateTimeDigitized: "2022:01:02 03:04:05" } })
+      .jpeg()
+      .toBuffer();
+    const { exif, takenAt } = await extractMetadata(jpeg);
+    expect(takenAt?.toISOString()).toBe("2022-01-02T03:04:05.000Z");
+    expect(exif.takenAt).toBe("2022-01-02T03:04:05.000Z");
   });
 });
