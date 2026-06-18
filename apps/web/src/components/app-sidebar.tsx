@@ -21,7 +21,6 @@ const PRIMARY: NavItem[] = [
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
 
-
 function isActive(pathname: string, item: NavItem) {
   return item.match.some(
     (m) => pathname === m || pathname.startsWith(`${m}/`),

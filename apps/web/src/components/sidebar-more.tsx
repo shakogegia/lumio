@@ -34,6 +34,7 @@ export function SidebarMore() {
     <DropdownMenu>
       <DropdownMenuTrigger
         title="More"
+        aria-current={settingsActive ? "page" : undefined}
         className={cn(
           "group flex w-14 flex-col items-center gap-1 rounded-2xl py-2.5 outline-none transition-colors",
           "data-[state=open]:bg-muted data-[state=open]:text-foreground",
@@ -73,7 +74,7 @@ export function SidebarMore() {
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup
               value={theme}
-              onValueChange={(value) => setTheme(value)}
+              onValueChange={setTheme}
             >
               <DropdownMenuRadioItem value="system">
                 <Monitor aria-hidden />
