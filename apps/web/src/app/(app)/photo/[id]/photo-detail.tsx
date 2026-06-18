@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -94,12 +94,9 @@ export function PhotoDetail({
       <aside className="w-full shrink-0 border-t bg-background p-4 text-sm lg:h-dvh lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
         <div className="space-y-1">
           <h2 className="font-medium break-all">{filename}</h2>
-          <div className="flex items-center gap-2">
-            <Badge>{photo.source}</Badge>
-            <span className="text-muted-foreground">
-              {photo.width}×{photo.height}
-            </span>
-          </div>
+          <p className="text-muted-foreground">
+            {photo.width}×{photo.height}
+          </p>
         </div>
 
         <Tabs defaultValue="info" className="mt-4">
@@ -110,6 +107,7 @@ export function PhotoDetail({
 
           <TabsContent value="info" className="space-y-4">
             <div className="space-y-3">
+              <Row label="Source" value={<Badge>{photo.source}</Badge>} />
               <Row label="Taken" value={photo.takenAt ?? "—"} />
               <Row label="Camera" value={camera} />
               <Row label="Hash" value={photo.hash ?? "—"} />
@@ -258,7 +256,7 @@ function ExifPanel({ entries }: { entries: Array<[string, string]> }) {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
