@@ -928,4 +928,15 @@ Expected: existing photos' detail views now show the full metadata dump.
 - **Tests must run under `TZ=UTC`** for date assertions to hold (`@lumio/ingest`'s `test` script already sets it; the per-file commands above prepend it). The `09:26:53.000Z` expectations assume UTC.
 - **`webkitGetAsEntry` entries expire** once the drop event handler returns — `collectFiles` captures them synchronously before any `await`, so always call `collectFiles(e.dataTransfer)` directly inside `onDrop` (never after an `await`).
 - **No DB migration**; `Photo.exif` is already `Json`/JSONB. Smart-album filtering on `exif.cameraModel` and sorting on `takenAt` keep working because the curated keys are preserved.
-- **Sidecar `.xmp`, RAW/TIFF formats, and per-block namespacing are out of scope** (see spec Non-goals); a stray `.xmp` is simply skipped on upload.
+- **Sidecar `.xmp`, RAW/TIFF formats are out of scope** (see spec Non-goals); a stray `.xmp` is simply skipped on upload.
+
+---
+
+## Amendments after execution
+
+The tasks above were executed as written; the following changes landed afterward (each found by testing real files, each with a regression test). The spec's "Amendments during implementation" section has the full rationale.
+
+1. **Task 1 — `sanitizeMetadata` also strips NUL bytes** from strings and object keys. Real files (IPTC `ApplicationRecordVersion`) contain NUL, which PostgreSQL `jsonb` rejects. *(commit `e9d9dbf`)*
+2. **Task 2 — `extractMetadata` parses `mergeOutput: false` + `flattenMetadata`** (exported) instead of `mergeOutput: true`. Hoists standard blocks, prefixes XMP namespaces (`filmexif:LightSource`) so custom tags no longer collide with same-named standard EXIF tags. Curated keys/`takenAt` derive from the flattened object. *(commit `fbee64c`)*
+3. **`SUPPORTED_EXTENSIONS` moved to `@lumio/shared`** (`packages/shared/src/formats.ts`), re-exported from `@lumio/ingest`. Task 6's client helper now imports it from `@lumio/shared`; importing from `@lumio/ingest` had pulled the Node pipeline into the browser bundle (`node:path`/`node:util` webpack error). *(commit `b519b47`)*
+4. **Task 5 superseded — detail pane is a two-tab (`Info`/`EXIF`) layout** with a searchable EXIF list (`filterExifEntries` helper, shadcn `Input` + `Search` icon) instead of the collapsible `<details>`; the source badge is an Info-tab row. *(commits `b227473`, `0059a11`)*

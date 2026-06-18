@@ -1,7 +1,7 @@
 # Lumio — Rich EXIF Extraction & Folder Upload Design
 
 **Date:** 2026-06-18
-**Status:** Approved (design)
+**Status:** Implemented (see "Amendments during implementation" at the end for where the shipped code diverged from this design)
 **Builds on:** uploads (roadmap #4), format support, photo-detail pane
 
 ## Goal
@@ -11,7 +11,7 @@ Two related improvements:
 2. **Folder upload.** Let people drop a whole folder onto the Upload dropzone; recurse into subfolders, upload every supported image, and **skip unsupported files** (RAW, `.xmp`, `.txt`, etc.) with a visible count.
 
 ## Decisions (brainstorm)
-1. **Read everything, store flat.** Enable all exifr blocks (TIFF/EXIF/GPS/XMP/IPTC) with `mergeOutput: true` and persist the whole sanitized object. Accept that merge flattens per-block namespaces into one key space (a tag in two blocks collapses to one value) — the right tradeoff for a "dump everything" view.
+1. **Read everything, store flat — without losing custom tags.** Enable all exifr blocks (TIFF/EXIF/GPS/XMP/IPTC) and persist the whole sanitized object as a single flat key/value map. *(Shipped refinement, see Amendments: the initial `mergeOutput: true` approach silently dropped custom XMP tags whose names clash with standard EXIF tags — e.g. filmexif's `LightSource`. The shipped code instead parses grouped (`mergeOutput: false`) and flattens ourselves: standard blocks keep their friendly names, XMP namespaces are prefixed `namespace:Tag`, so `filmexif:LightSource` and the standard `LightSource` coexist.)*
 2. **Embedded XMP only; sidecars deferred.** `exifr` reads custom XMP namespaces fine when XMP is *embedded* in the image (verified: it returns `FilmStock`, `FilmISO`, etc. from filmexif's namespace when `{ xmp: true }`). It **cannot** parse a bare `.xmp` sidecar ("Unknown file format"), which would need a separate XMP/XML code path. Sidecars are **out of scope for now**; a stray `.xmp` in a dropped folder is simply skipped as unsupported.
 3. **Full key/value dump in the UI.** The photo detail "Show all EXIF" becomes a complete two-column key/value table of every metadata entry (no curation), replacing today's `JSON.stringify` blob.
 4. **Preserve curated keys for compatibility.** `takenAt`, `cameraMake`, `cameraModel`, `orientation` are still derived and kept as top-level keys so sorting (`takenAt`) and smart-album filtering (`exif.cameraModel`) keep working unchanged.
@@ -29,11 +29,12 @@ Two related improvements:
 New module `packages/ingest/src/metadata.ts`:
 
 - `extractMetadata(buffer: Buffer): Promise<{ exif: ExifData; takenAt: Date | null }>`
-  - Calls `exifr.parse(buffer, { tiff: true, exif: true, gps: true, xmp: true, iptc: true, jfif: true, ihdr: true, interop: true, mergeOutput: true })`, catching parse errors to `{}` (same resilience as today).
-  - Runs the result through `sanitizeMetadata`.
-  - Derives and overlays the curated keys: `takenAt` (from `DateTimeOriginal ?? CreateDate`, ISO string), `cameraMake` (`Make`, trimmed), `cameraModel` (`Model`, trimmed), `orientation` (`Orientation`, number). Curated keys win on top of the raw dump.
-  - Returns both the merged `exif` object (`{ ...sanitizedRaw, ...curated }`) and the parsed `takenAt: Date | null`, so `processImage` can store the date in the `Photo.takenAt`/`sortDate` columns while staying declarative.
-- `sanitizeMetadata(value): JSON-safe value` — pure, recursive: `Date → ISO string`; drop `Buffer`/`TypedArray`/`ArrayBuffer`/functions; recurse plain objects and arrays; pass primitives through. Guarantees the result is JSON-serializable for the JSONB column.
+  - Calls `exifr.parse(buffer, { tiff, exif, gps, xmp, iptc, jfif, ihdr, interop, mergeOutput: false })` (grouped by block), catching parse errors to `{}` (a bad EXIF block must not block ingestion).
+  - Runs the grouped output through **`flattenMetadata`** then `sanitizeMetadata`.
+  - Derives and overlays the curated keys from the flattened object: `takenAt` (from `DateTimeOriginal ?? CreateDate`, ISO string), `cameraMake` (`Make`, trimmed), `cameraModel` (`Model`, trimmed), `orientation` (`Orientation`, number). Curated keys win on top of the dump.
+  - Returns both the merged `exif` object and the parsed `takenAt: Date | null`, so `processImage` can store the date in the `Photo.takenAt`/`sortDate` columns while staying declarative.
+- `flattenMetadata(grouped): Record<string, unknown>` — pure. Hoists exifr's standard blocks (`ifd0`, `exif`, `gps`, `interop`, `iptc`, `jfif`, `ihdr`, `icc`, `ifd1`, `thumbnail`, `makerNote`) to the top level keeping friendly names (first-wins on duplicate keys so primary IFDs beat the thumbnail IFD); every other group is an XMP namespace whose keys are prefixed `namespace:Tag`. This is what prevents custom-vs-standard tag collisions.
+- `sanitizeMetadata(value): JSON-safe value` — pure, recursive: `Date → ISO string`; drop `Buffer`/`TypedArray`/`ArrayBuffer`/functions/non-finite numbers; **strip NUL bytes (`\u0000`) from strings and keys** (PostgreSQL `jsonb` cannot store NUL — see Amendments); recurse plain objects and arrays; pass primitives through. Guarantees the result is JSON-serializable and Postgres-`jsonb`-safe.
 
 `packages/ingest/src/process.ts` (lines ~31-38) is refactored to call `extractMetadata(original)` instead of the inline `exifr.parse` + hand-built object. No other change to `process.ts` (sharp renditions, hash, dimensions unchanged).
 
@@ -43,9 +44,12 @@ New module `packages/ingest/src/metadata.ts`:
 `packages/shared/src/types.ts` `ExifData`: keep the four curated optional fields and the `[key: string]: unknown` passthrough; update the comment to reflect that the object now holds the full sanitized metadata dump, not just four fields. No structural change required.
 
 ## Web — photo detail display
-`apps/web/src/app/(app)/photo/[id]/photo-detail.tsx`:
-- Keep the top summary rows (Camera, Taken, Hash) as they are.
-- Replace the `<pre>{JSON.stringify(photo.exif)}</pre>` inside "Show all EXIF" with a **two-column key/value table**: one row per entry in `photo.exif`, keys sorted alphabetically, values rendered as readable strings (objects/arrays `JSON.stringify`'d compactly, scalars as-is). Empty/no-metadata → a muted "No metadata" line.
+`apps/web/src/app/(app)/photo/[id]/photo-detail.tsx`. A pure helper `exifEntries(exif)` (`apps/web/src/lib/exif-entries.ts`) flattens `ExifData` into alphabetically-sorted `[key, value]` string pairs (objects/arrays `JSON.stringify`'d, scalars as-is, empty/nullish dropped).
+
+*(Shipped refinement, see Amendments: the original collapsible "Show all EXIF" `<details>` evolved into a **two-tab pane** — `Info` and `EXIF`.)*
+- **Header:** filename + dimensions.
+- **Info tab:** `Source` badge row, `Taken`, `Camera`, `Hash`, and album membership.
+- **EXIF tab:** a shadcn `Input` with a `Search` icon that live-filters the full metadata dump (`filterExifEntries`, case-insensitive over key **and** value), rendered as a key/value list. Empty states: "No metadata" / "No metadata matches …".
 
 ## Web — folder drop upload
 `apps/web/src/app/(app)/upload/upload-client.tsx`:
@@ -75,7 +79,16 @@ No code. Documented operationally: after deploy, **restart the worker** so `scan
 ## Non-goals (YAGNI)
 - **XMP sidecar files** (`.xmp`, either `IMG.jpg.xmp` append or `IMG.xmp` replace conventions) — deferred; skipped as unsupported for now.
 - **RAW/TIFF formats** (`.tif`, `.dng`, `.nef`, …) — not added; out of scope.
-- **Per-block / namespaced metadata view** — flat merged dump only.
+- **Per-block grouped metadata *view*** — the dump stays a flat list (XMP namespaces are surfaced as `namespace:Tag` key prefixes, not a nested tree).
 - **Mirroring dropped folder structure** into `/photos` — filing stays date-template-based.
 - **Re-ingest UI / migration script** — backfill is via worker restart.
 - **Client-side resize, chunked/resumable uploads, zip upload.**
+
+## Amendments during implementation
+Changes the shipped code made relative to the design above (all discovered while testing real files; each landed with a regression test):
+
+1. **Grouped parse + namespace prefixing instead of `mergeOutput: true`.** The merged approach silently dropped custom XMP tags that share a name with a standard EXIF tag (filmexif's `LightSource` was shadowed by the EXIF `LightSource` enum → showed "Unknown"). The shipped `extractMetadata` parses `mergeOutput: false` and flattens via `flattenMetadata` (hoist standard blocks, prefix XMP namespaces), so `filmexif:LightSource = "Raleno LED"` and the standard `LightSource = "Unknown"` coexist. *(Tradeoff: with grouped GPS, the convenient computed decimal `latitude`/`longitude` are not produced; raw GPS IFD tags are still present.)*
+2. **NUL-byte stripping in `sanitizeMetadata`.** Real files (e.g. IPTC `ApplicationRecordVersion = "\u0000"`) carry embedded NUL bytes; PostgreSQL `jsonb` cannot store `\u0000` and the `photo.upsert` failed. `sanitizeMetadata` now strips NUL from string values and object keys.
+3. **`SUPPORTED_EXTENSIONS` moved to `@lumio/shared`.** The client upload helper importing it from `@lumio/ingest` dragged the Node-only pipeline (`sharp`, `node:path`/`node:util`) into the browser bundle → webpack `UnhandledSchemeError`. The constant now lives in `@lumio/shared` (client-safe) and `@lumio/ingest` re-exports it for the server importers.
+4. **Detail pane is a two-tab (`Info`/`EXIF`) layout with search** rather than a collapsible `<details>`; the source badge is an Info-tab row. See "Web — photo detail display" above.
+5. **`THUMBNAIL_MAX`/`DISPLAY_MAX`** stayed in `packages/ingest/src/constants.ts`; only `SUPPORTED_EXTENSIONS` moved.
