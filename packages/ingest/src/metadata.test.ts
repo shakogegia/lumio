@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { sanitizeMetadata, extractMetadata } from "./metadata.js";
+import { sanitizeMetadata, extractMetadata, flattenMetadata } from "./metadata.js";
 
 describe("sanitizeMetadata", () => {
   it("converts Dates to ISO strings", () => {
@@ -113,8 +113,8 @@ describe("extractMetadata", () => {
 </x:xmpmeta>
 <?xpacket end="w"?>`;
     const { exif } = await extractMetadata(embedXmp(base, xmp));
-    expect(exif.FilmStock).toBe("Kodak Portra 400");
-    expect(exif.FilmISO).toBe(400);
+    expect(exif["filmexif:FilmStock"]).toBe("Kodak Portra 400");
+    expect(exif["filmexif:FilmISO"]).toBe(400);
   });
 
   it("returns no takenAt for an image with no date metadata", async () => {
@@ -135,5 +135,45 @@ describe("extractMetadata", () => {
     const { exif, takenAt } = await extractMetadata(jpeg);
     expect(takenAt?.toISOString()).toBe("2022-01-02T03:04:05.000Z");
     expect(exif.takenAt).toBe("2022-01-02T03:04:05.000Z");
+  });
+
+  it("keeps a standard EXIF tag and a same-named custom XMP tag separate", async () => {
+    const base = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#777" } })
+      .withExif({ IFD2: { LightSource: "0" } })
+      .jpeg()
+      .toBuffer();
+    const xmp = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:filmexif="http://filmexif.app/ns/1.0/"
+    filmexif:LightSource="Raleno LED"/>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+    const { exif } = await extractMetadata(embedXmp(base, xmp));
+    expect(exif.LightSource).toBe("Unknown");                // standard EXIF enum (code 0)
+    expect(exif["filmexif:LightSource"]).toBe("Raleno LED"); // custom, no longer shadowed
+  });
+});
+
+describe("flattenMetadata", () => {
+  it("hoists standard blocks and prefixes XMP namespaces", () => {
+    const out = flattenMetadata({
+      ifd0: { Make: "CamCo", XResolution: 300 },
+      exif: { FNumber: 2.8, LightSource: "Unknown" },
+      ifd1: { XResolution: 72 }, // duplicate key — first-wins keeps ifd0's value
+      filmexif: { LightSource: "Raleno LED", FilmStock: "Portra 400" },
+      dc: { description: "hi" },
+    });
+    expect(out).toEqual({
+      Make: "CamCo",
+      XResolution: 300,
+      FNumber: 2.8,
+      LightSource: "Unknown",
+      "filmexif:LightSource": "Raleno LED",
+      "filmexif:FilmStock": "Portra 400",
+      "dc:description": "hi",
+    });
   });
 });
