@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   addPhotoToAlbum,
+  addPhotosToAlbum,
   listAlbumPhotos,
   listAlbumSummaries,
+  removePhotosFromAlbum,
   SmartAlbumMutationError,
 } from "./albums-service.js";
 
@@ -162,5 +164,63 @@ describe("addPhotoToAlbum", () => {
 
     await addPhotoToAlbum("alb1", "p1", fakeDb as never);
     expect(upsert).toHaveBeenCalledOnce();
+  });
+});
+
+describe("addPhotosToAlbum", () => {
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: true }) },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      addPhotosToAlbum("alb1", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
+  });
+
+  it("createMany with skipDuplicates and returns the inserted count", async () => {
+    const createMany = vi.fn().mockResolvedValue({ count: 2 });
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }) },
+      albumPhoto: { createMany },
+      photo: {},
+    };
+    const count = await addPhotosToAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(count).toBe(2);
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        { albumId: "alb1", photoId: "p1" },
+        { albumId: "alb1", photoId: "p2" },
+      ],
+      skipDuplicates: true,
+    });
+  });
+});
+
+describe("removePhotosFromAlbum", () => {
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: true }) },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      removePhotosFromAlbum("alb1", ["p1"], fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
+  });
+
+  it("deleteMany on the given ids and returns the removed count", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }) },
+      albumPhoto: { deleteMany },
+      photo: {},
+    };
+    const count = await removePhotosFromAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(count).toBe(2);
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { albumId: "alb1", photoId: { in: ["p1", "p2"] } },
+    });
   });
 });
