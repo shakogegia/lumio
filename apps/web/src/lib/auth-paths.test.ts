@@ -8,6 +8,7 @@ describe("isPublicPath", () => {
   });
 
   it("treats the Better Auth API as public", () => {
+    expect(isPublicPath("/api/auth")).toBe(true);
     expect(isPublicPath("/api/auth/sign-in/email")).toBe(true);
     expect(isPublicPath("/api/auth/ok")).toBe(true);
   });
@@ -17,5 +18,7 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/photos")).toBe(false);
     expect(isPublicPath("/api/photos")).toBe(false);
     expect(isPublicPath("/loginsomething")).toBe(false);
+    expect(isPublicPath("/login/")).toBe(false);
+    expect(isPublicPath("/setup/")).toBe(false);
   });
 });
