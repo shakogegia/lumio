@@ -19,7 +19,7 @@ export default async function PhotoIntercept({
 
   return (
     <RouteOverlay>
-      <main className="mx-auto max-w-6xl p-4">
+      <main className="p-4">
         <PhotoDetail photo={photo} regularAlbums={regularAlbums} />
       </main>
     </RouteOverlay>

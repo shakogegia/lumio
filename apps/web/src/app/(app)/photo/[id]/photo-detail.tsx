@@ -19,16 +19,16 @@ export function PhotoDetail({
     "—";
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-col gap-6 lg:h-[calc(100dvh-2rem)] lg:flex-row">
+      <div className="min-w-0 flex-1 lg:flex lg:items-center lg:justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/api/photos/${photo.id}/display`}
           alt={photo.path}
-          className="max-h-[80vh] w-full rounded-lg object-contain"
+          className="max-h-[80vh] w-full rounded-lg object-contain lg:max-h-full lg:w-auto lg:max-w-full"
         />
       </div>
-      <aside className="w-full shrink-0 border-t pt-6 text-sm lg:w-80 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+      <aside className="w-full shrink-0 border-t pt-6 text-sm lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
         <div className="space-y-1">
           <h2 className="font-medium break-all">{filename}</h2>
           <div className="flex items-center gap-2">
