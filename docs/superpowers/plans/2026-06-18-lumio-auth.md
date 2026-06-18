@@ -1019,17 +1019,20 @@ git commit -m "feat(auth): login page (login-02 block, trimmed to email+password
 
 ---
 
-## Task 11: Shared auth shell — Logo + Unsplash photo cards
+## Task 11: `(auth)` route-group layout — Logo + Unsplash photo cards
 
-Login and setup share one layout. Extract a reusable `AuthShell` (two columns: brand + form on the left; a muted pane on the right holding a cluster of 3 tilted Unsplash photo cards — rough Instagram-collage inspiration, NOT a full-bleed image). Add a `Logo` component that wraps the Aperture mark and use it wherever the brand icon appears. Refactor the existing login page onto the shell.
+Login and setup share one layout, so group them under an **`(auth)` route group** whose **`layout.tsx` IS the two-column shell** (brand + `{children}` form on the left; a muted pane on the right with a cluster of 3 tilted Unsplash photo cards — rough Instagram-collage inspiration, NOT a full-bleed image). Auth-only view components are **colocated** under `app/(auth)/_components/` (the `_` prefix opts the folder out of routing). The `Logo` component is app-wide (the sidebar uses it too) so it lives in `components/`. URLs stay `/login` and `/setup` (route groups are path-transparent), so `isPublicPath` is unaffected.
 
 **Files:**
-- Create: `apps/web/src/components/logo.tsx`
-- Create: `apps/web/src/components/auth-photo-stack.tsx`
-- Create: `apps/web/src/components/auth-shell.tsx`
+- Create: `apps/web/src/components/logo.tsx` (app-wide brand mark)
+- Create: `apps/web/src/app/(auth)/layout.tsx` (the shell)
+- Create: `apps/web/src/app/(auth)/_components/auth-photo-stack.tsx`
+- Move: `apps/web/src/components/login-form.tsx` → `apps/web/src/app/(auth)/login/login-form.tsx` (colocated with its page)
+- Move: `apps/web/src/app/login/page.tsx` → `apps/web/src/app/(auth)/login/page.tsx` (slimmed to redirect + `<LoginForm/>`)
 - Modify: `apps/web/next.config.ts` (allow the Unsplash image host)
-- Modify: `apps/web/src/app/login/page.tsx` (use AuthShell)
 - Modify: `apps/web/src/components/app-sidebar.tsx` (use Logo instead of Aperture)
+
+> Note: an earlier draft of this task placed `auth-shell.tsx`/`auth-photo-stack.tsx`/`login-form.tsx` in `components/`. The final structure colocates them in the `(auth)` group and merges the shell into the group layout. There is NO `components/auth-shell.tsx`.
 
 - [ ] **Step 1: Logo component**
 
@@ -1054,7 +1057,7 @@ export function Logo({
 
 - [ ] **Step 2: Photo stack (3 random Unsplash cards)**
 
-Create `apps/web/src/components/auth-photo-stack.tsx` (the 9 ids are verified-live Unsplash CDN photos; no API key needed):
+Create `apps/web/src/app/(auth)/_components/auth-photo-stack.tsx` (the 9 ids are verified-live Unsplash CDN photos; no API key needed):
 ```tsx
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -1119,15 +1122,15 @@ export function AuthPhotoStack() {
 }
 ```
 
-- [ ] **Step 3: AuthShell**
+- [ ] **Step 3: The (auth) group layout (the shell)**
 
-Create `apps/web/src/components/auth-shell.tsx`:
+Create `apps/web/src/app/(auth)/layout.tsx` — this layout IS the two-column shell, shared by `/login` and `/setup`:
 ```tsx
 import { Logo } from "@/components/logo";
-import { AuthPhotoStack } from "@/components/auth-photo-stack";
+import { AuthPhotoStack } from "./_components/auth-photo-stack";
 
 /** Two-column shell shared by /login and /setup: brand + form, with a photo collage. */
-export function AuthShell({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -1155,27 +1158,30 @@ In `apps/web/next.config.ts`, add an `images.remotePatterns` entry alongside the
   },
 ```
 
-- [ ] **Step 5: Refactor the login page onto AuthShell**
+- [ ] **Step 5: Move + slim the login page (the (auth) layout now provides the shell)**
 
-Replace `apps/web/src/app/login/page.tsx` with:
+`git mv` the page into the group and move the form beside it:
+```bash
+mkdir -p "apps/web/src/app/(auth)/login"
+git mv apps/web/src/app/login/page.tsx "apps/web/src/app/(auth)/login/page.tsx"
+git mv apps/web/src/components/login-form.tsx "apps/web/src/app/(auth)/login/login-form.tsx"
+rmdir apps/web/src/app/login 2>/dev/null || true
+```
+Then replace `apps/web/src/app/(auth)/login/page.tsx` with (the shell comes from the group layout, so the page is just the gate + form):
 ```tsx
 import { redirect } from "next/navigation";
 import { hasAnyUser } from "@lumio/db";
-import { AuthShell } from "@/components/auth-shell";
-import { LoginForm } from "@/components/login-form";
+import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   // Fresh install with no account yet → go create the admin.
   if (!(await hasAnyUser())) redirect("/setup");
-  return (
-    <AuthShell>
-      <LoginForm />
-    </AuthShell>
-  );
+  return <LoginForm />;
 }
 ```
+`login-form.tsx` keeps its own `@/lib/*` and `@/components/ui/*` imports unchanged — only its location moved.
 
 - [ ] **Step 6: Use Logo in the sidebar**
 
@@ -1196,21 +1202,24 @@ Both must pass (the build validates the `next/image` remote host config). Browse
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/web/next.config.ts apps/web/src/components/logo.tsx apps/web/src/components/auth-photo-stack.tsx apps/web/src/components/auth-shell.tsx "apps/web/src/app/login/page.tsx" apps/web/src/components/app-sidebar.tsx
-git commit -m "feat(auth): shared AuthShell with Logo + Unsplash photo cards"
+git add -A apps/web/next.config.ts apps/web/src
+git commit -m "feat(auth): (auth) route-group shell with Logo + Unsplash photo cards"
 ```
+(`git add -A` so the renames/deletions — old `components/login-form.tsx`, old `app/login/` — and the new `(auth)/` files are all staged. Do NOT stage `.env`.)
 
 ---
 
-## Task 12: First-run setup page (uses AuthShell)
+## Task 12: First-run setup page (in the (auth) group)
 
 **Files:**
-- Create: `apps/web/src/components/setup-form.tsx`
-- Create: `apps/web/src/app/setup/page.tsx`
+- Create: `apps/web/src/app/(auth)/setup/setup-form.tsx`
+- Create: `apps/web/src/app/(auth)/setup/page.tsx`
+
+(The `(auth)` layout from Task 11 provides the two-column shell + photo cards; the setup page is just the gate + form, mirroring login.)
 
 - [ ] **Step 1: Author the setup form**
 
-Create `apps/web/src/components/setup-form.tsx`:
+Create `apps/web/src/app/(auth)/setup/setup-form.tsx`:
 ```tsx
 "use client";
 
@@ -1309,23 +1318,18 @@ export function SetupForm({ className }: { className?: string }) {
 
 - [ ] **Step 2: Author the setup page (closes once a user exists)**
 
-Create `apps/web/src/app/setup/page.tsx` (reuses the shared `AuthShell` from Task 11):
+Create `apps/web/src/app/(auth)/setup/page.tsx` (the `(auth)` layout supplies the shell):
 ```tsx
 import { redirect } from "next/navigation";
 import { hasAnyUser } from "@lumio/db";
-import { AuthShell } from "@/components/auth-shell";
-import { SetupForm } from "@/components/setup-form";
+import { SetupForm } from "./setup-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
   // Setup is one-time: once any account exists, send people to login.
   if (await hasAnyUser()) redirect("/login");
-  return (
-    <AuthShell>
-      <SetupForm />
-    </AuthShell>
-  );
+  return <SetupForm />;
 }
 ```
 
@@ -1337,7 +1341,7 @@ Expected: no errors.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/web/src/components/setup-form.tsx "apps/web/src/app/setup/page.tsx"
+git add "apps/web/src/app/(auth)/setup"
 git commit -m "feat(auth): first-run setup page to create the admin account"
 ```
 

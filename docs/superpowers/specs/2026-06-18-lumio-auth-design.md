@@ -90,10 +90,10 @@ The `0-users → /setup` and `≥1-user → /login` redirects live in the `/logi
 
 ## Login / Setup UI
 - `npx shadcn add login-02` seeds the structure; the form is **trimmed** to: email, password, submit. No social buttons, no signup link, no forgot-password link (no email transport yet).
-- **Shared `AuthShell`** (used by both `/login` and `/setup`): two-column layout — brand + form on the left; a muted pane on the right showing a cluster of **3 tilted Unsplash photo cards** (rough Instagram-collage inspiration, not a full-bleed image). The cards are picked at random per request from a curated, verified set of `images.unsplash.com` URLs (no API key); rendered with `next/image` (host allow-listed in `next.config.ts`). `/_next/image` is already exempt from the proxy gate, so the cards load on the public auth pages.
-- **`Logo` component** wraps the brand mark (Aperture icon) as the single source of the logo; used in `AuthShell` and the sidebar in place of inline `<Aperture/>`.
-- `/login/page.tsx` renders `<AuthShell><LoginForm/></AuthShell>`; `LoginForm` is wired to `authClient.signIn.email` with pending/error state (robust try/finally so it never gets stuck) and an inline `role="alert"` error.
-- `/setup/page.tsx` renders `<AuthShell><SetupForm/></AuthShell>` with a "Create your admin account" heading and an added **confirm-password** field, wired to `authClient.signUp.email`.
+- **`(auth)` route group** groups `/login` and `/setup` under a shared `app/(auth)/layout.tsx` that IS the two-column shell — brand + `{children}` form on the left; a muted pane on the right showing a cluster of **3 tilted Unsplash photo cards** (rough Instagram-collage inspiration, not a full-bleed image). Cards are picked at random per request from a curated, verified set of `images.unsplash.com` URLs (no API key), rendered with `next/image` (host allow-listed in `next.config.ts`; `/_next/image` is already exempt from the proxy gate, so they load on the public auth pages). URLs stay `/login`/`/setup` (route groups are path-transparent).
+- **Colocation:** the shared photo-stack lives at `app/(auth)/_components/auth-photo-stack.tsx`; each form lives beside its page (`app/(auth)/login/login-form.tsx`, `app/(auth)/setup/setup-form.tsx`). The pages slim to a gate + form. The **`Logo`** component (brand mark; single source for the icon) is app-wide in `components/` (the sidebar uses it too, in place of inline `<Aperture/>`).
+- `/login` → gate (`!hasAnyUser()` → `/setup`) then `<LoginForm/>`, wired to `authClient.signIn.email` with pending/error state (robust try/finally) and an inline `role="alert"` error.
+- `/setup` → gate (`hasAnyUser()` → `/login`) then `<SetupForm/>` ("Create your admin account" heading + a **confirm-password** field), wired to `authClient.signUp.email`.
 
 ## Env & deployment
 - New env vars (added to `.env`, `.env.example`, and the `web` service of `infra/docker-compose.prod.yml`):
