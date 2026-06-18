@@ -1,8 +1,8 @@
 import { Logo } from "@/components/logo";
-import { AuthPhotoStack } from "@/components/auth-photo-stack";
+import { AuthPhotoStack } from "./_components/auth-photo-stack";
 
 /** Two-column shell shared by /login and /setup: brand + form, with a photo collage. */
-export function AuthShell({ children }: { children: React.ReactNode }) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
