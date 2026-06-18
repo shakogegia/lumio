@@ -20,7 +20,7 @@ export default async function PhotoPage({
   const regularAlbums = albums.filter((a) => !a.isSmart);
 
   return (
-    <main className="mx-auto max-w-5xl p-4">
+    <main className="mx-auto max-w-6xl p-4">
       <PhotoDetail photo={photo} regularAlbums={regularAlbums} />
     </main>
   );
