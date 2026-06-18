@@ -27,7 +27,7 @@ apps/web/src/lib/auth.ts                        Better Auth server instance (pri
 apps/web/src/lib/auth-client.ts                 better-auth/react client (signIn, signOut, useSession)
 apps/web/src/lib/require-session.ts             server helper → 401 if no session (API routes)
 apps/web/src/app/api/auth/[...all]/route.ts     Better Auth handler (GET/POST, runtime nodejs)
-apps/web/src/middleware.ts                       optimistic cookie redirect + public allowlist
+apps/web/src/proxy.ts                            optimistic cookie redirect + public allowlist (Next 16 proxy, ex-middleware)
 
 apps/web/src/app/layout.tsx                      ROOT layout stripped to html/body/fonts/globals (no sidebar)
 apps/web/src/app/(app)/layout.tsx                sidebar + modal slot + server requireSession→redirect
@@ -84,7 +84,7 @@ The sidebar currently renders in the root layout, which would wrongly appear on 
 The `0-users → /setup` and `≥1-user → /login` redirects live in the `/login` and `/setup` **server components** (Node runtime, can query Prisma) — middleware stays DB-free.
 
 ## Route protection details
-- **`middleware.ts`** (edge) — public allowlist: `/login`, `/setup`, `/api/auth/*`, and Next internals/static assets. Any other path with no Better Auth session cookie → `redirect("/login")`. Uses Better Auth's edge-safe cookie-presence read (`getSessionCookie`); **no DB call**. Pure path-matcher logic is unit-tested.
+- **`proxy.ts`** (Next 16's renamed middleware; Node runtime) — public allowlist: `/login`, `/setup`, `/api/auth/*`, and Next internals/static assets. Any other path with no Better Auth session cookie → `redirect("/login")`. Uses Better Auth's cookie-presence read (`getSessionCookie`); **no DB call** (thin-proxy pattern). Pure path-matcher logic is unit-tested.
 - **`(app)/layout.tsx`** (server) — real session check for all pages (above).
 - **`requireSession()`** (`lib/require-session.ts`) — `auth.api.getSession({ headers })`; returns the session or throws/returns a `401 NextResponse`. Added to every protected API route: `GET/POST /api/photos`, `/api/photos/[id]`, `/api/photos/purge`, `/api/albums`, `/api/albums/[id]`, `/api/uploads`, `/api/settings`, `/api/rescan`, `/api/thumbnails/[id]`, and the photo `display` route. `/api/auth/*` is **not** wrapped (Better Auth owns it).
 

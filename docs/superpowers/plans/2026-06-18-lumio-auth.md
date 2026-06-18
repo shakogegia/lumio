@@ -4,7 +4,7 @@
 
 **Goal:** Gate the entire Lumio web app (all pages + all `/api/*` data routes) behind Better Auth email/password login, with a one-time first-run flow that creates exactly one admin account while zero users exist.
 
-**Architecture:** Better Auth server instance + React client live in `apps/web`; the four auth tables (`User`/`Session`/`Account`/`Verification`) live in `packages/db`'s Prisma schema (the single DB chokepoint). Protection is defense-in-depth: edge middleware does an optimistic cookie redirect, an `(app)` route-group layout enforces the session server-side for pages, and a `requireSession`-style guard returns `401` on every protected API route. A Better Auth `before` hook permanently blocks account creation once a user exists.
+**Architecture:** Better Auth server instance + React client live in `apps/web`; the four auth tables (`User`/`Session`/`Account`/`Verification`) live in `packages/db`'s Prisma schema (the single DB chokepoint). Protection is defense-in-depth: a Next 16 proxy (`proxy.ts`, the renamed middleware) does an optimistic cookie redirect, an `(app)` route-group layout enforces the session server-side for pages, and a `requireSession`-style guard returns `401` on every protected API route. A Better Auth `before` hook permanently blocks account creation once a user exists.
 
 **Tech Stack:** Next.js 16 (App Router, `--webpack`), Better Auth (`better-auth`), Prisma 6 + Postgres, shadcn (`login-02` block), Tailwind v4, Vitest.
 
@@ -515,14 +515,16 @@ git commit -m "feat(auth): public-path matcher + server session guard"
 
 ---
 
-## Task 7: Edge middleware
+## Task 7: Proxy (request gate)
+
+**Next.js 16 note:** `middleware.ts` is deprecated and renamed to **`proxy.ts`** (function `middleware` → `proxy`; `config`/`matcher` unchanged). Proxy runs on the **Node.js runtime** (the edge runtime and the `runtime` segment-config are not available in a proxy file — setting `runtime` throws). This suits our design: the gate is a thin cookie-presence check (no DB call), the "thin proxy" pattern Next recommends; `getSessionCookie` works on Node too.
 
 **Files:**
-- Create: `apps/web/src/middleware.ts`
+- Create: `apps/web/src/proxy.ts`
 
-- [ ] **Step 1: Create the middleware**
+- [ ] **Step 1: Create the proxy**
 
-Create `apps/web/src/middleware.ts`:
+Create `apps/web/src/proxy.ts`:
 ```ts
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
@@ -531,7 +533,7 @@ import { isPublicPath } from "@/lib/auth-paths";
 // Optimistic gate only (cookie presence, no DB). Real enforcement is the
 // (app) layout + per-route requireSession. Pages → redirect to /login;
 // API routes → 401 JSON.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
 
@@ -553,16 +555,16 @@ export const config = {
 };
 ```
 
-- [ ] **Step 2: Typecheck**
+- [ ] **Step 2: Typecheck + confirm no deprecation warning**
 
 Run: `pnpm --filter @lumio/web exec tsc --noEmit`
-Expected: no errors.
+Expected: no errors. (Using `proxy.ts` avoids the Next 16 `middleware` deprecation warning; there must be NO `middleware.ts` left in `apps/web/src`.)
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/web/src/middleware.ts
-git commit -m "feat(auth): edge middleware optimistic gate"
+git add apps/web/src/proxy.ts
+git commit -m "feat(auth): proxy request gate (Next 16 proxy.ts)"
 ```
 
 ---
@@ -635,7 +637,7 @@ Run: `pnpm dev` then:
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/photos
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/settings -X PUT
 ```
-Expected: `401` for both (middleware short-circuits before the handler — that's fine, both layers agree). Stop dev server.
+Expected: `401` for both (the proxy short-circuits before the handler — that's fine, both layers agree). Stop dev server.
 
 - [ ] **Step 4: Commit**
 
@@ -1243,5 +1245,5 @@ Update `docs/STATUS.md` / memory if the project tracks progress there.
 ---
 
 ## Self-review notes (author)
-- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), middleware (T7), API protection (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), first-run setup + login↔setup redirects (T10/T11), prod env + Cloudflare docs (T12), Conductor dev env — generated secret + port-derived auth URL (T13), tests/build/browser verify (T14). All spec sections map to a task.
+- **Spec coverage:** auth tables (T1), hasAnyUser (T2), signup gate hook (T3/T4), auth server + env (T4), client + handler (T5), public-path matcher + session helper (T6), proxy request gate (T7), API protection (T8), (app) group + sidebar/logout + page gate (T9), login-02 UI (T10), first-run setup + login↔setup redirects (T10/T11), prod env + Cloudflare docs (T12), Conductor dev env — generated secret + port-derived auth URL (T13), tests/build/browser verify (T14). All spec sections map to a task.
 - **Out-of-scope items** (social login, multi-user/invites, password-reset email, Expo, per-user ownership) are intentionally absent.
