@@ -18,6 +18,7 @@ describe("countUsers", () => {
   it("returns the user table count", async () => {
     const db = fakeDb(3);
     expect(await countUsers(db as never)).toBe(3);
+    expect(db.calls).toHaveLength(1);
   });
 });
 
