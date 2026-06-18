@@ -29,3 +29,48 @@ export function sanitizeMetadata(value: unknown): unknown {
   if (typeof value === "number" && !Number.isFinite(value)) return undefined;
   return value; // string | number | boolean
 }
+
+/** Every block exifr can read, merged into one flat object. */
+const EXIFR_OPTIONS = {
+  tiff: true,
+  exif: true,
+  gps: true,
+  xmp: true,
+  iptc: true,
+  jfif: true,
+  ihdr: true,
+  interop: true,
+  mergeOutput: true,
+};
+
+function parseExifDate(value: unknown): Date | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  return null;
+}
+
+/**
+ * Read all available metadata from an image buffer. Returns the full sanitized
+ * dump (with the curated keys overlaid) plus the parsed capture date.
+ */
+export async function extractMetadata(
+  buffer: Buffer,
+): Promise<{ exif: ExifData; takenAt: Date | null }> {
+  const raw = ((await exifr.parse(buffer, EXIFR_OPTIONS).catch(() => null)) ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const exif = sanitizeMetadata(raw) as ExifData;
+
+  const takenAt = parseExifDate(raw.DateTimeOriginal ?? raw.CreateDate);
+  const curated: ExifData = {
+    takenAt: takenAt ? takenAt.toISOString() : undefined,
+    cameraMake: typeof raw.Make === "string" ? raw.Make.trim() : undefined,
+    cameraModel: typeof raw.Model === "string" ? raw.Model.trim() : undefined,
+    orientation: typeof raw.Orientation === "number" ? raw.Orientation : undefined,
+  };
+  for (const [k, v] of Object.entries(curated)) {
+    if (v !== undefined) exif[k] = v;
+  }
+
+  return { exif, takenAt };
+}
