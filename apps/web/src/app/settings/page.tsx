@@ -1,11 +1,14 @@
+import { getSettings } from "@lumio/db";
 import { getStatus } from "@/lib/status-service";
 import { Card } from "@/components/ui/card";
 import { RescanButton } from "./rescan-button";
+import { UploadTemplateForm } from "./upload-template-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const status = await getStatus();
+  const settings = await getSettings();
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-4">
@@ -16,6 +19,14 @@ export default async function SettingsPage() {
         <Row label="Indexed photos" value={String(status.photoCount)} />
         <Row label="Last indexed" value={status.lastIndexedAt ?? "never"} />
       </Card>
+
+      <div className="space-y-2">
+        <h2 className="text-lg font-medium">Uploads</h2>
+        <p className="text-sm text-muted-foreground">
+          How uploaded photos are organized into folders under your library.
+        </p>
+        <UploadTemplateForm initial={settings.uploadTemplate} />
+      </div>
 
       <div className="space-y-2">
         <h2 className="text-lg font-medium">Indexing</h2>
