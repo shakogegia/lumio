@@ -226,7 +226,7 @@ export function PhotoGrid({
                       onClick={(e) => handleTileClick(globalIndex, e)}
                       className={cn(
                         "relative block h-full select-none rounded-sm outline-none focus:outline-none focus-visible:outline-none",
-                        isSelected && "bg-neutral-100 ring-2 ring-inset ring-primary",
+                        isSelected && "ring-2 ring-inset ring-primary",
                       )}
                     >
                       <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
