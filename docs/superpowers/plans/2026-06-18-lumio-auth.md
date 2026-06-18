@@ -90,10 +90,12 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
 }
 ```
 
-These field names/types match what Better Auth's core (email/password) expects. `Account.password` stores the bcrypt/scrypt hash; the OAuth columns stay null until a social provider is added later.
+These field names/types match what Better Auth's core (email/password) expects. The `@@index([identifier])` matches Better Auth's `getAuthTables` (it looks up verifications by identifier). `Account.password` stores the bcrypt/scrypt hash; the OAuth columns stay null until a social provider is added later.
 
 - [ ] **Step 3: Start the DB and create the migration**
 
