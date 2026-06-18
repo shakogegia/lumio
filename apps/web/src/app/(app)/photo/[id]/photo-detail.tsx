@@ -1,22 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { AlbumSummaryDTO, PhotoDTO, PhotoNeighbors } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import { photoHref } from "@/lib/photo-href";
+import { FilmStrip } from "./film-strip";
 
 export function PhotoDetail({
   photo,
   regularAlbums,
+  neighbors,
+  albumId,
 }: {
   photo: PhotoDTO;
   regularAlbums: AlbumSummaryDTO[];
+  neighbors: PhotoNeighbors;
+  albumId: string | null;
 }) {
+  const router = useRouter();
   const filename = photo.path.split("/").pop() || photo.path;
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
+
+  const prevHref = neighbors.prevId ? photoHref(neighbors.prevId, albumId) : null;
+  const nextHref = neighbors.nextId ? photoHref(neighbors.nextId, albumId) : null;
+
+  // Arrow-key navigation. Lives here (not in RouteOverlay) so it works on the
+  // standalone page as well as in the modal. Ignore keys while typing in a field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowLeft" && prevHref) router.push(prevHref);
+      if (e.key === "ArrowRight" && nextHref) router.push(nextHref);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [prevHref, nextHref, router]);
 
   // The layout fills its container edge to edge (full viewport height, padding
   // owned by each side rather than an outer frame), so the standalone page and
@@ -26,13 +52,24 @@ export function PhotoDetail({
   // which is what makes only the image side read as translucent in the modal.
   return (
     <div className="flex flex-col lg:h-dvh lg:flex-row">
-      <div className="min-w-0 flex-1 p-4 lg:flex lg:items-center lg:justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/api/photos/${photo.id}/display`}
-          alt={photo.path}
-          className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-        />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/photos/${photo.id}/display`}
+            alt={photo.path}
+            className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+          />
+          {prevHref && <NavArrow side="left" href={prevHref} label="Previous photo" />}
+          {nextHref && <NavArrow side="right" href={nextHref} label="Next photo" />}
+        </div>
+        {neighbors.strip.length > 1 && (
+          <FilmStrip
+            items={neighbors.strip}
+            currentId={photo.id}
+            hrefFor={(id) => photoHref(id, albumId)}
+          />
+        )}
       </div>
       <aside className="w-full shrink-0 border-t bg-background p-4 text-sm lg:h-dvh lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
         <div className="space-y-1">
@@ -72,6 +109,30 @@ export function PhotoDetail({
         </details>
       </aside>
     </div>
+  );
+}
+
+function NavArrow({
+  side,
+  href,
+  label,
+}: {
+  side: "left" | "right";
+  href: string;
+  label: string;
+}) {
+  const Icon = side === "left" ? ChevronLeft : ChevronRight;
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      className={cn(
+        "absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm backdrop-blur transition hover:bg-background",
+        side === "left" ? "left-2" : "right-2",
+      )}
+    >
+      <Icon className="size-6" />
+    </Link>
   );
 }
 
