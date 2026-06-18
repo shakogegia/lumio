@@ -34,6 +34,7 @@ describe("processImage", () => {
     expect(result.exif.cameraMake).toBe("Lumio");
     expect(result.exif.cameraModel).toBe("FixtureCam");
     expect(result.exif.FNumber).toBe(2.8);
+    // exifr normalises the EXIF ISOSpeedRatings tag to `ISO`.
     expect(result.exif.ISO).toBe(400);
     expect(result.exif.FocalLength).toBe(50);
     expect(result.takenAt?.toISOString()).toBe("2024-03-14T09:26:53.000Z");
