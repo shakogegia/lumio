@@ -17,17 +17,22 @@ export function LoginForm({ className }: { className?: string }) {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const form = new FormData(e.currentTarget);
-    const { error } = await signIn.email({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-    });
-    setPending(false);
-    if (error) {
-      setError(error.message ?? "Invalid email or password.");
-      return;
+    try {
+      const form = new FormData(e.currentTarget);
+      const { error } = await signIn.email({
+        email: String(form.get("email")),
+        password: String(form.get("password")),
+      });
+      if (error) {
+        setError(error.message ?? "Invalid email or password.");
+        return;
+      }
+      router.replace("/photos");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
     }
-    router.replace("/photos");
   }
 
   return (
@@ -53,7 +58,11 @@ export function LoginForm({ className }: { className?: string }) {
             required
           />
         </div>
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? "Signing in…" : "Login"}
         </Button>
