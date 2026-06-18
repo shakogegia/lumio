@@ -13,8 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -70,10 +70,10 @@ export function DeleteAllPhotos({ photoCount }: { photoCount: number }) {
             cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="confirm-delete-all">
+        <Field>
+          <FieldLabel htmlFor="confirm-delete-all">
             Type <span className="font-mono font-semibold">{CONFIRM_WORD}</span> to confirm
-          </Label>
+          </FieldLabel>
           <Input
             id="confirm-delete-all"
             value={confirm}
@@ -84,11 +84,11 @@ export function DeleteAllPhotos({ photoCount }: { photoCount: number }) {
             placeholder={CONFIRM_WORD}
           />
           {state === "error" && (
-            <p className="text-sm text-destructive">
+            <FieldError>
               Something went wrong. Some files may not have been deleted. Try again.
-            </p>
+            </FieldError>
           )}
-        </div>
+        </Field>
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>

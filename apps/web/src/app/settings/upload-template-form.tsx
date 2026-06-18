@@ -8,9 +8,13 @@ import {
   validateTemplate,
 } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const PREVIEW_DATE = new Date("2026-06-18T00:00:00.000Z");
 
@@ -42,31 +46,31 @@ export function UploadTemplateForm({ initial }: { initial: string }) {
   }
 
   return (
-    <Card className="space-y-4 p-4">
-      <div className="space-y-1">
-        <Label htmlFor="uploadTemplate">Upload folder template</Label>
+    <div className="space-y-6">
+      <Field>
+        <FieldLabel htmlFor="uploadTemplate">Upload folder template</FieldLabel>
         <Input
           id="uploadTemplate"
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
           className="font-mono"
+          aria-invalid={!validation.ok}
         />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        Tokens: <code>{"{YYYY}"}</code> <code>{"{MM}"}</code> <code>{"{DD}"}</code>{" "}
-        <code>{"{filename}"}</code> <code>{"{ext}"}</code>. Default:{" "}
-        <code>{DEFAULT_UPLOAD_TEMPLATE}</code>.
-      </p>
-
-      {validation.ok ? (
-        <p className="text-sm">
-          <span className="text-muted-foreground">Example: </span>
-          <span className="font-mono">{preview}</span>
-        </p>
-      ) : (
-        <p className="text-sm text-destructive">{validation.error}</p>
-      )}
+        <FieldDescription>
+          Tokens: <code>{"{YYYY}"}</code> <code>{"{MM}"}</code> <code>{"{DD}"}</code>{" "}
+          <code>{"{filename}"}</code> <code>{"{ext}"}</code>.
+        </FieldDescription>
+        <FieldDescription>
+          Default: <code>{DEFAULT_UPLOAD_TEMPLATE}</code>
+        </FieldDescription>
+        {validation.ok ? (
+          <FieldDescription>
+            Example: <span className="font-mono text-foreground">{preview}</span>
+          </FieldDescription>
+        ) : (
+          <FieldError>{validation.error}</FieldError>
+        )}
+      </Field>
 
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={!validation.ok || state === "saving"}>
@@ -75,6 +79,6 @@ export function UploadTemplateForm({ initial }: { initial: string }) {
         {state === "saved" && <span className="text-sm text-muted-foreground">Saved</span>}
         {state === "error" && <span className="text-sm text-destructive">Save failed</span>}
       </div>
-    </Card>
+    </div>
   );
 }

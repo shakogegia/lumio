@@ -1,7 +1,10 @@
 import { getSettings } from "@lumio/db";
 import { getStatus } from "@/lib/status-service";
-import { Card } from "@/components/ui/card";
+import { formatBytes } from "@/lib/format";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { InfoList, InfoRow } from "@/components/ui/info-list";
 import { DeleteAllPhotos } from "./danger-zone";
+import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
 
@@ -12,37 +15,48 @@ export default async function SettingsPage() {
   const settings = await getSettings();
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-4">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+    <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
+      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
 
-      <Card className="space-y-3 p-4">
-        <Row label="Photos directory" value={status.photosDir} />
-        <Row label="Indexed photos" value={String(status.photoCount)} />
-        <Row label="Last indexed" value={status.lastIndexedAt ?? "never"} />
-      </Card>
+      <Tabs defaultValue="catalog" className="gap-6">
+        <TabsList>
+          <TabsTrigger value="catalog">Catalog</TabsTrigger>
+          <TabsTrigger value="uploads">Uploads</TabsTrigger>
+          <TabsTrigger value="danger">Danger zone</TabsTrigger>
+        </TabsList>
 
-      <div className="space-y-2">
-        <h2 className="text-lg font-medium">Uploads</h2>
-        <p className="text-sm text-muted-foreground">
-          How uploaded photos are organized into folders under your library.
-        </p>
-        <UploadTemplateForm initial={settings.uploadTemplate} />
-      </div>
+        <TabsContent value="catalog" className="space-y-8">
+          <InfoList>
+            <InfoRow label="Library folder" value={status.photosDir} mono />
+            <InfoRow label="Photos" value={status.photoCount.toLocaleString()} />
+            <InfoRow label="Albums" value={status.albumCount.toLocaleString()} />
+            <InfoRow label="Photo storage" value={formatBytes(status.photosSize)} />
+            <InfoRow label="Thumbnail cache" value={formatBytes(status.thumbnailsSize)} />
+            <InfoRow label="Preview cache" value={formatBytes(status.displaysSize)} />
+            <InfoRow
+              label="Last updated"
+              value={
+                status.lastIndexedAt ? <RelativeTime iso={status.lastIndexedAt} /> : "never"
+              }
+            />
+          </InfoList>
 
-      <div className="space-y-2">
-        <h2 className="text-lg font-medium">Indexing</h2>
-        <p className="text-sm text-muted-foreground">
-          Trigger a full rescan of the photos directory.
-        </p>
-        <RescanButton />
-      </div>
+          <section className="space-y-3">
+            <div className="space-y-1">
+              <h2 className="text-base font-medium">Indexing</h2>
+              <p className="text-sm text-muted-foreground">
+                Trigger a full rescan of the photos directory.
+              </p>
+            </div>
+            <RescanButton />
+          </section>
+        </TabsContent>
 
-      <div className="space-y-2">
-        <h2 className="text-lg font-medium text-destructive">Danger zone</h2>
-        <p className="text-sm text-muted-foreground">
-          Irreversible actions. Proceed with caution.
-        </p>
-        <Card className="space-y-4 border-destructive/30 p-4">
+        <TabsContent value="uploads">
+          <UploadTemplateForm initial={settings.uploadTemplate} />
+        </TabsContent>
+
+        <TabsContent value="danger">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-0.5">
               <p className="text-sm font-medium">Delete all photos</p>
@@ -52,17 +66,8 @@ export default async function SettingsPage() {
             </div>
             <DeleteAllPhotos photoCount={status.photoCount} />
           </div>
-        </Card>
-      </div>
+        </TabsContent>
+      </Tabs>
     </main>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="truncate text-right font-mono">{value}</span>
-    </div>
   );
 }
