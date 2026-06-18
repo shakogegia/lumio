@@ -50,4 +50,19 @@ describe("storePhoto", () => {
     expect(displayOnDisk.equals(processed.display)).toBe(true);
     expect(db.calls).toHaveLength(1);
   });
+
+  it("sets source on create only, never on update (provenance is immutable)", async () => {
+    const db = fakeDb("photo123");
+    await storePhoto(
+      { path: "vacation/img.jpg", source: PhotoSource.upload, processed },
+      { db: db as never, thumbnailsDir: path.join(dir, "t2"), displaysDir: path.join(dir, "d2") },
+    );
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(args.create.source).toBe(PhotoSource.upload);
+    expect(args.update).not.toHaveProperty("source");
+  });
 });

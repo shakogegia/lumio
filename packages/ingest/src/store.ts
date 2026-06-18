@@ -26,8 +26,11 @@ export async function storePhoto(
 ): Promise<{ id: string }> {
   const { path: relPath, source, processed } = input;
 
+  // `source` records how a photo first entered the system (provenance), so it
+  // is set on create only. Re-ingestion of the same path — e.g. the filesystem
+  // watcher picking up a freshly uploaded file — must NOT overwrite an upload's
+  // source back to `filesystem`.
   const data = {
-    source,
     takenAt: processed.takenAt,
     sortDate: processed.takenAt ?? new Date(),
     width: processed.width,
@@ -38,7 +41,7 @@ export async function storePhoto(
 
   const row = await deps.db.photo.upsert({
     where: { path: relPath },
-    create: { path: relPath, ...data },
+    create: { path: relPath, source, ...data },
     update: data,
     select: { id: true },
   });
