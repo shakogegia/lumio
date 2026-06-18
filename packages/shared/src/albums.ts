@@ -30,4 +30,9 @@ export const createAlbumSchema = z
 
 export const addPhotoSchema = z.object({ photoId: z.string().min(1) });
 
+export const albumPhotosSchema = z.object({
+  photoIds: z.array(z.string().min(1)).min(1),
+});
+export type AlbumPhotosInput = z.infer<typeof albumPhotosSchema>;
+
 export type CreateAlbumInput = z.infer<typeof createAlbumSchema>;
