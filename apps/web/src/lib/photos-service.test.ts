@@ -210,4 +210,28 @@ describe("getPhotoNeighbors", () => {
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
   });
+
+  it("scopes neighbors to a smart album (rule-based where, no throw)", async () => {
+    const ordered = strip(5); // the photos the smart rule matches, in PHOTO_ORDER
+    const db = {
+      ...keysetDb(ordered),
+      album: {
+        findUnique: async () => ({
+          id: "smart1",
+          name: "Smart",
+          isSmart: true,
+          rules: {
+            match: "all",
+            rules: [{ field: "exif.cameraModel", op: "eq", value: "TestCam" }],
+          },
+          createdAt: new Date("2024-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+        }),
+      },
+    };
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "smart1", 10, db as never);
+    expect(n.prevId).toBe("p1");
+    expect(n.nextId).toBe("p3");
+    expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
+  });
 });

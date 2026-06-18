@@ -24,6 +24,7 @@ export default async function PhotoIntercept({
         regularAlbums={data.regularAlbums}
         neighbors={data.neighbors}
         albumId={album ?? null}
+        overlay
       />
     </RouteOverlay>
   );

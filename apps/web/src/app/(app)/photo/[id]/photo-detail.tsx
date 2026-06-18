@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AlbumSummaryDTO, PhotoDTO, PhotoNeighbors } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { photoHref } from "@/lib/photo-href";
@@ -16,11 +17,16 @@ export function PhotoDetail({
   regularAlbums,
   neighbors,
   albumId,
+  overlay = false,
 }: {
   photo: PhotoDTO;
   regularAlbums: AlbumSummaryDTO[];
   neighbors: PhotoNeighbors;
   albumId: string | null;
+  /** Rendered inside the intercepted-route modal. When true, prev/next replace
+   *  history instead of pushing, so Escape/back closes the overlay to the grid
+   *  rather than stepping back through every photo visited in the modal. */
+  overlay?: boolean;
 }) {
   const router = useRouter();
   const filename = photo.path.split("/").pop() || photo.path;
@@ -34,15 +40,20 @@ export function PhotoDetail({
   // Arrow-key navigation. Lives here (not in RouteOverlay) so it works on the
   // standalone page as well as in the modal. Ignore keys while typing in a field.
   useEffect(() => {
+    const go = (href: string) =>
+      overlay ? router.replace(href) : router.push(href);
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
-      if (e.key === "ArrowLeft" && prevHref) router.push(prevHref);
-      if (e.key === "ArrowRight" && nextHref) router.push(nextHref);
+      // Don't hijack the browser's history shortcuts (Cmd+←/→ on macOS,
+      // Alt+←/→ on Windows/Linux) or other modified arrow presses.
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key === "ArrowLeft" && prevHref) go(prevHref);
+      if (e.key === "ArrowRight" && nextHref) go(nextHref);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [prevHref, nextHref, router]);
+  }, [prevHref, nextHref, overlay, router]);
 
   // The layout fills its container edge to edge (full viewport height, padding
   // owned by each side rather than an outer frame), so the standalone page and
@@ -60,14 +71,19 @@ export function PhotoDetail({
             alt={photo.path}
             className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
           />
-          {prevHref && <NavArrow side="left" href={prevHref} label="Previous photo" />}
-          {nextHref && <NavArrow side="right" href={nextHref} label="Next photo" />}
+          {prevHref && (
+            <NavArrow side="left" href={prevHref} label="Previous photo" replace={overlay} />
+          )}
+          {nextHref && (
+            <NavArrow side="right" href={nextHref} label="Next photo" replace={overlay} />
+          )}
         </div>
         {neighbors.strip.length > 1 && (
           <FilmStrip
             items={neighbors.strip}
             currentId={photo.id}
             hrefFor={(id) => photoHref(id, albumId)}
+            replace={overlay}
           />
         )}
       </div>
@@ -116,23 +132,31 @@ function NavArrow({
   side,
   href,
   label,
+  replace = false,
 }: {
   side: "left" | "right";
   href: string;
   label: string;
+  replace?: boolean;
 }) {
   const Icon = side === "left" ? ChevronLeft : ChevronRight;
+  // The absolute centering (-translate-y-1/2) lives on this wrapper, not the
+  // Button: the shadcn Button toggles `translate-y-px` on :active, which writes
+  // the same transform and would otherwise wipe out the vertical centering on
+  // click. Keeping them on separate elements lets the press-nudge coexist.
   return (
-    <Link
-      href={href}
-      aria-label={label}
+    <div
       className={cn(
-        "absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm backdrop-blur transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        "absolute top-1/2 -translate-y-1/2",
         side === "left" ? "left-2" : "right-2",
       )}
     >
-      <Icon className="size-6" />
-    </Link>
+      <Button asChild variant="outline" size="icon" className="backdrop-blur">
+        <Link href={href} replace={replace} aria-label={label}>
+          <Icon className="size-5" />
+        </Link>
+      </Button>
+    </div>
   );
 }
 
