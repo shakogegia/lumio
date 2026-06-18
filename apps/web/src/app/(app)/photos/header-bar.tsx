@@ -6,7 +6,7 @@
  */
 export function HeaderBar({ children }: { children: React.ReactNode }) {
   return (
-    <div className="sticky top-0 z-20 -mx-6 mb-6 flex items-center justify-between gap-4 bg-background px-6 py-3">
+    <div className="sticky top-0 z-20 -mx-6 mb-6 flex items-center justify-between gap-4 bg-background px-6 py-4">
       {children}
     </div>
   );

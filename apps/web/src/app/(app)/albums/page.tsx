@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { HeaderBar } from "@/app/(app)/photos/header-bar";
 import { NewAlbumDialog } from "./new-album-dialog";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +17,11 @@ export default async function AlbumsPage() {
   const albums = await listAlbumSummaries();
 
   return (
-    <main className="w-full p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <main className="w-full px-6 pb-6">
+      <HeaderBar>
         <h1 className="text-2xl font-semibold">Albums</h1>
         <NewAlbumDialog />
-      </div>
+      </HeaderBar>
 
       {albums.length === 0 ? (
         <Empty>

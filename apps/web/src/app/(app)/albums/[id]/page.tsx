@@ -14,7 +14,7 @@ export default async function AlbumDetailPage({
   if (!album) notFound();
 
   return (
-    <main className="w-full p-6">
+    <main className="w-full px-6 pb-6">
       <AlbumView albumId={album.id} albumName={album.name} isSmart={album.isSmart} />
     </main>
   );
