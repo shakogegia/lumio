@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exifEntries, formatExifValue } from "./exif-entries.js";
+import { exifEntries, filterExifEntries, formatExifValue } from "./exif-entries.js";
 
 describe("formatExifValue", () => {
   it("passes strings through and stringifies scalars", () => {
@@ -15,6 +15,29 @@ describe("formatExifValue", () => {
 
   it("returns empty string for null", () => {
     expect(formatExifValue(null)).toBe("");
+  });
+});
+
+describe("filterExifEntries", () => {
+  const entries: Array<[string, string]> = [
+    ["FNumber", "2.8"],
+    ["filmexif:LightSource", "Raleno LED"],
+    ["Make", "Nikon"],
+  ];
+
+  it("returns all entries for an empty or whitespace query", () => {
+    expect(filterExifEntries(entries, "")).toEqual(entries);
+    expect(filterExifEntries(entries, "   ")).toEqual(entries);
+  });
+
+  it("matches key or value, case-insensitively", () => {
+    expect(filterExifEntries(entries, "light")).toEqual([["filmexif:LightSource", "Raleno LED"]]);
+    expect(filterExifEntries(entries, "NIKON")).toEqual([["Make", "Nikon"]]);
+    expect(filterExifEntries(entries, "2.8")).toEqual([["FNumber", "2.8"]]);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(filterExifEntries(entries, "zzz")).toEqual([]);
   });
 });
 

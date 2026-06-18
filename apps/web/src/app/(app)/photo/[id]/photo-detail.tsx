@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { AlbumSummaryDTO, PhotoDTO, PhotoNeighbors } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { photoHref } from "@/lib/photo-href";
-import { exifEntries } from "@/lib/exif-entries";
+import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { FilmStrip } from "./film-strip";
 
 export function PhotoDetail({
@@ -100,40 +102,30 @@ export function PhotoDetail({
           </div>
         </div>
 
-        <Separator className="my-4" />
+        <Tabs defaultValue="info" className="mt-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="exif">EXIF</TabsTrigger>
+          </TabsList>
 
-        <div className="space-y-3">
-          <Row label="Taken" value={photo.takenAt ?? "—"} />
-          <Row label="Camera" value={camera} />
-          <Row label="Hash" value={photo.hash ?? "—"} />
-        </div>
+          <TabsContent value="info" className="space-y-4">
+            <div className="space-y-3">
+              <Row label="Taken" value={photo.takenAt ?? "—"} />
+              <Row label="Camera" value={camera} />
+              <Row label="Hash" value={photo.hash ?? "—"} />
+            </div>
+            {regularAlbums.length > 0 && (
+              <>
+                <Separator />
+                <AlbumMembership photo={photo} regularAlbums={regularAlbums} />
+              </>
+            )}
+          </TabsContent>
 
-        {regularAlbums.length > 0 && (
-          <>
-            <Separator className="my-4" />
-            <AlbumMembership photo={photo} regularAlbums={regularAlbums} />
-          </>
-        )}
-
-        <Separator className="my-4" />
-
-        <details className="group">
-          <summary className="cursor-pointer text-muted-foreground select-none">
-            Show all metadata
-          </summary>
-          {metadata.length === 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">No metadata</p>
-          ) : (
-            <dl className="mt-2 space-y-1 text-xs">
-              {metadata.map(([key, value]) => (
-                <div key={key} className="flex justify-between gap-3">
-                  <dt className="shrink-0 text-muted-foreground">{key}</dt>
-                  <dd className="min-w-0 break-all text-right font-mono">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </details>
+          <TabsContent value="exif">
+            <ExifPanel entries={metadata} />
+          </TabsContent>
+        </Tabs>
       </aside>
     </div>
   );
@@ -225,6 +217,43 @@ function AlbumMembership({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function ExifPanel({ entries }: { entries: Array<[string, string]> }) {
+  const [query, setQuery] = useState("");
+  const filtered = filterExifEntries(entries, query);
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search metadata"
+          aria-label="Search metadata"
+          className="pl-9"
+        />
+      </div>
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No metadata</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No metadata matches &ldquo;{query}&rdquo;.</p>
+      ) : (
+        <dl className="space-y-1 text-xs">
+          {filtered.map(([key, value]) => (
+            <div key={key} className="flex justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">{key}</dt>
+              <dd className="min-w-0 break-all text-right font-mono">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }

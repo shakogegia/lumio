@@ -14,3 +14,15 @@ export function exifEntries(exif: ExifData): Array<[string, string]> {
     .map(([k, v]) => [k, formatExifValue(v)] as [string, string])
     .sort((a, b) => a[0].localeCompare(b[0]));
 }
+
+/** Case-insensitive filter over [key, value] pairs; an empty query returns all. */
+export function filterExifEntries(
+  entries: Array<[string, string]>,
+  query: string,
+): Array<[string, string]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return entries;
+  return entries.filter(
+    ([key, value]) => key.toLowerCase().includes(q) || value.toLowerCase().includes(q),
+  );
+}
