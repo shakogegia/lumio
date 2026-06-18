@@ -1,8 +1,9 @@
 import path from "node:path";
 import chokidar from "chokidar";
 import { prisma } from "@lumio/db";
-import { PHOTOS_DIR, SUPPORTED_EXTENSIONS } from "./config.js";
-import { ingestPath, removePath } from "./ingest.js";
+import { SUPPORTED_EXTENSIONS, ingestPath, removePath } from "@lumio/ingest";
+import { PHOTOS_DIR } from "./config.js";
+import { ingestDeps, removeDeps } from "./deps.js";
 import { scanAndIngest } from "./scan.js";
 
 const isSupported = (p: string): boolean =>
@@ -21,7 +22,7 @@ export async function watchAndIngest(): Promise<void> {
     if (!isSupported(abs)) return;
     const rel = path.relative(PHOTOS_DIR, abs);
     try {
-      await ingestPath(rel);
+      await ingestPath(rel, ingestDeps);
       console.log(`+ ${rel}`);
     } catch (err) {
       console.warn(`skip ${rel}: ${(err as Error).message}`);
@@ -35,7 +36,7 @@ export async function watchAndIngest(): Promise<void> {
       if (!isSupported(abs)) return;
       const rel = path.relative(PHOTOS_DIR, abs);
       try {
-        await removePath(rel);
+        await removePath(rel, removeDeps);
         console.log(`- ${rel}`);
       } catch (err) {
         console.warn(`remove failed ${rel}: ${(err as Error).message}`);

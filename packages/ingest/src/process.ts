@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import exifr from "exifr";
 import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
-import { DISPLAY_MAX, THUMBNAIL_MAX } from "../config.js";
+import { DISPLAY_MAX, THUMBNAIL_MAX } from "./constants.js";
 import { decodeToReadable } from "./decode.js";
 
 export interface ProcessedPhoto {

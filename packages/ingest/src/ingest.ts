@@ -1,11 +1,9 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { PrismaClient } from "@lumio/db";
-import { prisma } from "@lumio/db";
 import { PhotoSource } from "@lumio/shared";
-import { DISPLAYS_DIR, PHOTOS_DIR, THUMBNAILS_DIR } from "./config.js";
-import { processImage } from "./pipeline/process.js";
-import { storePhoto } from "./pipeline/store.js";
+import { processImage } from "./process.js";
+import { storePhoto } from "./store.js";
 
 export interface IngestDeps {
   db: Pick<PrismaClient, "photo">;
@@ -14,18 +12,15 @@ export interface IngestDeps {
   photosDir: string;
 }
 
+/** Process the file at `<photosDir>/<relPath>` and upsert it. Returns the photo id. */
 export async function ingestPath(
   relPath: string,
-  deps: IngestDeps = {
-    db: prisma,
-    thumbnailsDir: THUMBNAILS_DIR,
-    displaysDir: DISPLAYS_DIR,
-    photosDir: PHOTOS_DIR,
-  },
-): Promise<void> {
+  deps: IngestDeps,
+  source: PhotoSource = PhotoSource.filesystem,
+): Promise<{ id: string }> {
   const processed = await processImage(path.join(deps.photosDir, relPath));
-  await storePhoto(
-    { path: relPath, source: PhotoSource.filesystem, processed },
+  return storePhoto(
+    { path: relPath, source, processed },
     { db: deps.db, thumbnailsDir: deps.thumbnailsDir, displaysDir: deps.displaysDir },
   );
 }
@@ -36,10 +31,7 @@ export interface RemoveDeps {
   displaysDir: string;
 }
 
-export async function removePath(
-  relPath: string,
-  deps: RemoveDeps = { db: prisma, thumbnailsDir: THUMBNAILS_DIR, displaysDir: DISPLAYS_DIR },
-): Promise<void> {
+export async function removePath(relPath: string, deps: RemoveDeps): Promise<void> {
   const found = await deps.db.photo.findUnique({ where: { path: relPath }, select: { id: true } });
   if (!found) return;
   await deps.db.photo.delete({ where: { id: found.id } });

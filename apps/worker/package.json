@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@lumio/db": "workspace:*",
+    "@lumio/ingest": "workspace:*",
     "@lumio/shared": "workspace:*",
     "chokidar": "^5.0.0",
     "exifr": "^7",

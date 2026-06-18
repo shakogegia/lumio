@@ -1,8 +1,9 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@lumio/db";
-import { PHOTOS_DIR, SUPPORTED_EXTENSIONS } from "./config.js";
-import { ingestPath, removePath } from "./ingest.js";
+import { SUPPORTED_EXTENSIONS, ingestPath, removePath } from "@lumio/ingest";
+import { PHOTOS_DIR } from "./config.js";
+import { ingestDeps, removeDeps } from "./deps.js";
 
 export interface ScanSummary {
   processed: number;
@@ -30,7 +31,7 @@ export async function scanAndIngest(): Promise<ScanSummary> {
 
   for (const relPath of relPaths) {
     try {
-      await ingestPath(relPath);
+      await ingestPath(relPath, ingestDeps);
       summary.processed++;
     } catch (err) {
       summary.skipped++;
@@ -43,7 +44,7 @@ export async function scanAndIngest(): Promise<ScanSummary> {
   const toDelete = new Set(reconcileDeletions(existing.map((p) => p.path), onDisk));
 
   for (const row of existing.filter((p) => toDelete.has(p.path))) {
-    await removePath(row.path);
+    await removePath(row.path, removeDeps);
     summary.removed++;
   }
 
