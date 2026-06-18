@@ -45,9 +45,9 @@ export function FilmStrip({
             ref={active ? currentRef : undefined}
             href={hrefFor(item.id)}
             prefetch={false}
-            aria-current={active ? "true" : undefined}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "block size-14 shrink-0 overflow-hidden rounded-sm outline-none ring-offset-2 ring-offset-background transition",
+              "block size-14 shrink-0 overflow-hidden rounded-sm outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-primary",
               active
                 ? "ring-2 ring-primary"
                 : "opacity-60 hover:opacity-100",

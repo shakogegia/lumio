@@ -127,7 +127,7 @@ function NavArrow({
       href={href}
       aria-label={label}
       className={cn(
-        "absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm backdrop-blur transition hover:bg-background",
+        "absolute top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm backdrop-blur transition hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         side === "left" ? "left-2" : "right-2",
       )}
     >
