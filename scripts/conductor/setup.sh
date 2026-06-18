@@ -20,6 +20,16 @@ if [ ! -f .env ]; then
   echo "setup: created .env from .env.example"
 fi
 
+# Auth: ensure a strong, per-workspace BETTER_AUTH_SECRET. The .env may have come
+# from the committed .env.example (placeholder) or a copied root .env; if the
+# secret is missing or still a "change-me" placeholder, generate a real one.
+if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*change-me' .env; then
+  secret="$(openssl rand -base64 32)"
+  grep -v '^BETTER_AUTH_SECRET=' .env > .env.tmp && mv .env.tmp .env
+  printf 'BETTER_AUTH_SECRET="%s"\n' "$secret" >> .env
+  echo "setup: generated BETTER_AUTH_SECRET"
+fi
+
 # Install dependencies and generate the Prisma client so typecheck/build/tests
 # work immediately in the fresh workspace.
 pnpm install

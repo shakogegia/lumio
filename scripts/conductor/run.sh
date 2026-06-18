@@ -9,6 +9,12 @@ set -euo pipefail
 # `dotenv -- next` separator, so we set PORT instead.)
 export PORT="${CONDUCTOR_PORT:-3000}"
 
+# Better Auth's baseURL / trustedOrigins must match the actual serving origin, or
+# sign-in fails the CSRF/origin check (INVALID_ORIGIN). dotenv-cli does NOT override
+# an env var that's already exported, so this wins over the .env value and always
+# matches the port we're actually serving on (per-workspace in Conductor).
+export BETTER_AUTH_URL="http://localhost:${PORT}"
+
 # Bring up the shared dev Postgres. Idempotent: every workspace shares the one
 # Docker Compose project "infra" (host port from .env), so this is a no-op when
 # the container is already running.
