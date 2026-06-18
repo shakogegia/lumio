@@ -3,15 +3,12 @@ import { NextResponse } from "next/server";
 import { getSettings, prisma } from "@lumio/db";
 import { handleUpload } from "@/lib/upload-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
-import { requireSession } from "@/lib/server-session";
+import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request): Promise<NextResponse> {
-  const guard = await requireSession();
-  if (guard.response) return guard.response;
-
+export const POST = withAuth(async (request) => {
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -47,4 +44,4 @@ export async function POST(request: Request): Promise<NextResponse> {
           ? 415
           : 500;
   return NextResponse.json(result, { status: code });
-}
+});

@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { photosQuerySchema } from "@lumio/shared";
 import { listPhotos } from "@/lib/photos-service";
-import { requireSession } from "@/lib/server-session";
+import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request): Promise<NextResponse> {
-  const guard = await requireSession();
-  if (guard.response) return guard.response;
-
+export const GET = withAuth(async (request) => {
   const { searchParams } = new URL(request.url);
   const parsed = photosQuerySchema.safeParse(Object.fromEntries(searchParams));
   if (!parsed.success) {
@@ -17,4 +14,4 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   const page = await listPhotos(parsed.data);
   return NextResponse.json(page);
-}
+});
