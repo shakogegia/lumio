@@ -48,4 +48,26 @@ describe("collectFromEntries", () => {
     const files = await collectFromEntries(tree);
     expect(files.map((f) => f.name).sort()).toEqual(["a.jpg", "deep.png", "top.jpg"]);
   });
+
+  it("skips entries that fail to resolve instead of aborting", async () => {
+    const throwingFile: FsEntry = {
+      isFile: true,
+      isDirectory: false,
+      file: (_ok, err) => err?.(new Error("unreadable")),
+    };
+    const files = await collectFromEntries([fileEntry("ok.jpg"), throwingFile]);
+    expect(files.map((f) => f.name)).toEqual(["ok.jpg"]);
+  });
+
+  it("accumulates files across multiple readEntries batches", async () => {
+    let i = 0;
+    const batches: FsEntry[][] = [[fileEntry("a.jpg"), fileEntry("b.jpg")], [fileEntry("c.jpg")]];
+    const dir: FsEntry = {
+      isFile: false,
+      isDirectory: true,
+      createReader: () => ({ readEntries: (cb) => cb(i < batches.length ? batches[i++]! : []) }),
+    };
+    const files = await collectFromEntries([dir]);
+    expect(files.map((f) => f.name).sort()).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
+  });
 });

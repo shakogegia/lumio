@@ -47,11 +47,16 @@ function readAllEntries(reader: EntryReader): Promise<FsEntry[]> {
 export async function collectFromEntries(entries: FsEntry[]): Promise<File[]> {
   const files: File[] = [];
   for (const entry of entries) {
-    if (entry.isFile && entry.file) {
-      files.push(await entryToFile(entry));
-    } else if (entry.isDirectory && entry.createReader) {
-      const children = await readAllEntries(entry.createReader());
-      files.push(...(await collectFromEntries(children)));
+    try {
+      if (entry.isFile && entry.file) {
+        files.push(await entryToFile(entry));
+      } else if (entry.isDirectory && entry.createReader) {
+        const children = await readAllEntries(entry.createReader());
+        files.push(...(await collectFromEntries(children)));
+      }
+    } catch {
+      // Skip unreadable entries (deleted mid-drag, permission denied, etc.)
+      // rather than aborting the whole dropped-folder collection.
     }
   }
   return files;
