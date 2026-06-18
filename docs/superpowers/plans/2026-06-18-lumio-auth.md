@@ -1424,14 +1424,21 @@ fi
 
 - [ ] **Step 2: Derive BETTER_AUTH_URL from the workspace port at run time**
 
-In `scripts/conductor/run.sh`, add this immediately AFTER the existing `export PORT="${CONDUCTOR_PORT:-3000}"` line:
+In `scripts/conductor/run.sh`, after the existing `export PORT="${CONDUCTOR_PORT:-3000}"` line, set `BETTER_AUTH_URL` to the origin the browser actually uses. **After merging main's per-workspace portless proxy** (workspaces served at `https://<workspace>.lumio.localhost:1355`), this is the portless subdomain when active, with the direct localhost origin also trusted:
 ```bash
-# Better Auth's baseURL / trustedOrigins must match the actual serving origin, or
-# sign-in fails the CSRF/origin check. dotenv-cli does NOT override an env var
-# that's already exported, so this wins over the .env value and always matches
-# the port we're actually serving on (per-workspace in Conductor).
-export BETTER_AUTH_URL="http://localhost:${PORT}"
+# Better Auth's baseURL / trustedOrigins must match the origin the browser uses,
+# or sign-in fails the CSRF/origin check (INVALID_ORIGIN). Behind the portless
+# proxy the browser origin is the https subdomain, so that's the baseURL; we also
+# trust the direct http://localhost:<port> origin so both access paths work.
+# dotenv-cli does NOT override already-exported vars, so these win over .env.
+if command -v portless >/dev/null 2>&1 && [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
+  export BETTER_AUTH_URL="https://${CONDUCTOR_WORKSPACE_NAME}.lumio.localhost:1355"
+  export BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:${PORT}"
+else
+  export BETTER_AUTH_URL="http://localhost:${PORT}"
+fi
 ```
+`apps/web/src/lib/auth.ts` merges `BETTER_AUTH_URL` + the comma-separated `BETTER_AUTH_TRUSTED_ORIGINS` into a deduped `trustedOrigins` array. (Pre-merge this step was just `export BETTER_AUTH_URL="http://localhost:${PORT}"`; the portless reconciliation landed with the main merge.)
 
 - [ ] **Step 3: Verify the logic in isolation (don't clobber the real .env)**
 
