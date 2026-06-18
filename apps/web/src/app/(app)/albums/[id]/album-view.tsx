@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -25,6 +26,7 @@ export function AlbumView({
   albumName: string;
   isSmart: boolean;
 }) {
+  const router = useRouter();
   const sel = useGridSelection();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -45,6 +47,7 @@ export function AlbumView({
       if (res.ok) {
         sel.cancel();
         setReloadKey((k) => k + 1);
+        router.refresh();
       }
     } finally {
       setRemoving(false);
@@ -80,7 +83,7 @@ export function AlbumView({
         <div className="mb-6 flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">{albumName}</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={sel.enter}>
+            <Button size="sm" onClick={sel.enter}>
               Select
             </Button>
             <DeleteAlbumButton albumId={albumId} />

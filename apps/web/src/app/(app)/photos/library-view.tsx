@@ -27,7 +27,7 @@ export function LibraryView() {
       ) : (
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Library</h1>
-          <Button variant="outline" size="sm" onClick={sel.enter}>
+          <Button size="sm" onClick={sel.enter}>
             Select
           </Button>
         </div>
