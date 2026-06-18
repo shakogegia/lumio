@@ -60,6 +60,7 @@ export function UploadClient() {
   const addFiles = useCallback(
     async (incoming: File[]) => {
       const { supported: files, skipped: nSkipped } = partitionSupported(incoming);
+      // Accumulate across drops to mirror the rows list, which also accumulates.
       if (nSkipped > 0) setSkipped((n) => n + nSkipped);
       if (files.length === 0) return;
       const queued: Array<{ file: File; rowId: number }> = files.map((file) => {
@@ -123,6 +124,7 @@ export function UploadClient() {
         }}
       />
 
+      {/* No `accept`: browsers ignore it with webkitdirectory — we filter via partitionSupported instead. */}
       <input
         ref={folderInputRef}
         type="file"
@@ -139,7 +141,7 @@ export function UploadClient() {
         <button
           type="button"
           onClick={() => folderInputRef.current?.click()}
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           Or upload a whole folder
         </button>
