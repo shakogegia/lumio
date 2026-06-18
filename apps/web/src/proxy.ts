@@ -5,7 +5,7 @@ import { isPublicPath } from "@/lib/auth-paths";
 // Optimistic gate only (cookie presence, no DB). Real enforcement is the
 // (app) layout + per-route requireSession. Pages → redirect to /login;
 // API routes → 401 JSON.
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublicPath(pathname)) return NextResponse.next();
 
