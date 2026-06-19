@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { InfoList, InfoRow } from "@/components/ui/info-list";
 import { authClient } from "@/lib/auth-client";
 
 export function AccountForm({
@@ -53,11 +52,18 @@ export function AccountForm({
         Your sign-in email and display name.
       </p>
 
-      <InfoList>
-        <InfoRow label="Email" value={email} mono />
-      </InfoList>
-
       <form onSubmit={onSubmit} className="grid max-w-sm gap-3">
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            disabled
+          />
+        </div>
         <div className="grid gap-2">
           <Label htmlFor="name">Name</Label>
           <Input

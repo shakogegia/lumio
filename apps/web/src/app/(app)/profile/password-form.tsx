@@ -92,15 +92,15 @@ export function PasswordForm() {
             required
           />
         </div>
-        <div className="flex items-center justify-between gap-3 py-1">
-          <Label htmlFor="revokeOther" className="font-normal">
-            Sign out other devices
-          </Label>
+        <div className="flex items-center gap-2 py-1">
           <Switch
             id="revokeOther"
             checked={revokeOther}
             onCheckedChange={setRevokeOther}
           />
+          <Label htmlFor="revokeOther" className="font-normal">
+            Sign out other devices
+          </Label>
         </div>
         {error && (
           <p role="alert" className="text-destructive text-sm">
