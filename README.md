@@ -41,8 +41,9 @@ plus Postgres, via [`infra/docker-compose.prod.yml`](infra/docker-compose.prod.y
 
 - **Portainer:** follow the **[Portainer deployment guide](docs/deployment/portainer.md)** —
   paste the stack, set a few env vars, deploy.
-- **Docker Compose (CLI):** build (or pull) the image, then bring the stack up
-  with an absolute `PHOTOS_DIR`:
+- **Docker Compose (CLI):** follow the **[Docker Compose deployment guide](docs/deployment/docker-compose.md)** —
+  download the compose file, set a few env vars in `.env`, `docker compose up -d`.
+  From a cloned repo you can instead use the Makefile shortcut:
 
   ```bash
   make build                                # or: make push DOCKER_REPO=you/lumio
