@@ -68,6 +68,7 @@ export function PasswordForm() {
             name="currentPassword"
             type="password"
             autoComplete="current-password"
+            onChange={() => setSaved(false)}
             required
           />
         </div>
@@ -79,6 +80,7 @@ export function PasswordForm() {
             type="password"
             autoComplete="new-password"
             minLength={8}
+            onChange={() => setSaved(false)}
             required
           />
         </div>
@@ -89,6 +91,7 @@ export function PasswordForm() {
             name="confirm"
             type="password"
             autoComplete="new-password"
+            onChange={() => setSaved(false)}
             required
           />
         </div>
