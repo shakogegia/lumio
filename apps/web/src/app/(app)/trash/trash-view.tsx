@@ -51,7 +51,7 @@ export function TrashView() {
   ) {
     if (pending) return;
     if (confirmMsg && !confirm(confirmMsg)) return;
-    const ids = sel.selected;
+    const selectedIds = sel.selected;
     setPending(true);
     try {
       const res = await fetch(url, {
@@ -61,7 +61,7 @@ export function TrashView() {
       });
       if (!res.ok) throw new Error("request failed");
       if (remount) setReloadKey((k) => k + 1);
-      else gridRef.current?.removePhotos(ids);
+      else gridRef.current?.removePhotos(selectedIds);
       sel.clear();
     } catch {
       toast.error(failMsg);
