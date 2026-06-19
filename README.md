@@ -11,7 +11,7 @@ pnpm install
 cp .env.example .env       # adjust DB_PORT/DATABASE_URL if 5432 is taken (this repo uses 5433 locally)
 pnpm db:up                 # start Postgres
 pnpm db:migrate            # apply schema
-pnpm seed:photos           # generate sample images into ./photos
+# add photos: upload via the web UI, or drop image files into ./photos (PHOTOS_DIR)
 pnpm ingest                # scan + ingest into the DB, build thumbnails
 pnpm dev                   # start the web app on http://localhost:3000
 ```

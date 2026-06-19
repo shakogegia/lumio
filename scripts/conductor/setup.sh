@@ -13,7 +13,7 @@ fi
 # Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, PHOTOS_DIR and
 # CACHE_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
 # real .env from the root checkout when one is present; this is the fallback for
-# fresh setups (no root .env), seeded from the committed .env.example. We never
+# fresh setups (no root .env), initialized from the committed .env.example. We never
 # clobber an existing .env.
 if [ ! -f .env ]; then
   cp .env.example .env
@@ -31,6 +31,21 @@ if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*cha
   mv .env.tmp .env
   printf 'BETTER_AUTH_SECRET="%s"\n' "$secret" >> .env
   echo "setup: generated BETTER_AUTH_SECRET"
+fi
+
+# Shared media: point PHOTOS_DIR/CACHE_DIR at the root checkout's data/ dir so
+# every workspace reads/writes one library + cache (mirrors the shared Postgres).
+# Only under Conductor; manual/CI runs keep the workspace-local ./photos|./cache.
+# These two lines are derived, not user-authored, so we always overwrite them
+# (idempotent on re-run). Same grep -v / .env.tmp / mv pattern as the secret block.
+if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
+  data_root="$CONDUCTOR_ROOT_PATH/data"
+  mkdir -p "$data_root/photos" "$data_root/cache"
+  grep -vE '^(PHOTOS_DIR|CACHE_DIR)=' .env > .env.tmp || true
+  { printf 'PHOTOS_DIR="%s"\n' "$data_root/photos"
+    printf 'CACHE_DIR="%s"\n'  "$data_root/cache"; } >> .env.tmp
+  mv .env.tmp .env
+  echo "setup: pointed PHOTOS_DIR/CACHE_DIR at shared $data_root"
 fi
 
 # Install dependencies and generate the Prisma client so typecheck/build/tests
