@@ -8,3 +8,4 @@ dist/
 /photos/
 *.tsbuildinfo
 .DS_Store
+.superpowers/
