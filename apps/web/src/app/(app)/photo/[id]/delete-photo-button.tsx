@@ -21,6 +21,8 @@ export function DeletePhotoButton({ photoId }: { photoId: string }) {
         body: JSON.stringify({ ids: [photoId] }),
       });
       if (!res.ok) throw new Error("trash failed");
+      // No setPending(false) on success: we navigate away and unmount, and the
+      // disabled button avoids a double-fire during the transition.
       router.back();
     } catch {
       toast.error("Failed to move photo to Trash.");
