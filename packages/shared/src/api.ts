@@ -65,6 +65,11 @@ export const searchQuerySchema = z.object({
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
+/** Response for GET /api/search?count=1 — total photos matching the filters. */
+export interface SearchCount {
+  total: number;
+}
+
 /** Body for POST /api/photos/color-label. `label: null` clears the label. */
 export const setColorLabelSchema = z.object({
   photoIds: z.array(z.string().min(1)).min(1),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchPhotos } from "./search-service.js";
+import { countSearchPhotos, searchPhotos } from "./search-service.js";
 
 function row(id: string) {
   return {
@@ -56,5 +56,39 @@ describe("searchPhotos", () => {
     const db = fakeDb([row("a")]);
     await searchPhotos({ limit: 2, album: [], sort: "imported-asc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
+  });
+});
+
+function fakeCountDb(total: number) {
+  const calls: Array<{ where?: unknown }> = [];
+  return {
+    calls,
+    photo: {
+      count: async (args: { where?: unknown }) => {
+        calls.push(args);
+        return total;
+      },
+    },
+  };
+}
+
+describe("countSearchPhotos", () => {
+  it("counts with the same where as searchPhotos (album + q)", async () => {
+    const db = fakeCountDb(42);
+    const total = await countSearchPhotos({ limit: 50, album: ["alb1"], q: "beach" }, db as never);
+    expect(total).toBe(42);
+    expect(db.calls[0]?.where).toEqual({
+      AND: [
+        { albums: { some: { albumId: { in: ["alb1"] } } } },
+        { path: { contains: "beach", mode: "insensitive" } },
+      ],
+    });
+  });
+
+  it("uses an empty where when there are no filters", async () => {
+    const db = fakeCountDb(0);
+    const total = await countSearchPhotos({ limit: 50, album: [] }, db as never);
+    expect(total).toBe(0);
+    expect(db.calls[0]?.where).toEqual({});
   });
 });

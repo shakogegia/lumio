@@ -14,7 +14,7 @@ import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
-import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
+import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { HeaderBar } from "@/components/header-bar";
 import { useConfirm } from "@/components/confirm-dialog";
 import {
