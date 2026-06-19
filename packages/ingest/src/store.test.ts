@@ -40,7 +40,13 @@ describe("storePhoto", () => {
     const displays = path.join(dir, "displays");
 
     const result = await storePhoto(
-      { path: "vacation/img.jpg", source: PhotoSource.filesystem, processed },
+      {
+        path: "vacation/img.jpg",
+        source: PhotoSource.filesystem,
+        processed,
+        fileSize: 12345,
+        fileMtimeMs: 1710408413000.5,
+      },
       { db: db as never, thumbnailsDir: thumbs, displaysDir: displays },
     );
 
@@ -50,12 +56,27 @@ describe("storePhoto", () => {
     const displayOnDisk = await readFile(path.join(displays, "photo123.webp"));
     expect(displayOnDisk.equals(processed.display)).toBe(true);
     expect(db.calls).toHaveLength(1);
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(args.create.fileSize).toBe(12345);
+    expect(args.create.fileMtimeMs).toBe(1710408413000.5);
+    expect(args.update.fileSize).toBe(12345);
+    expect(args.update.fileMtimeMs).toBe(1710408413000.5);
   });
 
   it("sets source on create only, never on update (provenance is immutable)", async () => {
     const db = fakeDb("photo123");
     await storePhoto(
-      { path: "vacation/img.jpg", source: PhotoSource.upload, processed },
+      {
+        path: "vacation/img.jpg",
+        source: PhotoSource.upload,
+        processed,
+        fileSize: 1,
+        fileMtimeMs: 1,
+      },
       { db: db as never, thumbnailsDir: path.join(dir, "t2"), displaysDir: path.join(dir, "d2") },
     );
 

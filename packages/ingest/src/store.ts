@@ -8,6 +8,8 @@ export interface StoreInput {
   path: string; // path relative to PHOTOS_DIR
   source: PhotoSource;
   processed: ProcessedPhoto;
+  fileSize: number; // bytes, from fs.stat
+  fileMtimeMs: number; // mtimeMs, from fs.stat
 }
 
 export interface StoreDeps {
@@ -24,7 +26,7 @@ export async function storePhoto(
   input: StoreInput,
   deps: StoreDeps,
 ): Promise<{ id: string }> {
-  const { path: relPath, source, processed } = input;
+  const { path: relPath, source, processed, fileSize, fileMtimeMs } = input;
 
   // `source` records how a photo first entered the system (provenance), so it
   // is set on create only. Re-ingestion of the same path — e.g. the filesystem
@@ -38,6 +40,8 @@ export async function storePhoto(
     hash: processed.hash,
     thumbhash: processed.thumbhash,
     exif: processed.exif as object,
+    fileSize,
+    fileMtimeMs,
   };
 
   const row = await deps.db.photo.upsert({

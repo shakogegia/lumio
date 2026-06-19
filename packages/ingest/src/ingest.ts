@@ -20,7 +20,7 @@ export async function ingestPath(
 ): Promise<{ id: string }> {
   const processed = await processImage(path.join(deps.photosDir, relPath));
   return storePhoto(
-    { path: relPath, source, processed },
+    { path: relPath, source, processed, fileSize: 0, fileMtimeMs: 0 },
     { db: deps.db, thumbnailsDir: deps.thumbnailsDir, displaysDir: deps.displaysDir },
   );
 }
