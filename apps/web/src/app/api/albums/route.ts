@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createAlbumSchema } from "@lumio/shared";
-import { createAlbum, listAlbumSummaries } from "@/lib/albums-service";
+import { createAlbumSchema, deleteAlbumsSchema } from "@lumio/shared";
+import { createAlbum, deleteAlbums, listAlbumSummaries } from "@/lib/albums-service";
 import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
@@ -19,4 +19,14 @@ export const POST = withAuth(async (request) => {
   }
   const album = await createAlbum(parsed.data);
   return NextResponse.json(album, { status: 201 });
+});
+
+export const DELETE = withAuth(async (request) => {
+  const body: unknown = await request.json();
+  const parsed = deleteAlbumsSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const count = await deleteAlbums(parsed.data.ids);
+  return NextResponse.json({ count });
 });
