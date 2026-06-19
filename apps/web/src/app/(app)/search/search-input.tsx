@@ -75,7 +75,12 @@ export function SearchInput({
         values: (_text, cb) => {
           loadAllOptions()
             .then((opts) => cb(opts))
-            .catch(() => cb([]));
+            .catch((err) => {
+              // Non-blocking: show an empty menu this time; loadAllOptions has
+              // already cleared its cache so the next trigger retries.
+              console.warn("Failed to load search facet options", err);
+              cb([]);
+            });
         },
         menuItemTemplate: (item) =>
           `<span class="text-muted-foreground">${escapeHtml(item.original.facetLabel)}</span> · ${escapeHtml(item.original.label)}`,
