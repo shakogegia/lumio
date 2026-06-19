@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun, Trash2 } from "lucide-react";
+import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun, Trash2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import {
@@ -59,6 +59,13 @@ export function SidebarMore() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-44">
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User aria-hidden />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+
         <DropdownMenuItem asChild>
           <Link href="/settings">
             <Settings aria-hidden />
