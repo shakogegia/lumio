@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
-import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
+import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
@@ -46,6 +46,7 @@ export function PhotoGrid({
   albumId,
   empty = PHOTOS_EMPTY,
   mode = "fill",
+  minTile = MIN_TILE,
   params,
   hrefFor,
   selectMode = false,
@@ -57,6 +58,8 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
+  /** Minimum/target tile width driving column count. Defaults to MIN_TILE. */
+  minTile?: number;
   params?: URLSearchParams;
   /** Detail-route href for a tile; defaults to the album/library scope. The
    *  search view overrides it to carry the search filter (so the film strip
@@ -93,24 +96,31 @@ export function PhotoGrid({
     if (!selectMode) anchorRef.current = null;
   }, [selectMode]);
 
-  const listRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);
+  const roRef = useRef<ResizeObserver | null>(null);
 
-  useLayoutEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    setWidth(el.clientWidth);
-    setOffsetTop(el.offsetTop);
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setWidth(w);
-    });
+  // Callback ref so measurement re-attaches whenever the underlying node
+  // changes. The grid swaps elements as photos load (skeleton → real grid); a
+  // one-shot effect would keep observing the detached skeleton, so window
+  // resizes were missed until a refresh. Re-running on each node change fixes it.
+  const measureRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    if (!el) {
+      roRef.current = null;
+      return;
+    }
+    const measure = () => {
+      setWidth(el.clientWidth);
+      setOffsetTop(el.offsetTop);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    roRef.current = ro;
   }, []);
 
-  const columns = computeColumns(width);
+  const columns = computeColumns(width, minTile);
   const tileSize = width > 0 ? (width - GRID_GAP * (columns - 1)) / columns : 0;
   const rows = rowCount(photos.length, columns);
 
@@ -148,11 +158,11 @@ export function PhotoGrid({
   }
 
   if (showSkeleton) {
-    return <PhotoGridSkeleton listRef={listRef} />;
+    return <PhotoGridSkeleton listRef={measureRef} />;
   }
 
   return (
-    <div ref={listRef}>
+    <div ref={measureRef}>
       <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
         {items.map((vrow) => {
           const start = vrow.index * columns;
