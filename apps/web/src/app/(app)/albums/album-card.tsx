@@ -30,7 +30,10 @@ export function AlbumCard({
           src={`/api/thumbnails/${album.coverPhotoId}`}
           alt={album.name}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          className={cn(
+            "h-full w-full object-cover",
+            !selectMode && "transition-transform duration-300 group-hover:scale-[1.02]",
+          )}
         />
       ) : (
         <Images className="size-8 text-muted-foreground" />

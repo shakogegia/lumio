@@ -72,6 +72,7 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
   if (albums.length === 0) {
     return (
       <>
+        {confirmDialog}
         <HeaderBar title="Albums" actions={<NewAlbumDialog />} />
         <Empty>
           <EmptyHeader>
