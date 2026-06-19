@@ -12,12 +12,14 @@ import { AddToAlbumDialog } from "./add-to-album-dialog";
 import { ColorLabelMenu } from "./color-label-menu";
 import type { ColorLabel } from "@lumio/shared";
 import { HeaderBar } from "@/components/header-bar";
+import { useConfirm } from "@/components/confirm-dialog";
 
 export function LibraryView() {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
+  const { confirm, confirmDialog } = useConfirm();
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -25,7 +27,13 @@ export function LibraryView() {
     const ids = sel.selected;
     if (ids.size === 0 || deleting) return;
     const label = `${ids.size} ${ids.size === 1 ? "photo" : "photos"}`;
-    if (!confirm(`Move ${label} to Trash?`)) return;
+    const ok = await confirm({
+      title: `Move ${label} to Trash?`,
+      description: "They'll be moved to Trash. You can restore them later.",
+      confirmLabel: "Move to Trash",
+      destructive: true,
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       const res = await fetch("/api/photos/trash", {
@@ -67,6 +75,7 @@ export function LibraryView() {
 
   return (
     <>
+      {confirmDialog}
       {sel.selectMode ? (
         <SelectionToolbar
           title="Select photos"

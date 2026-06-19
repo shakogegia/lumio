@@ -12,6 +12,7 @@ import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
 import { HeaderBar } from "@/components/header-bar";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   Empty,
   EmptyDescription,
@@ -33,6 +34,7 @@ export function AlbumView({
   const router = useRouter();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
+  const { confirm, confirmDialog } = useConfirm();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
@@ -48,7 +50,13 @@ export function AlbumView({
     const ids = [...sel.selected];
     if (ids.length === 0 || removing) return;
     const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
-    if (!confirm(`Remove ${label} from this album?`)) return;
+    const ok = await confirm({
+      title: `Remove ${label} from this album?`,
+      description: "The photos stay in your library and Trash is unaffected.",
+      confirmLabel: "Remove",
+      destructive: true,
+    });
+    if (!ok) return;
     setRemoving(true);
     setRemoveError(null);
     try {
@@ -75,7 +83,13 @@ export function AlbumView({
     const ids = [...sel.selected];
     if (ids.length === 0 || deleting) return;
     const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
-    if (!confirm(`Move ${label} to Trash? This removes them from your whole library.`)) return;
+    const ok = await confirm({
+      title: `Move ${label} to Trash?`,
+      description: "This removes them from your whole library. You can restore them from Trash.",
+      confirmLabel: "Move to Trash",
+      destructive: true,
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       const res = await fetch("/api/photos/trash", {
@@ -99,6 +113,7 @@ export function AlbumView({
 
   return (
     <>
+      {confirmDialog}
       {sel.selectMode ? (
         <SelectionToolbar
           title={albumName}

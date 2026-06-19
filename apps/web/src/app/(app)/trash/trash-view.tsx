@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { HeaderBar } from "@/components/header-bar";
+import { useConfirm, type ConfirmOptions } from "@/components/confirm-dialog";
 import {
   Empty,
   EmptyDescription,
@@ -36,6 +37,7 @@ const TRASH_EMPTY = (
  */
 export function TrashView() {
   const sel = useGridSelection();
+  const { confirm, confirmDialog } = useConfirm();
   const gridRef = useRef<PhotoGridHandle>(null);
   // Bumped to remount the grid after "Empty trash" (which clears even unloaded
   // pages); selective actions drop tiles in place via the grid handle instead.
@@ -45,12 +47,12 @@ export function TrashView() {
   async function act(
     url: string,
     body: object | null,
-    confirmMsg: string | null,
+    confirmOpts: ConfirmOptions | null,
     failMsg: string,
     remount: boolean,
   ) {
     if (pending) return;
-    if (confirmMsg && !confirm(confirmMsg)) return;
+    if (confirmOpts && !(await confirm(confirmOpts))) return;
     const selectedIds = sel.selected;
     setPending(true);
     try {
@@ -76,6 +78,7 @@ export function TrashView() {
 
   return (
     <>
+      {confirmDialog}
       <HeaderBar
         title={count > 0 ? `${count} selected` : "Trash"}
         actions={
@@ -99,7 +102,12 @@ export function TrashView() {
                     void act(
                       "/api/trash/purge",
                       { ids },
-                      `Permanently delete ${label}? This cannot be undone.`,
+                      {
+                        title: `Permanently delete ${label}?`,
+                        description: "This can't be undone — the photos and their files are removed for good.",
+                        confirmLabel: "Delete permanently",
+                        destructive: true,
+                      },
                       "Failed to delete photos.",
                       false,
                     )
@@ -117,7 +125,12 @@ export function TrashView() {
                 void act(
                   "/api/trash/empty",
                   null,
-                  "Empty Trash? This permanently deletes all trashed photos.",
+                  {
+                    title: "Empty Trash?",
+                    description: "All photos in Trash will be permanently deleted. This can't be undone.",
+                    confirmLabel: "Empty trash",
+                    destructive: true,
+                  },
                   "Failed to empty Trash.",
                   true,
                 )
