@@ -17,7 +17,6 @@ import { useGridColumns } from "@/lib/use-grid-columns";
 import { useGridView } from "@/lib/use-grid-view";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
-import { isPreviewable } from "@/lib/upload-preview";
 import {
   selectableIds,
   summarizeRows,
@@ -48,15 +47,6 @@ export function UploadClient() {
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
-
-  // Revoke any object URLs we created when the component unmounts.
-  const urlsRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const urls = urlsRef.current;
-    return () => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, []);
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -106,26 +96,17 @@ export function UploadClient() {
       const { supported, skipped } = partitionSupported(incoming);
       if (skipped > 0) setUnsupportedCount((n) => n + skipped);
       if (supported.length === 0) return;
-      const queued = supported.map((file) => {
-        const rowId = nextRowId++;
-        let previewUrl: string | undefined;
-        if (isPreviewable(file.name)) {
-          previewUrl = URL.createObjectURL(file);
-          urlsRef.current.add(previewUrl);
-        }
-        return { file, rowId, previewUrl };
-      });
+      const queued = supported.map((file) => ({ file, rowId: nextRowId++ }));
       setRows((prev) => [
-        ...queued.map(({ file, rowId, previewUrl }) => ({
+        ...queued.map(({ file, rowId }) => ({
           id: rowId,
           file,
           name: file.name,
           status: "queued" as const,
-          previewUrl,
         })),
         ...prev,
       ]);
-      await runPool(queued.map(({ file, rowId }) => ({ file, rowId })));
+      await runPool(queued);
     },
     [runPool],
   );
@@ -217,16 +198,7 @@ export function UploadClient() {
         body: JSON.stringify({ ids: [...selectedIds] }),
       });
       if (!res.ok) throw new Error("trash failed");
-      setRows((prev) =>
-        prev.filter((r) => {
-          const remove = Boolean(r.photoId && selectedIds.has(r.photoId));
-          if (remove && r.previewUrl) {
-            URL.revokeObjectURL(r.previewUrl);
-            urlsRef.current.delete(r.previewUrl);
-          }
-          return !remove;
-        }),
-      );
+      setRows((prev) => prev.filter((r) => !(r.photoId && selectedIds.has(r.photoId))));
       sel.cancel();
       router.refresh();
     } catch {
@@ -329,7 +301,6 @@ export function UploadClient() {
                 name={row.name}
                 status={row.status}
                 message={row.message}
-                previewUrl={row.previewUrl}
                 mode={mode}
                 selectMode={sel.selectMode}
                 selected={Boolean(row.photoId && sel.selected.has(row.photoId))}

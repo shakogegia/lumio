@@ -4,7 +4,7 @@ import { memo } from "react";
 import { CheckCircle2, Circle, Loader2, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatBadge, isPreviewable } from "@/lib/upload-preview";
+import { formatBadge } from "@/lib/upload-preview";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import type { RowStatus } from "@/lib/upload-rows";
 
@@ -27,7 +27,6 @@ export const UploadTile = memo(function UploadTile({
   name,
   status,
   message,
-  previewUrl,
   mode,
   selectMode,
   selected,
@@ -36,19 +35,20 @@ export const UploadTile = memo(function UploadTile({
 }: {
   /** Client row id (for retry). */
   id: number;
-  /** Real photo id; present ⇒ the tile is selectable. */
+  /** Real photo id; present ⇒ selectable + has a server thumbnail. */
   photoId?: string;
   name: string;
   status: RowStatus;
   message?: string;
-  previewUrl?: string;
   mode: GridViewMode;
   selectMode: boolean;
   selected: boolean;
   onToggleSelect: (photoId: string) => void;
   onRetry: (id: number) => void;
 }) {
-  const preview = isPreviewable(name) && previewUrl;
+  // Ingested rows render the small server-generated thumbnail; rows still in
+  // flight (or failed) show a lightweight badge — decoding the original file in
+  // the browser would blow up memory on large batches.
   const fit = mode === "fit" ? "object-contain" : "object-cover";
   const selectable = photoId != null;
   const interactive = selectMode && selectable;
@@ -67,10 +67,10 @@ export const UploadTile = memo(function UploadTile({
           selected && "scale-[0.92]",
         )}
       >
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element -- blob: object URL, no remote loader
+        {photoId ? (
+          // eslint-disable-next-line @next/next/no-img-element -- server thumbnail route, no next/image loader
           <img
-            src={previewUrl}
+            src={`/api/thumbnails/${photoId}`}
             alt=""
             loading="lazy"
             decoding="async"
@@ -79,7 +79,6 @@ export const UploadTile = memo(function UploadTile({
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-muted to-muted-foreground/15 text-muted-foreground">
             <span className="text-base font-bold tracking-wide">{formatBadge(name)}</span>
-            <span className="text-[10px] uppercase tracking-wide">preview after import</span>
           </div>
         )}
       </div>

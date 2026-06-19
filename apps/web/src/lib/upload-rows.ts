@@ -10,10 +10,9 @@ export interface Row {
   name: string;
   status: RowStatus;
   message?: string;
-  /** Real photo id from the API, set for added | duplicate. Enables selection. */
+  /** Real photo id from the API, set for added | duplicate. Enables selection
+   * and the server thumbnail (`/api/thumbnails/<photoId>`). */
   photoId?: string;
-  /** Object URL for previewable formats; revoked on removal/unmount. */
-  previewUrl?: string;
 }
 
 export interface RowSummary {

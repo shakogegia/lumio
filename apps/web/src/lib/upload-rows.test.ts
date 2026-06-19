@@ -9,7 +9,6 @@ function mkRow(p: Partial<Row> & Pick<Row, "status">): Row {
     status: p.status,
     message: p.message,
     photoId: p.photoId,
-    previewUrl: p.previewUrl,
   };
 }
 

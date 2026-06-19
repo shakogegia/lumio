@@ -1,17 +1,14 @@
 /**
- * Which uploaded files the browser can render as an inline preview before the
- * server has processed them. The library also supports .jxl/.heic/.heif, which
- * browsers cannot decode — those get a format-badge tile instead.
+ * Visual representation of an upload row that has no server thumbnail yet
+ * (queued / uploading / failed). Decoding the original file in the browser to
+ * preview it is far too memory-heavy for large batches (full-res bitmaps), so
+ * pending rows show a small format badge instead; once a row is ingested it
+ * renders the server-generated thumbnail (`/api/thumbnails/<id>`).
  */
-export const PREVIEWABLE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 function extOf(filename: string): string {
   const dot = filename.lastIndexOf(".");
   return dot < 0 ? "" : filename.slice(dot).toLowerCase();
-}
-
-export function isPreviewable(filename: string): boolean {
-  return PREVIEWABLE_EXTENSIONS.has(extOf(filename));
 }
 
 /** Uppercased extension without the dot (e.g. "HEIC"); "FILE" when extensionless. */
