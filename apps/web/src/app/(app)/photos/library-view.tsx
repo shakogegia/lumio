@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useThumbnailFit } from "@/lib/use-thumbnail-fit";
 import { ThumbnailFitToggle } from "@/components/thumbnail-fit-toggle";
-import { PhotoGrid } from "./photo-grid";
+import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
 import { HeaderBar } from "@/components/header-bar";
