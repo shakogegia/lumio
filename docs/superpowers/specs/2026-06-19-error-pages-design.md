@@ -105,7 +105,7 @@ Layout (uses existing tokens — `bg-background`, `text-foreground`,
   across the full viewport.
 - **Brand mark** — `<Logo>` (Aperture) in `text-muted-foreground`, small.
 - **Status code** — oversized, `font-heading tracking-tighter` in a faded
-  `text-muted-foreground/30`, with the aperture motif sitting subtly behind/beside
+  `text-muted-foreground/20`, with the aperture motif sitting subtly behind/beside
   it as a restrained graphic flourish (the agreed "designed moment").
 - **Headline** — `font-heading` title.
 - **Description** — one `text-muted-foreground` line.
