@@ -141,6 +141,8 @@ export async function restorePhotos(
 
     // 1. Recreate the row (same id) BEFORE the file lands, so the watcher's
     //    `add` upserts in place (keeps id + album links) instead of recreating.
+    //    Reuses the trashed id, which is safe because a trashed photo's row was
+    //    deleted on trash, so no live Photo can hold this id.
     await deps.db.photo.create({
       data: {
         id: t.id,
