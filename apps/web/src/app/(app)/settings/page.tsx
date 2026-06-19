@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { getSettings } from "@lumio/db";
-import { getStatus } from "@/lib/status-service";
+import { getCacheSizes, getCatalogStats } from "@/lib/status-service";
 import { formatBytes } from "@/lib/format";
 import {
   Card,
@@ -17,8 +18,19 @@ import { UploadTemplateForm } from "./upload-template-form";
 
 export const dynamic = "force-dynamic";
 
+/** Storage figures that require a filesystem walk; streamed so they never block the page. */
+async function CacheSizes() {
+  const { thumbnailsSize, displaysSize } = await getCacheSizes();
+  return (
+    <>
+      <InfoRow label="Thumbnail cache" value={formatBytes(thumbnailsSize)} />
+      <InfoRow label="Preview cache" value={formatBytes(displaysSize)} />
+    </>
+  );
+}
+
 export default async function SettingsPage() {
-  const status = await getStatus();
+  const stats = await getCatalogStats();
   const settings = await getSettings();
 
   return (
@@ -34,32 +46,38 @@ export default async function SettingsPage() {
 
         <TabsContent value="catalog" className="space-y-8">
           <InfoList>
-            <InfoRow label="Library folder" value={status.photosDir} mono />
-            <InfoRow
-              label="Photos"
-              value={status.photoCount.toLocaleString()}
-            />
-            <InfoRow
-              label="Albums"
-              value={status.albumCount.toLocaleString()}
-            />
+            <InfoRow label="Library folder" value={stats.photosDir} mono />
+            <InfoRow label="Photos" value={stats.photoCount.toLocaleString()} />
+            <InfoRow label="Albums" value={stats.albumCount.toLocaleString()} />
             <InfoRow
               label="Photo storage"
-              value={formatBytes(status.photosSize)}
+              value={formatBytes(stats.photosSize)}
             />
-            <InfoRow
-              label="Thumbnail cache"
-              value={formatBytes(status.thumbnailsSize)}
-            />
-            <InfoRow
-              label="Preview cache"
-              value={formatBytes(status.displaysSize)}
-            />
+            <Suspense
+              fallback={
+                <>
+                  <InfoRow
+                    label="Thumbnail cache"
+                    value={
+                      <span className="text-muted-foreground">calculating…</span>
+                    }
+                  />
+                  <InfoRow
+                    label="Preview cache"
+                    value={
+                      <span className="text-muted-foreground">calculating…</span>
+                    }
+                  />
+                </>
+              }
+            >
+              <CacheSizes />
+            </Suspense>
             <InfoRow
               label="Last updated"
               value={
-                status.lastIndexedAt ? (
-                  <RelativeTime iso={status.lastIndexedAt} />
+                stats.lastIndexedAt ? (
+                  <RelativeTime iso={stats.lastIndexedAt} />
                 ) : (
                   "never"
                 )
@@ -104,7 +122,7 @@ export default async function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DeleteAllPhotos photoCount={status.photoCount} />
+              <DeleteAllPhotos photoCount={stats.photoCount} />
             </CardContent>
           </Card>
         </TabsContent>
