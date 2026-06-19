@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { photoHref } from "@/lib/photo-href";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
+import { setHoldNavTarget } from "@/lib/hold-key-nav";
 import { FilmStrip } from "./film-strip";
 
 export function PhotoDetail({
@@ -41,22 +42,21 @@ export function PhotoDetail({
   const prevHref = neighbors.prevId ? photoHref(neighbors.prevId, albumId) : null;
   const nextHref = neighbors.nextId ? photoHref(neighbors.nextId, albumId) : null;
 
-  // Arrow-key navigation. Lives here (not in RouteOverlay) so it works on the
-  // standalone page as well as in the modal. Ignore keys while typing in a field.
+  // Arrow-key navigation, with press-and-hold support. The photo page remounts
+  // on every navigation (intercepted/parallel route), so the hold loop can't
+  // live in this component — it's owned by a module-level controller that
+  // outlives the remounts. Here we just keep that controller pointed at the
+  // photo on screen. `scroll: false` keeps the swap in place (no focus jump, no
+  // scroll-to-top). See `@/lib/hold-key-nav` for the full story.
   useEffect(() => {
-    const go = (href: string) =>
-      overlay ? router.replace(href) : router.push(href);
-    const onKey = (e: KeyboardEvent) => {
-      const el = document.activeElement;
-      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
-      // Don't hijack the browser's history shortcuts (Cmd+←/→ on macOS,
-      // Alt+←/→ on Windows/Linux) or other modified arrow presses.
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      if (e.key === "ArrowLeft" && prevHref) go(prevHref);
-      if (e.key === "ArrowRight" && nextHref) go(nextHref);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return setHoldNavTarget({
+      prevHref,
+      nextHref,
+      navigate: (href) =>
+        overlay
+          ? router.replace(href, { scroll: false })
+          : router.push(href, { scroll: false }),
+    });
   }, [prevHref, nextHref, overlay, router]);
 
   // The layout fills its container edge to edge (full viewport height, padding
