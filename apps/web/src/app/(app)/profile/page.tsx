@@ -58,7 +58,20 @@ export default async function ProfilePage() {
         </TabsList>
 
         <TabsContent value="account">
-          <AccountForm name={session.user.name} email={session.user.email} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Account</CardTitle>
+              <CardDescription>
+                Your sign-in email and display name.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AccountForm
+                name={session.user.name}
+                email={session.user.email}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">

@@ -47,48 +47,42 @@ export function AccountForm({
   }
 
   return (
-    <section className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Your sign-in email and display name.
-      </p>
-
-      <form onSubmit={onSubmit} className="grid max-w-sm gap-3">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            disabled
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            name="name"
-            type="text"
-            autoComplete="name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setSaved(false);
-            }}
-            required
-          />
-        </div>
-        {error && (
-          <p role="alert" className="text-destructive text-sm">
-            {error}
-          </p>
-        )}
-        {saved && <p className="text-sm text-muted-foreground">Saved.</p>}
-        <Button type="submit" disabled={!changed || pending} className="w-fit">
-          {pending ? "Saving…" : "Save"}
-        </Button>
-      </form>
-    </section>
+    <form onSubmit={onSubmit} className="grid max-w-sm gap-3">
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          disabled
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
+          name="name"
+          type="text"
+          autoComplete="name"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setSaved(false);
+          }}
+          required
+        />
+      </div>
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
+      {saved && <p className="text-sm text-muted-foreground">Saved.</p>}
+      <Button type="submit" disabled={!changed || pending} className="w-fit">
+        {pending ? "Saving…" : "Save"}
+      </Button>
+    </form>
   );
 }
