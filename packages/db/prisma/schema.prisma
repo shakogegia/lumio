@@ -12,19 +12,31 @@ enum PhotoSource {
   upload
 }
 
+enum ColorLabel {
+  gray
+  pink
+  orange
+  yellow
+  green
+  cyan
+  blue
+  purple
+}
+
 model Photo {
-  id        String       @id @default(cuid())
-  path      String       @unique
-  source    PhotoSource
-  takenAt   DateTime?
-  sortDate  DateTime     @default(now())
-  width     Int
-  height    Int
-  hash      String?
-  exif      Json
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  albums    AlbumPhoto[]
+  id         String       @id @default(cuid())
+  path       String       @unique
+  source     PhotoSource
+  takenAt    DateTime?
+  sortDate   DateTime     @default(now())
+  width      Int
+  height     Int
+  hash       String?
+  exif       Json
+  colorLabel ColorLabel?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  albums     AlbumPhoto[]
 
   @@index([sortDate, id])
   @@index([hash])

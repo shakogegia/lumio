@@ -1,7 +1,13 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { type Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
-import type { PhotoNeighbors, PhotosPage, PhotosQuery, PhotoStripItem } from "@lumio/shared";
+import type {
+  ColorLabel,
+  PhotoNeighbors,
+  PhotosPage,
+  PhotosQuery,
+  PhotoStripItem,
+} from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
 import { PHOTO_ORDER } from "@/lib/photo-order";
@@ -24,6 +30,22 @@ export async function listPhotos(
   const nextCursor =
     rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
   return { items: rows.map(toPhotoDTO), nextCursor };
+}
+
+/**
+ * Set (or clear, with `null`) the color label on a batch of photos.
+ * Returns the number of rows updated.
+ */
+export async function setPhotoColorLabel(
+  photoIds: string[],
+  label: ColorLabel | null,
+  db: Db = prisma,
+): Promise<number> {
+  const { count } = await db.photo.updateMany({
+    where: { id: { in: photoIds } },
+    data: { colorLabel: label },
+  });
+  return count;
 }
 
 export async function getPhoto(id: string, db: Db = prisma) {

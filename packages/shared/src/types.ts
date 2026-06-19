@@ -1,3 +1,4 @@
+import type { ColorLabel } from "./color-labels.js";
 import type { MatchType, PhotoSource, RuleOp } from "./enums.js";
 
 /** Normalized subset of EXIF we surface to clients. */
@@ -18,6 +19,7 @@ export interface PhotoDTO {
   height: number;
   hash: string | null;
   exif: ExifData;
+  colorLabel: ColorLabel | null;
   createdAt: string;
   updatedAt: string;
   albumIds?: string[];

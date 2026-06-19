@@ -21,10 +21,10 @@ export function SelectionToolbar({
       title={count > 0 ? `${count} selected` : title}
       actions={
         <>
+          {actions}
           <Button variant="outline" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          {actions}
         </>
       }
     />

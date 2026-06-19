@@ -1,19 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
 import { GridViewMenu } from "@/components/grid-view-menu";
-import { PhotoGrid } from "@/components/photo-grid/photo-grid";
+import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
+import { ColorLabelMenu } from "./color-label-menu";
+import type { ColorLabel } from "@lumio/shared";
 import { HeaderBar } from "@/components/header-bar";
 
 export function LibraryView() {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const gridRef = useRef<PhotoGridHandle>(null);
+  const [labelPending, setLabelPending] = useState(false);
+
+  async function applyLabel(label: ColorLabel | null) {
+    if (labelPending) return;
+    const ids = sel.selected;
+    setLabelPending(true);
+    try {
+      const res = await fetch("/api/photos/color-label", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ photoIds: [...ids], label }),
+      });
+      if (!res.ok) throw new Error("label failed");
+      // Optimistically repaint the client-fetched grid; selection stays so the
+      // user sees the tint land and can re-pick.
+      gridRef.current?.patchPhotos(ids, { colorLabel: label });
+    } catch {
+      toast.error("Failed to apply label.");
+    } finally {
+      setLabelPending(false);
+    }
+  }
 
   return (
     <>
@@ -23,9 +49,15 @@ export function LibraryView() {
           count={sel.count}
           onCancel={sel.cancel}
           actions={
-            <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
-              Add to album
-            </Button>
+            <>
+              <ColorLabelMenu
+                disabled={sel.count === 0 || labelPending}
+                onPick={(label) => void applyLabel(label)}
+              />
+              <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
+                Add to album
+              </Button>
+            </>
           }
         />
       ) : (
@@ -43,6 +75,7 @@ export function LibraryView() {
       )}
 
       <PhotoGrid
+        apiRef={gridRef}
         mode={mode}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
-import type { PhotoDTO } from "@lumio/shared";
+import { colorLabelHex, type PhotoDTO } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,10 @@ export function PhotoGridTile({
 }) {
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
 
+  // In card mode a labeled photo tints its mat; inline style overrides bg-muted.
+  const labelHex = mode === "card" ? colorLabelHex(photo.colorLabel) : undefined;
+  const labelStyle = labelHex ? { backgroundColor: labelHex } : undefined;
+
   if (selectMode) {
     return (
       <button
@@ -43,6 +47,7 @@ export function PhotoGridTile({
         aria-pressed={isSelected}
         onClick={(e) => onTileClick(index, e)}
         className={cn(cellVariants({ mode, selected: isSelected }), "select-none")}
+        style={labelStyle}
       >
         <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
           {thumb}
@@ -62,6 +67,7 @@ export function PhotoGridTile({
     <Link
       href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId)}
       className={cellVariants({ mode })}
+      style={labelStyle}
     >
       {thumb}
     </Link>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
+import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import {
   Empty,
@@ -35,6 +36,11 @@ const PHOTOS_EMPTY = (
 
 const OVERSCAN_ROWS = 3;
 
+export type PhotoGridHandle = {
+  /** Merge `patch` into every loaded photo whose id is in `ids` (e.g. a new colorLabel). */
+  patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
+};
+
 export function PhotoGrid({
   endpoint = "/api/photos",
   albumId,
@@ -45,6 +51,7 @@ export function PhotoGrid({
   selectMode = false,
   selectedIds,
   onSelectionChange,
+  apiRef,
 }: {
   endpoint?: string;
   albumId?: string;
@@ -58,8 +65,11 @@ export function PhotoGrid({
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  /** Imperative handle for in-place photo updates (optimistic label tinting). */
+  apiRef?: React.Ref<PhotoGridHandle>;
 }) {
-  const { photos, done, error, loadMore } = usePhotoPages(endpoint, params);
+  const { photos, done, error, loadMore, patchPhotos } = usePhotoPages(endpoint, params);
+  useImperativeHandle(apiRef, () => ({ patchPhotos }), [patchPhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);
