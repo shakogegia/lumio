@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
+import { useThumbnailFit } from "@/lib/use-thumbnail-fit";
+import { ThumbnailFitToggle } from "@/components/thumbnail-fit-toggle";
 import { PhotoGrid } from "@/app/(app)/photos/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
@@ -29,6 +31,7 @@ export function AlbumView({
 }) {
   const router = useRouter();
   const sel = useGridSelection();
+  const { fit, toggle } = useThumbnailFit();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
@@ -96,6 +99,7 @@ export function AlbumView({
           title={albumName}
           actions={
             <>
+              <ThumbnailFitToggle fit={fit} onToggle={toggle} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -113,6 +117,7 @@ export function AlbumView({
         key={reloadKey}
         endpoint={`/api/albums/${albumId}/photos`}
         albumId={albumId}
+        fit={fit}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}

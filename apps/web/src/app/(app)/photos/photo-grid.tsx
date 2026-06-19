@@ -8,6 +8,7 @@ import type { PhotoDTO, PhotosPage } from "@lumio/shared";
 import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
 import { photoHref } from "@/lib/photo-href";
+import type { ThumbnailFit } from "@/lib/use-thumbnail-fit";
 import { cn } from "@/lib/utils";
 import {
   Empty,
@@ -51,6 +52,7 @@ export function PhotoGrid({
   endpoint = "/api/photos",
   albumId,
   empty = PHOTOS_EMPTY,
+  fit = "cover",
   selectMode = false,
   selectedIds,
   onSelectionChange,
@@ -58,6 +60,7 @@ export function PhotoGrid({
   endpoint?: string;
   albumId?: string;
   empty?: React.ReactNode;
+  fit?: ThumbnailFit;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -215,7 +218,10 @@ export function PhotoGrid({
                     loading="lazy"
                     width={photo.width}
                     height={photo.height}
-                    className="h-full w-full rounded-sm object-cover transition-opacity hover:opacity-90"
+                    className={cn(
+                      "h-full w-full rounded-sm transition-opacity hover:opacity-90",
+                      fit === "cover" ? "object-cover" : "object-contain",
+                    )}
                   />
                 );
 
