@@ -153,15 +153,28 @@ export function FilmStrip({
         </div>
       </div>
 
-      {bar.overflow && (
-        <div ref={trackRef} className="relative mx-1 h-1.5 rounded-full bg-muted">
+      {/* Reserve the scrollbar's height unconditionally so the strip is the same
+          height whether or not it overflows. Overflow is measured only on the
+          client (after hydration); the server render and the browser's first
+          paint always start at `overflow: false`, so a conditionally-rendered
+          track would be absent at first paint and pop in once measured —
+          shifting the layout. Keeping the track box always mounted (the muted
+          fill + draggable thumb still only show on overflow) removes that shift. */}
+      <div
+        ref={trackRef}
+        className={cn(
+          "relative mx-1 h-1.5 rounded-full",
+          bar.overflow && "bg-muted",
+        )}
+      >
+        {bar.overflow && (
           <div
             onPointerDown={startDrag}
             style={{ width: `${bar.size * 100}%`, left: `${bar.offset * 100}%` }}
             className="absolute inset-y-0 cursor-grab touch-none rounded-full bg-border transition-colors hover:bg-foreground/40 active:cursor-grabbing"
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
