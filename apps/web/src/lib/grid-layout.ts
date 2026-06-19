@@ -28,3 +28,7 @@ export function rowCount(itemCount: number, columns: number): number {
   if (columns <= 0 || itemCount <= 0) return 0;
   return Math.ceil(itemCount / columns);
 }
+
+/** Fixed fetch page size for the grid (independent of column density so the
+ *  sparse page store's index math stays stable when columns change). API max. */
+export const PHOTO_PAGE_SIZE = 100;

@@ -1,66 +1,93 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PhotoDTO, PhotosPage } from "@lumio/shared";
+import type { PhotoDTO } from "@lumio/shared";
+import {
+  createPageStore,
+  loadedIds as loadedIdsOf,
+  pageIndicesForRange,
+  patchPages,
+  photoAt as photoAtOf,
+  removeIds,
+  setPage,
+  type PageStore,
+} from "./photo-page-store";
+
+/** Keep at most this many pages in memory; LRU-evict the rest (refetched on
+ *  return). Bounds memory regardless of library size. */
+const MAX_PAGES = 60;
 
 async function fetchPage(
   endpoint: string,
-  cursor: string | null,
+  offset: number,
   limit: number,
   extra?: URLSearchParams,
-): Promise<PhotosPage> {
-  // Clone `extra` so we don't mutate the caller's object; preserves repeated keys (e.g. album).
+): Promise<{ items: PhotoDTO[]; total: number }> {
   const params = new URLSearchParams(extra);
   params.set("limit", String(limit));
-  if (cursor) params.set("cursor", cursor);
+  params.set("offset", String(offset));
   const res = await fetch(`${endpoint}?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to load photos");
   return res.json();
 }
 
 /**
- * Cursor-paginated photo loading for one endpoint. Fetches the first page on
- * mount; callers drive subsequent pages via `loadMore` (e.g. when the grid
- * scrolls near the end). `params` carries extra query params (e.g. search
- * filters) on every request. State resets only on remount — album and search
- * views remount the grid via a `key` when the scope/filter changes.
+ * Offset-paginated, randomly-addressable photo loading for one endpoint. Holds a
+ * sparse page store sized to `total`; `ensureRange` fetches whichever pages cover
+ * the requested absolute-index span (deduped via an in-flight set). State resets
+ * only on remount — album/search views remount via a `key` when scope changes.
  */
 export function usePhotoPages(endpoint: string, params?: URLSearchParams, pageSize = 50) {
-  const [photos, setPhotos] = useState<PhotoDTO[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [store, setStore] = useState<PageStore<PhotoDTO>>(() =>
+    createPageStore<PhotoDTO>(pageSize, MAX_PAGES),
+  );
   const [error, setError] = useState(false);
-  const loadingRef = useRef(false);
+  const inFlight = useRef<Set<number>>(new Set());
+  const lastRange = useRef<[number, number]>([0, 0]);
 
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current || done) return;
-    loadingRef.current = true;
-    setError(false);
-    try {
-      const page = await fetchPage(endpoint, cursor, pageSize, params);
-      setPhotos((prev) => [...prev, ...page.items]);
-      setCursor(page.nextCursor);
-      if (!page.nextCursor) setDone(true);
-    } catch {
-      setError(true);
-    } finally {
-      loadingRef.current = false;
-    }
-  }, [endpoint, cursor, done, params, pageSize]);
+  const ensureRange = useCallback(
+    (startIndex: number, endIndex: number) => {
+      lastRange.current = [startIndex, endIndex];
+      const needed = pageIndicesForRange(startIndex, endIndex, pageSize).filter(
+        (p) => !store.pages.has(p) && !inFlight.current.has(p),
+      );
+      for (const p of needed) {
+        inFlight.current.add(p);
+        fetchPage(endpoint, p * pageSize, pageSize, params)
+          .then((page) => {
+            setStore((prev) => setPage(prev, p, page.items, page.total));
+            setError(false);
+          })
+          .catch(() => setError(true))
+          .finally(() => {
+            inFlight.current.delete(p);
+          });
+      }
+    },
+    [endpoint, params, pageSize, store.pages],
+  );
 
-  const patchPhotos = useCallback((ids: Set<string>, patch: Partial<PhotoDTO>) => {
-    setPhotos((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, ...patch } : p)));
-  }, []);
-
-  const removePhotos = useCallback((ids: Set<string>) => {
-    setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
-  }, []);
-
+  // First page (also yields total). Re-runs harmlessly on store changes — page 0
+  // is then already loaded, so it is a no-op.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadMore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    ensureRange(0, 0);
+  }, [ensureRange]);
 
-  return { photos, done, error, loadMore, patchPhotos, removePhotos };
+  const photoAt = useCallback((index: number) => photoAtOf(store, index), [store]);
+  const getLoadedIds = useCallback(() => loadedIdsOf(store), [store]);
+  const patchPhotos = useCallback(
+    (ids: Set<string>, patch: Partial<PhotoDTO>) => setStore((prev) => patchPages(prev, ids, patch)),
+    [],
+  );
+  const removePhotos = useCallback(
+    (ids: Set<string>) => setStore((prev) => removeIds(prev, ids)),
+    [],
+  );
+  const retry = useCallback(() => {
+    setError(false);
+    const [s, e] = lastRange.current;
+    ensureRange(s, e);
+  }, [ensureRange]);
+
+  return { total: store.total, photoAt, getLoadedIds, ensureRange, patchPhotos, removePhotos, error, retry };
 }
