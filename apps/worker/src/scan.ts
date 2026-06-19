@@ -90,8 +90,13 @@ export async function scanAndIngest(): Promise<ScanSummary> {
   const toDelete = new Set(reconcileDeletions(existing.map((p) => p.path), onDisk));
   const deleteRows = existing.filter((p) => toDelete.has(p.path));
   await runPool(deleteRows.length, INGEST_CONCURRENCY, async (i) => {
-    await removePath(deleteRows[i]!.path, removeDeps);
-    summary.removed++;
+    const row = deleteRows[i]!;
+    try {
+      await removePath(row.path, removeDeps);
+      summary.removed++;
+    } catch (err) {
+      console.warn(`remove failed ${row.path}: ${(err as Error).message}`);
+    }
   });
 
   return summary;
