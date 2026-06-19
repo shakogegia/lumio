@@ -77,7 +77,7 @@ function fakeCountDb(total: number) {
 describe("countSearchPhotos", () => {
   it("counts with the same where as searchPhotos (album + q)", async () => {
     const db = fakeCountDb(42);
-    const total = await countSearchPhotos({ limit: 50, album: ["alb1"], q: "beach" }, db as never);
+    const total = await countSearchPhotos({ limit: 50, offset: 0, album: ["alb1"], q: "beach" }, db as never);
     expect(total).toBe(42);
     expect(db.calls[0]?.where).toEqual({
       AND: [
@@ -89,7 +89,7 @@ describe("countSearchPhotos", () => {
 
   it("uses an empty where when there are no filters", async () => {
     const db = fakeCountDb(0);
-    const total = await countSearchPhotos({ limit: 50, album: [] }, db as never);
+    const total = await countSearchPhotos({ limit: 50, offset: 0, album: [] }, db as never);
     expect(total).toBe(0);
     expect(db.calls[0]?.where).toEqual({});
   });
