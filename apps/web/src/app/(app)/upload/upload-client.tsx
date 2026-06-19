@@ -291,7 +291,6 @@ export function UploadClient() {
             summary={summary}
             unsupportedCount={unsupportedCount}
             onRetryFailed={() => retryRows(rows.filter((r) => r.status === "error"))}
-            onViewLibrary={() => router.push("/photos")}
           />
         ) : unsupportedCount > 0 ? (
           <p className="text-sm text-muted-foreground">
