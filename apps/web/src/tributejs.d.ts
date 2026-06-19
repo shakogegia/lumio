@@ -13,6 +13,8 @@ declare module "tributejs" {
     lookup?: string | ((item: T, text: string) => string);
     fillAttr?: string;
     allowSpaces?: boolean;
+    /** Text appended after an inserted item; defaults to a non-breaking space. */
+    replaceTextSuffix?: string;
     selectTemplate?: (item: TributeItem<T> | undefined) => string;
     menuItemTemplate?: (item: TributeItem<T>) => string;
     noMatchTemplate?: () => string;

@@ -103,7 +103,7 @@ export function RecentSearches({
                 {filters.albums.map((id) => (
                   <span
                     key={id}
-                    className="rounded-full border border-border bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+                    className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground"
                   >
                     <span className="text-muted-foreground">Album:</span>{" "}
                     {albumNames.get(id) ?? "…"}

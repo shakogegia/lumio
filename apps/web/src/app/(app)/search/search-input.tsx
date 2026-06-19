@@ -25,7 +25,7 @@ function chipHtml(item: TributeFacetItem): string {
   const label = escapeHtml(item.label);
   return (
     `<span contenteditable="false" data-facet="${facet}" data-value="${value}" ` +
-    `class="mx-0.5 inline-flex items-center gap-1 rounded-full border border-border bg-accent px-2 py-0.5 align-middle text-sm text-accent-foreground">` +
+    `class="mx-0.5 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 align-middle text-sm text-foreground">` +
     `<span class="text-muted-foreground">${prefix}:</span>${label}` +
     `<button type="button" data-chip-remove tabindex="-1" class="ml-0.5 leading-none text-muted-foreground hover:text-foreground">×</button>` +
     `</span>&nbsp;`
@@ -53,6 +53,47 @@ function readEditor(el: HTMLElement): SearchFilters {
 
 function isEditorEmpty(el: HTMLElement): boolean {
   return el.textContent?.trim() === "" && el.querySelector("[data-facet]") === null;
+}
+
+function isChip(node: Node | null): node is HTMLElement {
+  return (
+    !!node &&
+    node.nodeType === Node.ELEMENT_NODE &&
+    (node as HTMLElement).hasAttribute("data-facet")
+  );
+}
+
+/** Whitespace-only text node — the `&nbsp;` glue chipHtml appends after a chip. */
+function isGlue(node: Node | null): boolean {
+  return !!node && node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim() === "";
+}
+
+/**
+ * The chip adjacent to a collapsed caret in the delete direction, or null.
+ * contenteditable won't delete a `contenteditable="false"` chip on its own, so
+ * Backspace/Delete next to one is handled manually. Glue nodes are hopped over.
+ */
+function adjacentChip(range: Range, dir: "back" | "forward"): HTMLElement | null {
+  const { startContainer, startOffset } = range;
+  let node: Node | null;
+
+  if (startContainer.nodeType === Node.TEXT_NODE) {
+    const len = (startContainer.textContent ?? "").length;
+    const onlyGlue = isGlue(startContainer);
+    if (dir === "back") {
+      if (startOffset > 0 && !onlyGlue) return null; // a real char precedes the caret
+      node = startContainer.previousSibling;
+    } else {
+      if (startOffset < len && !onlyGlue) return null;
+      node = startContainer.nextSibling;
+    }
+  } else {
+    const kids = startContainer.childNodes;
+    node = dir === "back" ? (kids[startOffset - 1] ?? null) : (kids[startOffset] ?? null);
+  }
+
+  while (isGlue(node)) node = dir === "back" ? node!.previousSibling : node!.nextSibling;
+  return isChip(node) ? node : null;
 }
 
 /** Imperative handle so a parent can repopulate the box (e.g. re-run a recent search). */
@@ -152,6 +193,9 @@ export function SearchInput({
         allowSpaces: true,
         lookup: "label",
         fillAttr: "label",
+        // chipHtml already ends with one trailing space; suppress Tribute's own
+        // default \xA0 suffix so a selected chip isn't followed by two spaces.
+        replaceTextSuffix: "",
         values: (_text, cb) => {
           loadAllOptions()
             .then((opts) => cb(opts))
@@ -206,13 +250,32 @@ export function SearchInput({
       e.preventDefault();
       return;
     }
-    // contenteditable won't delete a non-collapsed selection that spans
-    // non-editable chips (e.g. Cmd/Ctrl+A then Delete), so do it ourselves.
     if (e.key === "Backspace" || e.key === "Delete") {
+      const editor = editorRef.current;
       const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      if (!editor || !sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+
+      if (!sel.isCollapsed) {
+        // contenteditable won't reliably delete a selection spanning non-editable
+        // chips (e.g. Cmd/Ctrl+A then Delete). Remove the selected chips ourselves,
+        // then delete the rest of the range.
         e.preventDefault();
-        sel.getRangeAt(0).deleteContents();
+        const selectedChips = Array.from(
+          editor.querySelectorAll<HTMLElement>("[data-facet]"),
+        ).filter((chip) => range.intersectsNode(chip));
+        range.deleteContents();
+        selectedChips.forEach((chip) => chip.remove()); // remove any that survived
+        emitNow();
+        return;
+      }
+
+      // Collapsed caret next to a chip: delete the chip (and its trailing glue).
+      const chip = adjacentChip(range, e.key === "Backspace" ? "back" : "forward");
+      if (chip) {
+        e.preventDefault();
+        if (isGlue(chip.nextSibling)) chip.nextSibling!.remove();
+        chip.remove();
         emitNow();
       }
     }

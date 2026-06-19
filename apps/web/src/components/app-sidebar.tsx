@@ -16,8 +16,8 @@ type NavItem = {
 };
 
 const PRIMARY: NavItem[] = [
-  { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
+  { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
