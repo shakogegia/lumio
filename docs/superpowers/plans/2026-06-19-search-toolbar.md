@@ -468,6 +468,243 @@ State plainly which checklist items passed and surface any that failed with the 
 
 ---
 
+## Task 4: Result count in the toolbar's title slot
+
+Show the total photos matching the current search in the toolbar's left slot
+(normal mode). Needs a backend count (search has no total). Backend gets a unit
+test (this repo tests services); the client hook does not (repo has no
+fetch-mocking/hook-fetch test harness — consistent with `usePhotoPages` etc.).
+
+**Files:**
+- Modify: `packages/shared/src/api.ts` (add `SearchCount` type)
+- Modify: `apps/web/src/lib/search-service.ts` (add `countSearchPhotos`)
+- Test: `apps/web/src/lib/search-service.test.ts` (add `countSearchPhotos` cases)
+- Modify: `apps/web/src/app/api/search/route.ts` (add `count=1` branch)
+- Create: `apps/web/src/app/(app)/search/use-search-count.ts`
+- Modify: `apps/web/src/app/(app)/search/search-view.tsx`
+
+- [ ] **Step 1: Add the `SearchCount` type to shared**
+
+In `packages/shared/src/api.ts`, immediately after the `export type SearchQuery = ...` line, add:
+
+```ts
+/** Response for GET /api/search?count=1 — total photos matching the filters. */
+export interface SearchCount {
+  total: number;
+}
+```
+
+- [ ] **Step 2: Write the failing test for `countSearchPhotos`**
+
+In `apps/web/src/lib/search-service.test.ts`, add these cases (a `count`-mocking db; mirrors the existing `fakeDb` style). Append after the existing `describe("searchPhotos", ...)` block, and add the import at the top:
+
+Change the import line:
+```ts
+import { searchPhotos } from "./search-service.js";
+```
+to:
+```ts
+import { countSearchPhotos, searchPhotos } from "./search-service.js";
+```
+
+Append:
+```ts
+function fakeCountDb(total: number) {
+  const calls: Array<{ where?: unknown }> = [];
+  return {
+    calls,
+    photo: {
+      count: async (args: { where?: unknown }) => {
+        calls.push(args);
+        return total;
+      },
+    },
+  };
+}
+
+describe("countSearchPhotos", () => {
+  it("counts with the same where as searchPhotos (album + q)", async () => {
+    const db = fakeCountDb(42);
+    const total = await countSearchPhotos({ limit: 50, album: ["alb1"], q: "beach" }, db as never);
+    expect(total).toBe(42);
+    expect(db.calls[0]?.where).toEqual({
+      AND: [
+        { albums: { some: { albumId: { in: ["alb1"] } } } },
+        { path: { contains: "beach", mode: "insensitive" } },
+      ],
+    });
+  });
+
+  it("uses an empty where when there are no filters", async () => {
+    const db = fakeCountDb(0);
+    const total = await countSearchPhotos({ limit: 50, album: [] }, db as never);
+    expect(total).toBe(0);
+    expect(db.calls[0]?.where).toEqual({});
+  });
+});
+```
+
+- [ ] **Step 3: Run the test to verify it fails**
+
+Run: `pnpm --filter @lumio/web test -- search-service`
+Expected: FAIL — `countSearchPhotos` is not exported yet.
+
+- [ ] **Step 4: Implement `countSearchPhotos`**
+
+In `apps/web/src/lib/search-service.ts`, append after `searchPhotos`:
+
+```ts
+/**
+ * Count photos matching the search filters — same `where` as `searchPhotos`,
+ * minus pagination. Powers the result count shown in the search toolbar.
+ */
+export async function countSearchPhotos(params: SearchQuery, db: Db = prisma): Promise<number> {
+  return db.photo.count({ where: buildSearchWhere(params) });
+}
+```
+
+(`buildSearchWhere`, `SearchQuery`, `prisma`, and the `Db` type are already imported/defined in this file.)
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+Run: `pnpm --filter @lumio/web test -- search-service`
+Expected: PASS — all `searchPhotos` and `countSearchPhotos` cases green.
+
+- [ ] **Step 6: Add the `count=1` branch to the search route**
+
+In `apps/web/src/app/api/search/route.ts`, update the import and add the branch.
+
+Change:
+```ts
+import { searchPhotos } from "@/lib/search-service";
+```
+to:
+```ts
+import { countSearchPhotos, searchPhotos } from "@/lib/search-service";
+```
+
+Then, right after the `if (!parsed.success) { ... }` block and before `const page = await searchPhotos(parsed.data);`, insert:
+```ts
+  // Lightweight count mode for the search toolbar: same filters, no pagination.
+  if (searchParams.get("count")) {
+    const total = await countSearchPhotos(parsed.data);
+    return NextResponse.json({ total });
+  }
+```
+
+- [ ] **Step 7: Create the `useSearchCount` hook**
+
+Create `apps/web/src/app/(app)/search/use-search-count.ts`:
+
+```ts
+"use client";
+
+import { useEffect, useState } from "react";
+import type { SearchCount } from "@lumio/shared";
+import { type SearchFilters, paramsFor, serialize } from "./filters";
+
+/**
+ * Total photos matching the current search filters, for the toolbar count.
+ * Fetches `GET /api/search?count=1` when the (serialized) filters change —
+ * sort-independent, so it never refetches on a sort change. Returns `null`
+ * while loading, when disabled, or on error. Exposes the setter so the view
+ * can keep the count in sync with in-place tile removal (e.g. after a delete).
+ */
+export function useSearchCount(filters: SearchFilters, enabled: boolean) {
+  const [count, setCount] = useState<number | null>(null);
+  const serialized = serialize(filters);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCount(null);
+      return;
+    }
+    let cancelled = false;
+    setCount(null);
+    const params = paramsFor(filters);
+    params.set("count", "1");
+    fetch(`/api/search?${params.toString()}`)
+      .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error())))
+      .then((data) => {
+        if (!cancelled) setCount(data.total);
+      })
+      .catch(() => {
+        if (!cancelled) setCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // `serialized` is the stable identity of `filters`; refetch only when it
+    // changes (or `enabled` flips). `filters`/`paramsFor` are intentionally
+    // excluded — they'd refetch every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialized, enabled]);
+
+  return [count, setCount] as const;
+}
+```
+
+- [ ] **Step 8: Wire the count into `search-view.tsx`**
+
+Add the import (near the other `./` imports):
+```ts
+import { useSearchCount } from "./use-search-count";
+```
+
+Add the hook call right after `const empty = isEmptyFilters(filters);`:
+```ts
+  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
+```
+
+In the toolbar's left slot, replace the normal-mode placeholder. Change:
+```tsx
+                {sel.selectMode ? (
+                  <span className="text-sm font-medium">
+                    {sel.count > 0 ? `${sel.count} selected` : "Select photos"}
+                  </span>
+                ) : (
+                  <span />
+                )}
+```
+to:
+```tsx
+                {sel.selectMode ? (
+                  <span className="text-sm font-medium">
+                    {sel.count > 0 ? `${sel.count} selected` : "Select photos"}
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {searchCount !== null
+                      ? `${searchCount.toLocaleString()} ${searchCount === 1 ? "photo" : "photos"}`
+                      : null}
+                  </span>
+                )}
+```
+
+In `handleDelete`, after `gridRef.current?.removePhotos(ids);`, keep the count in sync — add:
+```tsx
+      // Keep the toolbar count consistent with the tiles we just removed.
+      setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.size)));
+```
+(Place it right after `gridRef.current?.removePhotos(ids);` and before `sel.cancel();`.)
+
+- [ ] **Step 9: Lint + typecheck + tests**
+
+Run from repo root:
+```bash
+pnpm --filter @lumio/web lint
+pnpm --filter @lumio/web exec tsc --noEmit
+pnpm --filter @lumio/web test
+```
+Also build the shared package if needed so the new `SearchCount` type resolves: if `tsc` errors on the `@lumio/shared` import, run `pnpm --filter @lumio/shared build` first, then re-run. Expected: lint clean, no type errors, all tests pass (including the 2 new count cases).
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add -A
+git commit -m "feat(web): show matching-photo count in the search toolbar"
+```
+
 ## Self-Review Notes
 
 - **Spec coverage:** Layout/results-row toolbar → Task 2. Normal-mode controls + select-mode actions → Task 2. Component move + 3 import sites → Task 1. Selection/view wiring into `PhotoGrid` → Task 2. Query-change reset effect → Task 2 (Step 1, the `useEffect`). Verification (suite green + lint + build + browser) → Tasks 1–3. Out-of-scope items (`SelectionToolbar` move, query/endpoint changes, "remove from album") are correctly untouched.

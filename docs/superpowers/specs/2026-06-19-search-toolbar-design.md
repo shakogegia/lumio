@@ -142,6 +142,28 @@ selection to clear.)
 - Any change to the search query/endpoint, recent searches, or the empty state.
 - "Remove from album" (that's album-detail-only and irrelevant to search).
 
+## Addendum (2026-06-19): result count in the toolbar's title slot
+
+The toolbar's left slot (the "title" position) shows the total number of photos
+matching the current search — e.g. **"1,234 photos"** ("1 photo" singular) — in
+normal mode. Select mode keeps **"N selected"** there.
+
+Search uses keyset-cursor pagination and exposes no total, and the grid only
+knows how many it has loaded so far. So a true total needs a dedicated count:
+
+- `GET /api/search?count=1` returns `{ total }` — a `prisma.photo.count` over the
+  same `buildSearchWhere(params)` — instead of a page of items. The `count`
+  param is read directly in the route (zod strips it from the parsed query).
+- `countSearchPhotos(params, db)` in `search-service.ts`, mirroring `searchPhotos`'s
+  `where`.
+- `SearchCount` type (`{ total: number }`) in `@lumio/shared`.
+- `useSearchCount(filters, enabled)` hook in the search folder: fetches the count
+  when the serialized filters change (sort-independent — uses `paramsFor(filters)`
+  with no sort), returns `[count, setCount]` (`null` while loading / when disabled).
+- `search-view.tsx` renders the count in the left slot, and decrements it via
+  `setCount` after a delete so it stays consistent with the in-place tile removal
+  (download/label don't change the match count).
+
 ## Testing / verification
 
 - Existing tests must still pass after the component move (import paths updated).
