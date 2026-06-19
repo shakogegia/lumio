@@ -55,6 +55,7 @@ export function TwoFactorEnable() {
       const { error } = await authClient.twoFactor.verifyTotp({ code });
       if (error) {
         setError(error.message ?? "That code didn’t work. Try again.");
+        setCode("");
         return;
       }
       // twoFactorEnabled is now true; re-render the server component to swap to
@@ -126,6 +127,7 @@ export function TwoFactorEnable() {
             id="tf-verify-code"
             inputMode="numeric"
             autoComplete="one-time-code"
+            maxLength={6}
             placeholder="123456"
             value={code}
             onChange={(e) => setCode(e.target.value)}
