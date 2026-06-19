@@ -32,6 +32,7 @@ model Photo {
   width      Int
   height     Int
   hash       String?
+  thumbhash  String?
   exif       Json
   colorLabel ColorLabel?
   createdAt  DateTime     @default(now())
@@ -72,6 +73,7 @@ model TrashedPhoto {
   width        Int
   height       Int
   hash         String?
+  thumbhash    String?
   exif         Json
   colorLabel   ColorLabel?
   albumIds     String[]
