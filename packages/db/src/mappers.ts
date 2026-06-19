@@ -1,6 +1,7 @@
 import type { Album, Photo } from "@prisma/client";
 import {
   type AlbumDTO,
+  type ColorLabel,
   type ExifData,
   PhotoSource,
   type PhotoDTO,
@@ -17,6 +18,7 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     height: row.height,
     hash: row.hash,
     exif: (row.exif ?? {}) as ExifData,
+    colorLabel: row.colorLabel as ColorLabel | null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

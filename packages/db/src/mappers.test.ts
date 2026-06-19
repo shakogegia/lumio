@@ -14,6 +14,7 @@ describe("toPhotoDTO", () => {
       height: 600,
       hash: "abc",
       exif: { cameraMake: "Lumio" },
+      colorLabel: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-02T00:00:00.000Z"),
     };
@@ -38,6 +39,7 @@ describe("toPhotoDTO", () => {
       height: 1,
       hash: null,
       exif: {},
+      colorLabel: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-01T00:00:00.000Z"),
     });
