@@ -1,40 +1,56 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { collectFiles, partitionSupported } from "@/lib/upload-collect";
-
-type RowStatus = "queued" | "uploading" | "added" | "duplicate" | "unsupported" | "error";
-
-interface Row {
-  id: number;
-  name: string;
-  status: RowStatus;
-  message?: string;
-}
+import { toast } from "sonner";
+import { Download } from "lucide-react";
+import type { ColorLabel } from "@lumio/shared";
+import { Button } from "@/components/ui/button";
+import { HeaderBar } from "@/components/header-bar";
+import { GridViewMenu } from "@/components/grid-view-menu";
+import { GridSizeMenu } from "@/components/grid-size-menu";
+import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
+import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
+import { useGridSelection } from "@/lib/use-grid-selection";
+import { useGridColumns } from "@/lib/use-grid-columns";
+import { useGridView } from "@/lib/use-grid-view";
+import { downloadSelection } from "@/lib/download-client";
+import { partitionSupported } from "@/lib/upload-collect";
+import { isPreviewable } from "@/lib/upload-preview";
+import { selectableIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
+import { SelectionToolbar } from "../photos/selection-toolbar";
+import { UploadDropzone } from "./upload-dropzone";
+import { UploadCommandBar } from "./upload-command-bar";
+import { UploadTile } from "./upload-tile";
 
 const CONCURRENCY = 3;
-
-const LABEL: Record<RowStatus, string> = {
-  queued: "Queued",
-  uploading: "Uploading…",
-  added: "Added",
-  duplicate: "Already in library",
-  unsupported: "Unsupported format",
-  error: "Failed",
-};
-
 let nextRowId = 1;
+
+type UploadResponse = { status: RowStatus | "unsupported"; id?: string; message?: string };
 
 export function UploadClient() {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
+  const sel = useGridSelection();
+  const { columns, setColumns } = useGridColumns();
+  const { mode, setMode } = useGridView();
+  const { confirm, confirmDialog } = useConfirm();
+
   const [rows, setRows] = useState<Row[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const [skipped, setSkipped] = useState(0);
+  const [unsupportedCount, setUnsupportedCount] = useState(0);
+  const [albumOpen, setAlbumOpen] = useState(false);
+  const [labelPending, setLabelPending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  // Revoke any object URLs we created when the component unmounts.
+  const urlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const urls = urlsRef.current;
+    return () => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -42,14 +58,19 @@ export function UploadClient() {
 
   const uploadOne = useCallback(
     async (file: File, rowId: number) => {
-      update(rowId, { status: "uploading" });
+      update(rowId, { status: "uploading", message: undefined });
       const body = new FormData();
       body.set("file", file);
       body.set("lastModified", String(file.lastModified));
       try {
         const res = await fetch("/api/uploads", { method: "POST", body });
-        const data: { status: RowStatus; message?: string } = await res.json();
-        update(rowId, { status: data.status, message: data.message });
+        const data: UploadResponse = await res.json();
+        if (data.status === "unsupported") {
+          // Pre-filtered client-side; a late unsupported is treated as a failure.
+          update(rowId, { status: "error", message: "Unsupported format" });
+          return;
+        }
+        update(rowId, { status: data.status, message: data.message, photoId: data.id });
       } catch (err) {
         update(rowId, { status: "error", message: (err as Error).message });
       }
@@ -57,22 +78,10 @@ export function UploadClient() {
     [update],
   );
 
-  const addFiles = useCallback(
-    async (incoming: File[]) => {
-      const { supported: files, skipped: nSkipped } = partitionSupported(incoming);
-      // Accumulate across drops to mirror the rows list, which also accumulates.
-      if (nSkipped > 0) setSkipped((n) => n + nSkipped);
-      if (files.length === 0) return;
-      const queued: Array<{ file: File; rowId: number }> = files.map((file) => {
-        const rowId = nextRowId++;
-        return { file, rowId };
-      });
-      setRows((prev) => [
-        ...queued.map(({ file, rowId }) => ({ id: rowId, name: file.name, status: "queued" as const })),
-        ...prev,
-      ]);
-
-      // Bounded-concurrency worker pool.
+  // Bounded-concurrency worker pool shared by initial uploads and retries.
+  const runPool = useCallback(
+    async (queued: Array<{ file: File; rowId: number }>) => {
+      if (queued.length === 0) return;
       let cursor = 0;
       async function worker() {
         while (cursor < queued.length) {
@@ -86,97 +95,238 @@ export function UploadClient() {
     [router, uploadOne],
   );
 
+  const addFiles = useCallback(
+    async (incoming: File[]) => {
+      const { supported, skipped } = partitionSupported(incoming);
+      if (skipped > 0) setUnsupportedCount((n) => n + skipped);
+      if (supported.length === 0) return;
+      const queued = supported.map((file) => {
+        const rowId = nextRowId++;
+        let previewUrl: string | undefined;
+        if (isPreviewable(file.name)) {
+          previewUrl = URL.createObjectURL(file);
+          urlsRef.current.add(previewUrl);
+        }
+        return { file, rowId, previewUrl };
+      });
+      setRows((prev) => [
+        ...queued.map(({ file, rowId, previewUrl }) => ({
+          id: rowId,
+          file,
+          name: file.name,
+          status: "queued" as const,
+          previewUrl,
+        })),
+        ...prev,
+      ]);
+      await runPool(queued.map(({ file, rowId }) => ({ file, rowId })));
+    },
+    [runPool],
+  );
+
+  const retryRows = useCallback(
+    (targets: Row[]) => {
+      void runPool(targets.map((r) => ({ file: r.file, rowId: r.id })));
+    },
+    [runPool],
+  );
+
+  const applyLabel = useCallback(
+    async (label: ColorLabel | null) => {
+      if (labelPending || sel.selected.size === 0) return;
+      setLabelPending(true);
+      try {
+        const res = await fetch("/api/photos/color-label", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoIds: [...sel.selected], label }),
+        });
+        if (!res.ok) throw new Error("label failed");
+        toast.success("Label applied.");
+        sel.clear();
+      } catch {
+        toast.error("Failed to apply label.");
+      } finally {
+        setLabelPending(false);
+      }
+    },
+    [labelPending, sel],
+  );
+
+  const handleDownload = useCallback(async () => {
+    if (downloading || sel.selected.size === 0) return;
+    setDownloading(true);
+    try {
+      await downloadSelection([...sel.selected]);
+      sel.clear();
+    } catch {
+      toast.error("Failed to download photos.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloading, sel]);
+
+  const handleDelete = useCallback(async () => {
+    const selectedIds = sel.selected;
+    if (selectedIds.size === 0 || deleting) return;
+    const label = `${selectedIds.size} ${selectedIds.size === 1 ? "photo" : "photos"}`;
+    const ok = await confirm({
+      title: `Move ${label} to Trash?`,
+      description: "They'll be moved to Trash. You can restore them later.",
+      confirmLabel: "Move to Trash",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/photos/trash", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      if (!res.ok) throw new Error("trash failed");
+      setRows((prev) =>
+        prev.filter((r) => {
+          const remove = Boolean(r.photoId && selectedIds.has(r.photoId));
+          if (remove && r.previewUrl) {
+            URL.revokeObjectURL(r.previewUrl);
+            urlsRef.current.delete(r.previewUrl);
+          }
+          return !remove;
+        }),
+      );
+      sel.cancel();
+      router.refresh();
+    } catch {
+      toast.error("Failed to move photos to Trash.");
+    } finally {
+      setDeleting(false);
+    }
+  }, [sel, deleting, confirm, router]);
+
+  const summary = summarizeRows(rows);
+  const ids = selectableIds(rows);
+  const hasRows = rows.length > 0;
+
   return (
-    <div className="space-y-6">
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          void collectFiles(e.dataTransfer).then(addFiles);
-        }}
-        className={cn(
-          "flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-16 transition-colors",
-          dragging ? "border-foreground bg-muted" : "border-border hover:bg-muted/50",
-        )}
-      >
-        <UploadCloud className="h-10 w-10 text-muted-foreground" strokeWidth={1.6} aria-hidden />
-        <span className="text-sm text-muted-foreground">
-          Drag photos or a folder here, or click to choose files
-        </span>
-      </button>
+    <>
+      {confirmDialog}
 
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept="image/*,.jxl,.heic,.heif"
-        className="hidden"
-        onChange={(e) => {
-          void addFiles(Array.from(e.target.files ?? []));
-          e.target.value = "";
-        }}
-      />
+      {sel.selectMode ? (
+        <SelectionToolbar
+          title="Select photos"
+          count={sel.count}
+          onCancel={sel.cancel}
+          actions={
+            <>
+              <ColorLabelMenu
+                disabled={sel.count === 0 || labelPending}
+                onPick={(l) => void applyLabel(l)}
+              />
+              <Button size="sm" disabled={sel.count === 0} onClick={() => setAlbumOpen(true)}>
+                Add to album
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={sel.count === 0 || downloading}
+                onClick={() => void handleDownload()}
+              >
+                <Download aria-hidden />
+                {downloading ? "Preparing…" : "Download"}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={sel.count === 0 || deleting}
+                onClick={() => void handleDelete()}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </Button>
+            </>
+          }
+        />
+      ) : (
+        <HeaderBar
+          title="Upload"
+          actions={
+            hasRows ? (
+              <>
+                <GridViewMenu mode={mode} onModeChange={setMode} />
+                <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={ids.length === 0}
+                  onClick={sel.enter}
+                >
+                  Select
+                </Button>
+              </>
+            ) : null
+          }
+        />
+      )}
 
-      {/* No `accept`: browsers ignore it with webkitdirectory — we filter via partitionSupported instead. */}
-      <input
-        ref={folderInputRef}
-        type="file"
-        {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          void addFiles(Array.from(e.target.files ?? []));
-          e.target.value = "";
-        }}
-      />
+      <div className="space-y-6 pt-2">
+        <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={() => folderInputRef.current?.click()}
-          className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Or upload a whole folder
-        </button>
+        {hasRows ? (
+          <UploadCommandBar
+            summary={summary}
+            unsupportedCount={unsupportedCount}
+            onRetryFailed={() => retryRows(rows.filter((r) => r.status === "error"))}
+            onViewLibrary={() => router.push("/photos")}
+          />
+        ) : unsupportedCount > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Skipped {unsupportedCount} unsupported file{unsupportedCount === 1 ? "" : "s"}.
+          </p>
+        ) : null}
+
+        {hasRows ? (
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+          >
+            {rows.map((row) => {
+              const selectable = Boolean(row.photoId);
+              const selected = Boolean(row.photoId && sel.selected.has(row.photoId));
+              return (
+                <UploadTile
+                  key={row.id}
+                  name={row.name}
+                  status={row.status}
+                  message={row.message}
+                  previewUrl={row.previewUrl}
+                  mode={mode}
+                  selectMode={sel.selectMode}
+                  selectable={selectable}
+                  selected={selected}
+                  onToggleSelect={() => {
+                    if (!row.photoId) return;
+                    const next = new Set(sel.selected);
+                    if (next.has(row.photoId)) next.delete(row.photoId);
+                    else next.add(row.photoId);
+                    sel.setSelected(next);
+                  }}
+                  onRetry={() => retryRows([row])}
+                />
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
-      {skipped > 0 && (
-        <p className="text-sm text-muted-foreground">
-          Skipped {skipped} unsupported file{skipped === 1 ? "" : "s"}.
-        </p>
-      )}
-
-      {rows.length > 0 && (
-        <ul className="divide-y divide-border rounded-2xl border border-border">
-          {rows.map((row) => (
-            <li key={row.id} className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
-              <span className="truncate font-mono">{row.name}</span>
-              <span
-                className={cn(
-                  "shrink-0",
-                  row.status === "added" && "text-foreground",
-                  (row.status === "error" || row.status === "unsupported") && "text-destructive",
-                  (row.status === "queued" ||
-                    row.status === "uploading" ||
-                    row.status === "duplicate") &&
-                    "text-muted-foreground",
-                )}
-              >
-                {row.message && (row.status === "error" || row.status === "unsupported")
-                  ? row.message
-                  : LABEL[row.status]}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      <AddToAlbumDialog
+        open={albumOpen}
+        onOpenChange={setAlbumOpen}
+        photoIds={[...sel.selected]}
+        onAdded={() => {
+          setAlbumOpen(false);
+          sel.clear();
+        }}
+      />
+    </>
   );
 }
