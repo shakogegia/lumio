@@ -5,7 +5,7 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { rowCount, GRID_GAP, DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
-import type { PhotoDTO } from "@lumio/shared";
+import type { PhotoDTO, PhotoSort } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import {
   Empty,
@@ -50,6 +50,7 @@ export function PhotoGrid({
   mode = "fill",
   columns: columnsProp = DEFAULT_COLUMNS,
   params,
+  sort,
   hrefFor,
   selectMode = false,
   selectedIds,
@@ -63,6 +64,9 @@ export function PhotoGrid({
   /** Number of columns (photos per row). Defaults to DEFAULT_COLUMNS. */
   columns?: number;
   params?: URLSearchParams;
+  /** Active sort, used for the default tile href so the detail view walks the
+   *  same order. The search view overrides hrefs via `hrefFor` instead. */
+  sort?: PhotoSort;
   /** Detail-route href for a tile; defaults to the album/library scope. The
    *  search view overrides it to carry the search filter (so the film strip
    *  navigates the results). */
@@ -194,6 +198,7 @@ export function PhotoGrid({
                   photo={photo}
                   mode={mode}
                   albumId={albumId}
+                  sort={sort}
                   hrefFor={hrefFor}
                   selectMode={selectMode}
                   isSelected={selectedIds?.has(photo.id) ?? false}
