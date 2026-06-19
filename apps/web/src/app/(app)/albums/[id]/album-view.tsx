@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Images } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -76,22 +77,21 @@ export function AlbumView({
     const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
     if (!confirm(`Move ${label} to Trash? This removes them from your whole library.`)) return;
     setDeleting(true);
-    setRemoveError(null);
     try {
       const res = await fetch("/api/photos/trash", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ids }),
       });
-      if (res.ok) {
-        sel.cancel();
-        setReloadKey((k) => k + 1);
-        router.refresh();
-      } else {
-        setRemoveError("Failed to move photos to Trash.");
-      }
+      if (!res.ok) throw new Error("trash failed");
+      sel.cancel();
+      setReloadKey((k) => k + 1);
+      router.refresh();
     } catch {
-      setRemoveError("Failed to move photos to Trash.");
+      // Delete is a whole-library op (not album membership), so surface its
+      // failure as a toast like the library view rather than the album's
+      // inline "remove from album" error slot.
+      toast.error("Failed to move photos to Trash.");
     } finally {
       setDeleting(false);
     }
