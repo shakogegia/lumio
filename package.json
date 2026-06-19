@@ -10,6 +10,7 @@
     "db:generate": "pnpm --filter @lumio/db generate",
     "ingest": "pnpm --filter @lumio/worker ingest",
     "watch": "pnpm --filter @lumio/worker watch",
+    "bench": "pnpm --filter @lumio/worker bench",
     "seed": "pnpm --filter @lumio/worker seed",
     "dev": "pnpm --filter @lumio/web dev",
     "test": "pnpm -r test"
