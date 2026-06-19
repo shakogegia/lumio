@@ -10,6 +10,8 @@ import { useGridView } from "@/lib/use-grid-view";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
+import { useGridSort } from "@/lib/use-grid-sort";
+import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
@@ -37,6 +39,7 @@ export function AlbumView({
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
+  const { sort, setSort } = useGridSort();
   const { confirm, confirmDialog } = useConfirm();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -155,6 +158,7 @@ export function AlbumView({
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+              <GridSortMenu sort={sort} onSortChange={setSort} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -169,11 +173,13 @@ export function AlbumView({
       )}
 
       <PhotoGrid
-        key={reloadKey}
+        key={`${reloadKey}:${sort}`}
         endpoint={`/api/albums/${albumId}/photos`}
         albumId={albumId}
         mode={mode}
         columns={columns}
+        sort={sort}
+        params={new URLSearchParams({ sort })}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}
