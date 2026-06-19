@@ -24,6 +24,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         src={`/api/thumbnails/${photo.id}`}
         alt={photo.path}
         loading="lazy"
+        decoding="async"
         width={w}
         height={h}
         // The element is sized to the cover rectangle (long edge overflows the
