@@ -6,6 +6,7 @@ import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
+import { SidebarAlbums } from "@/components/sidebar-albums";
 
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
@@ -57,9 +58,22 @@ export function AppSidebar() {
 
       {/* Primary nav — vertically centered in the rail */}
       <nav className="flex flex-1 flex-col items-center justify-center gap-1">
-        {PRIMARY.map((item) => (
-          <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
-        ))}
+        {/* Albums gets the hover flyout; the others are plain nav links */}
+        {PRIMARY.map((item) =>
+          item.href === "/albums" ? (
+            <SidebarAlbums
+              key={item.href}
+              item={item}
+              active={isActive(pathname, item)}
+            />
+          ) : (
+            <NavLink
+              key={item.href}
+              item={item}
+              active={isActive(pathname, item)}
+            />
+          ),
+        )}
       </nav>
 
       {/* Bottom group */}
