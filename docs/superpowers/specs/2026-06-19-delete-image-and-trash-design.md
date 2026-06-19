@@ -137,15 +137,15 @@ serve from `TRASH_DIR/thumbnails`. This lets the Trash grid reuse the existing
 ### Single delete — photo detail
 
 A **Delete** button in the detail sidebar (`apps/web/src/app/(app)/photo/[id]/photo-detail.tsx`),
-opening a confirm `Dialog` (the codebase uses `components/ui/dialog.tsx`, as in
-`AddToAlbumDialog`; there is no `alert-dialog`). On success → `router.back()`.
+gated by a `window.confirm` (matching the codebase's destructive-action pattern —
+`DeleteAlbumButton`, album remove-from-album). On success → `router.back()`.
 
 ### Bulk delete — grid selection
 
 Reuse the existing selection flow (`useGridSelection` + `SelectionToolbar`, already
 wired in `library-view.tsx` and `album-view.tsx`). Add a **Delete** action to the
-toolbar in both views, with a confirm Dialog showing the selected count. On success,
-`sel.cancel()` and `router.refresh()`.
+toolbar in both views, gated by a `window.confirm` showing the selected count. On
+success, remount the grid (`reloadKey`), `sel.cancel()`, and `router.refresh()`.
 
 ### Trash page
 
