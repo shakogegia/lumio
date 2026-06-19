@@ -55,12 +55,19 @@ dynamic = "force-dynamic"`.
 
 ### Layout
 
-Same shell as the Settings page for visual consistency:
+Same shell as the Settings page for visual consistency, with the two areas split
+into **tabs** (mirroring the Settings page's `Tabs`): an **Account** tab and a
+**Password** tab. The tab label serves as each section's heading (so the forms
+don't repeat an `<h2>`), matching the Settings convention.
 
 ```
 <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
   <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-  ...two sections...
+  <Tabs defaultValue="account">
+    <TabsList>Account · Password</TabsList>
+    <TabsContent value="account"><AccountForm/></TabsContent>
+    <TabsContent value="password"><PasswordForm/></TabsContent>
+  </Tabs>
 </main>
 ```
 
