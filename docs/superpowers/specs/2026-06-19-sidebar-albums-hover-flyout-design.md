@@ -34,11 +34,12 @@ state (route is `/albums` or `/albums/...`) is preserved. The only change is tha
 the hover trigger for the flyout.
 
 ### The flyout
-Opens on hover with `side="right"` and `align="start"`, `sideOffset={8}` — appearing to the right of
-the narrow rail, top-aligned near the Albums item (the More menu opens to the right too, but
-bottom-anchored with `align="end"`; Albums sits mid-rail so it anchors to its top). Snappy timing:
-`openDelay ≈ 120ms`, `closeDelay ≈ 100ms`. It closes on mouse-leave (Radix HoverCard default) and on
-selecting a row (navigation dismisses it).
+Opens on hover with `side="right"` and `align="center"`, `sideOffset={8}` — appearing to the right of
+the narrow rail, vertically centered on the Albums item (the More menu also opens to the right, but
+bottom-anchored with `align="end"`; Albums sits mid-rail, so centering it on the icon reads as
+balanced). Snappy timing: `openDelay ≈ 120ms`, `closeDelay ≈ 100ms`. It closes on mouse-leave (Radix
+HoverCard default) and on selecting a row (navigation dismisses it). Radix collision handling shifts
+the panel to stay in the viewport if a long list would otherwise overflow above/below.
 
 The panel is a card, roughly `w-64`, with a capped max-height (~360px) that scrolls when there are
 many albums. Each album is a `<Link href="/albums/{id}">` row containing, left to right:

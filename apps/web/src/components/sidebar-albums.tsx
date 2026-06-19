@@ -52,7 +52,7 @@ export function SidebarAlbums({
       </HoverCardTrigger>
       <HoverCardContent
         side="right"
-        align="start"
+        align="center"
         sideOffset={8}
         className="max-h-[360px] overflow-y-auto"
       >
