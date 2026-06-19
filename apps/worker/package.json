@@ -6,6 +6,7 @@
   "scripts": {
     "ingest": "dotenv -e ../../.env -- tsx src/main.ts",
     "watch": "dotenv -e ../../.env -- tsx src/watch-main.ts",
+    "seed": "dotenv -e ../../.env -- tsx src/seed.ts",
     "test": "TZ=UTC vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -13,7 +14,8 @@
     "@lumio/db": "workspace:*",
     "@lumio/ingest": "workspace:*",
     "@lumio/shared": "workspace:*",
-    "chokidar": "^5.0.0"
+    "chokidar": "^5.0.0",
+    "sharp": "^0.33"
   },
   "devDependencies": {
     "@types/node": "^22",
