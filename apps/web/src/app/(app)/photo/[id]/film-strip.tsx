@@ -60,13 +60,19 @@ export function FilmStrip({
 
   // Center the active thumbnail (scrolling only the strip, before paint to avoid
   // a visible jump), then resync the fade edges and the scrollbar to match.
+  // `bar.overflow` is a dependency on purpose: every mount starts out
+  // `justify-center` (overflow not yet measured), and the first sync() flips it
+  // to a left-aligned, scrollable row. Re-running after that flip re-centers
+  // against the final layout — without it, entering on a photo far along the
+  // strip leaves it off-screen, because the only run measured the centered,
+  // not-yet-scrollable layout.
   useLayoutEffect(() => {
     const c = viewportRef.current;
     const el = currentRef.current;
     if (!c || !el) return;
     c.scrollTo({ left: el.offsetLeft - c.clientWidth / 2 + el.clientWidth / 2 });
     sync();
-  }, [currentId, items.length, sync]);
+  }, [currentId, items.length, sync, bar.overflow]);
 
   // Keep the fade + scrollbar in sync when the viewport (and thus overflow) changes.
   useEffect(() => {
