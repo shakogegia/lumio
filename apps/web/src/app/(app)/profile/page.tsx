@@ -18,14 +18,24 @@ import { SessionsList, type SessionRow } from "./sessions-list";
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
+  // (app)/layout.tsx already redirects unauthenticated requests; we still fetch
+  // the session here for the user's name/email + sessions, and this null check
+  // narrows the type before reading session.user (belt-and-suspenders).
   const session = await getServerSession();
   if (!session) {
     redirect("/login");
   }
 
   // Fetch active sessions server-side and reduce to a serializable shape for the
-  // client list. listSessions returns the raw session rows for the current user.
-  const rawSessions = await auth.api.listSessions({ headers: await headers() });
+  // client list. listSessions can throw (e.g. the session went stale between the
+  // getSession read above and this call); degrade to an empty list rather than
+  // 500-ing the whole profile page.
+  let rawSessions: Awaited<ReturnType<typeof auth.api.listSessions>> = [];
+  try {
+    rawSessions = await auth.api.listSessions({ headers: await headers() });
+  } catch {
+    // Leave rawSessions empty — SessionsList renders nothing and the page still works.
+  }
   const sessions: SessionRow[] = rawSessions
     .map((s) => ({
       id: s.id,
