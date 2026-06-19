@@ -105,7 +105,14 @@ export function SearchInput({
     const remove = (e.target as HTMLElement).closest("[data-chip-remove]");
     if (!remove) return;
     e.preventDefault();
-    remove.closest("[data-facet]")?.remove();
+    const chip = remove.closest("[data-facet]");
+    // Drop the trailing space node chipHtml appended, so repeated add/remove
+    // doesn't accumulate stray whitespace text nodes.
+    const next = chip?.nextSibling;
+    if (next && next.nodeType === Node.TEXT_NODE && /^\s*$/.test(next.textContent ?? "")) {
+      next.remove();
+    }
+    chip?.remove();
   }
 
   return (

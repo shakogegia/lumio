@@ -1,4 +1,11 @@
-/** The structured search state the rest of the app consumes. */
+/**
+ * The structured search state the rest of the app consumes.
+ *
+ * NOTE: only the `album` facet is wired end-to-end today. Adding a new facet
+ * (e.g. camera) means: one entry in FACETS (menu + chip), PLUS wiring its value
+ * through readEditor → SearchFilters → paramsFor and the /api/search backend
+ * (each facet maps to a different filter, so this part is intentionally bespoke).
+ */
 export interface SearchFilters {
   albums: string[];
   q: string;

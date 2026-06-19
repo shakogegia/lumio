@@ -29,7 +29,7 @@ const albumFacet: SearchFacet = {
   label: "Album",
   loadOptions: async () => {
     const res = await fetch("/api/albums");
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`Failed to load albums: ${res.status}`);
     const data: { items: AlbumSummaryDTO[] } = await res.json();
     return data.items.map((a) => ({ value: a.id, label: a.name }));
   },
@@ -57,7 +57,12 @@ export function loadAllOptions(): Promise<TributeFacetItem[]> {
           })),
         ),
       ),
-    ).then((groups) => groups.flat());
+    )
+      .then((groups) => groups.flat())
+      .catch((err) => {
+        cache = null; // don't memoize a failure — allow retry on the next trigger
+        throw err;
+      });
   }
   return cache;
 }

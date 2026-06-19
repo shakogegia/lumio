@@ -10,7 +10,7 @@ describe("buildFilters", () => {
   });
 
   it("trims and normalizes the non-breaking spaces chips insert", () => {
-    expect(buildFilters([], " a b ")).toEqual({ albums: [], q: "a b" });
+    expect(buildFilters([], "\u00A0a\u00A0b\u00A0")).toEqual({ albums: [], q: "a b" });
   });
 });
 
