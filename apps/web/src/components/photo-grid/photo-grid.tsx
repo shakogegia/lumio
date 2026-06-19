@@ -39,6 +39,8 @@ const OVERSCAN_ROWS = 3;
 export type PhotoGridHandle = {
   /** Merge `patch` into every loaded photo whose id is in `ids` (e.g. a new colorLabel). */
   patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
+  /** Drop every loaded photo whose id is in `ids` (e.g. after moving to Trash). */
+  removePhotos: (ids: Set<string>) => void;
 };
 
 export function PhotoGrid({
@@ -68,8 +70,8 @@ export function PhotoGrid({
   /** Imperative handle for in-place photo updates (optimistic label tinting). */
   apiRef?: React.Ref<PhotoGridHandle>;
 }) {
-  const { photos, done, error, loadMore, patchPhotos } = usePhotoPages(endpoint, params);
-  useImperativeHandle(apiRef, () => ({ patchPhotos }), [patchPhotos]);
+  const { photos, done, error, loadMore, patchPhotos, removePhotos } = usePhotoPages(endpoint, params);
+  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);

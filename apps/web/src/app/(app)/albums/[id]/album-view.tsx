@@ -36,6 +36,7 @@ export function AlbumView({
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function handleCancel() {
     setRemoveError(null);
@@ -69,6 +70,33 @@ export function AlbumView({
     }
   }
 
+  async function handleDelete() {
+    const ids = [...sel.selected];
+    if (ids.length === 0 || deleting) return;
+    const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
+    if (!confirm(`Move ${label} to Trash? This removes them from your whole library.`)) return;
+    setDeleting(true);
+    setRemoveError(null);
+    try {
+      const res = await fetch("/api/photos/trash", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        sel.cancel();
+        setReloadKey((k) => k + 1);
+        router.refresh();
+      } else {
+        setRemoveError("Failed to move photos to Trash.");
+      }
+    } catch {
+      setRemoveError("Failed to move photos to Trash.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       {sel.selectMode ? (
@@ -91,6 +119,14 @@ export function AlbumView({
                   {removing ? "Removing…" : "Remove from album"}
                 </Button>
               )}
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={sel.count === 0 || deleting}
+                onClick={() => void handleDelete()}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </Button>
             </>
           }
         />

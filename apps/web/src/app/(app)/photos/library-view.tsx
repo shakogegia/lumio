@@ -19,6 +19,30 @@ export function LibraryView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const [labelPending, setLabelPending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    const ids = sel.selected;
+    if (ids.size === 0 || deleting) return;
+    const label = `${ids.size} ${ids.size === 1 ? "photo" : "photos"}`;
+    if (!confirm(`Move ${label} to Trash?`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/photos/trash", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: [...ids] }),
+      });
+      if (!res.ok) throw new Error("trash failed");
+      // Drop the tiles in place (no remount) and leave select mode.
+      gridRef.current?.removePhotos(ids);
+      sel.cancel();
+    } catch {
+      toast.error("Failed to move photos to Trash.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function applyLabel(label: ColorLabel | null) {
     if (labelPending) return;
@@ -56,6 +80,14 @@ export function LibraryView() {
               />
               <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
                 Add to album
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={sel.count === 0 || deleting}
+                onClick={() => void handleDelete()}
+              >
+                {deleting ? "Deleting…" : "Delete"}
               </Button>
             </>
           }
