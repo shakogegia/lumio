@@ -60,12 +60,14 @@ describe("toTrashedPhotoDTO", () => {
       height: 3,
       hash: null,
       exif: {},
+      colorLabel: "blue",
       albumIds: ["a1"],
       deletedAt: new Date("2026-06-19T00:00:00.000Z"),
     } as never);
     expect(dto.id).toBe("t1");
     expect(dto.path).toBe("2026/06-19/x.jpg");
     expect(dto.width).toBe(4);
+    expect(dto.colorLabel).toBe("blue");
     expect(dto.createdAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
   });

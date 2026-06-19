@@ -34,6 +34,7 @@ export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
     height: row.height,
     hash: row.hash,
     exif: (row.exif ?? {}) as ExifData,
+    colorLabel: row.colorLabel as ColorLabel | null,
     createdAt: row.deletedAt.toISOString(),
     updatedAt: row.deletedAt.toISOString(),
   };

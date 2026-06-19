@@ -72,6 +72,7 @@ model TrashedPhoto {
   height       Int
   hash         String?
   exif         Json
+  colorLabel   ColorLabel?
   albumIds     String[]
   deletedAt    DateTime    @default(now())
 
