@@ -133,10 +133,10 @@ export function FilmStrip({
                 prefetch={false}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  // bg-skeleton fills the fixed-size box while the lazy thumbnail
+                  // bg-muted fills the fixed-size box while the lazy thumbnail
                   // loads (off-screen ones load on scroll); the opaque image covers
                   // it on load, so the box never appears blank and never shifts.
-                  "block size-14 shrink-0 overflow-hidden rounded-xs bg-skeleton outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-primary",
+                  "block size-14 shrink-0 overflow-hidden rounded-xs bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-primary",
                   active ? "ring-2 ring-primary" : "opacity-80 hover:opacity-100",
                 )}
               >

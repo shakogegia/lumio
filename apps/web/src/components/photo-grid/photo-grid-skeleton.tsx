@@ -6,7 +6,7 @@ import { GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
 const SKELETON_TILES = 120;
 
 /**
- * Warm-grey placeholder shown until the first page loads. Pure CSS (auto-fill
+ * Muted-grey placeholder shown until the first page loads. Pure CSS (auto-fill
  * columns + square tiles) so it needs no measured width — it's in the server
  * HTML and paints on the first frame, even on a fast refresh before hydration.
  * auto-fill with the same MIN_TILE/GRID_GAP yields the same column count as the
@@ -23,7 +23,7 @@ export function PhotoGridSkeleton({ listRef }: { listRef: React.Ref<HTMLDivEleme
         }}
       >
         {Array.from({ length: SKELETON_TILES }).map((_, i) => (
-          <div key={i} className="aspect-square rounded-sm bg-skeleton" />
+          <div key={i} className="aspect-square rounded-sm bg-muted" />
         ))}
       </div>
     </div>
