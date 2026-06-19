@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { albumPhotosSchema, createAlbumSchema, smartRulesSchema } from "./albums.js";
+import { albumPhotosSchema, createAlbumSchema, deleteAlbumsSchema, smartRulesSchema } from "./albums.js";
 
 describe("smartRulesSchema", () => {
   it("parses last_30_days rule", () => {
@@ -92,5 +92,20 @@ describe("albumPhotosSchema", () => {
 
   it("rejects a photoIds entry that is an empty string", () => {
     expect(() => albumPhotosSchema.parse({ photoIds: [""] })).toThrow();
+  });
+});
+
+describe("deleteAlbumsSchema", () => {
+  it("accepts a non-empty ids array", () => {
+    const result = deleteAlbumsSchema.parse({ ids: ["a1", "a2"] });
+    expect(result.ids).toEqual(["a1", "a2"]);
+  });
+
+  it("rejects an empty ids array", () => {
+    expect(() => deleteAlbumsSchema.parse({ ids: [] })).toThrow();
+  });
+
+  it("rejects an ids entry that is an empty string", () => {
+    expect(() => deleteAlbumsSchema.parse({ ids: [""] })).toThrow();
   });
 });

@@ -129,7 +129,7 @@ export function NewAlbumDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>New album</Button>
+        <Button size="sm">New album</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

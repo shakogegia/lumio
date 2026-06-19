@@ -61,6 +61,17 @@ export async function deleteAlbum(id: string, db: Db = prisma): Promise<void> {
 }
 
 /**
+ * Bulk-delete albums by id. Tolerant of unknown ids (unlike single
+ * `deleteAlbum`, which throws). Works for smart and regular albums alike;
+ * cascades to `albumPhoto` membership rows exactly like the single delete.
+ * Returns the number of albums actually removed.
+ */
+export async function deleteAlbums(ids: string[], db: Db = prisma): Promise<number> {
+  const { count } = await db.album.deleteMany({ where: { id: { in: ids } } });
+  return count;
+}
+
+/**
  * Prisma `where` selecting the photos in an album's navigation scope: explicit
  * membership for a regular album, or the smart-album rule predicate for a smart
  * one. Returns null when the album does not exist.

@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  ALBUM_COLUMNS_STORAGE_KEY,
+  ALBUM_DEFAULT_COLUMNS,
   COLUMNS_MAX,
   COLUMNS_MIN,
   DEFAULT_COLUMNS,
@@ -13,13 +15,16 @@ import {
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
-// Runs before first paint: reads the persisted grid column count and sets the
-// --grid-columns CSS variable on <html>, so the server-rendered skeleton paints
-// at the chosen density instead of flashing the default and snapping after
-// hydration reads localStorage. (Same approach as the theme no-flash script.)
-const gridColumnsScript = `try{var v=localStorage.getItem(${JSON.stringify(
+// Runs before first paint: reads each persisted column count and sets the
+// matching CSS variable on <html>, so server-rendered grids (the photo-grid
+// skeleton's --grid-columns; the albums listing's --album-columns) paint at the
+// chosen density instead of flashing the default and snapping after hydration
+// reads localStorage. (Same approach as the theme no-flash script.)
+const gridColumnsScript = `try{function s(k,d,p){var v=localStorage.getItem(k);var n=v?parseInt(v,10):d;if(!(n>=${COLUMNS_MIN}&&n<=${COLUMNS_MAX}))n=d;document.documentElement.style.setProperty(p,n+'');}s(${JSON.stringify(
   GRID_COLUMNS_STORAGE_KEY,
-)});var n=v?parseInt(v,10):${DEFAULT_COLUMNS};if(!(n>=${COLUMNS_MIN}&&n<=${COLUMNS_MAX}))n=${DEFAULT_COLUMNS};document.documentElement.style.setProperty('--grid-columns',n+'');}catch(e){}`;
+)},${DEFAULT_COLUMNS},'--grid-columns');s(${JSON.stringify(
+  ALBUM_COLUMNS_STORAGE_KEY,
+)},${ALBUM_DEFAULT_COLUMNS},'--album-columns');}catch(e){}`;
 
 export const metadata: Metadata = {
   title: "Lumio",

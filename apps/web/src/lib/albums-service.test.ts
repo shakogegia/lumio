@@ -3,6 +3,7 @@ import {
   addPhotosToAlbum,
   albumPhotoWhere,
   AlbumNotFoundError,
+  deleteAlbums,
   listAlbumPhotos,
   listAlbumSummaries,
   removePhotosFromAlbum,
@@ -213,6 +214,23 @@ describe("removePhotosFromAlbum", () => {
     await expect(
       removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
     ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+});
+
+describe("deleteAlbums", () => {
+  it("deleteMany on the given ids and returns the removed count", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
+    const fakeDb = { album: { deleteMany }, albumPhoto: {}, photo: {} };
+    const count = await deleteAlbums(["a1", "s1"], fakeDb as never);
+    expect(count).toBe(2);
+    expect(deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["a1", "s1"] } } });
+  });
+
+  it("returns 0 when no ids match", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const fakeDb = { album: { deleteMany }, albumPhoto: {}, photo: {} };
+    const count = await deleteAlbums(["missing"], fakeDb as never);
+    expect(count).toBe(0);
   });
 });
 
