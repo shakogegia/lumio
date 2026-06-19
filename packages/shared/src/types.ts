@@ -58,10 +58,10 @@ export interface PhotoStripItem {
 
 /** Neighbors of a photo within a navigation scope (album or whole library). */
 export interface PhotoNeighbors {
-  /** Photo one position earlier in PHOTO_ORDER (the left arrow target); null at the start. */
+  /** Photo one position earlier in the active sort order (the left arrow target); null at the start. */
   prevId: string | null;
-  /** Photo one position later in PHOTO_ORDER (the right arrow target); null at the end. */
+  /** Photo one position later in the active sort order (the right arrow target); null at the end. */
   nextId: string | null;
-  /** A window of strip items in PHOTO_ORDER: [...before, current, ...after]. */
+  /** A window of strip items in the active sort order: [...before, current, ...after]. */
   strip: PhotoStripItem[];
 }
