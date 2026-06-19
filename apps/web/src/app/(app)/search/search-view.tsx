@@ -6,7 +6,7 @@ import { PhotoGrid } from "../photos/photo-grid";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
-import { type SearchFilters, paramsFor, serialize } from "./filters";
+import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 
@@ -60,8 +60,8 @@ export function SearchView() {
               active ? "max-h-0 opacity-0" : "mb-6 max-h-40 opacity-100",
             )}
           >
-            <h1 className="text-3xl font-semibold">Search your photos</h1>
-            <p className="mt-2 text-muted-foreground">Type @ to filter by album</p>
+            <h1 className="text-3xl font-semibold">Search library</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Type @ to filter by album</p>
           </div>
           <SearchInput
             ref={inputRef}
@@ -83,6 +83,7 @@ export function SearchView() {
               key={serialize(filters)}
               endpoint="/api/search"
               params={paramsFor(filters)}
+              hrefFor={(id) => `/photo/${id}?${scopeQuery(filters)}`}
               empty={<SearchEmpty />}
             />
           </div>

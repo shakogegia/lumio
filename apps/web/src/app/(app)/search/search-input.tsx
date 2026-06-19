@@ -303,7 +303,7 @@ export function SearchInput({
         // so the inner editable is content-height and the caret stays centered.
         "relative flex w-full items-center rounded-4xl border border-input bg-input/30 py-1.5 text-base transition-all duration-300",
         "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-        compact ? "min-h-10 px-4 md:text-sm" : "min-h-14 px-5 text-lg",
+        compact ? "min-h-10 px-4 md:text-sm" : "min-h-14 px-5 text-base",
       )}
       onMouseDown={(e) => {
         // Clicking the padding (not a chip or text) focuses the editable.

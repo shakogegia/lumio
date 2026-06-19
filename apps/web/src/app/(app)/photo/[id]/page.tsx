@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { loadPhotoDetail } from "@/lib/photo-detail-loader";
+import { detailScopeQuery, loadPhotoDetail, parseDetailScope } from "@/lib/photo-detail-loader";
 import { PhotoDetail } from "./photo-detail";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +9,11 @@ export default async function PhotoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ album?: string }>;
+  searchParams: Promise<{ album?: string | string[]; q?: string; s?: string }>;
 }) {
   const { id } = await params;
-  const { album } = await searchParams;
-  const data = await loadPhotoDetail(id, album ?? null);
+  const scope = parseDetailScope(await searchParams);
+  const data = await loadPhotoDetail(id, scope);
   if (!data) notFound();
 
   return (
@@ -22,7 +22,7 @@ export default async function PhotoPage({
         photo={data.photo}
         regularAlbums={data.regularAlbums}
         neighbors={data.neighbors}
-        albumId={album ?? null}
+        scope={detailScopeQuery(scope)}
       />
     </main>
   );

@@ -31,3 +31,14 @@ export function paramsFor(filters: SearchFilters): URLSearchParams {
 export function serialize(filters: SearchFilters): string {
   return JSON.stringify({ albums: [...filters.albums].sort(), q: filters.q });
 }
+
+/**
+ * Query string carried on a result photo's detail URL so the detail view scopes
+ * its prev/next + film strip to the search results. The `s=1` marker tells the
+ * detail page to treat the params as a search filter (vs. the album scope).
+ */
+export function scopeQuery(filters: SearchFilters): string {
+  const params = paramsFor(filters);
+  params.set("s", "1");
+  return params.toString();
+}

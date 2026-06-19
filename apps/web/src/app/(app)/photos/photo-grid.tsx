@@ -58,6 +58,7 @@ export function PhotoGrid({
   albumId,
   empty = PHOTOS_EMPTY,
   params,
+  hrefFor,
   selectMode = false,
   selectedIds,
   onSelectionChange,
@@ -66,6 +67,10 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   params?: URLSearchParams;
+  /** Detail-route href for a tile; defaults to the album/library scope. The
+   *  search view overrides it to carry the search filter (so the film strip
+   *  navigates the results). */
+  hrefFor?: (id: string) => string;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -257,7 +262,7 @@ export function PhotoGrid({
                 return (
                   <Link
                     key={photo.id}
-                    href={photoHref(photo.id, albumId)}
+                    href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId)}
                     className="block h-full outline-none focus:outline-none focus-visible:outline-none"
                   >
                     {thumb}

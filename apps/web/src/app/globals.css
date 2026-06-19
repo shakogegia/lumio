@@ -130,6 +130,12 @@
   html {
     @apply font-sans;
   }
+  /* Text selection uses the primary tokens, which flip with the theme:
+     light mode = dark background + light text, dark mode = the reverse. */
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
 }
 
 /* TributeJS dropdown — themed to match the app popover (light + dark via tokens). */
