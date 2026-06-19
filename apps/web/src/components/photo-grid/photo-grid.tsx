@@ -1,14 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { CheckCircle2, Circle, Images } from "lucide-react";
-import type { PhotoDTO, PhotosPage } from "@lumio/shared";
-import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
+import { Images } from "lucide-react";
+import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
-import { photoHref } from "@/lib/photo-href";
-import { cn } from "@/lib/utils";
+import type { GridViewMode } from "@/lib/use-grid-view";
 import {
   Empty,
   EmptyDescription,
@@ -16,6 +13,9 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { usePhotoPages } from "./use-photo-pages";
+import { PhotoGridSkeleton } from "./photo-grid-skeleton";
+import { PhotoGridTile } from "./photo-grid-tile";
 
 // Default empty state for the all-photos view. Album views pass their own via
 // the `empty` prop since the copy differs (an empty album isn't a worker issue).
@@ -34,29 +34,12 @@ const PHOTOS_EMPTY = (
 );
 
 const OVERSCAN_ROWS = 3;
-// Placeholder tiles rendered before the first page loads. Generous enough to
-// fill a large (4K) viewport; the container clips overflow to the viewport, so
-// the extras are harmless on smaller screens.
-const SKELETON_TILES = 120;
-
-async function fetchPage(
-  endpoint: string,
-  cursor: string | null,
-  extra?: URLSearchParams,
-): Promise<PhotosPage> {
-  // Clone `extra` so we don't mutate the caller's object; preserves repeated keys (e.g. album).
-  const params = new URLSearchParams(extra);
-  params.set("limit", "50");
-  if (cursor) params.set("cursor", cursor);
-  const res = await fetch(`${endpoint}?${params.toString()}`);
-  if (!res.ok) throw new Error("Failed to load photos");
-  return res.json();
-}
 
 export function PhotoGrid({
   endpoint = "/api/photos",
   albumId,
   empty = PHOTOS_EMPTY,
+  mode = "fill",
   params,
   hrefFor,
   selectMode = false,
@@ -66,6 +49,7 @@ export function PhotoGrid({
   endpoint?: string;
   albumId?: string;
   empty?: React.ReactNode;
+  mode?: GridViewMode;
   params?: URLSearchParams;
   /** Detail-route href for a tile; defaults to the album/library scope. The
    *  search view overrides it to carry the search filter (so the film strip
@@ -75,11 +59,7 @@ export function PhotoGrid({
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
 }) {
-  const [photos, setPhotos] = useState<PhotoDTO[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState(false);
-  const loadingRef = useRef(false);
+  const { photos, done, error, loadMore } = usePhotoPages(endpoint, params);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);
@@ -131,27 +111,6 @@ export function PhotoGrid({
   // column count as the real grid, so the swap to real photos is seamless.
   const showSkeleton = photos.length === 0 && !done && !error;
 
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current || done) return;
-    loadingRef.current = true;
-    setError(false);
-    try {
-      const page = await fetchPage(endpoint, cursor, params);
-      setPhotos((prev) => [...prev, ...page.items]);
-      setCursor(page.nextCursor);
-      if (!page.nextCursor) setDone(true);
-    } catch {
-      setError(true);
-    } finally {
-      loadingRef.current = false;
-    }
-  }, [endpoint, cursor, done, params]);
-
-  useEffect(() => {
-    void loadMore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const virtualizer = useWindowVirtualizer({
     count: rows,
     estimateSize: () => tileSize + GRID_GAP,
@@ -179,21 +138,7 @@ export function PhotoGrid({
   }
 
   if (showSkeleton) {
-    return (
-      <div ref={listRef} style={{ maxHeight: "100vh", overflow: "hidden" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(auto-fill, minmax(${MIN_TILE}px, 1fr))`,
-            gap: GRID_GAP,
-          }}
-        >
-          {Array.from({ length: SKELETON_TILES }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-sm bg-skeleton" />
-          ))}
-        </div>
-      </div>
-    );
+    return <PhotoGridSkeleton listRef={listRef} />;
   }
 
   return (
@@ -218,57 +163,19 @@ export function PhotoGrid({
                 gap: GRID_GAP,
               }}
             >
-              {rowPhotos.map((photo, i) => {
-                const globalIndex = start + i;
-                const thumb = (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`/api/thumbnails/${photo.id}`}
-                    alt={photo.path}
-                    loading="lazy"
-                    width={photo.width}
-                    height={photo.height}
-                    className="h-full w-full rounded-sm object-cover transition-opacity hover:opacity-90"
-                  />
-                );
-
-                if (selectMode) {
-                  const isSelected = selectedIds?.has(photo.id) ?? false;
-                  return (
-                    <button
-                      key={photo.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={(e) => handleTileClick(globalIndex, e)}
-                      className={cn(
-                        "relative block h-full select-none rounded-sm outline-none focus:outline-none focus-visible:outline-none",
-                        isSelected && "ring-2 ring-inset ring-primary",
-                      )}
-                    >
-                      <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
-                        {thumb}
-                      </div>
-                      <span className="absolute left-2 top-2 rounded-full bg-background text-foreground">
-                        {isSelected ? (
-                          <CheckCircle2 className="size-5 text-primary" />
-                        ) : (
-                          <Circle className="size-5 text-muted-foreground" />
-                        )}
-                      </span>
-                    </button>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={photo.id}
-                    href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId)}
-                    className="block h-full outline-none focus:outline-none focus-visible:outline-none"
-                  >
-                    {thumb}
-                  </Link>
-                );
-              })}
+              {rowPhotos.map((photo, i) => (
+                <PhotoGridTile
+                  key={photo.id}
+                  photo={photo}
+                  mode={mode}
+                  albumId={albumId}
+                  hrefFor={hrefFor}
+                  selectMode={selectMode}
+                  isSelected={selectedIds?.has(photo.id) ?? false}
+                  index={start + i}
+                  onTileClick={handleTileClick}
+                />
+              ))}
             </div>
           );
         })}
