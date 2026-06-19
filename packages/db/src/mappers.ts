@@ -1,4 +1,4 @@
-import type { Album, Photo } from "@prisma/client";
+import type { Album, Photo, TrashedPhoto } from "@prisma/client";
 import {
   type AlbumDTO,
   type ColorLabel,
@@ -21,6 +21,21 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     colorLabel: row.colorLabel as ColorLabel | null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
+  return {
+    id: row.id,
+    path: row.originalPath,
+    source: row.source as PhotoSource,
+    takenAt: row.takenAt ? row.takenAt.toISOString() : null,
+    width: row.width,
+    height: row.height,
+    hash: row.hash,
+    exif: (row.exif ?? {}) as ExifData,
+    createdAt: row.deletedAt.toISOString(),
+    updatedAt: row.deletedAt.toISOString(),
   };
 }
 

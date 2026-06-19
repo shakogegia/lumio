@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MatchType, PhotoSource, RuleOp } from "@lumio/shared";
-import { toAlbumDTO, toPhotoDTO } from "./mappers.js";
+import { toAlbumDTO, toPhotoDTO, toTrashedPhotoDTO } from "./mappers.js";
 
 describe("toPhotoDTO", () => {
   it("maps a Prisma photo row to a PhotoDTO with ISO dates", () => {
@@ -45,6 +45,29 @@ describe("toPhotoDTO", () => {
     });
     expect(dto.takenAt).toBeNull();
     expect(dto.hash).toBeNull();
+  });
+});
+
+describe("toTrashedPhotoDTO", () => {
+  it("maps a trashed row to a PhotoDTO using originalPath + deletedAt", () => {
+    const dto = toTrashedPhotoDTO({
+      id: "t1",
+      originalPath: "2026/06-19/x.jpg",
+      source: "filesystem",
+      takenAt: new Date("2024-01-01T00:00:00.000Z"),
+      sortDate: new Date("2024-01-01T00:00:00.000Z"),
+      width: 4,
+      height: 3,
+      hash: null,
+      exif: {},
+      albumIds: ["a1"],
+      deletedAt: new Date("2026-06-19T00:00:00.000Z"),
+    } as never);
+    expect(dto.id).toBe("t1");
+    expect(dto.path).toBe("2026/06-19/x.jpg");
+    expect(dto.width).toBe(4);
+    expect(dto.createdAt).toBe("2026-06-19T00:00:00.000Z");
+    expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
   });
 });
 
