@@ -3,60 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { SidebarMore } from "@/components/sidebar-more";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: typeof Images;
-  /** match when the pathname starts with one of these segments */
-  match: string[];
-};
+import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
-
-function isActive(pathname: string, item: NavItem) {
-  return item.match.some(
-    (m) => pathname === m || pathname.startsWith(`${m}/`),
-  );
-}
-
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon;
-  return (
-    <Link
-      href={item.href}
-      aria-current={active ? "page" : undefined}
-      title={item.label}
-      className={cn(
-        "group flex w-14 flex-col items-center gap-1 rounded-2xl py-2.5 transition-colors",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      <Icon
-        className="h-[26px] w-[26px] transition-transform duration-200 group-active:scale-90"
-        strokeWidth={active ? 2.4 : 1.8}
-        aria-hidden
-      />
-      <span
-        className={cn(
-          "text-[10px] leading-none tracking-wide",
-          active ? "font-semibold" : "font-medium",
-        )}
-      >
-        {item.label}
-      </span>
-    </Link>
-  );
-}
 
 export function AppSidebar() {
   const pathname = usePathname() ?? "/";
