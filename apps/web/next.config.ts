@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@lumio/db", "@lumio/shared", "@lumio/ingest"],
   serverExternalPackages: ["sharp"],
+  // Hide the on-screen dev indicator (the little Next.js logo/badge).
+  devIndicators: false,
   // Max request body the app accepts — effectively the photo-upload size cap.
   // Set MAX_UPLOAD_SIZE WITH A UNIT (e.g. "500mb", "1gb"); a bare number is
   // bytes (so "300" = 300 B, not 300 MB). Defaults to 200mb. `next start`
