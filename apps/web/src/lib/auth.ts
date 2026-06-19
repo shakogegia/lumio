@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
+import { twoFactor } from "better-auth/plugins";
 import { prisma, hasAnyUser } from "@lumio/db";
 import { assertSignupAllowed } from "./signup-gate.js";
 
@@ -31,11 +32,13 @@ const secureCookiesEnv = process.env.USE_SECURE_COOKIES;
 
 export const auth = betterAuth({
   baseURL,
+  appName: "Lumio",
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
   ...(secureCookiesEnv !== undefined && {
     advanced: { useSecureCookies: secureCookiesEnv !== "false" },
   }),
+  plugins: [twoFactor()],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
