@@ -12,9 +12,14 @@ export function BackupCodes({ codes }: { codes: string[] }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    await navigator.clipboard.writeText(codes.join("\n"));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(codes.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable or permission denied — leave the button labeled
+      // "Copy" so the failure is visible. Download remains as a fallback.
+    }
   }
 
   function download() {
@@ -23,7 +28,9 @@ export function BackupCodes({ codes }: { codes: string[] }) {
     const a = document.createElement("a");
     a.href = url;
     a.download = "lumio-backup-codes.txt";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
@@ -34,13 +41,19 @@ export function BackupCodes({ codes }: { codes: string[] }) {
         Each code works once if you lose access to your authenticator app. Store
         them somewhere safe — they won’t be shown again.
       </p>
-      <ul className="grid grid-cols-2 gap-1 font-mono text-sm">
+      <ul aria-label="Backup codes" className="grid grid-cols-2 gap-1 font-mono text-sm">
         {codes.map((code) => (
           <li key={code}>{code}</li>
         ))}
       </ul>
       <div className="flex gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={copy}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={copy}
+          aria-label={copied ? "Copied to clipboard" : "Copy backup codes to clipboard"}
+        >
           {copied ? "Copied" : "Copy"}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={download}>
