@@ -3,14 +3,18 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type StatusScreenAction = {
+type StatusScreenActionBase = {
   label: string;
-  /** When set, the action renders as a link button (used by navigation actions). */
-  href?: string;
-  /** When set (and no href), the action renders as a plain button (used by `reset`). */
-  onClick?: () => void;
   variant?: "default" | "outline";
 };
+
+/**
+ * A status-screen action is either a link (navigation) or a button (e.g. an
+ * error boundary's `reset`) — never both, never neither.
+ */
+export type StatusScreenAction =
+  | (StatusScreenActionBase & { href: string; onClick?: never })
+  | (StatusScreenActionBase & { onClick: () => void; href?: never });
 
 /**
  * Branded, theme-aware full-area status screen shared by the App Router

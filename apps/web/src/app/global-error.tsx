@@ -15,6 +15,9 @@ export default function GlobalError({
   }, [error]);
 
   return (
+    // No ThemeProvider here (globals.css/tokens aren't loaded outside the root
+    // layout), so nothing mutates <html> client-side — no hydration mismatch to
+    // suppress, unlike the root layout.
     <html lang="en">
       <body
         style={{
