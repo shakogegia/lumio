@@ -66,9 +66,10 @@ export function LibraryView() {
         body: JSON.stringify({ photoIds: [...ids], label }),
       });
       if (!res.ok) throw new Error("label failed");
-      // Optimistically repaint the client-fetched grid; selection stays so the
-      // user sees the tint land and can re-pick.
+      // Optimistically repaint the client-fetched grid, then clear the
+      // selection while staying in select mode so the user can keep labeling.
       gridRef.current?.patchPhotos(ids, { colorLabel: label });
+      sel.clear();
     } catch {
       toast.error("Failed to apply label.");
     } finally {
