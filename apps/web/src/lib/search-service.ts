@@ -20,3 +20,11 @@ export async function searchPhotos(params: SearchQuery, db: Db = prisma): Promis
   const nextCursor = rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
   return { items: rows.map(toPhotoDTO), nextCursor };
 }
+
+/**
+ * Count photos matching the search filters — same `where` as `searchPhotos`,
+ * minus pagination. Powers the result count shown in the search toolbar.
+ */
+export async function countSearchPhotos(params: SearchQuery, db: Db = prisma): Promise<number> {
+  return db.photo.count({ where: buildSearchWhere(params) });
+}

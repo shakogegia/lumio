@@ -22,6 +22,7 @@ import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
 import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
+import { useSearchCount } from "./use-search-count";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 
@@ -50,6 +51,7 @@ export function SearchView() {
   const [downloading, setDownloading] = useState(false);
 
   const empty = isEmptyFilters(filters);
+  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
 
   // The result set changes when the query changes, so any selection would point
   // at photos no longer shown. Drop it and leave select mode whenever the query
@@ -96,6 +98,8 @@ export function SearchView() {
       if (!res.ok) throw new Error("trash failed");
       // Drop the tiles in place (no remount) and leave select mode.
       gridRef.current?.removePhotos(ids);
+      // Keep the toolbar count consistent with the tiles we just removed.
+      setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.size)));
       sel.cancel();
     } catch {
       toast.error("Failed to move photos to Trash.");
@@ -196,7 +200,11 @@ export function SearchView() {
                     {sel.count > 0 ? `${sel.count} selected` : "Select photos"}
                   </span>
                 ) : (
-                  <span />
+                  <span className="text-sm text-muted-foreground">
+                    {searchCount !== null
+                      ? `${searchCount.toLocaleString()} ${searchCount === 1 ? "photo" : "photos"}`
+                      : null}
+                  </span>
                 )}
                 <div className="flex items-center gap-2">
                   {sel.selectMode ? (

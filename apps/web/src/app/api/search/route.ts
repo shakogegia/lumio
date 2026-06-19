@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchQuerySchema } from "@lumio/shared";
-import { searchPhotos } from "@/lib/search-service";
+import { countSearchPhotos, searchPhotos } from "@/lib/search-service";
 import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
@@ -15,6 +15,11 @@ export const GET = withAuth(async (request) => {
   });
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  // Lightweight count mode for the search toolbar: same filters, no pagination.
+  if (searchParams.get("count")) {
+    const total = await countSearchPhotos(parsed.data);
+    return NextResponse.json({ total });
   }
   const page = await searchPhotos(parsed.data);
   return NextResponse.json(page);
