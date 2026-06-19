@@ -109,7 +109,6 @@ Ported handlers (verbatim behavior from Library):
   apiRef={gridRef}
   mode={mode}
   columns={columns}
-  sort={sort}
   endpoint="/api/search"
   params={paramsFor(filters, sort)}
   hrefFor={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
@@ -119,6 +118,9 @@ Ported handlers (verbatim behavior from Library):
   onSelectionChange={sel.setSelected}
 />
 ```
+
+(No `sort` prop: it only feeds the grid's *default* tile href, which search
+already overrides via `hrefFor`. Sort still reaches the API through `params`.)
 
 ## Behavior: query change while selecting
 
