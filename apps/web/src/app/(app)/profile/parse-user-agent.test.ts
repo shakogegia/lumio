@@ -32,12 +32,22 @@ describe("parseUserAgent", () => {
     expect(parseUserAgent(ua)).toEqual({ browser: "Chrome", os: "Android" });
   });
 
+  it("detects Safari on macOS", () => {
+    const ua =
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15";
+    expect(parseUserAgent(ua)).toEqual({ browser: "Safari", os: "macOS" });
+  });
+
   it("falls back to Unknown for null/empty input", () => {
     expect(parseUserAgent(null)).toEqual({
       browser: "Unknown browser",
       os: "Unknown OS",
     });
     expect(parseUserAgent("")).toEqual({
+      browser: "Unknown browser",
+      os: "Unknown OS",
+    });
+    expect(parseUserAgent(undefined)).toEqual({
       browser: "Unknown browser",
       os: "Unknown OS",
     });
