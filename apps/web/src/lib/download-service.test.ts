@@ -1,8 +1,12 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   attachmentDisposition,
   dedupeEntryName,
   sanitizeZipName,
+  streamPhotosZip,
 } from "./download-service.js";
 
 describe("dedupeEntryName", () => {
@@ -56,5 +60,35 @@ describe("attachmentDisposition", () => {
     const value = attachmentDisposition("café.jpg");
     expect(value).toContain('filename="caf_.jpg"');
     expect(value).toContain("filename*=UTF-8''caf%C3%A9.jpg");
+  });
+});
+
+describe("streamPhotosZip", () => {
+  it("zips the originals that exist and skips missing ones", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "lumio-dl-"));
+    await writeFile(path.join(dir, "a.jpg"), "AAAA");
+    await writeFile(path.join(dir, "b.jpg"), "BBBB");
+
+    const res = streamPhotosZip(
+      [
+        { id: "1", path: "a.jpg" },
+        { id: "2", path: "b.jpg" },
+        { id: "3", path: "missing.jpg" },
+      ],
+      "test.zip",
+      (rel) => path.join(dir, rel),
+    );
+
+    expect(res.headers.get("Content-Type")).toBe("application/zip");
+    expect(res.headers.get("Content-Disposition")).toContain("test.zip");
+
+    const buf = Buffer.from(await res.arrayBuffer());
+    // Valid zip local-file-header magic.
+    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK");
+    // Entry names are stored as plaintext in the zip; present files appear,
+    // the missing one does not.
+    expect(buf.includes(Buffer.from("a.jpg"))).toBe(true);
+    expect(buf.includes(Buffer.from("b.jpg"))).toBe(true);
+    expect(buf.includes(Buffer.from("missing.jpg"))).toBe(false);
   });
 });

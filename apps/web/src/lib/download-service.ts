@@ -1,3 +1,8 @@
+import { existsSync } from "node:fs";
+import { PassThrough, Readable } from "node:stream";
+import { ZipArchive } from "archiver";
+import { originalPath } from "@/lib/paths";
+
 /**
  * Build a download filename for an entry inside a zip. Entries are flattened to
  * their basename; collisions across source folders are de-duplicated with a
@@ -47,4 +52,49 @@ export function attachmentDisposition(filename: string): string {
   // eslint-disable-next-line no-control-regex
   const ascii = filename.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
+/**
+ * Stream the given photos' originals as a single stored (uncompressed) zip.
+ * Originals are already-compressed images, so storing avoids wasted CPU and
+ * streams from disk with flat memory. `resolve` maps a photo's stored relative
+ * path to an absolute path on disk (defaults to `originalPath`, the
+ * traversal-guarded resolver; overridable for tests). Missing originals are
+ * logged and skipped — never fatal.
+ */
+export function streamPhotosZip(
+  photos: { id: string; path: string }[],
+  zipName: string,
+  resolve: (relPath: string) => string = originalPath,
+): Response {
+  const archive = new ZipArchive({ store: true });
+  const pass = new PassThrough();
+
+  archive.on("warning", (err) => {
+    console.warn("[download] zip warning:", err);
+  });
+  archive.on("error", (err) => {
+    console.error("[download] zip error:", err);
+    pass.destroy(err);
+  });
+  archive.pipe(pass);
+
+  const used = new Set<string>();
+  for (const photo of photos) {
+    const abs = resolve(photo.path);
+    if (!existsSync(abs)) {
+      console.warn("[download] skipping missing original:", photo.path);
+      continue;
+    }
+    const base = photo.path.split("/").pop() || photo.path;
+    archive.file(abs, { name: dedupeEntryName(base, used) });
+  }
+  void archive.finalize();
+
+  return new Response(Readable.toWeb(pass) as unknown as ReadableStream<Uint8Array>, {
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": attachmentDisposition(zipName),
+    },
+  });
 }
