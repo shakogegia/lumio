@@ -7,7 +7,7 @@ type Db = Pick<PrismaClient, "photo">;
 /**
  * Search the library by structured filters (albums) + free-text filename match.
  * Same keyset-cursor pagination as `listPhotos`: the `where` only narrows the
- * same PHOTO_ORDER sequence, so cursors stay valid.
+ * same sorted sequence, so cursors stay valid.
  */
 export async function searchPhotos(params: SearchQuery, db: Db = prisma): Promise<PhotosPage> {
   const { limit, cursor, sort } = params;

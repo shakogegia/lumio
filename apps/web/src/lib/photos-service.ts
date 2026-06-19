@@ -80,12 +80,11 @@ export async function getPhotoNeighbors(
 
 /**
  * The prev/next + film-strip window over an arbitrary navigation scope (`where`),
- * over an arbitrary navigation scope (`where`), ordered by the given sort. Used
- * directly for search-scoped detail views; `getPhotoNeighbors` wraps it for the
- * album/library scopes. Keyset cursoring on the current id: a forward page (next)
- * and a backward page (prev, negative take). Both come back in sort order, so
- * `before` ends with the nearest-prev and `strip` reads
- * left-to-right as the grid does. Selects only id+path to keep the window cheap.
+ * ordered by the given sort. Used directly for search-scoped detail views;
+ * `getPhotoNeighbors` wraps it for the album/library scopes. Keyset cursoring on
+ * the current id: a forward page (next) and a backward page (prev, negative take).
+ * Both come back in sort order, so `before` ends with the nearest-prev and `strip`
+ * reads left-to-right as the grid does. Selects only id+path to keep the window cheap.
  */
 export async function getNeighborsForWhere(
   current: PhotoStripItem,
