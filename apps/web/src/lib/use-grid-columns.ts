@@ -15,5 +15,5 @@ export const parseGridColumns = parseColumns;
  */
 export const useGridColumns = makeColumnsStore({
   storageKey: GRID_COLUMNS_STORAGE_KEY,
-  syncCssVar: true,
+  cssVar: "--grid-columns",
 });

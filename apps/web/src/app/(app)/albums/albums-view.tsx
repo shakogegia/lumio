@@ -18,6 +18,7 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useAlbumColumns } from "@/lib/use-album-columns";
+import { ALBUM_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { useConfirm } from "@/components/confirm-dialog";
 import { partitionAlbums } from "@/lib/partition-albums";
 import { NewAlbumDialog } from "./new-album-dialog";
@@ -126,7 +127,6 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           <AlbumSection
             title="Albums"
             albums={regular}
-            columns={columns}
             selectMode={sel.selectMode}
             selected={sel.selected}
             onToggle={toggle}
@@ -136,7 +136,6 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           <AlbumSection
             title="Smart Albums"
             albums={smart}
-            columns={columns}
             selectMode={sel.selectMode}
             selected={sel.selected}
             onToggle={toggle}
@@ -150,14 +149,12 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
 function AlbumSection({
   title,
   albums,
-  columns,
   selectMode,
   selected,
   onToggle,
 }: {
   title: string;
   albums: AlbumSummaryDTO[];
-  columns: number;
   selectMode: boolean;
   selected: Set<string>;
   onToggle: (id: string) => void;
@@ -165,9 +162,14 @@ function AlbumSection({
   return (
     <section>
       <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h2>
+      {/* Column count comes from the --album-columns CSS variable (set live by
+          useAlbumColumns and pre-paint by the root layout), so the server-
+          rendered grid paints at the chosen density with no hydration flash. */}
       <div
         className="grid gap-x-5 gap-y-7"
-        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(var(--album-columns, ${ALBUM_DEFAULT_COLUMNS}), minmax(0, 1fr))`,
+        }}
       >
         {albums.map((album) => (
           <AlbumCard
