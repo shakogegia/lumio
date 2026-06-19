@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import type { AlbumSummaryDTO, PhotoDTO, PhotoNeighbors } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,7 +122,15 @@ export function PhotoDetail({
               </>
             )}
             <Separator />
-            <DeletePhotoButton photoId={photo.id} />
+            <div className="space-y-2">
+              <Button asChild variant="outline" size="sm" className="w-full">
+                <a href={`/api/photos/${photo.id}/original?download=1`}>
+                  <Download aria-hidden />
+                  Download
+                </a>
+              </Button>
+              <DeletePhotoButton photoId={photo.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="exif">
