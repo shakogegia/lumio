@@ -8,6 +8,12 @@ if (!process.env.UV_THREADPOOL_SIZE) {
   process.env.UV_THREADPOOL_SIZE = String(INGEST_CONCURRENCY);
 }
 
+// One libvips thread per image so total CPU ≈ the pool size, not pool × cores.
+// Without this each concurrent image fans out across every core, oversubscribing
+// the CPU and starving the co-located web app + Postgres during a bulk import.
+const sharp = (await import("sharp")).default;
+sharp.concurrency(1);
+
 const { runIngest } = await import("./ingest-run.js");
 
 runIngest().catch(async (err) => {

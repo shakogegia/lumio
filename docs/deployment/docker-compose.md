@@ -99,13 +99,18 @@ The worker scans `PHOTOS_DIR` on startup and whenever files change.
 - **Incremental scan:** files already indexed with an unchanged size + mod/time
   (and an intact cache) are skipped, so restarts are near-instant. Only new or
   changed files are (re)processed. Wiping `CACHE_DIR` forces regeneration.
-- **Concurrency:** new/changed files are processed by a worker pool sized to
-  `INGEST_CONCURRENCY` (default: the worker's logical core count). The worker
-  automatically sets `UV_THREADPOOL_SIZE` to the same value — Sharp's decode/
-  encode runs on that threadpool, so without it throughput plateaus at ~4
-  regardless of cores. Set `INGEST_CONCURRENCY` to pin it (e.g. to a CPU limit).
-- **Measure your hardware:** run `pnpm bench` against your library to see the
-  real per-image cost and the speedup curve on your machine.
+- **Concurrency (polite by default):** new/changed files are processed by a pool
+  sized to `INGEST_CONCURRENCY` (default: **half** the worker's visible cores).
+  The worker pins `sharp.concurrency(1)` and sizes `UV_THREADPOOL_SIZE` to the
+  pool, so total CPU ≈ the pool size — a bulk import uses about half the cores and
+  leaves the rest to serve the app + Postgres. Raise `INGEST_CONCURRENCY` on a
+  dedicated box for faster imports; lower it to be gentler.
+- **Shared box (e.g. N100):** the worker, web, and db share one machine, and a
+  large import is CPU-heavy. To guarantee it can never starve the app, cap the
+  worker container's CPUs (uncomment `cpus:` in the compose file) and set
+  `INGEST_CONCURRENCY` to match.
+- **Measure your hardware:** run `pnpm bench` against your library — it mirrors
+  the worker's settings and prints the real per-image cost and speedup curve.
 
 ## 4. Updating
 
