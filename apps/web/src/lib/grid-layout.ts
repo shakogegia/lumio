@@ -1,10 +1,17 @@
-export const MIN_TILE = 280;
 export const GRID_GAP = 4;
 
-export function computeColumns(width: number, minTile: number = MIN_TILE, gap: number = GRID_GAP): number {
-  if (width <= 0) return 1;
-  return Math.max(1, Math.floor((width + gap) / (minTile + gap)));
-}
+// Bounds for the user-adjustable grid density (columns per row). The slider
+// picks a whole number of columns in this range; tiles scale to fill the row,
+// so every step changes the layout at any viewport width.
+export const COLUMNS_MIN = 2;
+export const COLUMNS_MAX = 12;
+export const DEFAULT_COLUMNS = 5;
+
+// localStorage key for the persisted column count. Shared by the client store
+// and the pre-paint inline script in the root layout (which reads it to set the
+// --grid-columns CSS variable before first paint, so the skeleton doesn't flash
+// the default size before hydration reads localStorage).
+export const GRID_COLUMNS_STORAGE_KEY = "lumio:grid-columns";
 
 export function rowCount(itemCount: number, columns: number): number {
   if (columns <= 0 || itemCount <= 0) return 0;

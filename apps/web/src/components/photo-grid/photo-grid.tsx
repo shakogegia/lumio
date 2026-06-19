@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
-import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
+import { rowCount, GRID_GAP, DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
@@ -48,6 +48,7 @@ export function PhotoGrid({
   albumId,
   empty = PHOTOS_EMPTY,
   mode = "fill",
+  columns: columnsProp = DEFAULT_COLUMNS,
   params,
   hrefFor,
   selectMode = false,
@@ -59,6 +60,8 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
+  /** Number of columns (photos per row). Defaults to DEFAULT_COLUMNS. */
+  columns?: number;
   params?: URLSearchParams;
   /** Detail-route href for a tile; defaults to the album/library scope. The
    *  search view overrides it to carry the search filter (so the film strip
@@ -70,7 +73,11 @@ export function PhotoGrid({
   /** Imperative handle for in-place photo updates (optimistic label tinting). */
   apiRef?: React.Ref<PhotoGridHandle>;
 }) {
-  const { photos, done, error, loadMore, patchPhotos, removePhotos } = usePhotoPages(endpoint, params);
+  const columns = Math.max(1, columnsProp);
+  // Scale the fetch page size with density so a page roughly fills the viewport
+  // (more columns → more visible tiles). Capped at the API limit (100).
+  const pageSize = Math.min(100, Math.max(50, columns * 8));
+  const { photos, done, error, loadMore, patchPhotos, removePhotos } = usePhotoPages(endpoint, params, pageSize);
   useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
@@ -95,32 +102,38 @@ export function PhotoGrid({
     if (!selectMode) anchorRef.current = null;
   }, [selectMode]);
 
-  const listRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);
+  const roRef = useRef<ResizeObserver | null>(null);
 
-  useLayoutEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    setWidth(el.clientWidth);
-    setOffsetTop(el.offsetTop);
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setWidth(w);
-    });
+  // Callback ref so measurement re-attaches whenever the underlying node
+  // changes. The grid swaps elements as photos load (skeleton → real grid); a
+  // one-shot effect would keep observing the detached skeleton, so window
+  // resizes were missed until a refresh. Re-running on each node change fixes it.
+  const measureRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    if (!el) {
+      roRef.current = null;
+      return;
+    }
+    const measure = () => {
+      setWidth(el.clientWidth);
+      setOffsetTop(el.offsetTop);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    roRef.current = ro;
   }, []);
 
-  const columns = computeColumns(width);
   const tileSize = width > 0 ? (width - GRID_GAP * (columns - 1)) / columns : 0;
   const rows = rowCount(photos.length, columns);
 
   // Warm-grey placeholder shown until the first page loads. Rendered with pure
-  // CSS (auto-fill columns + square tiles) so it needs no measured width — it's
-  // in the server HTML and paints on the first frame, even on a fast refresh
-  // before hydration. auto-fill with the same MIN_TILE/GRID_GAP yields the same
-  // column count as the real grid, so the swap to real photos is seamless.
+  // CSS (a fixed `columns`-wide grid of square tiles) so it needs no measured
+  // width — it's in the server HTML and paints on the first frame, even on a
+  // fast refresh before hydration. It uses the same column count as the real
+  // grid, so the swap to real photos is seamless.
   const showSkeleton = photos.length === 0 && !done && !error;
 
   const virtualizer = useWindowVirtualizer({
@@ -150,11 +163,11 @@ export function PhotoGrid({
   }
 
   if (showSkeleton) {
-    return <PhotoGridSkeleton listRef={listRef} />;
+    return <PhotoGridSkeleton listRef={measureRef} columns={columns} />;
   }
 
   return (
-    <div ref={listRef}>
+    <div ref={measureRef}>
       <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
         {items.map((vrow) => {
           const start = vrow.index * columns;
