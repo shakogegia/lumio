@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+import { thumbHashToDataURL } from "thumbhash";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 
@@ -11,6 +13,17 @@ import type { GridViewMode } from "@/lib/use-grid-view";
  * contain) keeps the default fill view pixel-crisp.
  */
 export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMode }) {
+  const [loaded, setLoaded] = useState(false);
+  const blurUrl = useMemo(() => {
+    if (!photo.thumbhash) return null;
+    try {
+      const bytes = Uint8Array.from(atob(photo.thumbhash), (c) => c.charCodeAt(0));
+      return thumbHashToDataURL(bytes);
+    } catch {
+      return null;
+    }
+  }, [photo.thumbhash]);
+
   const { width: w, height: h } = photo;
   const valid = w > 0 && h > 0;
   const aspect = valid ? w / h : 1;
@@ -19,6 +32,13 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
   const cover = mode === "fill";
   return (
     <div className="group/tile relative h-full w-full overflow-hidden rounded-sm">
+      {blurUrl && (
+        <div
+          aria-hidden
+          className="absolute inset-0 rounded-sm bg-cover bg-center transition-opacity duration-300"
+          style={{ backgroundImage: `url(${blurUrl})`, opacity: loaded ? 0 : 1 }}
+        />
+      )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/api/thumbnails/${photo.id}`}
@@ -27,6 +47,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         decoding="async"
         width={w}
         height={h}
+        onLoad={() => setLoaded(true)}
         // The element is sized to the cover rectangle (long edge overflows the
         // square and is clipped); contain is the same element scaled down.
         className="absolute left-1/2 top-1/2 max-w-none rounded-sm object-cover transition-[transform,opacity] duration-300 ease-out group-hover/tile:opacity-90"
