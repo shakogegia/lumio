@@ -93,9 +93,10 @@ export const UploadTile = memo(function UploadTile({
       ) : null}
 
       {status === "added" ? (
-        <span className="absolute right-1.5 top-1.5 rounded-full bg-background">
-          <CheckCircle2 className="size-5 text-green-600 dark:text-green-500" aria-hidden />
-        </span>
+        <span
+          className="absolute right-1.5 top-1.5 size-3 rounded-full bg-green-600 ring-2 ring-background dark:bg-green-500"
+          aria-hidden
+        />
       ) : null}
 
       {status === "duplicate" ? (
