@@ -39,8 +39,14 @@ const OVERSCAN_ROWS = 3;
 // the extras are harmless on smaller screens.
 const SKELETON_TILES = 120;
 
-async function fetchPage(endpoint: string, cursor: string | null): Promise<PhotosPage> {
-  const params = new URLSearchParams({ limit: "50" });
+async function fetchPage(
+  endpoint: string,
+  cursor: string | null,
+  extra?: URLSearchParams,
+): Promise<PhotosPage> {
+  // Clone `extra` so we don't mutate the caller's object; preserves repeated keys (e.g. album).
+  const params = new URLSearchParams(extra);
+  params.set("limit", "50");
   if (cursor) params.set("cursor", cursor);
   const res = await fetch(`${endpoint}?${params.toString()}`);
   if (!res.ok) throw new Error("Failed to load photos");
@@ -51,6 +57,7 @@ export function PhotoGrid({
   endpoint = "/api/photos",
   albumId,
   empty = PHOTOS_EMPTY,
+  params,
   selectMode = false,
   selectedIds,
   onSelectionChange,
@@ -58,6 +65,7 @@ export function PhotoGrid({
   endpoint?: string;
   albumId?: string;
   empty?: React.ReactNode;
+  params?: URLSearchParams;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -123,7 +131,7 @@ export function PhotoGrid({
     loadingRef.current = true;
     setError(false);
     try {
-      const page = await fetchPage(endpoint, cursor);
+      const page = await fetchPage(endpoint, cursor, params);
       setPhotos((prev) => [...prev, ...page.items]);
       setCursor(page.nextCursor);
       if (!page.nextCursor) setDone(true);
@@ -132,7 +140,7 @@ export function PhotoGrid({
     } finally {
       loadingRef.current = false;
     }
-  }, [endpoint, cursor, done]);
+  }, [endpoint, cursor, done, params]);
 
   useEffect(() => {
     void loadMore();
