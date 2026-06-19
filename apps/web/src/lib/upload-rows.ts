@@ -1,3 +1,5 @@
+import type { ColorLabel } from "@lumio/shared";
+
 /** A single file's lifecycle in the uploader. `unsupported` files are NOT rows —
  * they're counted separately so a dropped folder of junk can't flood the grid. */
 export type RowStatus = "queued" | "uploading" | "added" | "duplicate" | "error";
@@ -13,6 +15,8 @@ export interface Row {
   /** Real photo id from the API, set for added | duplicate. Enables selection
    * and the server thumbnail (`/api/thumbnails/<photoId>`). */
   photoId?: string;
+  /** Optimistically-applied color label; tints the tile's card mat. */
+  colorLabel?: ColorLabel | null;
 }
 
 export interface RowSummary {

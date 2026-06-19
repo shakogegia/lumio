@@ -2,10 +2,10 @@
 
 import { memo } from "react";
 import { CheckCircle2, Circle, Loader2, RotateCw } from "lucide-react";
+import { colorLabelHex, type ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
-import type { GridViewMode } from "@/lib/use-grid-view";
 import type { RowStatus } from "@/lib/upload-rows";
 
 const STATUS_LABEL: Record<RowStatus, string> = {
@@ -28,7 +28,7 @@ export const UploadTile = memo(function UploadTile({
   name,
   status,
   message,
-  mode,
+  colorLabel,
   selectMode,
   selected,
   onTileClick,
@@ -43,30 +43,34 @@ export const UploadTile = memo(function UploadTile({
   name: string;
   status: RowStatus;
   message?: string;
-  mode: GridViewMode;
+  /** Applied color label; tints the card mat. */
+  colorLabel?: ColorLabel | null;
   selectMode: boolean;
   selected: boolean;
   onTileClick: (index: number, e: React.MouseEvent) => void;
   onRetry: (id: number) => void;
 }) {
-  // Ingested rows render the small server-generated thumbnail; rows still in
-  // flight (or failed) show a lightweight badge — decoding the original file in
-  // the browser would blow up memory on large batches.
-  const fit = mode === "fit" ? "object-contain" : "object-cover";
+  // Ingested rows render the small server thumbnail; in-flight/failed rows show
+  // a lightweight badge (decoding originals in-browser blows up memory). Tiles
+  // are always cards; the mat is tinted with the applied color label's pastel
+  // (light/dark handled by the `.label-mat` rule via `--label-tint`).
   const selectable = photoId != null;
   const interactive = selectMode && selectable;
+  const labelHex = colorLabelHex(colorLabel);
+  const labelStyle = labelHex ? ({ "--label-tint": labelHex } as React.CSSProperties) : undefined;
 
   const thumb = (
     <div
       className={cn(
-        "relative aspect-square overflow-hidden rounded-md border border-border bg-muted",
-        mode === "card" && "p-2",
+        "relative aspect-square overflow-hidden rounded-md border border-border bg-muted p-2",
+        labelHex && "label-mat",
         selected && "ring-2 ring-inset ring-primary",
       )}
+      style={labelStyle}
     >
       <div
         className={cn(
-          "h-full w-full overflow-hidden rounded-[inherit] transition-transform",
+          "h-full w-full overflow-hidden rounded-xs transition-transform",
           selected && "scale-[0.92]",
         )}
       >
@@ -77,7 +81,7 @@ export const UploadTile = memo(function UploadTile({
             alt=""
             loading="lazy"
             decoding="async"
-            className={cn("h-full w-full", fit)}
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-muted to-muted-foreground/15 text-muted-foreground">

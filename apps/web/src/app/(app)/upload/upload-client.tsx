@@ -7,14 +7,12 @@ import { Download } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
-import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
-import { useGridView } from "@/lib/use-grid-view";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
 import { selectableIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
@@ -33,7 +31,6 @@ export function UploadClient() {
   const router = useRouter();
   const sel = useGridSelection();
   const { columns, setColumns } = useGridColumns();
-  const { mode, setMode } = useGridView();
   const { confirm, confirmDialog } = useConfirm();
 
   const [rows, setRows] = useState<Row[]>([]);
@@ -155,15 +152,21 @@ export function UploadClient() {
 
   const applyLabel = useCallback(
     async (label: ColorLabel | null) => {
-      if (labelPending || sel.selected.size === 0) return;
+      const selectedIds = sel.selected;
+      if (labelPending || selectedIds.size === 0) return;
       setLabelPending(true);
       try {
         const res = await fetch("/api/photos/color-label", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: [...sel.selected], label }),
+          body: JSON.stringify({ photoIds: [...selectedIds], label }),
         });
         if (!res.ok) throw new Error("label failed");
+        // Optimistically tint the affected tiles, then clear the selection while
+        // staying in select mode (mirrors the library view).
+        setRows((prev) =>
+          prev.map((r) => (r.photoId && selectedIds.has(r.photoId) ? { ...r, colorLabel: label } : r)),
+        );
         toast.success("Label applied.");
         sel.clear();
       } catch {
@@ -265,7 +268,6 @@ export function UploadClient() {
           actions={
             hasRows ? (
               <>
-                <GridViewMenu mode={mode} onModeChange={setMode} />
                 <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                 <Button
                   variant="outline"
@@ -311,7 +313,7 @@ export function UploadClient() {
                 name={row.name}
                 status={row.status}
                 message={row.message}
-                mode={mode}
+                colorLabel={row.colorLabel}
                 selectMode={sel.selectMode}
                 selected={Boolean(row.photoId && sel.selected.has(row.photoId))}
                 onTileClick={handleTileClick}
