@@ -64,6 +64,9 @@ export function LibraryView() {
     setDownloading(true);
     try {
       await downloadSelection(ids);
+      // Clear the selection on success while staying in select mode, mirroring
+      // the color-label flow — the batch is done, but you may pick another set.
+      sel.clear();
     } catch {
       toast.error("Failed to download photos.");
     } finally {

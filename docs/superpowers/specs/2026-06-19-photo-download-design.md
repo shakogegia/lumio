@@ -121,8 +121,9 @@ header use plain anchors and do not need these.
 - **`photos/library-view.tsx`** selection toolbar — a **Download** button before
   Delete. `onClick` runs `downloadSelection([...sel.selected])` inside a
   `downloading` pending state (label → "Preparing…", button disabled), with
-  `toast.error` on failure. Disabled when `sel.count === 0`. Selection is left
-  intact after download (you may want to do something else with the same set).
+  `toast.error` on failure. Disabled when `sel.count === 0`. On success the
+  selection is cleared but select mode stays on (`sel.clear()`), mirroring the
+  color-label flow — so you can immediately pick another set.
 - **`albums/[id]/album-view.tsx`**:
   - **Normal header** — a **Download** button next to `DeleteAlbumButton`
     (`Button asChild` → `<a href="/api/albums/<id>/download">`, `Download` icon).
