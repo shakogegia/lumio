@@ -21,7 +21,7 @@ PHOTOS_DIR  ?= $(CURDIR)/photos
 
 export PORT PHOTOS_DIR
 
-.PHONY: dev build push up down logs shell migrate seed clean
+.PHONY: dev build push up down logs shell migrate clean
 
 # Local dev (Next dev server; run `pnpm db:up` first for Postgres).
 dev:
@@ -54,10 +54,6 @@ shell:
 # Apply pending Prisma migrations against the running DB.
 migrate:
 	$(COMPOSE) run --rm web migrate
-
-# Re-seed photos from PHOTOS_DIR (DESTRUCTIVE: wipes existing rows).
-seed:
-	$(COMPOSE) run --rm worker seed
 
 # Stop the stack and remove the image + the Postgres and cache volumes.
 clean: down

@@ -2,7 +2,7 @@
 
 # Single image for the whole Lumio monorepo. Run it as two containers, chosen by
 # the command arg: `web` (Next.js server) or `worker` (ingest/watch). Also
-# supports `ingest`, `seed`, and `migrate` one-off commands.
+# supports `ingest` and `migrate` one-off commands.
 # Built from the repo ROOT (it installs the entire pnpm workspace):
 #   docker build -t lumio .
 ARG NODE_VERSION=24
@@ -63,9 +63,6 @@ case "${1:-web}" in
     ;;
   ingest)
     exec pnpm --filter @lumio/worker exec tsx src/main.ts
-    ;;
-  seed)
-    exec pnpm --filter @lumio/worker exec tsx scripts/seed-photos.ts
     ;;
   migrate)
     exec pnpm --filter @lumio/db exec prisma migrate deploy
