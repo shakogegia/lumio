@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { HeaderBar } from "@/components/header-bar";
 import { NewAlbumDialog } from "./new-album-dialog";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +17,8 @@ export default async function AlbumsPage() {
   const albums = await listAlbumSummaries();
 
   return (
-    <main className="w-full p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Albums</h1>
-        <NewAlbumDialog />
-      </div>
+    <main className="w-full px-6 pb-6">
+      <HeaderBar title="Albums" actions={<NewAlbumDialog />} />
 
       {albums.length === 0 ? (
         <Empty>
@@ -36,7 +34,7 @@ export default async function AlbumsPage() {
         <div className="grid grid-cols-3 gap-x-5 gap-y-7 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">
           {albums.map((album) => (
             <Link key={album.id} href={`/albums/${album.id}`} className="group block">
-              <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-muted">
+              <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-sm bg-muted">
                 {album.coverPhotoId ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

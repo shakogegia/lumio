@@ -1,10 +1,14 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
-import type { PhotosPage, PhotosQuery } from "@lumio/shared";
+import type { PhotoNeighbors, PhotosPage, PhotosQuery, PhotoStripItem } from "@lumio/shared";
+import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
+import { PHOTO_ORDER } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "photo">;
+
+type NeighborDb = Pick<PrismaClient, "photo" | "album">;
 
 export async function listPhotos(
   params: PhotosQuery,
@@ -14,7 +18,7 @@ export async function listPhotos(
   const rows = await db.photo.findMany({
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: [{ sortDate: "desc" }, { id: "desc" }],
+    orderBy: PHOTO_ORDER,
   });
 
   const nextCursor =
@@ -26,6 +30,51 @@ export async function getPhoto(id: string, db: Db = prisma) {
   const row = await db.photo.findUnique({ where: { id }, include: { albums: { select: { albumId: true } } } });
   if (!row) return null;
   return { ...toPhotoDTO(row), albumIds: row.albums.map((a) => a.albumId) };
+}
+
+/**
+ * Neighbors of `current` within a navigation scope, for the detail view's arrows
+ * and film strip. `albumId` null = whole library; otherwise the album's photos
+ * (regular or smart). Uses keyset cursoring on the current id over PHOTO_ORDER:
+ * a forward page (next) and a backward page (prev, negative take). Both come back
+ * in PHOTO_ORDER, so `before` ends with the nearest-prev and `strip` reads
+ * left-to-right as the grid does. Selects only id+path to keep the window cheap.
+ */
+export async function getPhotoNeighbors(
+  current: PhotoStripItem,
+  albumId: string | null,
+  window = 25,
+  db: NeighborDb = prisma,
+): Promise<PhotoNeighbors> {
+  const where = albumId ? await albumPhotoWhere(albumId, db) : {};
+  if (where === null) {
+    // Album no longer exists — degrade to no navigation rather than throwing.
+    return { prevId: null, nextId: null, strip: [current] };
+  }
+  const select = { id: true, path: true } as const;
+  const [before, after] = await Promise.all([
+    db.photo.findMany({
+      where,
+      cursor: { id: current.id },
+      skip: 1,
+      take: -window,
+      orderBy: PHOTO_ORDER,
+      select,
+    }),
+    db.photo.findMany({
+      where,
+      cursor: { id: current.id },
+      skip: 1,
+      take: window,
+      orderBy: PHOTO_ORDER,
+      select,
+    }),
+  ]);
+  return {
+    prevId: before.at(-1)?.id ?? null,
+    nextId: after[0]?.id ?? null,
+    strip: [...before, current, ...after],
+  };
 }
 
 export interface PurgeDeps {

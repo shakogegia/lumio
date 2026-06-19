@@ -6,7 +6,7 @@ export interface ExifData {
   cameraMake?: string;
   cameraModel?: string;
   orientation?: number;
-  [key: string]: unknown; // raw passthrough allowed
+  [key: string]: unknown; // full sanitized metadata dump (all EXIF/GPS/XMP/IPTC tags)
 }
 
 export interface PhotoDTO {
@@ -46,4 +46,20 @@ export interface AlbumDTO {
 export interface AlbumSummaryDTO extends AlbumDTO {
   photoCount: number;
   coverPhotoId: string | null;
+}
+
+/** Minimal photo shape for the film strip — just enough to render a thumbnail. */
+export interface PhotoStripItem {
+  id: string;
+  path: string;
+}
+
+/** Neighbors of a photo within a navigation scope (album or whole library). */
+export interface PhotoNeighbors {
+  /** Photo one position earlier in PHOTO_ORDER (the left arrow target); null at the start. */
+  prevId: string | null;
+  /** Photo one position later in PHOTO_ORDER (the right arrow target); null at the end. */
+  nextId: string | null;
+  /** A window of strip items in PHOTO_ORDER: [...before, current, ...after]. */
+  strip: PhotoStripItem[];
 }

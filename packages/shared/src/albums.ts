@@ -28,6 +28,9 @@ export const createAlbumSchema = z
     message: "smart albums require rules; regular albums must omit rules",
   });
 
-export const addPhotoSchema = z.object({ photoId: z.string().min(1) });
+export const albumPhotosSchema = z.object({
+  photoIds: z.array(z.string().min(1)).min(1),
+});
+export type AlbumPhotosInput = z.infer<typeof albumPhotosSchema>;
 
 export type CreateAlbumInput = z.infer<typeof createAlbumSchema>;

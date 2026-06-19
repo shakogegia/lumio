@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { collectFiles, partitionSupported } from "@/lib/upload-collect";
 
 type RowStatus = "queued" | "uploading" | "added" | "duplicate" | "unsupported" | "error";
 
@@ -30,8 +31,10 @@ let nextRowId = 1;
 export function UploadClient() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [skipped, setSkipped] = useState(0);
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -55,7 +58,10 @@ export function UploadClient() {
   );
 
   const addFiles = useCallback(
-    async (files: File[]) => {
+    async (incoming: File[]) => {
+      const { supported: files, skipped: nSkipped } = partitionSupported(incoming);
+      // Accumulate across drops to mirror the rows list, which also accumulates.
+      if (nSkipped > 0) setSkipped((n) => n + nSkipped);
       if (files.length === 0) return;
       const queued: Array<{ file: File; rowId: number }> = files.map((file) => {
         const rowId = nextRowId++;
@@ -93,7 +99,7 @@ export function UploadClient() {
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          void addFiles(Array.from(e.dataTransfer.files));
+          void collectFiles(e.dataTransfer).then(addFiles);
         }}
         className={cn(
           "flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-16 transition-colors",
@@ -102,7 +108,7 @@ export function UploadClient() {
       >
         <UploadCloud className="h-10 w-10 text-muted-foreground" strokeWidth={1.6} aria-hidden />
         <span className="text-sm text-muted-foreground">
-          Drag photos here, or click to choose files
+          Drag photos or a folder here, or click to choose files
         </span>
       </button>
 
@@ -117,6 +123,35 @@ export function UploadClient() {
           e.target.value = "";
         }}
       />
+
+      {/* No `accept`: browsers ignore it with webkitdirectory — we filter via partitionSupported instead. */}
+      <input
+        ref={folderInputRef}
+        type="file"
+        {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          void addFiles(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => folderInputRef.current?.click()}
+          className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Or upload a whole folder
+        </button>
+      </div>
+
+      {skipped > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Skipped {skipped} unsupported file{skipped === 1 ? "" : "s"}.
+        </p>
+      )}
 
       {rows.length > 0 && (
         <ul className="divide-y divide-border rounded-2xl border border-border">
