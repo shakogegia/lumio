@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/server-session";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AccountForm } from "./account-form";
 import { PasswordForm } from "./password-form";
 
@@ -17,8 +18,21 @@ export default async function ProfilePage() {
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
       <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-      <AccountForm name={session.user.name} email={session.user.email} />
-      <PasswordForm />
+
+      <Tabs defaultValue="account" className="gap-6">
+        <TabsList>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="password">Password</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="account">
+          <AccountForm name={session.user.name} email={session.user.email} />
+        </TabsContent>
+
+        <TabsContent value="password">
+          <PasswordForm />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }

@@ -49,12 +49,9 @@ export function AccountForm({
 
   return (
     <section className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-base font-medium">Account</h2>
-        <p className="text-sm text-muted-foreground">
-          Your sign-in email and display name.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Your sign-in email and display name.
+      </p>
 
       <InfoList>
         <InfoRow label="Email" value={email} mono />

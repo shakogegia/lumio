@@ -53,12 +53,9 @@ export function PasswordForm() {
 
   return (
     <section className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-base font-medium">Password</h2>
-        <p className="text-sm text-muted-foreground">
-          Change the password you use to sign in.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Change the password you use to sign in.
+      </p>
 
       <form onSubmit={onSubmit} className="grid max-w-sm gap-3">
         <div className="grid gap-2">
