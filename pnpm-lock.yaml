@@ -126,6 +126,9 @@ importers:
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
+      sharp:
+        specifier: ^0.33
+        version: 0.33.5
     devDependencies:
       '@types/node':
         specifier: ^22
