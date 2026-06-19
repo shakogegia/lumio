@@ -32,6 +32,18 @@ export async function listPhotos(
   return { items: rows.map(toPhotoDTO), nextCursor };
 }
 
+/** Minimal {id, path} for a set of photo ids, in canonical order, for zipping. */
+export async function listPhotosForDownload(
+  ids: string[],
+  db: Db = prisma,
+): Promise<{ id: string; path: string }[]> {
+  return db.photo.findMany({
+    where: { id: { in: ids } },
+    orderBy: PHOTO_ORDER,
+    select: { id: true, path: true },
+  });
+}
+
 /**
  * Set (or clear, with `null`) the color label on a batch of photos.
  * Returns the number of rows updated.
