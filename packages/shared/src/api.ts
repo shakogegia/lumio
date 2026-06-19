@@ -29,16 +29,16 @@ export function coercePhotoSort(value: unknown): PhotoSort {
 /** Query params for GET /api/photos. */
 export const photosQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  cursor: z.string().min(1).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
 });
 
 export type PhotosQuery = z.infer<typeof photosQuerySchema>;
 
-/** Cursor-paginated photo list response. */
+/** Offset-paginated photo list response. `total` is the full match count. */
 export interface PhotosPage {
   items: PhotoDTO[];
-  nextCursor: string | null;
+  total: number;
 }
 
 /** Request body for bulk photo/trash operations. */
@@ -59,7 +59,7 @@ export const searchQuerySchema = z.object({
     .optional()
     .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  cursor: z.string().min(1).optional(),
+  offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
 });
 

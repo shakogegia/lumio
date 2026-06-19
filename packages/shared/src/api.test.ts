@@ -7,16 +7,16 @@ import {
 } from "./api.js";
 
 describe("photosQuerySchema", () => {
-  it("defaults limit to 50 when absent", () => {
+  it("defaults limit to 50 and offset to 0 when absent", () => {
     const parsed = photosQuerySchema.parse({});
     expect(parsed.limit).toBe(50);
-    expect(parsed.cursor).toBeUndefined();
+    expect(parsed.offset).toBe(0);
   });
 
-  it("coerces a numeric string limit and passes cursor through", () => {
-    const parsed = photosQuerySchema.parse({ limit: "10", cursor: "abc" });
+  it("coerces a numeric string limit and offset", () => {
+    const parsed = photosQuerySchema.parse({ limit: "10", offset: "200" });
     expect(parsed.limit).toBe(10);
-    expect(parsed.cursor).toBe("abc");
+    expect(parsed.offset).toBe(200);
   });
 
   it("rejects limit above 100", () => {
@@ -26,14 +26,18 @@ describe("photosQuerySchema", () => {
   it("rejects limit below 1", () => {
     expect(() => photosQuerySchema.parse({ limit: "0" })).toThrow();
   });
+
+  it("rejects a negative offset", () => {
+    expect(photosQuerySchema.safeParse({ offset: "-1" }).success).toBe(false);
+  });
 });
 
 describe("searchQuerySchema", () => {
-  it("defaults to empty album list and no q/cursor", () => {
+  it("defaults to empty album list, no q, and offset 0", () => {
     const parsed = searchQuerySchema.parse({});
     expect(parsed.album).toEqual([]);
     expect(parsed.q).toBeUndefined();
-    expect(parsed.cursor).toBeUndefined();
+    expect(parsed.offset).toBe(0);
     expect(parsed.limit).toBe(50);
   });
 
@@ -48,6 +52,10 @@ describe("searchQuerySchema", () => {
   it("trims q and drops empty/whitespace-only q", () => {
     expect(searchQuerySchema.parse({ q: "  beach  " }).q).toBe("beach");
     expect(searchQuerySchema.parse({ q: "   " }).q).toBeUndefined();
+  });
+
+  it("coerces offset from a string", () => {
+    expect(searchQuerySchema.parse({ offset: "50" }).offset).toBe(50);
   });
 
   it("rejects limit above 100", () => {
