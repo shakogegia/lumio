@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectableIds, summarizeRows, toggleId, type Row } from "./upload-rows";
+import { selectableIds, summarizeRows, type Row } from "./upload-rows";
 
 function mkRow(p: Partial<Row> & Pick<Row, "status">): Row {
   return {
@@ -42,18 +42,5 @@ describe("selectableIds", () => {
       mkRow({ id: 4, status: "uploading" }),
     ];
     expect(selectableIds(rows)).toEqual(["a", "b"]);
-  });
-});
-
-describe("toggleId", () => {
-  it("adds an absent id and removes a present one", () => {
-    expect([...toggleId(new Set(["a"]), "b")]).toEqual(["a", "b"]);
-    expect([...toggleId(new Set(["a", "b"]), "a")]).toEqual(["b"]);
-  });
-  it("returns a new Set without mutating the input", () => {
-    const input = new Set(["a"]);
-    const out = toggleId(input, "b");
-    expect(out).not.toBe(input);
-    expect([...input]).toEqual(["a"]);
   });
 });

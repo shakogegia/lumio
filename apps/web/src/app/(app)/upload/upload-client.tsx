@@ -17,13 +17,8 @@ import { useGridColumns } from "@/lib/use-grid-columns";
 import { useGridView } from "@/lib/use-grid-view";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
-import {
-  selectableIds,
-  summarizeRows,
-  toggleId,
-  type Row,
-  type RowStatus,
-} from "@/lib/upload-rows";
+import { selectableIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
+import { computeSelection } from "@/lib/grid-selection";
 import { SelectionToolbar } from "../photos/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
@@ -127,12 +122,26 @@ export function UploadClient() {
     rowsRef.current = rows;
   }, [rows]);
 
+  // Last plain-clicked row index; the anchor for shift-click range selection.
+  const anchorRef = useRef<number | null>(null);
+  useEffect(() => {
+    // Drop the anchor when leaving select mode so a later shift-click doesn't
+    // extend from a stale index (mirrors the photo grid).
+    if (!sel.selectMode) anchorRef.current = null;
+  }, [sel.selectMode]);
+
   // Stable per-tile callbacks (identity preserved across renders) so React.memo
   // on UploadTile actually skips unchanged tiles when one selection toggles.
-  // `setSelected` is a useState setter, so its identity is stable.
+  // `setSelected` is a useState setter, so its identity is stable. Reuses the
+  // shared selection reducer so plain-toggle and shift-range match /photos.
   const { setSelected } = sel;
-  const toggleSelect = useCallback(
-    (photoId: string) => setSelected((prev) => toggleId(prev, photoId)),
+  const handleTileClick = useCallback(
+    (index: number, e: React.MouseEvent) => {
+      const anchor = anchorRef.current;
+      if (!e.shiftKey) anchorRef.current = index;
+      const photoIds = rowsRef.current.map((r) => r.photoId ?? "");
+      setSelected((prev) => computeSelection(prev, photoIds, index, e.shiftKey, anchor));
+    },
     [setSelected],
   );
 
@@ -293,10 +302,11 @@ export function UploadClient() {
             className="grid gap-3"
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <UploadTile
                 key={row.id}
                 id={row.id}
+                index={index}
                 photoId={row.photoId}
                 name={row.name}
                 status={row.status}
@@ -304,7 +314,7 @@ export function UploadClient() {
                 mode={mode}
                 selectMode={sel.selectMode}
                 selected={Boolean(row.photoId && sel.selected.has(row.photoId))}
-                onToggleSelect={toggleSelect}
+                onTileClick={handleTileClick}
                 onRetry={retryRow}
               />
             ))}

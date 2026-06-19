@@ -33,7 +33,7 @@ export function UploadCommandBar({
           </p>
           {!uploading ? (
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <Count dot="bg-primary" label={`${summary.added} added`} />
+              <Count dot="bg-green-600 dark:bg-green-500" label={`${summary.added} added`} />
               {summary.duplicate > 0 ? (
                 <Count
                   dot="bg-amber-500"

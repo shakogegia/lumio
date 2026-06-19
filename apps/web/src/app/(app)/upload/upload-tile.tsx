@@ -19,10 +19,11 @@ const STATUS_LABEL: Record<RowStatus, string> = {
 /**
  * Memoized so toggling the selection of one tile doesn't re-render the rest of
  * the grid. That requires the parent to pass referentially-stable callbacks
- * (`onToggleSelect`/`onRetry` keyed by id) — otherwise memo would never hit.
+ * (`onTileClick`/`onRetry`) — otherwise memo would never hit.
  */
 export const UploadTile = memo(function UploadTile({
   id,
+  index,
   photoId,
   name,
   status,
@@ -30,11 +31,13 @@ export const UploadTile = memo(function UploadTile({
   mode,
   selectMode,
   selected,
-  onToggleSelect,
+  onTileClick,
   onRetry,
 }: {
   /** Client row id (for retry). */
   id: number;
+  /** Position in the row list (for shift-click range selection). */
+  index: number;
   /** Real photo id; present ⇒ selectable + has a server thumbnail. */
   photoId?: string;
   name: string;
@@ -43,7 +46,7 @@ export const UploadTile = memo(function UploadTile({
   mode: GridViewMode;
   selectMode: boolean;
   selected: boolean;
-  onToggleSelect: (photoId: string) => void;
+  onTileClick: (index: number, e: React.MouseEvent) => void;
   onRetry: (id: number) => void;
 }) {
   // Ingested rows render the small server-generated thumbnail; rows still in
@@ -91,7 +94,7 @@ export const UploadTile = memo(function UploadTile({
 
       {status === "added" ? (
         <span className="absolute right-1.5 top-1.5 rounded-full bg-background">
-          <CheckCircle2 className="size-5 text-primary" aria-hidden />
+          <CheckCircle2 className="size-5 text-green-600 dark:text-green-500" aria-hidden />
         </span>
       ) : null}
 
@@ -136,9 +139,7 @@ export const UploadTile = memo(function UploadTile({
         <button
           type="button"
           aria-pressed={selected}
-          onClick={() => {
-            if (photoId) onToggleSelect(photoId);
-          }}
+          onClick={(e) => onTileClick(index, e)}
           title={message ?? STATUS_LABEL[status]}
           className="block select-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
