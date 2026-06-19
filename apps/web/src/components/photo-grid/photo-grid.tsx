@@ -40,6 +40,8 @@ export function PhotoGrid({
   albumId,
   empty = PHOTOS_EMPTY,
   mode = "fill",
+  params,
+  hrefFor,
   selectMode = false,
   selectedIds,
   onSelectionChange,
@@ -48,11 +50,16 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
+  params?: URLSearchParams;
+  /** Detail-route href for a tile; defaults to the album/library scope. The
+   *  search view overrides it to carry the search filter (so the film strip
+   *  navigates the results). */
+  hrefFor?: (id: string) => string;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
 }) {
-  const { photos, done, error, loadMore } = usePhotoPages(endpoint);
+  const { photos, done, error, loadMore } = usePhotoPages(endpoint, params);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);
@@ -162,6 +169,7 @@ export function PhotoGrid({
                   photo={photo}
                   mode={mode}
                   albumId={albumId}
+                  hrefFor={hrefFor}
                   selectMode={selectMode}
                   isSelected={selectedIds?.has(photo.id) ?? false}
                   index={start + i}

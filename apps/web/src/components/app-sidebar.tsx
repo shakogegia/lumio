@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp } from "lucide-react";
+import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
@@ -10,6 +10,7 @@ import { SidebarAlbums } from "@/components/sidebar-albums";
 
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
+  { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];

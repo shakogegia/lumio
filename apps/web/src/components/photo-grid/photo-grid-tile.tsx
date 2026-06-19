@@ -18,6 +18,7 @@ export function PhotoGridTile({
   photo,
   mode,
   albumId,
+  hrefFor,
   selectMode,
   isSelected,
   index,
@@ -26,6 +27,8 @@ export function PhotoGridTile({
   photo: PhotoDTO;
   mode: GridViewMode;
   albumId?: string;
+  /** Detail-route href override; defaults to the album/library scope. */
+  hrefFor?: (id: string) => string;
   selectMode: boolean;
   isSelected: boolean;
   index: number;
@@ -56,7 +59,10 @@ export function PhotoGridTile({
   }
 
   return (
-    <Link href={photoHref(photo.id, albumId)} className={cellVariants({ mode })}>
+    <Link
+      href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId)}
+      className={cellVariants({ mode })}
+    >
       {thumb}
     </Link>
   );
