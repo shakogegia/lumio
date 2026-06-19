@@ -10,7 +10,7 @@ import type {
 } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
-import { PHOTO_ORDER } from "@/lib/photo-order";
+import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "photo">;
 
@@ -20,11 +20,11 @@ export async function listPhotos(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const { limit, cursor } = params;
+  const { limit, cursor, sort } = params;
   const rows = await db.photo.findMany({
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: PHOTO_ORDER,
+    orderBy: photoOrderBy(sort),
   });
 
   const nextCursor =

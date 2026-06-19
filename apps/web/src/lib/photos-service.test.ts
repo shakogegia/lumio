@@ -53,6 +53,12 @@ describe("listPhotos", () => {
     const page = await listPhotos({ limit: 2 }, db as never);
     expect(page.nextCursor).toBeNull();
   });
+
+  it("orders by createdAt desc when sort is imported-desc", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 2, sort: "imported-desc" }, db as never);
+    expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
+  });
 });
 
 describe("purgeAllPhotos", () => {
