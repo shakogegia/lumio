@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { thumbHashToDataURL } from "thumbhash";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
+import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an
@@ -14,15 +14,7 @@ import type { GridViewMode } from "@/lib/use-grid-view";
  */
 export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMode }) {
   const [loaded, setLoaded] = useState(false);
-  const blurUrl = useMemo(() => {
-    if (!photo.thumbhash) return null;
-    try {
-      const bytes = Uint8Array.from(atob(photo.thumbhash), (c) => c.charCodeAt(0));
-      return thumbHashToDataURL(bytes);
-    } catch {
-      return null;
-    }
-  }, [photo.thumbhash]);
+  const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
   const { width: w, height: h } = photo;
   const valid = w > 0 && h > 0;

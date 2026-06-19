@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { setHoldNavTarget } from "@/lib/hold-key-nav";
+import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { FilmStrip } from "./film-strip";
 import { DeletePhotoButton } from "./delete-photo-button";
 
@@ -40,6 +41,54 @@ export function PhotoDetail({
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
   const metadata = exifEntries(photo.exif);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
+
+  // The blur placeholder must sit on the *exact* rendered box of the main image.
+  // The image is `object-contain`, so its visible box is the largest photo-aspect
+  // rectangle fitting its element box — which depends on viewport + breakpoint.
+  // Measure it (and track resizes) so the blur lands pixel-perfectly, rather than
+  // relying on CSS (the ThumbHash data URL's aspect is only an approximation).
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [blurBox, setBlurBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  useEffect(() => {
+    const img = imgRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return;
+    const ar = photo.width / photo.height;
+    const measure = () => {
+      const cw = img.clientWidth;
+      const ch = img.clientHeight;
+      if (!cw || !ch || !ar) return setBlurBox(null);
+      let vw: number, vh: number;
+      if (cw / ch > ar) {
+        vh = ch;
+        vw = ch * ar;
+      } else {
+        vw = cw;
+        vh = cw / ar;
+      }
+      const ir = img.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      setBlurBox({
+        left: ir.left - cr.left + (cw - vw) / 2,
+        top: ir.top - cr.top + (ch - vh) / 2,
+        width: vw,
+        height: vh,
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(img);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [photo.width, photo.height, photo.id]);
 
   const hrefFor = (id: string) => (scope ? `/photo/${id}?${scope}` : `/photo/${id}`);
   const prevHref = neighbors.prevId ? hrefFor(neighbors.prevId) : null;
@@ -71,13 +120,36 @@ export function PhotoDetail({
   return (
     <div className="flex flex-col lg:h-dvh lg:flex-row">
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div
+          ref={containerRef}
+          className="relative flex min-h-0 flex-1 items-center justify-center p-4"
+        >
+          {/* eslint-disable @next/next/no-img-element */}
+          {blurUrl && blurBox && (
+            <img
+              src={blurUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
+              style={{
+                left: blurBox.left,
+                top: blurBox.top,
+                width: blurBox.width,
+                height: blurBox.height,
+                opacity: imgLoaded ? 0 : 1,
+              }}
+            />
+          )}
           <img
+            ref={imgRef}
             src={`/api/photos/${photo.id}/display`}
             alt={photo.path}
+            width={photo.width}
+            height={photo.height}
+            onLoad={() => setImgLoaded(true)}
             className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
           />
+          {/* eslint-enable @next/next/no-img-element */}
           {prevHref && (
             <NavArrow side="left" href={prevHref} label="Previous photo" replace={overlay} />
           )}
