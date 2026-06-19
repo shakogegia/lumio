@@ -36,9 +36,14 @@ export function PhotoGridTile({
 }) {
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
 
-  // In card mode a labeled photo tints its mat; inline style overrides bg-muted.
+  // In card mode a labeled photo tints its mat. The hex is exposed as a CSS
+  // variable and the `.label-mat` class (in globals.css) decides how to render it
+  // per theme — light uses it as-is, dark blends it toward the mat surface so the
+  // pastels don't glow against the near-black background.
   const labelHex = mode === "card" ? colorLabelHex(photo.colorLabel) : undefined;
-  const labelStyle = labelHex ? { backgroundColor: labelHex } : undefined;
+  const labelStyle = labelHex
+    ? ({ "--label-tint": labelHex } as React.CSSProperties)
+    : undefined;
 
   if (selectMode) {
     return (
@@ -46,7 +51,11 @@ export function PhotoGridTile({
         type="button"
         aria-pressed={isSelected}
         onClick={(e) => onTileClick(index, e)}
-        className={cn(cellVariants({ mode, selected: isSelected }), "select-none")}
+        className={cn(
+          cellVariants({ mode, selected: isSelected }),
+          "select-none",
+          labelHex && "label-mat",
+        )}
         style={labelStyle}
       >
         <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
@@ -66,7 +75,7 @@ export function PhotoGridTile({
   return (
     <Link
       href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId)}
-      className={cellVariants({ mode })}
+      className={cn(cellVariants({ mode }), labelHex && "label-mat")}
       style={labelStyle}
     >
       {thumb}

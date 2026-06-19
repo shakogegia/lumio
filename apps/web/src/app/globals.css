@@ -135,6 +135,19 @@
   }
 }
 
+/* Color-label mat tint. The picked pastel hex arrives as the `--label-tint` CSS
+   variable (set inline per tile). Light mode uses it as-is; dark mode blends it
+   toward the normal mat surface (--muted) so the pastels read as a calm tint
+   instead of glowing against the near-black background. The blend percentage is
+   the vibrancy dial — lower is calmer, higher is punchier. Unlayered, so it wins
+   over Tailwind's layered `bg-muted` utility without !important. */
+.label-mat {
+  background-color: var(--label-tint);
+}
+.dark .label-mat {
+  background-color: color-mix(in oklch, var(--label-tint) 50%, var(--muted));
+}
+
 /* TributeJS dropdown — themed to match the app popover (light + dark via tokens). */
 .tribute-container {
   position: absolute;
