@@ -47,10 +47,15 @@ export function usePhotoPages(endpoint: string, params?: URLSearchParams) {
     }
   }, [endpoint, cursor, done, params]);
 
+  const patchPhotos = useCallback((ids: Set<string>, patch: Partial<PhotoDTO>) => {
+    setPhotos((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, ...patch } : p)));
+  }, []);
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadMore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { photos, done, error, loadMore };
+  return { photos, done, error, loadMore, patchPhotos };
 }
