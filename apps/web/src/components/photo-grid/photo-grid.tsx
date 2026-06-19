@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
-import { computeColumns, rowCount, GRID_GAP, MIN_TILE } from "@/lib/grid-layout";
+import { rowCount, GRID_GAP, DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
@@ -46,7 +46,7 @@ export function PhotoGrid({
   albumId,
   empty = PHOTOS_EMPTY,
   mode = "fill",
-  minTile = MIN_TILE,
+  columns: columnsProp = DEFAULT_COLUMNS,
   params,
   hrefFor,
   selectMode = false,
@@ -58,8 +58,8 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
-  /** Minimum/target tile width driving column count. Defaults to MIN_TILE. */
-  minTile?: number;
+  /** Number of columns (photos per row). Defaults to DEFAULT_COLUMNS. */
+  columns?: number;
   params?: URLSearchParams;
   /** Detail-route href for a tile; defaults to the album/library scope. The
    *  search view overrides it to carry the search filter (so the film strip
@@ -71,7 +71,11 @@ export function PhotoGrid({
   /** Imperative handle for in-place photo updates (optimistic label tinting). */
   apiRef?: React.Ref<PhotoGridHandle>;
 }) {
-  const { photos, done, error, loadMore, patchPhotos } = usePhotoPages(endpoint, params);
+  const columns = Math.max(1, columnsProp);
+  // Scale the fetch page size with density so a page roughly fills the viewport
+  // (more columns → more visible tiles). Capped at the API limit (100).
+  const pageSize = Math.min(100, Math.max(50, columns * 8));
+  const { photos, done, error, loadMore, patchPhotos } = usePhotoPages(endpoint, params, pageSize);
   useImperativeHandle(apiRef, () => ({ patchPhotos }), [patchPhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
@@ -120,15 +124,14 @@ export function PhotoGrid({
     roRef.current = ro;
   }, []);
 
-  const columns = computeColumns(width, minTile);
   const tileSize = width > 0 ? (width - GRID_GAP * (columns - 1)) / columns : 0;
   const rows = rowCount(photos.length, columns);
 
   // Warm-grey placeholder shown until the first page loads. Rendered with pure
-  // CSS (auto-fill columns + square tiles) so it needs no measured width — it's
-  // in the server HTML and paints on the first frame, even on a fast refresh
-  // before hydration. auto-fill with the same MIN_TILE/GRID_GAP yields the same
-  // column count as the real grid, so the swap to real photos is seamless.
+  // CSS (a fixed `columns`-wide grid of square tiles) so it needs no measured
+  // width — it's in the server HTML and paints on the first frame, even on a
+  // fast refresh before hydration. It uses the same column count as the real
+  // grid, so the swap to real photos is seamless.
   const showSkeleton = photos.length === 0 && !done && !error;
 
   const virtualizer = useWindowVirtualizer({
@@ -158,7 +161,7 @@ export function PhotoGrid({
   }
 
   if (showSkeleton) {
-    return <PhotoGridSkeleton listRef={measureRef} />;
+    return <PhotoGridSkeleton listRef={measureRef} columns={columns} />;
   }
 
   return (
