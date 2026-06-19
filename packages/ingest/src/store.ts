@@ -36,6 +36,7 @@ export async function storePhoto(
     width: processed.width,
     height: processed.height,
     hash: processed.hash,
+    thumbhash: processed.thumbhash,
     exif: processed.exif as object,
   };
 

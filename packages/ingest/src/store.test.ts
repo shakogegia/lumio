@@ -14,6 +14,7 @@ const processed: ProcessedPhoto = {
   height: 80,
   takenAt: new Date("2024-03-14T09:26:53.000Z"),
   hash: "deadbeef",
+  thumbhash: "AAAA",
   exif: { cameraMake: "Lumio" },
   thumbnail: Buffer.from("fake-webp-bytes"),
   display: Buffer.from("fake-display-bytes"),

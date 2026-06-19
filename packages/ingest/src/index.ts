@@ -6,3 +6,4 @@ export * from "./ingest.js";
 export * from "./find-by-hash.js";
 export * from "./place-upload.js";
 export * from "./upload-date.js";
+export { computeThumbhash } from "./thumbhash.js";

@@ -39,6 +39,8 @@ describe("processImage", () => {
     expect(result.exif.FocalLength).toBe(50);
     expect(result.takenAt?.toISOString()).toBe("2024-03-14T09:26:53.000Z");
     expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(typeof result.thumbhash).toBe("string");
+    expect(result.thumbhash.length).toBeGreaterThan(0);
 
     const meta = await sharp(result.thumbnail).metadata();
     expect(meta.format).toBe("webp");

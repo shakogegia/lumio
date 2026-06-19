@@ -5,12 +5,14 @@ import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
 import { DISPLAY_MAX, THUMBNAIL_MAX } from "./constants.js";
 import { decodeToReadable } from "./decode.js";
+import { computeThumbhash } from "./thumbhash.js";
 
 export interface ProcessedPhoto {
   width: number;
   height: number;
   takenAt: Date | null;
   hash: string;
+  thumbhash: string;
   exif: ExifData;
   thumbnail: Buffer;
   display: Buffer;
@@ -31,6 +33,8 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
       .webp({ quality: 80 })
       .toBuffer();
 
+    const thumbhash = await computeThumbhash(thumbnail);
+
     // Browser-renderable rendition for the detail view: non-native formats
     // (JXL/HEIC) decode to webp here, and large originals stay a sane size.
     const display = await sharp(decoded.path)
@@ -41,7 +45,7 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
 
     const hash = createHash("sha256").update(original).digest("hex");
 
-    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, exif, thumbnail, display };
+    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, thumbhash, exif, thumbnail, display };
   } finally {
     await decoded.cleanup();
   }
