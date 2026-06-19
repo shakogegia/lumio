@@ -20,6 +20,7 @@ describe("runPool", () => {
       inFlight--;
     });
     expect(peak).toBeLessThanOrEqual(3);
+    expect(peak).toBe(3);
   });
 
   it("is a no-op when total is 0", async () => {
@@ -28,5 +29,13 @@ describe("runPool", () => {
       calls++;
     });
     expect(calls).toBe(0);
+  });
+
+  it("runs all tasks when limit exceeds total", async () => {
+    const seen: number[] = [];
+    await runPool(3, 10, async (i) => {
+      seen.push(i);
+    });
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 });

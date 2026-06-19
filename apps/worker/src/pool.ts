@@ -1,4 +1,7 @@
-/** Run `task(i)` for every i in [0, total), with at most `limit` in flight at once. */
+/**
+ * Run `task(i)` for every i in [0, total), with at most `limit` in flight at once.
+ * A `limit` of 0 spawns no workers and so runs no tasks.
+ */
 export async function runPool(
   total: number,
   limit: number,
