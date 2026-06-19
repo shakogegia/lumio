@@ -95,6 +95,21 @@ export async function listAlbumPhotos(
   return { items: rows.map(toPhotoDTO), nextCursor };
 }
 
+/** Minimal {id, path} for every photo in an album (smart or regular), in
+ *  canonical order, for zipping. Returns null when the album does not exist. */
+export async function listAlbumPhotosForDownload(
+  id: string,
+  db: Db = prisma,
+): Promise<{ id: string; path: string }[] | null> {
+  const where = await albumPhotoWhere(id, db);
+  if (where === null) return null;
+  return db.photo.findMany({
+    where,
+    orderBy: PHOTO_ORDER,
+    select: { id: true, path: true },
+  });
+}
+
 export class SmartAlbumMutationError extends Error {}
 
 export class AlbumNotFoundError extends Error {}
