@@ -35,7 +35,6 @@ export function dedupeEntryName(basename: string, used: Set<string>): string {
 export function sanitizeZipName(name: string): string {
   const cleaned = name
     .replace(/[/\\]/g, "-")
-    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1f<>:"|?*]/g, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -49,7 +48,6 @@ export function sanitizeZipName(name: string): string {
  * names survive in modern browsers while older clients still get a usable name.
  */
 export function attachmentDisposition(filename: string): string {
-  // eslint-disable-next-line no-control-regex
   const ascii = filename.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
