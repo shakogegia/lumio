@@ -2,6 +2,7 @@ import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { PHOTOS_DIR } from "./config.js";
+import { runPool } from "./pool.js";
 
 /**
  * Dev seeder: multiply a handful of Unsplash photos into N varied JPEGs under
@@ -136,24 +137,6 @@ async function makeVariant(base: Base, outPath: string, now: Date): Promise<void
     .toFile(outPath);
 }
 
-/** Run `tasks` with at most `limit` in flight at once. */
-async function runPool(total: number, limit: number, task: (i: number) => Promise<void>): Promise<void> {
-  let next = 0;
-  let done = 0;
-  const step = Math.max(1, Math.floor(total / 10));
-  async function worker(): Promise<void> {
-    while (next < total) {
-      const i = next++;
-      await task(i);
-      done++;
-      if (done % step === 0 || done === total) {
-        console.log(`  ${done}/${total}`);
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, total) }, worker));
-}
-
 async function main(): Promise<void> {
   const { count, clean } = parseArgs(process.argv.slice(2));
   const outDir = path.join(PHOTOS_DIR, SUBDIR);
@@ -172,9 +155,15 @@ async function main(): Promise<void> {
 
   const pad = String(count).length;
   console.log(`Generating ${count} variants into ${outDir} …`);
-  await runPool(count, CONCURRENCY, (i) => {
+  let done = 0;
+  const step = Math.max(1, Math.floor(count / 10));
+  await runPool(count, CONCURRENCY, async (i) => {
     const name = `seed-${String(i + 1).padStart(pad, "0")}.jpg`;
-    return makeVariant(pick(bases), path.join(outDir, name), now);
+    await makeVariant(pick(bases), path.join(outDir, name), now);
+    done++;
+    if (done % step === 0 || done === count) {
+      console.log(`  ${done}/${count}`);
+    }
   });
 
   console.log(`\nDone — wrote ${count} files to ${outDir}`);
