@@ -82,7 +82,7 @@ export function PhotoDetail({
             <NavArrow side="right" href={nextHref} label="Next photo" replace={overlay} />
           )}
         </div>
-        {neighbors.strip.length > 1 && (
+        {neighbors.strip.length > 0 && (
           <FilmStrip
             items={neighbors.strip}
             currentId={photo.id}
