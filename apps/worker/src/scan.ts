@@ -24,6 +24,24 @@ async function listImages(): Promise<string[]> {
     .map((e) => path.relative(PHOTOS_DIR, path.join(e.parentPath, e.name)));
 }
 
+/**
+ * Pure decision: is the on-disk file already ingested and unchanged? True only
+ * when a row exists, its recorded size+mtime match the current stat, and the
+ * rendered cache is present (so a wiped cache forces regeneration).
+ */
+export function isUnchanged(
+  row: { fileSize: number | null; fileMtimeMs: number | null } | undefined,
+  st: { size: number; mtimeMs: number },
+  cacheExists: boolean,
+): boolean {
+  return (
+    !!row &&
+    row.fileSize === st.size &&
+    row.fileMtimeMs === st.mtimeMs &&
+    cacheExists
+  );
+}
+
 /** One-shot scan: ingest every supported image, then reconcile deletions. */
 export async function scanAndIngest(): Promise<ScanSummary> {
   const relPaths = await listImages();
