@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun } from "lucide-react";
+import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import {
@@ -91,6 +91,13 @@ export function SidebarMore() {
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <DropdownMenuItem asChild>
+          <Link href="/trash">
+            <Trash2 aria-hidden />
+            Trash
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 

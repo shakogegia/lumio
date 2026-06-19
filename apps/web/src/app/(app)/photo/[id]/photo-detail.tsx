@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { setHoldNavTarget } from "@/lib/hold-key-nav";
 import { FilmStrip } from "./film-strip";
+import { DeletePhotoButton } from "./delete-photo-button";
 
 export function PhotoDetail({
   photo,
@@ -120,6 +121,8 @@ export function PhotoDetail({
                 <AlbumMembership photo={photo} regularAlbums={regularAlbums} />
               </>
             )}
+            <Separator />
+            <DeletePhotoButton photoId={photo.id} />
           </TabsContent>
 
           <TabsContent value="exif">

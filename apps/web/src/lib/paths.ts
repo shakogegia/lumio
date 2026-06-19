@@ -5,6 +5,7 @@ export const ROOT = path.resolve(process.cwd(), "..", "..");
 
 export const PHOTOS_DIR = path.resolve(ROOT, process.env.PHOTOS_DIR ?? "./photos");
 export const CACHE_DIR = path.resolve(ROOT, process.env.CACHE_DIR ?? "./cache");
+export const TRASH_DIR = path.resolve(ROOT, process.env.TRASH_DIR ?? "./trash");
 
 export function thumbnailPath(id: string): string {
   return path.join(CACHE_DIR, "thumbnails", `${id}.webp`);
@@ -12,6 +13,14 @@ export function thumbnailPath(id: string): string {
 
 export function displayPath(id: string): string {
   return path.join(CACHE_DIR, "displays", `${id}.webp`);
+}
+
+// The trash mirrors the cache layout under TRASH_DIR. trash-service.ts builds
+// its move targets from the injected `trashDir` (for testability, like
+// purgeAllPhotos), so the only helper needed here is the one the thumbnail
+// route uses to fall back to a trashed photo's rendition.
+export function trashThumbnailPath(id: string): string {
+  return path.join(TRASH_DIR, "thumbnails", `${id}.webp`);
 }
 
 export function originalPath(relPath: string): string {

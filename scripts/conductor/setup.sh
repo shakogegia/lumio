@@ -33,19 +33,21 @@ if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*cha
   echo "setup: generated BETTER_AUTH_SECRET"
 fi
 
-# Shared media: point PHOTOS_DIR/CACHE_DIR at the root checkout's data/ dir so
-# every workspace reads/writes one library + cache (mirrors the shared Postgres).
-# Only under Conductor; manual/CI runs keep the workspace-local ./photos|./cache.
-# These two lines are derived, not user-authored, so we always overwrite them
-# (idempotent on re-run). Same grep -v / .env.tmp / mv pattern as the secret block.
+# Shared media: point PHOTOS_DIR/CACHE_DIR/TRASH_DIR at the root checkout's data/
+# dir so every workspace reads/writes one library + cache + trash (mirrors the
+# shared Postgres). Only under Conductor; manual/CI runs keep the workspace-local
+# ./photos|./cache|./trash. These lines are derived, not user-authored, so we
+# always overwrite them (idempotent on re-run). Same grep -v / .env.tmp / mv
+# pattern as the secret block.
 if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
   data_root="$CONDUCTOR_ROOT_PATH/data"
-  mkdir -p "$data_root/photos" "$data_root/cache"
-  grep -vE '^(PHOTOS_DIR|CACHE_DIR)=' .env > .env.tmp || true
+  mkdir -p "$data_root/photos" "$data_root/cache" "$data_root/trash"
+  grep -vE '^(PHOTOS_DIR|CACHE_DIR|TRASH_DIR)=' .env > .env.tmp || true
   { printf 'PHOTOS_DIR="%s"\n' "$data_root/photos"
-    printf 'CACHE_DIR="%s"\n'  "$data_root/cache"; } >> .env.tmp
+    printf 'CACHE_DIR="%s"\n'  "$data_root/cache"
+    printf 'TRASH_DIR="%s"\n'  "$data_root/trash"; } >> .env.tmp
   mv .env.tmp .env
-  echo "setup: pointed PHOTOS_DIR/CACHE_DIR at shared $data_root"
+  echo "setup: pointed PHOTOS_DIR/CACHE_DIR/TRASH_DIR at shared $data_root"
 fi
 
 # Install dependencies and generate the Prisma client so typecheck/build/tests

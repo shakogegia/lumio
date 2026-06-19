@@ -52,11 +52,15 @@ export function usePhotoPages(endpoint: string, params?: URLSearchParams, pageSi
     setPhotos((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, ...patch } : p)));
   }, []);
 
+  const removePhotos = useCallback((ids: Set<string>) => {
+    setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadMore();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { photos, done, error, loadMore, patchPhotos };
+  return { photos, done, error, loadMore, patchPhotos, removePhotos };
 }

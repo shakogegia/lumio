@@ -39,6 +39,8 @@ const OVERSCAN_ROWS = 3;
 export type PhotoGridHandle = {
   /** Merge `patch` into every loaded photo whose id is in `ids` (e.g. a new colorLabel). */
   patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
+  /** Drop every loaded photo whose id is in `ids` (e.g. after moving to Trash). */
+  removePhotos: (ids: Set<string>) => void;
 };
 
 export function PhotoGrid({
@@ -75,8 +77,8 @@ export function PhotoGrid({
   // Scale the fetch page size with density so a page roughly fills the viewport
   // (more columns → more visible tiles). Capped at the API limit (100).
   const pageSize = Math.min(100, Math.max(50, columns * 8));
-  const { photos, done, error, loadMore, patchPhotos } = usePhotoPages(endpoint, params, pageSize);
-  useImperativeHandle(apiRef, () => ({ patchPhotos }), [patchPhotos]);
+  const { photos, done, error, loadMore, patchPhotos, removePhotos } = usePhotoPages(endpoint, params, pageSize);
+  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);

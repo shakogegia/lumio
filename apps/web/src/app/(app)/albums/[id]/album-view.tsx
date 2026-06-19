@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Images } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -13,6 +14,7 @@ import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
 import { HeaderBar } from "@/components/header-bar";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   Empty,
   EmptyDescription,
@@ -35,10 +37,12 @@ export function AlbumView({
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
+  const { confirm, confirmDialog } = useConfirm();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function handleCancel() {
     setRemoveError(null);
@@ -49,7 +53,13 @@ export function AlbumView({
     const ids = [...sel.selected];
     if (ids.length === 0 || removing) return;
     const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
-    if (!confirm(`Remove ${label} from this album?`)) return;
+    const ok = await confirm({
+      title: `Remove ${label} from this album?`,
+      description: "The photos stay in your library and Trash is unaffected.",
+      confirmLabel: "Remove",
+      destructive: true,
+    });
+    if (!ok) return;
     setRemoving(true);
     setRemoveError(null);
     try {
@@ -72,8 +82,41 @@ export function AlbumView({
     }
   }
 
+  async function handleDelete() {
+    const ids = [...sel.selected];
+    if (ids.length === 0 || deleting) return;
+    const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
+    const ok = await confirm({
+      title: `Move ${label} to Trash?`,
+      description: "This removes them from your whole library. You can restore them from Trash.",
+      confirmLabel: "Move to Trash",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/photos/trash", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error("trash failed");
+      sel.cancel();
+      setReloadKey((k) => k + 1);
+      router.refresh();
+    } catch {
+      // Delete is a whole-library op (not album membership), so surface its
+      // failure as a toast like the library view rather than the album's
+      // inline "remove from album" error slot.
+      toast.error("Failed to move photos to Trash.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
+      {confirmDialog}
       {sel.selectMode ? (
         <SelectionToolbar
           title={albumName}
@@ -94,6 +137,14 @@ export function AlbumView({
                   {removing ? "Removing…" : "Remove from album"}
                 </Button>
               )}
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={sel.count === 0 || deleting}
+                onClick={() => void handleDelete()}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </Button>
             </>
           }
         />

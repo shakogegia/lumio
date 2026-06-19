@@ -62,6 +62,23 @@ model AlbumPhoto {
   @@index([photoId])
 }
 
+model TrashedPhoto {
+  id           String      @id
+  originalPath String
+  source       PhotoSource
+  takenAt      DateTime?
+  sortDate     DateTime
+  width        Int
+  height       Int
+  hash         String?
+  exif         Json
+  colorLabel   ColorLabel?
+  albumIds     String[]
+  deletedAt    DateTime    @default(now())
+
+  @@index([deletedAt, id])
+}
+
 model AppSettings {
   id             Int      @id @default(1)
   uploadTemplate String   @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
