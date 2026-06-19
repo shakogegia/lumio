@@ -68,6 +68,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-lumio}:${POSTGRES_PASSWORD:-lumio}@db:5432/${POSTGRES_DB:-lumio}?schema=public
       PHOTOS_DIR: /data/photos
       CACHE_DIR: /data/cache
+      # Max images processed in parallel during a scan. Empty → the worker
+      # auto-detects the core count and sizes the libuv threadpool to match.
+      # Pin this to the container's CPU allotment if you cap worker CPUs.
+      INGEST_CONCURRENCY: ${INGEST_CONCURRENCY:-}
     volumes:
       - ${PHOTOS_DIR}:/data/photos
       - cache:/data/cache

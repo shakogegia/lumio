@@ -92,6 +92,21 @@ docker compose logs -f worker
 Then open the app at `http://<host>:3000` (or your `PORT`). On first launch it
 redirects to `/setup` to create the single admin account.
 
+## Ingest performance
+
+The worker scans `PHOTOS_DIR` on startup and whenever files change.
+
+- **Incremental scan:** files already indexed with an unchanged size + mod/time
+  (and an intact cache) are skipped, so restarts are near-instant. Only new or
+  changed files are (re)processed. Wiping `CACHE_DIR` forces regeneration.
+- **Concurrency:** new/changed files are processed by a worker pool sized to
+  `INGEST_CONCURRENCY` (default: the worker's logical core count). The worker
+  automatically sets `UV_THREADPOOL_SIZE` to the same value — Sharp's decode/
+  encode runs on that threadpool, so without it throughput plateaus at ~4
+  regardless of cores. Set `INGEST_CONCURRENCY` to pin it (e.g. to a CPU limit).
+- **Measure your hardware:** run `pnpm bench` against your library to see the
+  real per-image cost and the speedup curve on your machine.
+
 ## 4. Updating
 
 When a new image is published, pull it and recreate the containers:
