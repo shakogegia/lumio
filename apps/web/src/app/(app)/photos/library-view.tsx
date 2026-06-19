@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
+import { downloadSelection } from "@/lib/download-client";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -28,6 +30,7 @@ export function LibraryView() {
   const { confirm, confirmDialog } = useConfirm();
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   async function handleDelete() {
     const ids = sel.selected;
@@ -55,6 +58,22 @@ export function LibraryView() {
       toast.error("Failed to move photos to Trash.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleDownload() {
+    const ids = [...sel.selected];
+    if (ids.length === 0 || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadSelection(ids);
+      // Clear the selection on success while staying in select mode, mirroring
+      // the color-label flow — the batch is done, but you may pick another set.
+      sel.clear();
+    } catch {
+      toast.error("Failed to download photos.");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -96,6 +115,15 @@ export function LibraryView() {
               />
               <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
                 Add to album
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={sel.count === 0 || downloading}
+                onClick={() => void handleDownload()}
+              >
+                <Download aria-hidden />
+                {downloading ? "Preparing…" : "Download"}
               </Button>
               <Button
                 variant="destructive"

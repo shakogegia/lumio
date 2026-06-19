@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Images } from "lucide-react";
+import { Download, Images } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -25,6 +25,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { DeleteAlbumButton } from "./delete-album-button";
+import { downloadSelection } from "@/lib/download-client";
 
 export function AlbumView({
   albumId,
@@ -46,6 +47,7 @@ export function AlbumView({
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   function handleCancel() {
     setRemoveError(null);
@@ -117,6 +119,22 @@ export function AlbumView({
     }
   }
 
+  async function handleDownload() {
+    const ids = [...sel.selected];
+    if (ids.length === 0 || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadSelection(ids);
+      // Clear the selection on success while staying in select mode, mirroring
+      // the color-label flow — the batch is done, but you may pick another set.
+      sel.clear();
+    } catch {
+      toast.error("Failed to download photos.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <>
       {confirmDialog}
@@ -141,6 +159,15 @@ export function AlbumView({
                 </Button>
               )}
               <Button
+                variant="outline"
+                size="sm"
+                disabled={sel.count === 0 || downloading}
+                onClick={() => void handleDownload()}
+              >
+                <Download aria-hidden />
+                {downloading ? "Preparing…" : "Download"}
+              </Button>
+              <Button
                 variant="destructive"
                 size="sm"
                 disabled={sel.count === 0 || deleting}
@@ -161,6 +188,12 @@ export function AlbumView({
               <GridSortMenu sort={sort} onSortChange={setSort} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <a href={`/api/albums/${albumId}/download`}>
+                  <Download aria-hidden />
+                  Download
+                </a>
               </Button>
               <DeleteAlbumButton albumId={albumId} />
             </>
