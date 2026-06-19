@@ -11,11 +11,11 @@ describe("computeColumns", () => {
     expect(computeColumns(1280)).toBe(4);
   });
   it("uses a custom minTile to widen tiles (fewer columns)", () => {
-    // 1200px wide, gap 4. Default minTile 280 -> 4 cols; minTile 320 -> 3 cols; minTile 160 -> 7 cols.
+    // 1200px wide, GRID_GAP (4). Default minTile 280 -> 4 cols; 320 -> 3 cols; 160 -> 7 cols.
     // formula: floor((width + gap) / (minTile + gap))
-    expect(computeColumns(1200, 280, 4)).toBe(4);
-    expect(computeColumns(1200, 320, 4)).toBe(3);
-    expect(computeColumns(1200, 160, 4)).toBe(7);
+    expect(computeColumns(1200, 280, GRID_GAP)).toBe(4);
+    expect(computeColumns(1200, 320, GRID_GAP)).toBe(3);
+    expect(computeColumns(1200, 160, GRID_GAP)).toBe(7);
   });
 });
 
