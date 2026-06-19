@@ -19,12 +19,17 @@ export function LoginForm({ className }: { className?: string }) {
     setPending(true);
     try {
       const form = new FormData(e.currentTarget);
-      const { error } = await signIn.email({
+      const { data, error } = await signIn.email({
         email: String(form.get("email")),
         password: String(form.get("password")),
       });
       if (error) {
         setError(error.message ?? "Invalid email or password.");
+        return;
+      }
+      // With 2FA enabled, no session is created yet — go verify the second factor.
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        router.replace("/two-factor");
         return;
       }
       router.replace("/photos");
