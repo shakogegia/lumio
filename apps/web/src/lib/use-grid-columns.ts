@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { COLUMNS_MAX, COLUMNS_MIN, DEFAULT_COLUMNS } from "@/lib/grid-layout";
-
-const STORAGE_KEY = "lumio:grid-columns";
+import {
+  COLUMNS_MAX,
+  COLUMNS_MIN,
+  DEFAULT_COLUMNS,
+  GRID_COLUMNS_STORAGE_KEY as STORAGE_KEY,
+} from "@/lib/grid-layout";
 
 /**
  * Resolve the stored grid column count: an integer clamped to
@@ -53,6 +56,9 @@ export function useGridColumns() {
 
   const setColumns = useCallback((next: number) => {
     localStorage.setItem(STORAGE_KEY, String(next));
+    // Keep the pre-paint CSS variable current so a later skeleton (e.g. on
+    // client navigation to another grid) matches without a flash.
+    document.documentElement.style.setProperty("--grid-columns", String(next));
     listeners.forEach((cb) => cb());
   }, []);
 
