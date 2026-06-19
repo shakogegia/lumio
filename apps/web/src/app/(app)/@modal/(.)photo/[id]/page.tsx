@@ -9,7 +9,7 @@ export default async function PhotoIntercept({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ album?: string | string[]; q?: string; s?: string }>;
+  searchParams: Promise<{ album?: string | string[]; q?: string; s?: string; sort?: string }>;
 }) {
   const { id } = await params;
   const scope = parseDetailScope(await searchParams);
