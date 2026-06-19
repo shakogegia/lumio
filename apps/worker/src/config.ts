@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +23,17 @@ export const CACHE_DIR = resolveFromRoot(process.env.CACHE_DIR, "./cache");
 export const THUMBNAILS_DIR = path.join(CACHE_DIR, "thumbnails");
 
 export const DISPLAYS_DIR = path.join(CACHE_DIR, "displays");
+
+/**
+ * Max images processed in parallel during a scan. Defaults to the logical core
+ * count. The entry launchers (main.ts / watch-main.ts) also size
+ * UV_THREADPOOL_SIZE to this value — Sharp's decode/encode runs on the libuv
+ * threadpool, so without that the pool plateaus at ~4 regardless of cores.
+ */
+export const INGEST_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.INGEST_CONCURRENCY) || os.cpus().length,
+);
 
 /** Absolute path of a photo's thumbnail file. */
 export function thumbnailPath(id: string): string {
