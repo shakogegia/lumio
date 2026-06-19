@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useGridSize } from "@/lib/use-grid-size";
 import { cn } from "@/lib/utils";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SearchInput, type SearchInputHandle } from "./search-input";
@@ -23,6 +24,7 @@ export function SearchView() {
   // hydration: recents only render after focus, long after the initial paint.
   const [recent, setRecent] = useState<SearchFilters[]>(loadRecentSearches);
   const inputRef = useRef<SearchInputHandle>(null);
+  const { size } = useGridSize();
 
   const empty = isEmptyFilters(filters);
 
@@ -81,6 +83,7 @@ export function SearchView() {
           <div className="pt-2">
             <PhotoGrid
               key={serialize(filters)}
+              minTile={size}
               endpoint="/api/search"
               params={paramsFor(filters)}
               hrefFor={(id) => `/photo/${id}?${scopeQuery(filters)}`}

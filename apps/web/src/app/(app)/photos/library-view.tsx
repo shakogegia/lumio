@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
+import { useGridSize } from "@/lib/use-grid-size";
 import { GridViewMenu } from "@/components/grid-view-menu";
+import { GridSizeMenu } from "@/components/grid-size-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
@@ -16,6 +18,7 @@ import { HeaderBar } from "@/components/header-bar";
 export function LibraryView() {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
+  const { size, setSize } = useGridSize();
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const [labelPending, setLabelPending] = useState(false);
@@ -66,6 +69,7 @@ export function LibraryView() {
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
+              <GridSizeMenu size={size} onSizeChange={setSize} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -77,6 +81,7 @@ export function LibraryView() {
       <PhotoGrid
         apiRef={gridRef}
         mode={mode}
+        minTile={size}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}

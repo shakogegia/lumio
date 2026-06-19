@@ -6,7 +6,9 @@ import { Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
+import { useGridSize } from "@/lib/use-grid-size";
 import { GridViewMenu } from "@/components/grid-view-menu";
+import { GridSizeMenu } from "@/components/grid-size-menu";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/app/(app)/photos/add-to-album-dialog";
@@ -32,6 +34,7 @@ export function AlbumView({
   const router = useRouter();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
+  const { size, setSize } = useGridSize();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
@@ -100,6 +103,7 @@ export function AlbumView({
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
+              <GridSizeMenu size={size} onSizeChange={setSize} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -118,6 +122,7 @@ export function AlbumView({
         endpoint={`/api/albums/${albumId}/photos`}
         albumId={albumId}
         mode={mode}
+        minTile={size}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}
