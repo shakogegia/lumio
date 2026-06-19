@@ -2,8 +2,13 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { getPhotoNeighbors, listPhotos, purgeAllPhotos } from "./photos-service.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  getPhotoNeighbors,
+  listPhotos,
+  purgeAllPhotos,
+  setPhotoColorLabel,
+} from "./photos-service.js";
 
 function row(id: string) {
   return {
@@ -233,5 +238,29 @@ describe("getPhotoNeighbors", () => {
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
+  });
+});
+
+describe("setPhotoColorLabel", () => {
+  it("sets a label on the given photos and returns the count", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 3 });
+    const db = { photo: { updateMany } };
+    const count = await setPhotoColorLabel(["p1", "p2", "p3"], "green", db as never);
+    expect(count).toBe(3);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["p1", "p2", "p3"] } },
+      data: { colorLabel: "green" },
+    });
+  });
+
+  it("clears the label when given null", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const db = { photo: { updateMany } };
+    const count = await setPhotoColorLabel(["p1"], null, db as never);
+    expect(count).toBe(1);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["p1"] } },
+      data: { colorLabel: null },
+    });
   });
 });
