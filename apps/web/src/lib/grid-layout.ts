@@ -13,6 +13,11 @@ export const DEFAULT_COLUMNS = 5;
 // the default size before hydration reads localStorage).
 export const GRID_COLUMNS_STORAGE_KEY = "lumio:grid-columns";
 
+// localStorage key for the /albums listing density. Separate from
+// GRID_COLUMNS_STORAGE_KEY so resizing album cards never changes photo-tile
+// density (and vice versa).
+export const ALBUM_COLUMNS_STORAGE_KEY = "lumio:album-columns";
+
 export function rowCount(itemCount: number, columns: number): number {
   if (columns <= 0 || itemCount <= 0) return 0;
   return Math.ceil(itemCount / columns);
