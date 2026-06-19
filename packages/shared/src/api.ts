@@ -16,6 +16,13 @@ export interface PhotosPage {
   nextCursor: string | null;
 }
 
+/** Request body for bulk photo/trash operations. */
+export const photoIdsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+});
+
+export type PhotoIdsInput = z.infer<typeof photoIdsSchema>;
+
 /** Query params for GET /api/search. `album` may repeat in the query string. */
 export const searchQuerySchema = z.object({
   q: z
