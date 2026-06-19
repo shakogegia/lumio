@@ -157,15 +157,6 @@ export function PhotoGrid({
     return <PhotoGridSkeleton listRef={measureRef} columns={columns} />;
   }
 
-  // Compositor-painted skeleton: a muted rounded square tiled at the grid's exact
-  // cell pitch. Shows beneath unloaded cells and even on frames a row hasn't
-  // rendered yet during a fast fling — so there is never a white flash.
-  const cell = tileSize + GRID_GAP;
-  const squareSvg = encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='${cell}' height='${cell}'>` +
-      `<rect width='${tileSize}' height='${tileSize}' rx='3' fill='rgba(128,128,128,0.16)'/></svg>`,
-  );
-
   return (
     <div ref={measureRef}>
       <div
@@ -173,8 +164,6 @@ export function PhotoGrid({
           height: virtualizer.getTotalSize(),
           width: "100%",
           position: "relative",
-          backgroundImage: tileSize > 0 ? `url("data:image/svg+xml,${squareSvg}")` : undefined,
-          backgroundSize: `${cell}px ${cell}px`,
         }}
       >
         {items.map((vrow) => {
@@ -197,12 +186,15 @@ export function PhotoGrid({
             >
               {Array.from({ length: columns }, (_, i) => {
                 const idx = start + i;
-                // Past the last photo (last row's trailing cells): nothing.
+                // Past the last photo (the final partial row's trailing cells):
+                // an empty cell — no skeleton, just the page background.
                 if (idx >= total) return <div key={i} aria-hidden />;
                 const photo = photoAt(idx);
-                // Unloaded cell: a transparent spacer keeps grid alignment; the
-                // container's tiled skeleton shows through it.
-                if (!photo) return <div key={i} aria-hidden />;
+                // Unloaded cell: a skeleton placeholder rendered as a grid item in
+                // the SAME grid as the tiles, so it lands pixel-for-pixel where the
+                // photo will (a tiled background drifts from the CSS-grid tracks at
+                // fractional widths — and only at some column counts).
+                if (!photo) return <div key={i} aria-hidden className="rounded-sm bg-muted" />;
                 return (
                   <PhotoGridTile
                     key={photo.id}
