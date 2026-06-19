@@ -11,7 +11,7 @@ import type {
 } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
-import { photoOrderBy } from "@/lib/photo-order";
+import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "photo">;
 
