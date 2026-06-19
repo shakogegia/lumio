@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
-import { rowCount, GRID_GAP, DEFAULT_COLUMNS } from "@/lib/grid-layout";
+import { rowCount, GRID_GAP, DEFAULT_COLUMNS, PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
 import type { PhotoDTO, PhotoSort } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
@@ -61,27 +61,18 @@ export function PhotoGrid({
   albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
-  /** Number of columns (photos per row). Defaults to DEFAULT_COLUMNS. */
   columns?: number;
   params?: URLSearchParams;
-  /** Active sort, used for the default tile href so the detail view walks the
-   *  same order. The search view overrides hrefs via `hrefFor` instead. */
   sort?: PhotoSort;
-  /** Detail-route href for a tile; defaults to the album/library scope. The
-   *  search view overrides it to carry the search filter (so the film strip
-   *  navigates the results). */
   hrefFor?: (id: string) => string;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
-  /** Imperative handle for in-place photo updates (optimistic label tinting). */
   apiRef?: React.Ref<PhotoGridHandle>;
 }) {
   const columns = Math.max(1, columnsProp);
-  // Scale the fetch page size with density so a page roughly fills the viewport
-  // (more columns → more visible tiles). Capped at the API limit (100).
-  const pageSize = Math.min(100, Math.max(50, columns * 8));
-  const { photos, done, error, loadMore, patchPhotos, removePhotos } = usePhotoPages(endpoint, params, pageSize);
+  const { total, photoAt, getLoadedIds, ensureRange, error, retry, patchPhotos, removePhotos } =
+    usePhotoPages(endpoint, params, PHOTO_PAGE_SIZE);
   useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
@@ -89,9 +80,11 @@ export function PhotoGrid({
 
   function handleTileClick(index: number, e: React.MouseEvent) {
     if (!onSelectionChange) return;
+    // getLoadedIds() is sparse (holes for unloaded indices); computeSelection
+    // skips holes, so a shift-range across an unloaded gap selects only loaded ids.
     const next = computeSelection(
       selectedIds ?? new Set<string>(),
-      photos.map((p) => p.id),
+      getLoadedIds(),
       index,
       e.shiftKey,
       anchorRef.current,
@@ -100,8 +93,6 @@ export function PhotoGrid({
     onSelectionChange(next);
   }
 
-  // Drop the shift-range anchor when leaving select mode so re-entering and
-  // shift-clicking doesn't extend from a stale index.
   useEffect(() => {
     if (!selectMode) anchorRef.current = null;
   }, [selectMode]);
@@ -110,10 +101,9 @@ export function PhotoGrid({
   const [offsetTop, setOffsetTop] = useState(0);
   const roRef = useRef<ResizeObserver | null>(null);
 
-  // Callback ref so measurement re-attaches whenever the underlying node
-  // changes. The grid swaps elements as photos load (skeleton → real grid); a
-  // one-shot effect would keep observing the detached skeleton, so window
-  // resizes were missed until a refresh. Re-running on each node change fixes it.
+  // Callback ref so measurement re-attaches whenever the underlying node changes
+  // (skeleton → real grid). A one-shot effect would keep observing the detached
+  // skeleton and miss window resizes until a refresh.
   const measureRef = useCallback((el: HTMLDivElement | null) => {
     roRef.current?.disconnect();
     if (!el) {
@@ -131,14 +121,7 @@ export function PhotoGrid({
   }, []);
 
   const tileSize = width > 0 ? (width - GRID_GAP * (columns - 1)) / columns : 0;
-  const rows = rowCount(photos.length, columns);
-
-  // Warm-grey placeholder shown until the first page loads. Rendered with pure
-  // CSS (a fixed `columns`-wide grid of square tiles) so it needs no measured
-  // width — it's in the server HTML and paints on the first frame, even on a
-  // fast refresh before hydration. It uses the same column count as the real
-  // grid, so the swap to real photos is seamless.
-  const showSkeleton = photos.length === 0 && !done && !error;
+  const rows = rowCount(total ?? 0, columns);
 
   const virtualizer = useWindowVirtualizer({
     count: rows,
@@ -153,29 +136,49 @@ export function PhotoGrid({
   }, [tileSize, columns]);
 
   const items = virtualizer.getVirtualItems();
-  // Fetch more while the last loaded row is within OVERSCAN of the end. This
-  // fills the viewport on first load, then becomes scroll-driven once loaded
-  // rows exceed the visible area (the last virtual row index drops below the
-  // threshold). The loadingRef guard + `done` prevent redundant fetches.
-  useEffect(() => {
-    const last = items[items.length - 1];
-    if (last && last.index >= rows - OVERSCAN_ROWS) void loadMore();
-  }, [items, rows, loadMore]);
 
-  if (done && photos.length === 0) {
+  // Fetch the pages covering the visible rows plus ~2 pages of read-ahead, so
+  // content streams in before the user reaches it (and holes fill when the
+  // scrollbar is dragged). The hook dedupes and caps in-flight requests.
+  const prefetchRows = Math.ceil((2 * PHOTO_PAGE_SIZE) / columns);
+  useEffect(() => {
+    if (items.length === 0) return;
+    const firstRow = items[0]!.index;
+    const lastRow = items[items.length - 1]!.index;
+    ensureRange(firstRow * columns, (lastRow + prefetchRows) * columns + (columns - 1));
+  }, [items, columns, prefetchRows, ensureRange]);
+
+  if (total === 0) {
     return <>{empty}</>;
   }
 
-  if (showSkeleton) {
+  // First paint, before `total` is known: the CSS skeleton grid (server-rendered).
+  if (total === null) {
     return <PhotoGridSkeleton listRef={measureRef} columns={columns} />;
   }
 
+  // Compositor-painted skeleton: a muted rounded square tiled at the grid's exact
+  // cell pitch. Shows beneath unloaded cells and even on frames a row hasn't
+  // rendered yet during a fast fling — so there is never a white flash.
+  const cell = tileSize + GRID_GAP;
+  const squareSvg = encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${cell}' height='${cell}'>` +
+      `<rect width='${tileSize}' height='${tileSize}' rx='3' fill='rgba(128,128,128,0.16)'/></svg>`,
+  );
+
   return (
     <div ref={measureRef}>
-      <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
+      <div
+        style={{
+          height: virtualizer.getTotalSize(),
+          width: "100%",
+          position: "relative",
+          backgroundImage: tileSize > 0 ? `url("data:image/svg+xml,${squareSvg}")` : undefined,
+          backgroundSize: `${cell}px ${cell}px`,
+        }}
+      >
         {items.map((vrow) => {
           const start = vrow.index * columns;
-          const rowPhotos = photos.slice(start, start + columns);
           return (
             <div
               key={vrow.key}
@@ -192,27 +195,36 @@ export function PhotoGrid({
                 gap: GRID_GAP,
               }}
             >
-              {rowPhotos.map((photo, i) => (
-                <PhotoGridTile
-                  key={photo.id}
-                  photo={photo}
-                  mode={mode}
-                  albumId={albumId}
-                  sort={sort}
-                  hrefFor={hrefFor}
-                  selectMode={selectMode}
-                  isSelected={selectedIds?.has(photo.id) ?? false}
-                  index={start + i}
-                  onTileClick={handleTileClick}
-                />
-              ))}
+              {Array.from({ length: columns }, (_, i) => {
+                const idx = start + i;
+                // Past the last photo (last row's trailing cells): nothing.
+                if (idx >= total) return <div key={i} aria-hidden />;
+                const photo = photoAt(idx);
+                // Unloaded cell: a transparent spacer keeps grid alignment; the
+                // container's tiled skeleton shows through it.
+                if (!photo) return <div key={i} aria-hidden />;
+                return (
+                  <PhotoGridTile
+                    key={photo.id}
+                    photo={photo}
+                    mode={mode}
+                    albumId={albumId}
+                    sort={sort}
+                    hrefFor={hrefFor}
+                    selectMode={selectMode}
+                    isSelected={selectedIds?.has(photo.id) ?? false}
+                    index={idx}
+                    onTileClick={handleTileClick}
+                  />
+                );
+              })}
             </div>
           );
         })}
       </div>
       {error && (
         <div className="py-4 text-center">
-          <button onClick={() => void loadMore()} className="text-sm text-muted-foreground underline">
+          <button onClick={() => retry()} className="text-sm text-muted-foreground underline">
             Failed to load — retry
           </button>
         </div>
