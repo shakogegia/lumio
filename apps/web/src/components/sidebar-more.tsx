@@ -66,13 +66,6 @@ export function SidebarMore() {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link href="/trash">
-            <Trash2 aria-hidden />
-            Trash
-          </Link>
-        </DropdownMenuItem>
-
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Monitor aria-hidden />
@@ -98,6 +91,13 @@ export function SidebarMore() {
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <DropdownMenuItem asChild>
+          <Link href="/trash">
+            <Trash2 aria-hidden />
+            Trash
+          </Link>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
