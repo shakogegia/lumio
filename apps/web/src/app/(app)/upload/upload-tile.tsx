@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CheckCircle2, Circle, Loader2, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,31 +16,41 @@ const STATUS_LABEL: Record<RowStatus, string> = {
   error: "Failed",
 };
 
-export function UploadTile({
+/**
+ * Memoized so toggling the selection of one tile doesn't re-render the rest of
+ * the grid. That requires the parent to pass referentially-stable callbacks
+ * (`onToggleSelect`/`onRetry` keyed by id) — otherwise memo would never hit.
+ */
+export const UploadTile = memo(function UploadTile({
+  id,
+  photoId,
   name,
   status,
   message,
   previewUrl,
   mode,
   selectMode,
-  selectable,
   selected,
   onToggleSelect,
   onRetry,
 }: {
+  /** Client row id (for retry). */
+  id: number;
+  /** Real photo id; present ⇒ the tile is selectable. */
+  photoId?: string;
   name: string;
   status: RowStatus;
   message?: string;
   previewUrl?: string;
   mode: GridViewMode;
   selectMode: boolean;
-  selectable: boolean;
   selected: boolean;
-  onToggleSelect: () => void;
-  onRetry: () => void;
+  onToggleSelect: (photoId: string) => void;
+  onRetry: (id: number) => void;
 }) {
   const preview = isPreviewable(name) && previewUrl;
   const fit = mode === "fit" ? "object-contain" : "object-cover";
+  const selectable = photoId != null;
   const interactive = selectMode && selectable;
 
   const thumb = (
@@ -58,7 +69,13 @@ export function UploadTile({
       >
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element -- blob: object URL, no remote loader
-          <img src={previewUrl} alt="" className={cn("h-full w-full", fit)} />
+          <img
+            src={previewUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={cn("h-full w-full", fit)}
+          />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-muted to-muted-foreground/15 text-muted-foreground">
             <span className="text-base font-bold tracking-wide">{formatBadge(name)}</span>
@@ -94,7 +111,7 @@ export function UploadTile({
             className="h-7 gap-1 px-2 text-xs"
             onClick={(e) => {
               e.stopPropagation();
-              onRetry();
+              onRetry(id);
             }}
           >
             <RotateCw className="size-3" aria-hidden /> Retry
@@ -120,7 +137,9 @@ export function UploadTile({
         <button
           type="button"
           aria-pressed={selected}
-          onClick={onToggleSelect}
+          onClick={() => {
+            if (photoId) onToggleSelect(photoId);
+          }}
           title={message ?? STATUS_LABEL[status]}
           className="block select-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -137,4 +156,4 @@ export function UploadTile({
       </p>
     </div>
   );
-}
+});

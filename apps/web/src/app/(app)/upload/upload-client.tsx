@@ -18,7 +18,13 @@ import { useGridView } from "@/lib/use-grid-view";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
 import { isPreviewable } from "@/lib/upload-preview";
-import { selectableIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
+import {
+  selectableIds,
+  summarizeRows,
+  toggleId,
+  type Row,
+  type RowStatus,
+} from "@/lib/upload-rows";
 import { SelectionToolbar } from "../photos/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
@@ -127,6 +133,32 @@ export function UploadClient() {
   const retryRows = useCallback(
     (targets: Row[]) => {
       void runPool(targets.map((r) => ({ file: r.file, rowId: r.id })));
+    },
+    [runPool],
+  );
+
+  // Latest rows, readable from stable callbacks without making them depend on
+  // (and thus be recreated by) every rows change — which would defeat the
+  // memoized tiles below. A retry's file never changes after a row is created,
+  // so a one-render-stale ref is harmless here.
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  // Stable per-tile callbacks (identity preserved across renders) so React.memo
+  // on UploadTile actually skips unchanged tiles when one selection toggles.
+  // `setSelected` is a useState setter, so its identity is stable.
+  const { setSelected } = sel;
+  const toggleSelect = useCallback(
+    (photoId: string) => setSelected((prev) => toggleId(prev, photoId)),
+    [setSelected],
+  );
+
+  const retryRow = useCallback(
+    (rowId: number) => {
+      const row = rowsRef.current.find((r) => r.id === rowId);
+      if (row) void runPool([{ file: row.file, rowId }]);
     },
     [runPool],
   );
@@ -289,31 +321,22 @@ export function UploadClient() {
             className="grid gap-3"
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
           >
-            {rows.map((row) => {
-              const selectable = Boolean(row.photoId);
-              const selected = Boolean(row.photoId && sel.selected.has(row.photoId));
-              return (
-                <UploadTile
-                  key={row.id}
-                  name={row.name}
-                  status={row.status}
-                  message={row.message}
-                  previewUrl={row.previewUrl}
-                  mode={mode}
-                  selectMode={sel.selectMode}
-                  selectable={selectable}
-                  selected={selected}
-                  onToggleSelect={() => {
-                    if (!row.photoId) return;
-                    const next = new Set(sel.selected);
-                    if (next.has(row.photoId)) next.delete(row.photoId);
-                    else next.add(row.photoId);
-                    sel.setSelected(next);
-                  }}
-                  onRetry={() => retryRows([row])}
-                />
-              );
-            })}
+            {rows.map((row) => (
+              <UploadTile
+                key={row.id}
+                id={row.id}
+                photoId={row.photoId}
+                name={row.name}
+                status={row.status}
+                message={row.message}
+                previewUrl={row.previewUrl}
+                mode={mode}
+                selectMode={sel.selectMode}
+                selected={Boolean(row.photoId && sel.selected.has(row.photoId))}
+                onToggleSelect={toggleSelect}
+                onRetry={retryRow}
+              />
+            ))}
           </div>
         ) : null}
       </div>

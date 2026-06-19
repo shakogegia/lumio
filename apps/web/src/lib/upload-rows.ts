@@ -52,3 +52,14 @@ export function summarizeRows(rows: Row[]): RowSummary {
 export function selectableIds(rows: Row[]): string[] {
   return rows.filter((r) => r.photoId).map((r) => r.photoId as string);
 }
+
+/** A new Set with `id` toggled (added if absent, removed if present). Used as a
+ * functional state updater so the toggle handler stays referentially stable
+ * (no dependency on the current selection), which keeps memoized tiles from
+ * re-rendering when an unrelated tile is selected. */
+export function toggleId(ids: Set<string>, id: string): Set<string> {
+  const next = new Set(ids);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}
