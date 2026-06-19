@@ -17,4 +17,8 @@ describe("validatePasswordChange", () => {
   it("returns null when the password is long enough and matches", () => {
     expect(validatePasswordChange("longenough1", "longenough1")).toBeNull();
   });
+
+  it("accepts a password of exactly 8 characters", () => {
+    expect(validatePasswordChange("exactly8", "exactly8")).toBeNull();
+  });
 });
