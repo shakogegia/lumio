@@ -6,6 +6,9 @@ import { PasswordForm } from "./password-form";
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
+  // (app)/layout.tsx already redirects unauthenticated requests; we still fetch
+  // the session here for the user's name/email, and this null check narrows the
+  // type before reading session.user (the redirect is belt-and-suspenders).
   const session = await getServerSession();
   if (!session) {
     redirect("/login");
