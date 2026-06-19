@@ -35,6 +35,12 @@ export const auth = betterAuth({
   appName: "Lumio",
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
+  session: {
+    // Validate a signed session cookie instead of querying Postgres on every
+    // request. Removes the per-thumbnail / per-display DB session lookup. A
+    // revoked session stays valid until this TTL expires.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
+  },
   ...(secureCookiesEnv !== undefined && {
     advanced: { useSecureCookies: secureCookiesEnv !== "false" },
   }),
