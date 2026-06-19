@@ -34,7 +34,7 @@ export type SearchQuery = z.infer<typeof searchQuerySchema>;
 
 /** Body for POST /api/photos/color-label. `label: null` clears the label. */
 export const setColorLabelSchema = z.object({
-  photoIds: z.array(z.string()).min(1),
+  photoIds: z.array(z.string().min(1)).min(1),
   label: colorLabelSchema.nullable(),
 });
 

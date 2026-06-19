@@ -65,6 +65,10 @@ describe("setColorLabelSchema", () => {
     expect(() => setColorLabelSchema.parse({ photoIds: [], label: null })).toThrow();
   });
 
+  it("rejects an empty-string photo id", () => {
+    expect(() => setColorLabelSchema.parse({ photoIds: [""], label: null })).toThrow();
+  });
+
   it("rejects an unknown label slug", () => {
     expect(() => setColorLabelSchema.parse({ photoIds: ["a"], label: "magenta" })).toThrow();
   });

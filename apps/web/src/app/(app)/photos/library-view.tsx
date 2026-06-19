@@ -18,9 +18,12 @@ export function LibraryView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const [labelError, setLabelError] = useState(false);
+  const [labelPending, setLabelPending] = useState(false);
 
   async function applyLabel(label: ColorLabel | null) {
+    if (labelPending) return;
     const ids = sel.selected;
+    setLabelPending(true);
     setLabelError(false);
     try {
       const res = await fetch("/api/photos/color-label", {
@@ -34,6 +37,8 @@ export function LibraryView() {
       gridRef.current?.patchPhotos(ids, { colorLabel: label });
     } catch {
       setLabelError(true);
+    } finally {
+      setLabelPending(false);
     }
   }
 
@@ -47,7 +52,7 @@ export function LibraryView() {
           actions={
             <>
               <ColorLabelMenu
-                disabled={sel.count === 0}
+                disabled={sel.count === 0 || labelPending}
                 onPick={(label) => void applyLabel(label)}
               />
               <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
