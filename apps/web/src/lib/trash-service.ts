@@ -116,15 +116,16 @@ export async function listTrash(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const { limit, cursor } = params;
-  const rows = await db.trashedPhoto.findMany({
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
-  });
-  const nextCursor =
-    rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
-  return { items: rows.map(toTrashedPhotoDTO), nextCursor };
+  const { limit, offset } = params;
+  const [rows, total] = await Promise.all([
+    db.trashedPhoto.findMany({
+      skip: offset,
+      take: limit,
+      orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
+    }),
+    db.trashedPhoto.count(),
+  ]);
+  return { items: rows.map(toTrashedPhotoDTO), total };
 }
 
 export async function restorePhotos(

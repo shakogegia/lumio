@@ -97,25 +97,32 @@ describe("trashPhotos", () => {
 });
 
 describe("listTrash", () => {
-  it("returns a page with nextCursor = last id when full, newest-first order", async () => {
+  it("returns a page with items + total, newest-first order", async () => {
     const rows = [trashRow("a"), trashRow("b")];
     const db = {
       trashedPhoto: {
-        findMany: async (args: { take: number; orderBy?: unknown }) => {
+        findMany: async (args: { skip?: number; take: number; orderBy?: unknown }) => {
           expect(args.orderBy).toEqual([{ deletedAt: "desc" }, { id: "desc" }]);
-          return rows.slice(0, args.take);
+          const skip = args.skip ?? 0;
+          return rows.slice(skip, skip + args.take);
         },
+        count: async () => rows.length,
       },
     };
-    const page = await listTrash({ limit: 2 }, db as never);
+    const page = await listTrash({ limit: 2, offset: 0 }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
-    expect(page.nextCursor).toBe("b");
+    expect(page.total).toBe(2);
   });
 
-  it("returns nextCursor = null when fewer than limit", async () => {
-    const db = { trashedPhoto: { findMany: async () => [trashRow("a")] } };
-    const page = await listTrash({ limit: 2 }, db as never);
-    expect(page.nextCursor).toBeNull();
+  it("returns total = 1 when only one item exists", async () => {
+    const db = {
+      trashedPhoto: {
+        findMany: async () => [trashRow("a")],
+        count: async () => 1,
+      },
+    };
+    const page = await listTrash({ limit: 2, offset: 0 }, db as never);
+    expect(page.total).toBe(1);
   });
 });
 

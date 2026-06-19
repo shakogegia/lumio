@@ -28,36 +28,41 @@ function row(id: string) {
 }
 
 function fakeDb(rows: ReturnType<typeof row>[]) {
-  const calls: Array<{ take: number; orderBy?: unknown }> = [];
+  const calls: Array<{ skip?: number; take: number; orderBy?: unknown }> = [];
   return {
     calls,
     photo: {
-      findMany: async (args: { take: number; orderBy?: unknown }) => {
+      findMany: async (args: { skip?: number; take: number; orderBy?: unknown }) => {
         calls.push(args);
-        return rows.slice(0, args.take);
+        const skip = args.skip ?? 0;
+        return rows.slice(skip, skip + args.take);
       },
+      count: async () => rows.length,
     },
   };
 }
 
 describe("listPhotos", () => {
-  it("returns nextCursor = last id when a full page is returned", async () => {
-    const db = fakeDb([row("a"), row("b")]);
-    const page = await listPhotos({ limit: 2 }, db as never);
+  it("returns the page slice and the full total", async () => {
+    const db = fakeDb([row("a"), row("b"), row("c")]);
+    const page = await listPhotos({ limit: 2, offset: 0 }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
-    expect(page.nextCursor).toBe("b");
+    expect(page.total).toBe(3);
+    expect(db.calls[0]).toMatchObject({ skip: 0, take: 2 });
     expect(db.calls[0]?.orderBy).toEqual([{ sortDate: "desc" }, { id: "desc" }]);
   });
 
-  it("returns nextCursor = null when fewer than limit are returned", async () => {
-    const db = fakeDb([row("a")]);
-    const page = await listPhotos({ limit: 2 }, db as never);
-    expect(page.nextCursor).toBeNull();
+  it("applies offset for a later page", async () => {
+    const db = fakeDb([row("a"), row("b"), row("c")]);
+    const page = await listPhotos({ limit: 2, offset: 2 }, db as never);
+    expect(page.items.map((p) => p.id)).toEqual(["c"]);
+    expect(page.total).toBe(3);
+    expect(db.calls[0]).toMatchObject({ skip: 2, take: 2 });
   });
 
   it("orders by createdAt desc when sort is imported-desc", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 2, sort: "imported-desc" }, db as never);
+    await listPhotos({ limit: 2, offset: 0, sort: "imported-desc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
   });
 });

@@ -18,24 +18,26 @@ function row(id: string) {
 }
 
 function fakeDb(rows: ReturnType<typeof row>[]) {
-  const calls: Array<{ take: number; where?: unknown; orderBy?: unknown }> = [];
+  const calls: Array<{ skip?: number; take: number; where?: unknown; orderBy?: unknown }> = [];
   return {
     calls,
     photo: {
-      findMany: async (args: { take: number; where?: unknown; orderBy?: unknown }) => {
+      findMany: async (args: { skip?: number; take: number; where?: unknown; orderBy?: unknown }) => {
         calls.push(args);
-        return rows.slice(0, args.take);
+        const skip = args.skip ?? 0;
+        return rows.slice(skip, skip + args.take);
       },
+      count: async () => rows.length,
     },
   };
 }
 
 describe("searchPhotos", () => {
-  it("builds the where from album + q and paginates over PHOTO_ORDER", async () => {
+  it("builds the where from album + q and returns items + total", async () => {
     const db = fakeDb([row("a"), row("b")]);
-    const page = await searchPhotos({ limit: 2, album: ["alb1"], q: "beach" }, db as never);
+    const page = await searchPhotos({ limit: 2, offset: 0, album: ["alb1"], q: "beach" }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
-    expect(page.nextCursor).toBe("b");
+    expect(page.total).toBe(2);
     expect(db.calls[0]?.where).toEqual({
       AND: [
         { albums: { some: { albumId: { in: ["alb1"] } } } },
@@ -47,14 +49,14 @@ describe("searchPhotos", () => {
 
   it("uses an empty where when there are no filters", async () => {
     const db = fakeDb([row("a")]);
-    const page = await searchPhotos({ limit: 2, album: [] }, db as never);
+    const page = await searchPhotos({ limit: 2, offset: 0, album: [] }, db as never);
     expect(db.calls[0]?.where).toEqual({});
-    expect(page.nextCursor).toBeNull();
+    expect(page.total).toBe(1);
   });
 
   it("orders by createdAt asc when sort is imported-asc", async () => {
     const db = fakeDb([row("a")]);
-    await searchPhotos({ limit: 2, album: [], sort: "imported-asc" }, db as never);
+    await searchPhotos({ limit: 2, offset: 0, album: [], sort: "imported-asc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });
 });

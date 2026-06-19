@@ -103,7 +103,7 @@ describe("listAlbumSummaries", () => {
 });
 
 describe("listAlbumPhotos", () => {
-  it("returns page with nextCursor when full page returned", async () => {
+  it("returns page with items and total when photos exist", async () => {
     const rows = [photoRow("p1"), photoRow("p2")];
     const fakeDb = {
       album: {
@@ -112,15 +112,15 @@ describe("listAlbumPhotos", () => {
       albumPhoto: {},
       photo: {
         findMany: async () => rows,
-        count: async () => 0,
+        count: async () => 2,
         findFirst: async () => null,
       },
     };
 
-    const page = await listAlbumPhotos("alb1", { limit: 2 }, fakeDb as never);
+    const page = await listAlbumPhotos("alb1", { limit: 2, offset: 0 }, fakeDb as never);
     expect(page).not.toBeNull();
     expect(page!.items.map((p) => p.id)).toEqual(["p1", "p2"]);
-    expect(page!.nextCursor).toBe("p2");
+    expect(page!.total).toBe(2);
   });
 
   it("returns null when album not found", async () => {
@@ -132,7 +132,7 @@ describe("listAlbumPhotos", () => {
       photo: {},
     };
 
-    const page = await listAlbumPhotos("missing", { limit: 10 }, fakeDb as never);
+    const page = await listAlbumPhotos("missing", { limit: 10, offset: 0 }, fakeDb as never);
     expect(page).toBeNull();
   });
 
@@ -150,7 +150,7 @@ describe("listAlbumPhotos", () => {
         findFirst: async () => null,
       },
     };
-    await listAlbumPhotos("alb1", { limit: 2, sort: "imported-asc" }, fakeDb as never);
+    await listAlbumPhotos("alb1", { limit: 2, offset: 0, sort: "imported-asc" }, fakeDb as never);
     expect(calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });
 });

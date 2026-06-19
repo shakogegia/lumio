@@ -21,16 +21,12 @@ export async function listPhotos(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const { limit, cursor, sort } = params;
-  const rows = await db.photo.findMany({
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: photoOrderBy(sort),
-  });
-
-  const nextCursor =
-    rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
-  return { items: rows.map(toPhotoDTO), nextCursor };
+  const { limit, offset, sort } = params;
+  const [rows, total] = await Promise.all([
+    db.photo.findMany({ skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
+    db.photo.count(),
+  ]);
+  return { items: rows.map(toPhotoDTO), total };
 }
 
 /** Minimal {id, path} for a set of photo ids, in canonical order, for zipping. */

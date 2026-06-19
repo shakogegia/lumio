@@ -10,15 +10,13 @@ type Db = Pick<PrismaClient, "photo">;
  * same sorted sequence, so cursors stay valid.
  */
 export async function searchPhotos(params: SearchQuery, db: Db = prisma): Promise<PhotosPage> {
-  const { limit, cursor, sort } = params;
-  const rows = await db.photo.findMany({
-    where: buildSearchWhere(params),
-    take: limit,
-    ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: photoOrderBy(sort),
-  });
-  const nextCursor = rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
-  return { items: rows.map(toPhotoDTO), nextCursor };
+  const { limit, offset, sort } = params;
+  const where = buildSearchWhere(params);
+  const [rows, total] = await Promise.all([
+    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
+    db.photo.count({ where }),
+  ]);
+  return { items: rows.map(toPhotoDTO), total };
 }
 
 /**
