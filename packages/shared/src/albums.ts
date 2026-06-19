@@ -33,4 +33,9 @@ export const albumPhotosSchema = z.object({
 });
 export type AlbumPhotosInput = z.infer<typeof albumPhotosSchema>;
 
+export const deleteAlbumsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+});
+export type DeleteAlbumsInput = z.infer<typeof deleteAlbumsSchema>;
+
 export type CreateAlbumInput = z.infer<typeof createAlbumSchema>;
