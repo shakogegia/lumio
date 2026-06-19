@@ -5,7 +5,7 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { computeColumns, rowCount, GRID_GAP } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
-import type { ThumbnailFit } from "@/lib/use-thumbnail-fit";
+import type { GridViewMode } from "@/lib/use-grid-view";
 import {
   Empty,
   EmptyDescription,
@@ -39,7 +39,7 @@ export function PhotoGrid({
   endpoint = "/api/photos",
   albumId,
   empty = PHOTOS_EMPTY,
-  fit = "cover",
+  mode = "fill",
   selectMode = false,
   selectedIds,
   onSelectionChange,
@@ -47,7 +47,7 @@ export function PhotoGrid({
   endpoint?: string;
   albumId?: string;
   empty?: React.ReactNode;
-  fit?: ThumbnailFit;
+  mode?: GridViewMode;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -160,7 +160,7 @@ export function PhotoGrid({
                 <PhotoGridTile
                   key={photo.id}
                   photo={photo}
-                  fit={fit}
+                  mode={mode}
                   albumId={albumId}
                   selectMode={selectMode}
                   isSelected={selectedIds?.has(photo.id) ?? false}

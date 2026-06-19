@@ -1,19 +1,22 @@
 import type { PhotoDTO } from "@lumio/shared";
-import type { ThumbnailFit } from "@/lib/use-thumbnail-fit";
+import type { GridViewMode } from "@/lib/use-grid-view";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an
  * overflow-clipped square, then reaches "contain" by scaling DOWN to the
- * photo's short/long ratio. object-fit can't be CSS-animated, but transforms
- * can — and cover/contain are the same image at two zoom levels — so the
- * cover↔contain toggle becomes a smooth, GPU-accelerated zoom. Scaling down
- * (rather than up from contain) keeps the default cover view pixel-crisp.
+ * photo's short/long ratio. "fill" covers (edge-to-edge); "fit" and "card"
+ * contain (whole photo). object-fit can't be CSS-animated, but transforms can —
+ * and cover/contain are the same image at two zoom levels — so switching modes
+ * becomes a smooth, GPU-accelerated zoom. Scaling down (rather than up from
+ * contain) keeps the default fill view pixel-crisp.
  */
-export function PhotoThumb({ photo, fit }: { photo: PhotoDTO; fit: ThumbnailFit }) {
+export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMode }) {
   const { width: w, height: h } = photo;
   const valid = w > 0 && h > 0;
   const aspect = valid ? w / h : 1;
   const containScale = valid ? Math.min(w, h) / Math.max(w, h) : 1;
+  // Only "fill" covers; "fit" and "card" show the whole photo (contained).
+  const cover = mode === "fill";
   return (
     <div className="group/tile relative h-full w-full overflow-hidden rounded-sm">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -29,7 +32,7 @@ export function PhotoThumb({ photo, fit }: { photo: PhotoDTO; fit: ThumbnailFit 
         style={{
           width: aspect >= 1 ? `${aspect * 100}%` : "100%",
           height: aspect >= 1 ? "100%" : `${(100 / aspect)}%`,
-          transform: `translate(-50%, -50%) scale(${fit === "cover" ? 1 : containScale})`,
+          transform: `translate(-50%, -50%) scale(${cover ? 1 : containScale})`,
         }}
       />
     </div>

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
-import { useThumbnailFit } from "@/lib/use-thumbnail-fit";
-import { ThumbnailFitToggle } from "@/components/thumbnail-fit-toggle";
+import { useGridView } from "@/lib/use-grid-view";
+import { GridViewMenu } from "@/components/grid-view-menu";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
@@ -12,7 +12,7 @@ import { HeaderBar } from "@/components/header-bar";
 
 export function LibraryView() {
   const sel = useGridSelection();
-  const { fit, toggle } = useThumbnailFit();
+  const { mode, setMode } = useGridView();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -33,7 +33,7 @@ export function LibraryView() {
           title="Library"
           actions={
             <>
-              <ThumbnailFitToggle fit={fit} onToggle={toggle} />
+              <GridViewMenu mode={mode} onModeChange={setMode} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -43,7 +43,7 @@ export function LibraryView() {
       )}
 
       <PhotoGrid
-        fit={fit}
+        mode={mode}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}

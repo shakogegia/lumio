@@ -4,8 +4,9 @@ import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
 import type { PhotoDTO } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
-import type { ThumbnailFit } from "@/lib/use-thumbnail-fit";
+import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
+import { cellVariants } from "./cell-variants";
 import { PhotoThumb } from "./photo-thumb";
 
 /**
@@ -15,7 +16,7 @@ import { PhotoThumb } from "./photo-thumb";
  */
 export function PhotoGridTile({
   photo,
-  fit,
+  mode,
   albumId,
   selectMode,
   isSelected,
@@ -23,14 +24,14 @@ export function PhotoGridTile({
   onTileClick,
 }: {
   photo: PhotoDTO;
-  fit: ThumbnailFit;
+  mode: GridViewMode;
   albumId?: string;
   selectMode: boolean;
   isSelected: boolean;
   index: number;
   onTileClick: (index: number, e: React.MouseEvent) => void;
 }) {
-  const thumb = <PhotoThumb photo={photo} fit={fit} />;
+  const thumb = <PhotoThumb photo={photo} mode={mode} />;
 
   if (selectMode) {
     return (
@@ -38,10 +39,7 @@ export function PhotoGridTile({
         type="button"
         aria-pressed={isSelected}
         onClick={(e) => onTileClick(index, e)}
-        className={cn(
-          "relative block h-full select-none rounded-sm outline-none focus:outline-none focus-visible:outline-none",
-          isSelected && "ring-2 ring-inset ring-primary",
-        )}
+        className={cn(cellVariants({ mode, selected: isSelected }), "select-none")}
       >
         <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
           {thumb}
@@ -58,10 +56,7 @@ export function PhotoGridTile({
   }
 
   return (
-    <Link
-      href={photoHref(photo.id, albumId)}
-      className="block h-full outline-none focus:outline-none focus-visible:outline-none"
-    >
+    <Link href={photoHref(photo.id, albumId)} className={cellVariants({ mode })}>
       {thumb}
     </Link>
   );
