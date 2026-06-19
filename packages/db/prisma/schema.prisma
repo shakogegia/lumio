@@ -24,20 +24,22 @@ enum ColorLabel {
 }
 
 model Photo {
-  id         String       @id @default(cuid())
-  path       String       @unique
-  source     PhotoSource
-  takenAt    DateTime?
-  sortDate   DateTime     @default(now())
-  width      Int
-  height     Int
-  hash       String?
-  thumbhash  String?
-  exif       Json
-  colorLabel ColorLabel?
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  albums     AlbumPhoto[]
+  id          String       @id @default(cuid())
+  path        String       @unique
+  source      PhotoSource
+  takenAt     DateTime?
+  sortDate    DateTime     @default(now())
+  width       Int
+  height      Int
+  hash        String?
+  thumbhash   String?
+  fileSize    Int? // bytes from fs.stat; nullable so existing rows migrate cleanly
+  fileMtimeMs Float? // mtimeMs from fs.stat (fractional ms) — change-detection signal
+  exif        Json
+  colorLabel  ColorLabel?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  albums      AlbumPhoto[]
 
   @@index([sortDate, id])
   @@index([createdAt, id])
@@ -57,8 +59,8 @@ model Album {
 model AlbumPhoto {
   albumId String
   photoId String
-  album   Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
-  photo   Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  album   Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  photo   Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
 
   @@id([albumId, photoId])
   @@index([photoId])
