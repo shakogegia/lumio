@@ -22,6 +22,9 @@ export function AccountForm({
   const [pending, setPending] = useState(false);
 
   const trimmed = name.trim();
+  // After a successful save, router.refresh() re-renders the server component in
+  // place with the new name as initialName; state already equals it, so `changed`
+  // correctly returns to false without an explicit state reset.
   const changed = trimmed.length > 0 && trimmed !== initialName;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
