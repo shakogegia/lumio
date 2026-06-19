@@ -59,6 +59,7 @@ describe("ingestPath", () => {
     expect(payload.create.fileSize).toBeGreaterThan(0);
     expect(typeof payload.create.fileMtimeMs).toBe("number");
     expect(payload.update.fileSize).toBe(payload.create.fileSize);
+    expect(payload.update.fileMtimeMs).toBe(payload.create.fileMtimeMs);
 
     // Thumbnail and display should exist at <dir>/pX.webp
     await expect(access(path.join(tmpThumbs, "pX.webp"))).resolves.toBeUndefined();

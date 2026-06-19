@@ -52,7 +52,7 @@ async function main(): Promise<void> {
   const serialPer = serialMs / sample.length;
   console.log(`serial (limit=1)   ${(serialMs / 1000).toFixed(2)}s  |  ${serialPer.toFixed(1)} ms/img`);
 
-  for (const limit of [4, 8, cores]) {
+  for (const limit of [...new Set([4, 8, cores])]) {
     const ms = await timePool(sample, limit);
     const per = ms / sample.length;
     console.log(
