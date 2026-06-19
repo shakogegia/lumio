@@ -24,7 +24,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { DeleteAlbumButton } from "./delete-album-button";
 import { downloadSelection } from "@/lib/download-client";
 
 export function AlbumView({
@@ -195,7 +194,6 @@ export function AlbumView({
                   Download
                 </a>
               </Button>
-              <DeleteAlbumButton albumId={albumId} />
             </>
           }
         />
