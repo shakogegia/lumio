@@ -18,6 +18,8 @@ export interface PhotoDTO {
   width: number;
   height: number;
   hash: string | null;
+  /** Base64 ThumbHash — a ~25-byte blurred preview shown while the thumbnail loads. */
+  thumbhash: string | null;
   exif: ExifData;
   colorLabel: ColorLabel | null;
   createdAt: string;
