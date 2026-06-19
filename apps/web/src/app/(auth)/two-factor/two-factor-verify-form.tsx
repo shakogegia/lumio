@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 export function TwoFactorVerifyForm() {
   const router = useRouter();
@@ -62,14 +64,16 @@ export function TwoFactorVerifyForm() {
         </div>
 
         {!useBackup && (
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2 py-1">
+            <Switch
+              id="trust-device"
               checked={trustDevice}
-              onChange={(e) => setTrustDevice(e.target.checked)}
+              onCheckedChange={setTrustDevice}
             />
-            Trust this device for 30 days
-          </label>
+            <Label htmlFor="trust-device" className="font-normal text-muted-foreground">
+              Trust this device for 30 days
+            </Label>
+          </div>
         )}
 
         {error && (
@@ -94,12 +98,12 @@ export function TwoFactorVerifyForm() {
           {useBackup ? "Use your authenticator app instead" : "Use a backup code instead"}
         </button>
 
-        <a
+        <Link
           href="/login"
           className="text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
         >
           Back to login
-        </a>
+        </Link>
       </div>
     </form>
   );
