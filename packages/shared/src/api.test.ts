@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { photosQuerySchema, searchQuerySchema, setColorLabelSchema } from "./api.js";
+import {
+  coercePhotoSort,
+  photosQuerySchema,
+  searchQuerySchema,
+  setColorLabelSchema,
+} from "./api.js";
 
 describe("photosQuerySchema", () => {
   it("defaults limit to 50 when absent", () => {
@@ -71,5 +76,40 @@ describe("setColorLabelSchema", () => {
 
   it("rejects an unknown label slug", () => {
     expect(() => setColorLabelSchema.parse({ photoIds: ["a"], label: "magenta" })).toThrow();
+  });
+});
+
+describe("photosQuerySchema sort", () => {
+  it("leaves sort undefined when absent", () => {
+    expect(photosQuerySchema.parse({}).sort).toBeUndefined();
+  });
+
+  it("accepts each known sort value", () => {
+    expect(photosQuerySchema.parse({ sort: "imported-asc" }).sort).toBe("imported-asc");
+    expect(photosQuerySchema.parse({ sort: "taken-desc" }).sort).toBe("taken-desc");
+  });
+
+  it("rejects an unknown sort", () => {
+    expect(() => photosQuerySchema.parse({ sort: "bogus" })).toThrow();
+  });
+});
+
+describe("searchQuerySchema sort", () => {
+  it("accepts a known sort and defaults to undefined", () => {
+    expect(searchQuerySchema.parse({}).sort).toBeUndefined();
+    expect(searchQuerySchema.parse({ sort: "imported-desc" }).sort).toBe("imported-desc");
+  });
+});
+
+describe("coercePhotoSort", () => {
+  it("passes through known sorts", () => {
+    expect(coercePhotoSort("imported-desc")).toBe("imported-desc");
+    expect(coercePhotoSort("taken-asc")).toBe("taken-asc");
+  });
+
+  it("falls back to the default for unknown/empty input", () => {
+    expect(coercePhotoSort("bogus")).toBe("taken-desc");
+    expect(coercePhotoSort(undefined)).toBe("taken-desc");
+    expect(coercePhotoSort(null)).toBe("taken-desc");
   });
 });

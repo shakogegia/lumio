@@ -51,4 +51,10 @@ describe("searchPhotos", () => {
     expect(db.calls[0]?.where).toEqual({});
     expect(page.nextCursor).toBeNull();
   });
+
+  it("orders by createdAt asc when sort is imported-asc", async () => {
+    const db = fakeDb([row("a")]);
+    await searchPhotos({ limit: 2, album: [], sort: "imported-asc" }, db as never);
+    expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
+  });
 });

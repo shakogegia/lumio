@@ -2,10 +2,35 @@ import { z } from "zod";
 import { colorLabelSchema } from "./color-labels.js";
 import type { PhotoDTO } from "./types.js";
 
+/** The four photo sort orderings, single source of truth. */
+export const PHOTO_SORTS = [
+  "taken-desc",
+  "taken-asc",
+  "imported-desc",
+  "imported-asc",
+] as const;
+
+export type PhotoSort = (typeof PHOTO_SORTS)[number];
+
+/** The default ordering: newest taken-date first (today's behaviour). */
+export const DEFAULT_PHOTO_SORT: PhotoSort = "taken-desc";
+
+/** Zod enum for a sort value (strict — used in API query schemas). */
+export const photoSortSchema = z.enum(PHOTO_SORTS);
+
+/** Coerce arbitrary input to a known sort, falling back to the default.
+ *  Lenient (never throws) — for localStorage and detail-route query params. */
+export function coercePhotoSort(value: unknown): PhotoSort {
+  return (PHOTO_SORTS as readonly unknown[]).includes(value)
+    ? (value as PhotoSort)
+    : DEFAULT_PHOTO_SORT;
+}
+
 /** Query params for GET /api/photos. */
 export const photosQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().min(1).optional(),
+  sort: photoSortSchema.optional(),
 });
 
 export type PhotosQuery = z.infer<typeof photosQuerySchema>;
@@ -35,6 +60,7 @@ export const searchQuerySchema = z.object({
     .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().min(1).optional(),
+  sort: photoSortSchema.optional(),
 });
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;

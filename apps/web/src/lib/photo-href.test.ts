@@ -11,3 +11,17 @@ describe("photoHref", () => {
     expect(photoHref("abc", "alb1")).toBe("/photo/abc?album=alb1");
   });
 });
+
+describe("photoHref sort", () => {
+  it("omits the default sort", () => {
+    expect(photoHref("abc", null, "taken-desc")).toBe("/photo/abc");
+  });
+
+  it("appends a non-default sort", () => {
+    expect(photoHref("abc", null, "imported-asc")).toBe("/photo/abc?sort=imported-asc");
+  });
+
+  it("combines album and a non-default sort", () => {
+    expect(photoHref("abc", "alb1", "taken-asc")).toBe("/photo/abc?album=alb1&sort=taken-asc");
+  });
+});

@@ -8,6 +8,8 @@ import { useGridView } from "@/lib/use-grid-view";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
+import { useGridSort } from "@/lib/use-grid-sort";
+import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "./add-to-album-dialog";
@@ -20,6 +22,7 @@ export function LibraryView() {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
+  const { sort, setSort } = useGridSort();
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const { confirm, confirmDialog } = useConfirm();
@@ -112,6 +115,7 @@ export function LibraryView() {
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+              <GridSortMenu sort={sort} onSortChange={setSort} />
               <Button variant="outline" size="sm" onClick={sel.enter}>
                 Select
               </Button>
@@ -121,9 +125,12 @@ export function LibraryView() {
       )}
 
       <PhotoGrid
+        key={sort}
         apiRef={gridRef}
         mode={mode}
         columns={columns}
+        sort={sort}
+        params={new URLSearchParams({ sort })}
         selectMode={sel.selectMode}
         selectedIds={sel.selected}
         onSelectionChange={sel.setSelected}

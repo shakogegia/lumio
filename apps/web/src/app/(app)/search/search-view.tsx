@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useGridColumns } from "@/lib/use-grid-columns";
+import { useGridSort } from "@/lib/use-grid-sort";
+import { GridSortMenu } from "@/components/grid-sort-menu";
 import { cn } from "@/lib/utils";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
 import { SearchInput, type SearchInputHandle } from "./search-input";
@@ -25,6 +27,7 @@ export function SearchView() {
   const [recent, setRecent] = useState<SearchFilters[]>(loadRecentSearches);
   const inputRef = useRef<SearchInputHandle>(null);
   const { columns } = useGridColumns();
+  const { sort, setSort } = useGridSort();
 
   const empty = isEmptyFilters(filters);
 
@@ -81,12 +84,15 @@ export function SearchView() {
           <RecentSearches items={recent} onPick={applyRecent} />
         ) : (
           <div className="pt-2">
+            <div className="mb-2 flex justify-end">
+              <GridSortMenu sort={sort} onSortChange={setSort} />
+            </div>
             <PhotoGrid
-              key={serialize(filters)}
+              key={`${serialize(filters)}:${sort}`}
               columns={columns}
               endpoint="/api/search"
-              params={paramsFor(filters)}
-              hrefFor={(id) => `/photo/${id}?${scopeQuery(filters)}`}
+              params={paramsFor(filters, sort)}
+              hrefFor={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
               empty={<SearchEmpty />}
             />
           </div>

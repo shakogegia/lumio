@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  getNeighborsForWhere,
   getPhotoNeighbors,
   listPhotos,
   purgeAllPhotos,
@@ -52,6 +53,12 @@ describe("listPhotos", () => {
     const db = fakeDb([row("a")]);
     const page = await listPhotos({ limit: 2 }, db as never);
     expect(page.nextCursor).toBeNull();
+  });
+
+  it("orders by createdAt desc when sort is imported-desc", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 2, sort: "imported-desc" }, db as never);
+    expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
   });
 });
 
@@ -159,7 +166,7 @@ describe("getPhotoNeighbors", () => {
   it("returns the immediate prev/next and a centered strip (library scope)", async () => {
     const ordered = strip(5); // p0 (newest) .. p4 (oldest), already in PHOTO_ORDER
     const db = keysetDb(ordered);
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
@@ -168,10 +175,10 @@ describe("getPhotoNeighbors", () => {
   it("nulls prevId at the start and nextId at the end", async () => {
     const ordered = strip(3);
     const db = keysetDb(ordered);
-    const first = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    const first = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
     expect(first.prevId).toBeNull();
     expect(first.nextId).toBe("p1");
-    const last = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, 10, db as never);
+    const last = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
     expect(last.prevId).toBe("p1");
     expect(last.nextId).toBeNull();
   });
@@ -179,7 +186,7 @@ describe("getPhotoNeighbors", () => {
   it("clamps the window near an edge", async () => {
     const ordered = strip(10);
     const db = keysetDb(ordered);
-    const n = await getPhotoNeighbors({ id: "p1", path: "p1.jpg" }, null, 2, db as never);
+    const n = await getPhotoNeighbors({ id: "p1", path: "p1.jpg" }, null, "taken-desc", 2, db as never);
     // window=2: before is clamped to [p0], after is [p2, p3]
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3"]);
     expect(n.prevId).toBe("p0");
@@ -188,7 +195,7 @@ describe("getPhotoNeighbors", () => {
 
   it("returns a single-item strip with no neighbors when the photo is alone", async () => {
     const db = keysetDb(strip(1));
-    const n = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, 10, db as never);
+    const n = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
     expect(n.prevId).toBeNull();
     expect(n.nextId).toBeNull();
     expect(n.strip.map((s) => s.id)).toEqual(["p0"]);
@@ -203,14 +210,14 @@ describe("getPhotoNeighbors", () => {
         },
       },
     };
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "ghost", 10, db as never);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "ghost", "taken-desc", 10, db as never);
     expect(n).toEqual({ prevId: null, nextId: null, strip: [{ id: "p2", path: "p2.jpg" }] });
   });
 
   it("scopes neighbors to an album (regular album)", async () => {
     const ordered = strip(5); // the album's photos, already in PHOTO_ORDER
     const db = albumKeysetDb("alb1", ordered);
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "alb1", 10, db as never);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "alb1", "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
@@ -234,7 +241,7 @@ describe("getPhotoNeighbors", () => {
         }),
       },
     };
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "smart1", 10, db as never);
+    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "smart1", "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
@@ -262,5 +269,30 @@ describe("setPhotoColorLabel", () => {
       where: { id: { in: ["p1"] } },
       data: { colorLabel: null },
     });
+  });
+});
+
+describe("getNeighborsForWhere ordering", () => {
+  it("orders both neighbor pages by the given sort", async () => {
+    const orderBys: unknown[] = [];
+    const db = {
+      photo: {
+        findMany: async (args: { orderBy: unknown }) => {
+          orderBys.push(args.orderBy);
+          return [];
+        },
+      },
+    };
+    await getNeighborsForWhere(
+      { id: "p0", path: "p0.jpg" },
+      {},
+      "imported-asc",
+      5,
+      db as never,
+    );
+    expect(orderBys).toEqual([
+      [{ createdAt: "asc" }, { id: "asc" }],
+      [{ createdAt: "asc" }, { id: "asc" }],
+    ]);
   });
 });

@@ -1,3 +1,5 @@
+import { DEFAULT_PHOTO_SORT, type PhotoSort } from "@lumio/shared";
+
 /**
  * The structured search state the rest of the app consumes.
  *
@@ -19,11 +21,16 @@ export function buildFilters(albums: string[], rawText: string): SearchFilters {
   };
 }
 
-/** Filters → query string for GET /api/search (album repeats; q only when set). */
-export function paramsFor(filters: SearchFilters): URLSearchParams {
+/** Filters → query string for GET /api/search (album repeats; q only when set;
+ *  sort only when not the default). */
+export function paramsFor(
+  filters: SearchFilters,
+  sort: PhotoSort = DEFAULT_PHOTO_SORT,
+): URLSearchParams {
   const params = new URLSearchParams();
   for (const album of filters.albums) params.append("album", album);
   if (filters.q) params.set("q", filters.q);
+  if (sort !== DEFAULT_PHOTO_SORT) params.set("sort", sort);
   return params;
 }
 
@@ -37,8 +44,11 @@ export function serialize(filters: SearchFilters): string {
  * its prev/next + film strip to the search results. The `s=1` marker tells the
  * detail page to treat the params as a search filter (vs. the album scope).
  */
-export function scopeQuery(filters: SearchFilters): string {
-  const params = paramsFor(filters);
+export function scopeQuery(
+  filters: SearchFilters,
+  sort: PhotoSort = DEFAULT_PHOTO_SORT,
+): string {
+  const params = paramsFor(filters, sort);
   params.set("s", "1");
   return params.toString();
 }

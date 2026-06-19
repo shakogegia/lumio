@@ -7,7 +7,7 @@ import {
   type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
-import { PHOTO_ORDER } from "@/lib/photo-order";
+import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 
@@ -95,12 +95,12 @@ export async function listAlbumPhotos(
 ): Promise<PhotosPage | null> {
   const where = await albumPhotoWhere(id, db);
   if (where === null) return null;
-  const { limit, cursor } = params;
+  const { limit, cursor, sort } = params;
   const rows = await db.photo.findMany({
     where,
     take: limit,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-    orderBy: PHOTO_ORDER,
+    orderBy: photoOrderBy(sort),
   });
   const nextCursor = rows.length === limit ? (rows[rows.length - 1]?.id ?? null) : null;
   return { items: rows.map(toPhotoDTO), nextCursor };

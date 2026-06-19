@@ -135,6 +135,24 @@ describe("listAlbumPhotos", () => {
     const page = await listAlbumPhotos("missing", { limit: 10 }, fakeDb as never);
     expect(page).toBeNull();
   });
+
+  it("orders the album photos by the given sort", async () => {
+    const calls: Array<{ orderBy?: unknown }> = [];
+    const fakeDb = {
+      album: { findUnique: async () => albumRow() },
+      albumPhoto: {},
+      photo: {
+        findMany: async (args: { orderBy?: unknown }) => {
+          calls.push(args);
+          return [];
+        },
+        count: async () => 0,
+        findFirst: async () => null,
+      },
+    };
+    await listAlbumPhotos("alb1", { limit: 2, sort: "imported-asc" }, fakeDb as never);
+    expect(calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
+  });
 });
 
 describe("addPhotosToAlbum", () => {

@@ -1,4 +1,5 @@
 import { buildSearchWhere } from "@lumio/db";
+import { coercePhotoSort, DEFAULT_PHOTO_SORT, type PhotoSort } from "@lumio/shared";
 import { listAlbumSummaries } from "@/lib/albums-service";
 import { getNeighborsForWhere, getPhoto, getPhotoNeighbors } from "@/lib/photos-service";
 
@@ -14,35 +15,40 @@ export interface PhotoDetailData {
  * `library` walks the whole library.
  */
 export type DetailScope =
-  | { kind: "album"; albumId: string }
-  | { kind: "search"; albums: string[]; q?: string }
-  | { kind: "library" };
+  | { kind: "album"; albumId: string; sort: PhotoSort }
+  | { kind: "search"; albums: string[]; q?: string; sort: PhotoSort }
+  | { kind: "library"; sort: PhotoSort };
 
-type RawSearchParams = { album?: string | string[]; q?: string; s?: string };
+type RawSearchParams = { album?: string | string[]; q?: string; s?: string; sort?: string };
 
 /** Parse a detail route's query params into a scope. `s` marks a search scope. */
 export function parseDetailScope(sp: RawSearchParams): DetailScope {
+  const sort = coercePhotoSort(sp.sort);
   if (sp.s) {
     const albums = Array.isArray(sp.album) ? sp.album : sp.album ? [sp.album] : [];
-    return { kind: "search", albums, q: typeof sp.q === "string" && sp.q ? sp.q : undefined };
+    return {
+      kind: "search",
+      albums,
+      q: typeof sp.q === "string" && sp.q ? sp.q : undefined,
+      sort,
+    };
   }
-  if (typeof sp.album === "string") return { kind: "album", albumId: sp.album };
-  return { kind: "library" };
+  if (typeof sp.album === "string") return { kind: "album", albumId: sp.album, sort };
+  return { kind: "library", sort };
 }
 
 /** Serialize a scope back into the query string carried on prev/next/strip hrefs. */
 export function detailScopeQuery(scope: DetailScope): string {
+  const params = new URLSearchParams();
   if (scope.kind === "album") {
-    return new URLSearchParams({ album: scope.albumId }).toString();
-  }
-  if (scope.kind === "search") {
-    const params = new URLSearchParams();
+    params.set("album", scope.albumId);
+  } else if (scope.kind === "search") {
     params.set("s", "1");
     for (const album of scope.albums) params.append("album", album);
     if (scope.q) params.set("q", scope.q);
-    return params.toString();
   }
-  return "";
+  if (scope.sort !== DEFAULT_PHOTO_SORT) params.set("sort", scope.sort);
+  return params.toString();
 }
 
 /**
@@ -60,10 +66,14 @@ export async function loadPhotoDetail(
   const current = { id: photo.id, path: photo.path };
   const neighbors$ =
     scope.kind === "album"
-      ? getPhotoNeighbors(current, scope.albumId)
+      ? getPhotoNeighbors(current, scope.albumId, scope.sort)
       : scope.kind === "search"
-        ? getNeighborsForWhere(current, buildSearchWhere({ album: scope.albums, q: scope.q }))
-        : getPhotoNeighbors(current, null);
+        ? getNeighborsForWhere(
+            current,
+            buildSearchWhere({ album: scope.albums, q: scope.q }),
+            scope.sort,
+          )
+        : getPhotoNeighbors(current, null, scope.sort);
   const [albums, neighbors] = await Promise.all([listAlbumSummaries(), neighbors$]);
   return {
     photo,

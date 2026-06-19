@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFilters, paramsFor, serialize } from "./filters.js";
+import { buildFilters, paramsFor, scopeQuery, serialize } from "./filters.js";
 
 describe("buildFilters", () => {
   it("dedupes albums and trims free text", () => {
@@ -30,6 +30,33 @@ describe("serialize", () => {
   it("is order-independent across albums", () => {
     expect(serialize({ albums: ["a", "b"], q: "x" })).toBe(
       serialize({ albums: ["b", "a"], q: "x" }),
+    );
+  });
+});
+
+describe("paramsFor sort", () => {
+  it("omits the default sort", () => {
+    expect(paramsFor({ albums: [], q: "" }, "taken-desc").has("sort")).toBe(false);
+  });
+
+  it("sets a non-default sort", () => {
+    expect(paramsFor({ albums: [], q: "" }, "imported-asc").get("sort")).toBe("imported-asc");
+  });
+});
+
+describe("scopeQuery sort", () => {
+  it("marks the search scope and appends a non-default sort", () => {
+    const q = scopeQuery({ albums: ["a1"], q: "beach" }, "imported-desc");
+    const params = new URLSearchParams(q);
+    expect(params.get("s")).toBe("1");
+    expect(params.getAll("album")).toEqual(["a1"]);
+    expect(params.get("q")).toBe("beach");
+    expect(params.get("sort")).toBe("imported-desc");
+  });
+
+  it("omits a default sort", () => {
+    expect(new URLSearchParams(scopeQuery({ albums: [], q: "" }, "taken-desc")).has("sort")).toBe(
+      false,
     );
   });
 });
