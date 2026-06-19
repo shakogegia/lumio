@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { photoHref } from "@/lib/photo-href";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { setHoldNavTarget } from "@/lib/hold-key-nav";
 import { FilmStrip } from "./film-strip";
@@ -20,13 +19,15 @@ export function PhotoDetail({
   photo,
   regularAlbums,
   neighbors,
-  albumId,
+  scope,
   overlay = false,
 }: {
   photo: PhotoDTO;
   regularAlbums: AlbumSummaryDTO[];
   neighbors: PhotoNeighbors;
-  albumId: string | null;
+  /** Query string identifying the navigation scope (album / search / library),
+   *  carried on prev/next/strip hrefs so neighbors stay within the same set. */
+  scope: string;
   /** Rendered inside the intercepted-route modal. When true, prev/next replace
    *  history instead of pushing, so Escape/back closes the overlay to the grid
    *  rather than stepping back through every photo visited in the modal. */
@@ -39,8 +40,9 @@ export function PhotoDetail({
     "—";
   const metadata = exifEntries(photo.exif);
 
-  const prevHref = neighbors.prevId ? photoHref(neighbors.prevId, albumId) : null;
-  const nextHref = neighbors.nextId ? photoHref(neighbors.nextId, albumId) : null;
+  const hrefFor = (id: string) => (scope ? `/photo/${id}?${scope}` : `/photo/${id}`);
+  const prevHref = neighbors.prevId ? hrefFor(neighbors.prevId) : null;
+  const nextHref = neighbors.nextId ? hrefFor(neighbors.nextId) : null;
 
   // Arrow-key navigation, with press-and-hold support. The photo page remounts
   // on every navigation (intercepted/parallel route), so the hold loop can't
@@ -86,7 +88,7 @@ export function PhotoDetail({
           <FilmStrip
             items={neighbors.strip}
             currentId={photo.id}
-            hrefFor={(id) => photoHref(id, albumId)}
+            hrefFor={hrefFor}
             replace={overlay}
           />
         )}

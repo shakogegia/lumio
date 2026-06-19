@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
-import { type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
+import { type Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
 import type { PhotoNeighbors, PhotosPage, PhotosQuery, PhotoStripItem } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
@@ -51,6 +51,23 @@ export async function getPhotoNeighbors(
     // Album no longer exists — degrade to no navigation rather than throwing.
     return { prevId: null, nextId: null, strip: [current] };
   }
+  return getNeighborsForWhere(current, where, window, db);
+}
+
+/**
+ * The prev/next + film-strip window over an arbitrary navigation scope (`where`),
+ * in PHOTO_ORDER. Used directly for search-scoped detail views; `getPhotoNeighbors`
+ * wraps it for the album/library scopes. Keyset cursoring on the current id: a
+ * forward page (next) and a backward page (prev, negative take). Both come back in
+ * PHOTO_ORDER, so `before` ends with the nearest-prev and `strip` reads
+ * left-to-right as the grid does. Selects only id+path to keep the window cheap.
+ */
+export async function getNeighborsForWhere(
+  current: PhotoStripItem,
+  where: Prisma.PhotoWhereInput,
+  window = 25,
+  db: Db = prisma,
+): Promise<PhotoNeighbors> {
   const select = { id: true, path: true } as const;
   const [before, after] = await Promise.all([
     db.photo.findMany({
