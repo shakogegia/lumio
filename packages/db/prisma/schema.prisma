@@ -39,6 +39,7 @@ model Photo {
   albums     AlbumPhoto[]
 
   @@index([sortDate, id])
+  @@index([createdAt, id])
   @@index([hash])
 }
 
