@@ -13,24 +13,25 @@ export function TwoFactorManage() {
   const [disablePassword, setDisablePassword] = useState("");
   const [regenPassword, setRegenPassword] = useState("");
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [disableError, setDisableError] = useState<string | null>(null);
+  const [regenError, setRegenError] = useState<string | null>(null);
   const [pending, setPending] = useState<"disable" | "regen" | null>(null);
 
   async function disable(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+    setDisableError(null);
     setPending("disable");
     try {
       const { error } = await authClient.twoFactor.disable({
         password: disablePassword,
       });
       if (error) {
-        setError(error.message ?? "Could not disable two-factor.");
+        setDisableError(error.message ?? "Could not disable two-factor.");
         return;
       }
       router.refresh();
     } catch {
-      setError("Something went wrong. Please try again.");
+      setDisableError("Something went wrong. Please try again.");
     } finally {
       setPending(null);
     }
@@ -38,20 +39,20 @@ export function TwoFactorManage() {
 
   async function regenerate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
+    setRegenError(null);
     setPending("regen");
     try {
       const { data, error } = await authClient.twoFactor.generateBackupCodes({
         password: regenPassword,
       });
       if (error || !data) {
-        setError(error?.message ?? "Could not regenerate backup codes.");
+        setRegenError(error?.message ?? "Could not regenerate backup codes.");
         return;
       }
       setNewCodes(data.backupCodes);
       setRegenPassword("");
     } catch {
-      setError("Something went wrong. Please try again.");
+      setRegenError("Something went wrong. Please try again.");
     } finally {
       setPending(null);
     }
@@ -80,6 +81,11 @@ export function TwoFactorManage() {
             onChange={(e) => setRegenPassword(e.target.value)}
             required
           />
+          {regenError && (
+            <p role="alert" className="text-destructive text-sm">
+              {regenError}
+            </p>
+          )}
           <Button
             type="submit"
             variant="outline"
@@ -102,9 +108,9 @@ export function TwoFactorManage() {
           onChange={(e) => setDisablePassword(e.target.value)}
           required
         />
-        {error && (
+        {disableError && (
           <p role="alert" className="text-destructive text-sm">
-            {error}
+            {disableError}
           </p>
         )}
         <Button
