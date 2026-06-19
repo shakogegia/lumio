@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -17,14 +18,12 @@ export function LibraryView() {
   const { mode, setMode } = useGridView();
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
-  const [labelError, setLabelError] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
 
   async function applyLabel(label: ColorLabel | null) {
     if (labelPending) return;
     const ids = sel.selected;
     setLabelPending(true);
-    setLabelError(false);
     try {
       const res = await fetch("/api/photos/color-label", {
         method: "POST",
@@ -36,7 +35,7 @@ export function LibraryView() {
       // user sees the tint land and can re-pick.
       gridRef.current?.patchPhotos(ids, { colorLabel: label });
     } catch {
-      setLabelError(true);
+      toast.error("Failed to apply label.");
     } finally {
       setLabelPending(false);
     }
@@ -73,10 +72,6 @@ export function LibraryView() {
             </>
           }
         />
-      )}
-
-      {labelError && (
-        <p className="px-4 py-1 text-sm text-destructive">Failed to apply label.</p>
       )}
 
       <PhotoGrid

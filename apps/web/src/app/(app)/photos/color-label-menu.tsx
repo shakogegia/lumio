@@ -1,6 +1,6 @@
 "use client";
 
-import { Tag } from "lucide-react";
+import { Palette } from "lucide-react";
 import { COLOR_LABELS, type ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +27,8 @@ export function ColorLabelMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button size="sm" disabled={disabled}>
-          <Tag aria-hidden />
-          Label
+          <Palette aria-hidden />
+          Color
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
