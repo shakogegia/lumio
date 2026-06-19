@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { photosQuerySchema, searchQuerySchema } from "./api.js";
+import { photosQuerySchema, searchQuerySchema, setColorLabelSchema } from "./api.js";
 
 describe("photosQuerySchema", () => {
   it("defaults limit to 50 when absent", () => {
@@ -47,5 +47,25 @@ describe("searchQuerySchema", () => {
 
   it("rejects limit above 100", () => {
     expect(() => searchQuerySchema.parse({ limit: "1000" })).toThrow();
+  });
+});
+
+describe("setColorLabelSchema", () => {
+  it("accepts photoIds with a valid label", () => {
+    const parsed = setColorLabelSchema.parse({ photoIds: ["a", "b"], label: "green" });
+    expect(parsed.photoIds).toEqual(["a", "b"]);
+    expect(parsed.label).toBe("green");
+  });
+
+  it("accepts a null label (clear)", () => {
+    expect(setColorLabelSchema.parse({ photoIds: ["a"], label: null }).label).toBeNull();
+  });
+
+  it("rejects an empty photoIds array", () => {
+    expect(() => setColorLabelSchema.parse({ photoIds: [], label: null })).toThrow();
+  });
+
+  it("rejects an unknown label slug", () => {
+    expect(() => setColorLabelSchema.parse({ photoIds: ["a"], label: "magenta" })).toThrow();
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { colorLabelSchema } from "./color-labels.js";
 import type { PhotoDTO } from "./types.js";
 
 /** Query params for GET /api/photos. */
@@ -30,3 +31,11 @@ export const searchQuerySchema = z.object({
 });
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
+
+/** Body for POST /api/photos/color-label. `label: null` clears the label. */
+export const setColorLabelSchema = z.object({
+  photoIds: z.array(z.string()).min(1),
+  label: colorLabelSchema.nullable(),
+});
+
+export type SetColorLabelBody = z.infer<typeof setColorLabelSchema>;
