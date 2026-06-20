@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAsyncJob } from "@/lib/use-async-job";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { HeaderBar } from "@/components/header-bar";
 import { useConfirm, type ConfirmOptions } from "@/components/confirm-dialog";
 import {
@@ -161,15 +162,15 @@ export function TrashView() {
         }
       />
 
-      <PhotoGrid
-        key={reloadKey}
-        apiRef={gridRef}
-        endpoint="/api/trash"
-        selectMode
-        selectedIds={sel.selected}
-        onSelectionChange={sel.setSelected}
-        empty={TRASH_EMPTY}
-      />
+      <PhotoCollectionProvider key={reloadKey} endpoint="/api/trash" enableLightbox={false}>
+        <PhotoGrid
+          apiRef={gridRef}
+          selectMode
+          selectedIds={sel.selected}
+          onSelectionChange={sel.setSelected}
+          empty={TRASH_EMPTY}
+        />
+      </PhotoCollectionProvider>
     </>
   );
 }

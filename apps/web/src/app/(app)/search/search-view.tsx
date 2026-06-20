@@ -18,6 +18,8 @@ import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog
 import type { ColorLabel } from "@lumio/shared";
 import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { Lightbox } from "@/components/photo-grid/lightbox";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
@@ -270,19 +272,24 @@ export function SearchView() {
                   )}
                 </div>
               </div>
-              <PhotoGrid
+              <PhotoCollectionProvider
                 key={`${serialized}:${sort}`}
-                apiRef={gridRef}
-                mode={mode}
-                columns={columns}
                 endpoint="/api/search"
                 params={paramsFor(filters, sort)}
-                hrefFor={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
-                empty={<SearchEmpty />}
-                selectMode={sel.selectMode}
-                selectedIds={sel.selected}
-                onSelectionChange={sel.setSelected}
-              />
+                urlForId={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
+                baseUrl="/search"
+              >
+                <PhotoGrid
+                  apiRef={gridRef}
+                  mode={mode}
+                  columns={columns}
+                  selectMode={sel.selectMode}
+                  selectedIds={sel.selected}
+                  onSelectionChange={sel.setSelected}
+                  empty={<SearchEmpty />}
+                />
+                <Lightbox />
+              </PhotoCollectionProvider>
             </div>
           ))}
       </div>
