@@ -1,9 +1,11 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import { prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS, ingestPath, removePath } from "@lumio/ingest";
 import { INGEST_CONCURRENCY, PHOTOS_DIR, displayPath, thumbnailPath } from "./config.js";
 import { ingestDeps, removeDeps } from "./deps.js";
+import { timedLine } from "./format.js";
 import { runPool } from "./pool.js";
 
 export interface ScanSummary {
@@ -78,8 +80,10 @@ export async function scanAndIngest(): Promise<ScanSummary> {
         summary.skippedUnchanged++;
         return;
       }
+      const start = performance.now();
       await ingestPath(relPath, ingestDeps);
       summary.processed++;
+      console.log(`processed ${timedLine(relPath, performance.now() - start)}`);
     } catch (err) {
       summary.skipped++;
       console.warn(`skip ${relPath}: ${(err as Error).message}`);

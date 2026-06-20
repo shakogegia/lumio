@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,10 +18,6 @@ interface Converter {
 
 /** Format -> ordered candidate converters (first whose binary is on PATH wins). */
 export const CONVERTERS: Record<string, Converter[]> = {
-  ".jxl": [
-    { bin: "djxl", args: (i, o) => [i, o] },
-    { bin: "sips", args: (i, o) => ["-s", "format", "png", i, "--out", o] },
-  ],
   ".heic": [
     { bin: "sips", args: (i, o) => ["-s", "format", "png", i, "--out", o] },
     { bin: "heif-convert", args: (i, o) => [i, o] },
@@ -48,22 +44,52 @@ async function resolveConverter(ext: string): Promise<Converter | null> {
   return null;
 }
 
-export interface Decoded {
-  /** Path to a sharp-readable image (the original, or a temp PNG). */
-  path: string;
-  /** Remove any temp artifacts. No-op for native passthrough. */
+/**
+ * Transcode a JXL to a JPEG buffer by piping `djxl --output_format jpeg` to
+ * stdout — no temp file. JPEG is the right intermediate because djxl can encode
+ * *any* JXL into it: it tonemaps float/HDR and high-bit-depth pixels down to
+ * 8-bit (which the integer PAM/PPM encoders cannot do — they fail outright), and
+ * it losslessly reconstructs the original JPEG for JPEG-sourced JXLs. Sharp then
+ * reads the JPEG like any native input, honouring its EXIF orientation. On
+ * failure the rejection carries djxl's own stderr so the cause is diagnosable.
+ */
+function decodeJxlToJpeg(absPath: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("djxl", [absPath, "-", "--output_format", "jpeg"]);
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    child.stdout.on("data", (c: Buffer) => out.push(c));
+    child.stderr.on("data", (c: Buffer) => err.push(c));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) return resolve(Buffer.concat(out));
+      const last = Buffer.concat(err).toString().trim().split("\n").pop() ?? "";
+      reject(new Error(`djxl failed (exit ${code}) for ${path.basename(absPath)}: ${last}`));
+    });
+  });
+}
+
+export interface DecodedInput {
+  /** A Sharp-readable input: the original path (native), a transcoded JPEG buffer (JXL), or a temp PNG path (HEIC). */
+  input: string | Buffer;
+  /** Remove any temp artifacts (HEIC temp PNG). No-op for native/JXL. */
   cleanup: () => Promise<void>;
 }
 
 /**
- * Return a sharp-readable path for `absPath`. Native formats pass through
- * unchanged; JXL/HEIC/HEIF are converted to a temp PNG via an external tool.
- * Throws if the format needs a converter but none is installed.
+ * Return a Sharp-ready input for `absPath`:
+ *  - native formats pass the path straight through,
+ *  - `.jxl` is transcoded to an in-memory JPEG via djxl,
+ *  - HEIC/HEIF are converted to a temp PNG via an external tool (with cleanup).
+ * Throws if a non-native format has no installed decoder.
  */
-export async function decodeToReadable(absPath: string): Promise<Decoded> {
+export async function decodeToSharpInput(absPath: string): Promise<DecodedInput> {
   const ext = path.extname(absPath).toLowerCase();
   if (NATIVE_EXTENSIONS.has(ext)) {
-    return { path: absPath, cleanup: async () => {} };
+    return { input: absPath, cleanup: async () => {} };
+  }
+  if (ext === ".jxl") {
+    return { input: await decodeJxlToJpeg(absPath), cleanup: async () => {} };
   }
   const converter = await resolveConverter(ext);
   if (!converter) {
@@ -74,13 +100,11 @@ export async function decodeToReadable(absPath: string): Promise<Decoded> {
   try {
     await execFileAsync(converter.bin, converter.args(absPath, out));
   } catch (err) {
-    // The caller never receives a Decoded (so can't cleanup); remove the temp
-    // dir here so a corrupt file doesn't leak a dir on every scan cycle.
     await rm(dir, { recursive: true, force: true });
     throw err;
   }
   return {
-    path: out,
+    input: out,
     cleanup: async () => {
       await rm(dir, { recursive: true, force: true });
     },
