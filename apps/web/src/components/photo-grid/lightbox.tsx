@@ -7,6 +7,7 @@ import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { usePhotoCollection } from "./photo-collection";
 import { EditSessionProvider, useEditSession } from "./use-edit-session";
 import { useLightboxKeyboard } from "./use-lightbox-keyboard";
+import { useToggleFavorite } from "./use-favorite";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
 import { ZoomableImage } from "./zoomable-image";
@@ -61,10 +62,23 @@ export function Lightbox() {
 function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
   const { openIndex, total, step, close, open } = usePhotoCollection();
   const { guard, dirty, undo, redo, canUndo, canRedo } = useEditSession();
+  const toggleFavorite = useToggleFavorite(photo);
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useBodyScrollLock(true, overlayRef);
-  useLightboxKeyboard({ openIndex, total, dirty, canUndo, canRedo, step, close, guard, undo, redo });
+  useLightboxKeyboard({
+    openIndex,
+    total,
+    dirty,
+    canUndo,
+    canRedo,
+    step,
+    close,
+    guard,
+    undo,
+    redo,
+    toggleFavorite: () => void toggleFavorite(),
+  });
 
   const onTrashed = useCallback(() => {
     // Were we on the last photo? close. Otherwise the store shifts the next photo
