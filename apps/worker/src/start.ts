@@ -20,6 +20,17 @@ export async function startWorker(): Promise<void> {
   const controller = new AbortController();
   const { signal } = controller;
 
+  const shutdown = async (): Promise<void> => {
+    // Abort wakes all loops within one sleep interval. We deliberately do NOT
+    // await them before disconnecting: an in-flight job left "running" is
+    // requeued by recoverOrphanedJobs on next boot (single-host tradeoff).
+    controller.abort();
+    await prisma.$disconnect();
+    process.exit(0);
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+
   await recoverOrphanedJobs(prisma);
 
   const heartbeat = (async () => {
@@ -44,14 +55,6 @@ export async function startWorker(): Promise<void> {
   });
 
   await startWatcher(signal);
-
-  const shutdown = async (): Promise<void> => {
-    controller.abort();
-    await prisma.$disconnect();
-    process.exit(0);
-  };
-  process.once("SIGINT", shutdown);
-  process.once("SIGTERM", shutdown);
 
   await Promise.all([heartbeat, consumer]);
 }
