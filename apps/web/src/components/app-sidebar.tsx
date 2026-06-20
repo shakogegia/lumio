@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
-import { Logo } from "@/components/logo";
+import { WorkerActivity } from "@/components/worker-activity";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SidebarAlbums } from "@/components/sidebar-albums";
@@ -50,9 +50,9 @@ export function AppSidebar() {
         <Link
           href="/photos"
           title="Lumio"
-          className="mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground"
+          className="group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground"
         >
-          <Logo className="h-7 w-7 transition-transform duration-500 ease-out hover:rotate-90" />
+          <WorkerActivity />
           <span className="sr-only">Lumio</span>
         </Link>
       )}

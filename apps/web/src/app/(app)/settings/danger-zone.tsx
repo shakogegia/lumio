@@ -42,7 +42,8 @@ export function DeleteAllPhotos({ photoCount }: { photoCount: number }) {
       if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
       setOpen(false);
       reset();
-      router.refresh();
+      // Deletion proceeds in the worker; refresh shortly so counts catch up.
+      setTimeout(() => router.refresh(), 1000);
     } catch {
       setState("error");
     }

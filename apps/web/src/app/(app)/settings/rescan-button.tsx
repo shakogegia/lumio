@@ -13,10 +13,12 @@ export function RescanButton() {
     try {
       const res = await fetch("/api/rescan", { method: "POST" });
       if (!res.ok) throw new Error(`Rescan failed: ${res.status}`);
+      // The worker now owns progress (watch the sidebar aperture). Re-enable the
+      // button shortly; the catalog refreshes as rows land.
       setTimeout(() => {
         setState("idle");
         router.refresh();
-      }, 1500);
+      }, 1000);
     } catch {
       setState("error");
     }
