@@ -2,7 +2,16 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { NO_EDITS, hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
+import {
+  NO_EDITS,
+  hasEdits,
+  rotateLeft as recipeRotateLeft,
+  rotateRight as recipeRotateRight,
+  toggleFlipH as recipeFlipH,
+  toggleFlipV as recipeFlipV,
+  type PhotoDTO,
+  type PhotoEdits,
+} from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection } from "./photo-collection";
 
@@ -16,7 +25,10 @@ interface EditSessionValue {
   applying: boolean;
   canUndo: boolean;
   canRedo: boolean;
-  set: (next: PhotoEdits) => void;
+  rotateLeft: () => void;
+  rotateRight: () => void;
+  flipH: () => void;
+  flipV: () => void;
   reset: () => void;
   undo: () => void;
   redo: () => void;
@@ -45,6 +57,13 @@ interface History {
 
 function freshHistory(base: PhotoEdits): History {
   return { stack: [base], index: 0 };
+}
+
+/** Push a new recipe, dropping any redo branch. No-op if it equals the current. */
+function pushHistory(h: History, next: PhotoEdits): History {
+  if (sameEdits(next, h.stack[h.index])) return h;
+  const stack = [...h.stack.slice(0, h.index + 1), next];
+  return { stack, index: stack.length - 1 };
 }
 
 /**
@@ -87,15 +106,21 @@ export function EditSessionProvider({
 
   const dirty = !sameEdits(working, saved);
 
-  // Push a new recipe, dropping any redo branch. No-op if it equals the current.
-  const set = useCallback((next: PhotoEdits) => {
-    setHistory((h) => {
-      if (sameEdits(next, h.stack[h.index])) return h;
-      const stack = [...h.stack.slice(0, h.index + 1), next];
-      return { stack, index: stack.length - 1 };
-    });
+  const rotateLeft = useCallback(() => {
+    setHistory((h) => pushHistory(h, recipeRotateLeft(h.stack[h.index])));
   }, []);
-  const reset = useCallback(() => set(NO_EDITS), [set]);
+  const rotateRight = useCallback(() => {
+    setHistory((h) => pushHistory(h, recipeRotateRight(h.stack[h.index])));
+  }, []);
+  const flipH = useCallback(() => {
+    setHistory((h) => pushHistory(h, recipeFlipH(h.stack[h.index])));
+  }, []);
+  const flipV = useCallback(() => {
+    setHistory((h) => pushHistory(h, recipeFlipV(h.stack[h.index])));
+  }, []);
+  const reset = useCallback(() => {
+    setHistory((h) => pushHistory(h, NO_EDITS));
+  }, []);
   const undo = useCallback(() => {
     setHistory((h) => (h.index > 0 ? { ...h, index: h.index - 1 } : h));
   }, []);
@@ -164,7 +189,10 @@ export function EditSessionProvider({
     applying,
     canUndo,
     canRedo,
-    set,
+    rotateLeft,
+    rotateRight,
+    flipH,
+    flipV,
     reset,
     undo,
     redo,

@@ -101,21 +101,12 @@ export function LightboxSidebar({
         <TabsList className="w-full">
           <TabsTrigger value="info">Info</TabsTrigger>
           <TabsTrigger value="exif">EXIF</TabsTrigger>
-          <TabsTrigger value="edit">
+          <TabsTrigger
+            value="edit"
+            className={dirty ? "text-amber-500" : hasEdits(photo.edits) ? "text-primary" : undefined}
+            title={dirty ? "Unsaved changes" : hasEdits(photo.edits) ? "Edited" : undefined}
+          >
             Edit
-            {dirty ? (
-              <span
-                className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500"
-                title="Unsaved changes"
-                aria-label="Unsaved changes"
-              />
-            ) : hasEdits(photo.edits) ? (
-              <span
-                className="ml-1.5 inline-block size-1.5 rounded-full bg-primary"
-                title="Edited"
-                aria-label="Edited"
-              />
-            ) : null}
           </TabsTrigger>
         </TabsList>
 

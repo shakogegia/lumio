@@ -142,31 +142,8 @@ export function ZoomableImage({
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
   // Live edit preview = delta from the DISPLAYED rendition's recipe to `working`.
+  // Edits snap into place — no transition (no animation in the editor).
   const t = previewTransform(shown.recipe, working);
-
-  // Continuous rotation so repeated rotations animate forward through a full
-  // circle instead of unwinding (CSS would take the short path 270°→0°).
-  const [contDeg, setContDeg] = useState(t.deg);
-  useEffect(() => {
-    const bump = () =>
-      setContDeg((prev) => {
-        const diff = (((t.deg - prev) % 360) + 360) % 360;
-        return prev + (diff > 180 ? diff - 360 : diff);
-      });
-    bump();
-  }, [t.deg]);
-
-  // Suppress the rotation transition on the frame the rendition swaps (Apply /
-  // nav) so the buffer swap is instant; edit-rotate clicks animate. Flips never
-  // animate — the mirror lives on the <img> with no transition (below).
-  const [animate, setAnimate] = useState(false);
-  useEffect(() => {
-    const enable = (v: boolean) => setAnimate(v);
-    enable(false);
-    const id = requestAnimationFrame(() => setAnimate(true));
-    return () => cancelAnimationFrame(id);
-  }, [shown.src]);
-
   const rotated = t.deg === 90 || t.deg === 270;
   let fit = 1;
   if (rotated && nat && box) {
@@ -176,10 +153,7 @@ export function ZoomableImage({
     const sPost = Math.min(cw / nat.h, ch / nat.w, 1);
     if (sNow > 0) fit = sPost / sNow;
   }
-  // Rotation + fit animate (on a wrapper); the mirror is applied to the <img>
-  // with no transition so flips are instant (a CSS scale through 0 would collapse).
-  const rotateTransform = `rotate(${contDeg}deg) scale(${fit})`;
-  const mirrorTransform = `scaleX(${t.mirror ? -1 : 1})`;
+  const editTransform = `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
 
   // Compose the blur-box and image-loaded callback-refs onto the <img>.
   const setImg = useCallback(
@@ -222,26 +196,17 @@ export function ZoomableImage({
             }}
           />
         )}
-        <div
-          className="flex h-full w-full items-center justify-center"
-          style={{
-            transform: rotateTransform,
-            transformOrigin: "center center",
-            transition: animate ? "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
-          }}
-        >
-          <img
-            ref={setImg}
-            src={src}
-            alt={photo.path}
-            width={photo.width}
-            height={photo.height}
-            onLoad={onImgLoad}
-            draggable={false}
-            className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-            style={{ transform: mirrorTransform, transformOrigin: "center center", transition: "none" }}
-          />
-        </div>
+        <img
+          ref={setImg}
+          src={src}
+          alt={photo.path}
+          width={photo.width}
+          height={photo.height}
+          onLoad={onImgLoad}
+          draggable={false}
+          className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+          style={{ transform: editTransform, transformOrigin: "center center", transition: "none" }}
+        />
         {/* eslint-enable @next/next/no-img-element */}
       </div>
       {!editing && (
