@@ -57,12 +57,12 @@ export function SearchView() {
   const empty = isEmptyFilters(filters);
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
 
-  // The result set changes when the query changes, so any selection would point
-  // at photos no longer shown. Drop it and leave select mode whenever the query
-  // changes. Keyed on the serialized filters — the same value that remounts the
-  // grid below — so the toolbar resets in lockstep with the grid. `sel.cancel`
-  // is stable (useCallback), so this only fires on an actual query change; the
-  // first run (initial filters) is a harmless no-op.
+  // The result set changes when the query OR the month filter changes, so any
+  // selection would point at photos no longer shown. Drop it and leave select
+  // mode whenever either changes. Keyed on the serialized filters + month — the
+  // same values that remount the grid below — so the toolbar resets in lockstep
+  // with the grid. `sel.cancel` is stable (useCallback), so this only fires on an
+  // actual query/month change; the first run (initial filters) is a harmless no-op.
   // Destructured so the dep is a plain stable identifier — eslint resolves the
   // member access `sel.cancel` to the whole `sel` object (recreated each render)
   // and would otherwise demand it as a dep, causing a re-run loop.
@@ -70,7 +70,7 @@ export function SearchView() {
   const serialized = serialize(filters);
   useEffect(() => {
     resetSelection();
-  }, [serialized, resetSelection]);
+  }, [serialized, month, resetSelection]);
 
   function handleCommit(f: SearchFilters) {
     if (!isEmptyFilters(f)) setRecent(recordRecentSearch(f));
