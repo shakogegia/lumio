@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FolderPlus, Palette, Trash2 } from "lucide-react";
-import { COLOR_LABELS } from "@lumio/shared";
+import { COLOR_LABELS, hasEdits } from "@lumio/shared";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/context-menu";
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
 import { AlbumPickerItems } from "@/components/photo-actions/album-picker-items";
+import { usePhotoCollectionOptional } from "./photo-collection";
 
 /**
  * Wraps a grid tile as a right-click context-menu trigger: a group of actions
@@ -35,21 +36,36 @@ export function PhotoContextMenu({
   children: React.ReactNode;
 }) {
   const actions = usePhotoActionsContext();
+  const collection = usePhotoCollectionOptional();
   if (!actions) return <>{children}</>;
 
   const count = targetIds.length;
   // "photo" for a single target, "N photos" for many — no "1" on the singular.
   const photos = count === 1 ? "photo" : `${count} photos`;
+  const anyEdited = (collection?.photosByIds(targetIds) ?? []).some((p) => hasEdits(p.edits));
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-56">
         <ContextMenuGroup>
-          <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
-            <Download aria-hidden />
-            Download {photos}
-          </ContextMenuItem>
+          {anyEdited ? (
+            <>
+              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "edited" })}>
+                <Download aria-hidden />
+                Download {photos} edited
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "original" })}>
+                <Download aria-hidden />
+                Download {photos} original
+              </ContextMenuItem>
+            </>
+          ) : (
+            <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
+              <Download aria-hidden />
+              Download {photos}
+            </ContextMenuItem>
+          )}
           <ContextMenuSub>
             <ContextMenuSubTrigger className="gap-2.5">
               <FolderPlus aria-hidden />
