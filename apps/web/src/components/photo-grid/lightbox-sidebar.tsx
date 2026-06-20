@@ -105,14 +105,14 @@ export function LightboxSidebar({
             value="edit"
             title={dirty ? "Unsaved changes" : hasEdits(photo.edits) ? "Edited" : undefined}
           >
-            Edit
             {(dirty || hasEdits(photo.edits)) && (
               <FilePenLine
-                data-icon="inline-end"
+                data-icon="inline-start"
                 aria-hidden
                 className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
               />
             )}
+            Edit
           </TabsTrigger>
         </TabsList>
 
