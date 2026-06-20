@@ -4,5 +4,5 @@ export * from "./smart-albums.js";
 export * from "./search.js";
 export * from "./settings.js";
 export * from "./users.js";
-export { PhotoSource } from "@prisma/client";
-export type { Photo, Album, AlbumPhoto, TrashedPhoto, Job, WorkerStatus, Prisma, PrismaClient } from "@prisma/client";
+export { PhotoSource, Prisma } from "@prisma/client";
+export type { Photo, Album, AlbumPhoto, TrashedPhoto, Job, WorkerStatus, PrismaClient } from "@prisma/client";
