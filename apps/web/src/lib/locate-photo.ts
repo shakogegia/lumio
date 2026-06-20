@@ -27,6 +27,7 @@ export function beforeCursorWhere(
   const asc = sort === "taken-asc" || sort === "imported-asc";
   const dateBefore = asc ? { lt: value } : { gt: value };
   const idBefore = asc ? { lt: cursor.id } : { gt: cursor.id };
+  // Computed key defeats TS narrowing; `field` is always a valid PhotoWhereInput key.
   return {
     OR: [{ [field]: dateBefore }, { AND: [{ [field]: value }, { id: idBefore }] }],
   } as Prisma.PhotoWhereInput;

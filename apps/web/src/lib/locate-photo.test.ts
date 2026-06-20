@@ -34,6 +34,15 @@ describe("beforeCursorWhere", () => {
       ],
     });
   });
+
+  it("imported-asc: keys on createdAt, directions flipped", () => {
+    expect(beforeCursorWhere("imported-asc", cursor)).toEqual({
+      OR: [
+        { createdAt: { lt: cursor.createdAt } },
+        { AND: [{ createdAt: cursor.createdAt }, { id: { lt: "p5" } }] },
+      ],
+    });
+  });
 });
 
 describe("locatePhoto", () => {
