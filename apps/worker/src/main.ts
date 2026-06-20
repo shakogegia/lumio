@@ -1,18 +1,8 @@
-import { INGEST_CONCURRENCY } from "./config.js";
+import { bootstrapWorker } from "./runtime.js";
 
-// Size the libuv threadpool (where Sharp's decode/encode runs) to our pool
-// BEFORE importing anything that touches it — otherwise Sharp plateaus at the
-// default of 4 threads regardless of core count. The dynamic import guarantees
-// this env is set first.
-if (!process.env.UV_THREADPOOL_SIZE) {
-  process.env.UV_THREADPOOL_SIZE = String(INGEST_CONCURRENCY);
-}
-
-// One libvips thread per image so total CPU ≈ the pool size, not pool × cores.
-// Without this each concurrent image fans out across every core, oversubscribing
-// the CPU and starving the co-located web app + Postgres during a bulk import.
-const sharp = (await import("sharp")).default;
-sharp.concurrency(1);
+// Tune the process (threadpool, single-thread Sharp, low priority) before any
+// Sharp/fs module loads, then run the one-shot ingest.
+await bootstrapWorker();
 
 const { runIngest } = await import("./ingest-run.js");
 

@@ -103,8 +103,9 @@ The worker scans `PHOTOS_DIR` on startup and whenever files change.
   sized to `INGEST_CONCURRENCY` (default: **half** the worker's visible cores).
   The worker pins `sharp.concurrency(1)` and sizes `UV_THREADPOOL_SIZE` to the
   pool, so total CPU ≈ the pool size — a bulk import uses about half the cores and
-  leaves the rest to serve the app + Postgres. Raise `INGEST_CONCURRENCY` on a
-  dedicated box for faster imports; lower it to be gentler.
+  leaves the rest to serve the app + Postgres. It also runs at low OS priority, so
+  it yields CPU to web + Postgres rather than competing as an equal. Raise
+  `INGEST_CONCURRENCY` on a dedicated box for faster imports; lower it to be gentler.
 - **Shared box (e.g. N100):** the worker, web, and db share one machine, and a
   large import is CPU-heavy. To guarantee it can never starve the app, cap the
   worker container's CPUs (uncomment `cpus:` in the compose file) and set

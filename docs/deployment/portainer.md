@@ -94,9 +94,9 @@ large libraries take a while; watch the `worker` container logs for progress.
   an intact cache) are skipped, so restarts are near-instant — only new or
   changed files are processed.
 - **Polite by default:** ingest is CPU-heavy, so the worker uses **half** its
-  visible cores (pinning one image-decode thread each) to leave CPU for `web` and
-  `db` on the same host. Set the `INGEST_CONCURRENCY` env var to tune it — lower
-  to be gentler, higher on a dedicated box.
+  visible cores (pinning one image-decode thread each) and runs at low OS priority
+  to leave CPU for `web` and `db` on the same host. Set the `INGEST_CONCURRENCY`
+  env var to tune it — lower to be gentler, higher on a dedicated box.
 - **Small boxes (e.g. an N100):** to guarantee a big import can't starve the app,
   also cap the worker's CPUs. In the stack **Editor**, add a `cpus:` limit to the
   `worker` service and set `INGEST_CONCURRENCY` to match:
