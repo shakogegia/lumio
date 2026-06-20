@@ -13,8 +13,8 @@ export interface Offset {
 /** Maximum zoom, as a percentage of the original's 1:1 pixels. */
 export const MAX_ZOOM = 100 * 4;
 
-/** Canonical zoom stops above fit, for the +/- buttons. */
-const STOPS_ABOVE_FIT = [100, 200, 300, 400];
+/** Canonical zoom stops above fit (every 100% step up to MAX_ZOOM), for the +/- buttons. */
+const STOPS_ABOVE_FIT = Array.from({ length: MAX_ZOOM / 100 }, (_, i) => (i + 1) * 100);
 
 /** Small tolerance so a slider value sitting on/near a stop still advances. */
 const STOP_EPSILON = 0.5;
