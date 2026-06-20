@@ -23,6 +23,7 @@ them, or click **Advanced mode** and paste the block further down.
 | `PHOTOS_DIR` | ✅ | `/mnt/tank/photos` | Absolute host path to your photo library. Mounted read-write — the app writes uploaded photos here. |
 | `POSTGRES_PASSWORD` | ▢ recommended | `a-strong-password` | Defaults to `lumio`. Set a real one for anything exposed. |
 | `PORT` | ▢ | `3000` | Host port for the web UI (default `3000`). |
+| `INGEST_CONCURRENCY` | ▢ | `2` | Images the worker processes in parallel during a scan. Defaults to **half** the worker's cores so it leaves CPU for `web` + `db` on a shared box. Lower it (or cap the worker's CPUs — see [Ingest performance](#ingest-performance)) on a small machine; raise it on a dedicated one. |
 | `MAX_UPLOAD_SIZE` | ▢ | `200mb` | Largest photo the upload form accepts. **Include a unit** (`b`/`kb`/`mb`/`gb`) — a bare number is bytes, so `300` means 300 B, not 300 MB. Defaults to `200mb`; changing it only needs a container restart. |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | ▢ | `http://192.168.1.50:3000,https://box.tailnet.ts.net` | Comma-separated **extra** origins you also reach the app from (LAN IP, Tailscale host). Each must be listed or login is rejected with `INVALID_ORIGIN`. |
 | `USE_SECURE_COOKIES` | ▢ | `false` | Defaults to Secure (HTTPS-only) cookies. Set `false` to allow logins over plain HTTP like `http://<lan-ip>:3000`. ⚠️ Drops the Secure flag on **all** origins — only on a trusted LAN/Tailscale-only deployment. |
@@ -39,6 +40,7 @@ PHOTOS_DIR=/mnt/tank/photos
 POSTGRES_PASSWORD=a-strong-password
 # Optional:
 # PORT=3000
+# INGEST_CONCURRENCY=2   # parallel ingest workers; default = half the worker's cores
 # MAX_UPLOAD_SIZE=200mb
 # Reach the app from extra hosts (LAN IP / Tailscale) — see "Multiple access URLs" below:
 # BETTER_AUTH_TRUSTED_ORIGINS=http://192.168.1.50:3000,https://box.tailnet.ts.net
@@ -85,6 +87,27 @@ migrations automatically on startup (advisory-locked, safe to run together).
 
 The worker then scans `PHOTOS_DIR` and ingests your photos in the background —
 large libraries take a while; watch the `worker` container logs for progress.
+
+## Ingest performance
+
+- **Incremental:** photos already indexed with an unchanged size + mod-time (and
+  an intact cache) are skipped, so restarts are near-instant — only new or
+  changed files are processed.
+- **Polite by default:** ingest is CPU-heavy, so the worker uses **half** its
+  visible cores (pinning one image-decode thread each) to leave CPU for `web` and
+  `db` on the same host. Set the `INGEST_CONCURRENCY` env var to tune it — lower
+  to be gentler, higher on a dedicated box.
+- **Small boxes (e.g. an N100):** to guarantee a big import can't starve the app,
+  also cap the worker's CPUs. In the stack **Editor**, add a `cpus:` limit to the
+  `worker` service and set `INGEST_CONCURRENCY` to match:
+
+  ```yaml
+      worker:
+        # …
+        cpus: "2"          # never use more than 2 cores
+        environment:
+          INGEST_CONCURRENCY: "2"
+  ```
 
 ## 4. Updating
 
