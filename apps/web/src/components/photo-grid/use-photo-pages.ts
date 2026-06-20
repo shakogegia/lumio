@@ -8,6 +8,7 @@ import {
   pageIndicesForRange,
   patchPages,
   photoAt as photoAtOf,
+  photosByIds,
   removeIds,
   setPage,
   type PageStore,
@@ -83,6 +84,7 @@ export function usePhotoPages(endpoint: string, params?: URLSearchParams, pageSi
 
   const photoAt = useCallback((index: number) => photoAtOf(store, index), [store]);
   const getLoadedIds = useCallback(() => loadedIdsOf(store), [store]);
+  const getPhotos = useCallback((ids: Set<string>) => photosByIds(store, ids), [store]);
   const patchPhotos = useCallback((ids: Set<string>, patch: Partial<PhotoDTO>) => {
     mutationGen.current += 1;
     setStore((prev) => patchPages(prev, ids, patch));
@@ -97,5 +99,5 @@ export function usePhotoPages(endpoint: string, params?: URLSearchParams, pageSi
     ensureRange(s, e);
   }, [ensureRange]);
 
-  return { total: store.total, photoAt, getLoadedIds, ensureRange, patchPhotos, removePhotos, error, retry };
+  return { total: store.total, photoAt, getLoadedIds, getPhotos, ensureRange, patchPhotos, removePhotos, error, retry };
 }

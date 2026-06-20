@@ -41,6 +41,8 @@ export type PhotoGridHandle = {
   patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
   /** Drop every loaded photo whose id is in `ids` (e.g. after moving to Trash). */
   removePhotos: (ids: Set<string>) => void;
+  /** Loaded photos for `ids` — for selection-aware bulk actions (favorite toggle). */
+  getPhotos: (ids: Set<string>) => PhotoDTO[];
 };
 
 export function PhotoGrid({
@@ -61,9 +63,9 @@ export function PhotoGrid({
   const columns = Math.max(1, columnsProp);
   const {
     total, photoAt, getLoadedIds, ensureRange, error, retry,
-    patchPhotos, removePhotos, open, urlForId, enableLightbox,
+    patchPhotos, removePhotos, getPhotos, open, urlForId, enableLightbox,
   } = usePhotoCollection();
-  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
+  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos, getPhotos }), [patchPhotos, removePhotos, getPhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
   const anchorRef = useRef<number | null>(null);
