@@ -1,7 +1,16 @@
 import { existsSync } from "node:fs";
 import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
+import { coercePhotoEdits, hasEdits, type DownloadVariant } from "@lumio/shared";
+import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
 import { originalPath } from "@/lib/paths";
+
+/** A path's basename with the extension swapped to `.jpg` (edited exports). */
+export function jpegName(relPath: string): string {
+  const base = relPath.split("/").pop() || relPath;
+  const dot = base.lastIndexOf(".");
+  return `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
+}
 
 /**
  * Build a download filename for an entry inside a zip. Entries are flattened to
@@ -53,16 +62,19 @@ export function attachmentDisposition(filename: string): string {
 }
 
 /**
- * Stream the given photos' originals as a single stored (uncompressed) zip.
- * Originals are already-compressed images, so storing avoids wasted CPU and
- * streams from disk with flat memory. `resolve` maps a photo's stored relative
+ * Stream the given photos as a single stored (uncompressed) zip. When
+ * `variant` is "edited", photos that carry edit recipes are re-rendered to
+ * full-res JPEG with the recipe baked in; photos without edits keep their
+ * original bytes. When `variant` is "original" (the default), every photo
+ * uses its original bytes unchanged. `resolve` maps a photo's stored relative
  * path to an absolute path on disk (defaults to `originalPath`, the
  * traversal-guarded resolver; overridable for tests). Missing originals are
  * logged and skipped — never fatal.
  */
 export function streamPhotosZip(
-  photos: { id: string; path: string }[],
+  photos: { id: string; path: string; edits?: unknown }[],
   zipName: string,
+  variant: DownloadVariant = "original",
   resolve: (relPath: string) => string = originalPath,
 ): Response {
   const archive = new ZipArchive({ store: true });
@@ -78,16 +90,43 @@ export function streamPhotosZip(
   archive.pipe(pass);
 
   const used = new Set<string>();
-  for (const photo of photos) {
-    const abs = resolve(photo.path);
-    if (!existsSync(abs)) {
-      console.warn("[download] skipping missing original:", photo.path);
-      continue;
+  // The loop is wrapped so `finalize()` ALWAYS runs: an unfinalized archive would
+  // leave `pass` open and stall the client download forever. A per-photo failure
+  // (corrupt original / missing decoder during edited encode) falls back to the
+  // original bytes so the photo still appears in the zip.
+  void (async () => {
+    try {
+      for (const photo of photos) {
+        const abs = resolve(photo.path);
+        if (!existsSync(abs)) {
+          console.warn("[download] skipping missing original:", photo.path);
+          continue;
+        }
+        const base = photo.path.split("/").pop() || photo.path;
+        const recipe = coercePhotoEdits(photo.edits);
+        if (variant === "edited" && hasEdits(recipe)) {
+          try {
+            const decoded = await decodeToSharpInput(abs);
+            try {
+              const jpeg = await encodeEditedJpeg(decoded.input, recipe);
+              archive.append(jpeg, { name: dedupeEntryName(jpegName(photo.path), used) });
+            } finally {
+              await decoded.cleanup();
+            }
+          } catch (err) {
+            console.warn("[download] edited encode failed, using original:", photo.path, err);
+            archive.file(abs, { name: dedupeEntryName(base, used) });
+          }
+        } else {
+          archive.file(abs, { name: dedupeEntryName(base, used) });
+        }
+      }
+    } catch (err) {
+      console.error("[download] zip build error:", err);
+    } finally {
+      void archive.finalize();
     }
-    const base = photo.path.split("/").pop() || photo.path;
-    archive.file(abs, { name: dedupeEntryName(base, used) });
-  }
-  void archive.finalize();
+  })();
 
   return new Response(Readable.toWeb(pass) as unknown as ReadableStream<Uint8Array>, {
     headers: {

@@ -2,8 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Download, Heart, Search } from "lucide-react";
+import { Download, FilePenLine, Heart, Search } from "lucide-react";
+import { hasEdits } from "@lumio/shared";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
+import { downloadFromUrl } from "@/lib/download-client";
+import { DownloadSplitButton } from "@/components/photo-actions/download-split-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +15,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
+import { LightboxEditPanel } from "./lightbox-edit-panel";
+import { useEditSession } from "./use-edit-session";
 
 export function LightboxSidebar({
   photo,
@@ -21,6 +26,7 @@ export function LightboxSidebar({
   onTrashed: () => void;
 }) {
   const { removePhotos, patchPhotos } = usePhotoCollection();
+  const { dirty } = useEditSession();
   const { confirm, confirmDialog } = useConfirm();
   const filename = photo.path.split("/").pop() || photo.path;
   const camera =
@@ -95,6 +101,19 @@ export function LightboxSidebar({
         <TabsList className="w-full">
           <TabsTrigger value="info">Info</TabsTrigger>
           <TabsTrigger value="exif">EXIF</TabsTrigger>
+          <TabsTrigger
+            value="edit"
+            title={dirty ? "Unsaved changes" : hasEdits(photo.edits) ? "Edited" : undefined}
+          >
+            {(dirty || hasEdits(photo.edits)) && (
+              <FilePenLine
+                data-icon="inline-start"
+                aria-hidden
+                className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
+              />
+            )}
+            Edit
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="space-y-4">
@@ -125,12 +144,19 @@ export function LightboxSidebar({
               <Heart fill={photo.isFavorite ? "currentColor" : "none"} aria-hidden />
               {photo.isFavorite ? "Favorited" : "Favorite"}
             </Button>
-            <Button asChild variant="outline" size="sm" className="w-full">
-              <a href={`/api/photos/${photo.id}/original?download=1`}>
-                <Download aria-hidden />
-                Download
-              </a>
-            </Button>
+            {hasEdits(photo.edits) ? (
+              <DownloadSplitButton
+                onDownloadEdited={() => downloadFromUrl(`/api/photos/${photo.id}/edited?download=1`)}
+                onDownloadOriginal={() => downloadFromUrl(`/api/photos/${photo.id}/original?download=1`)}
+              />
+            ) : (
+              <Button asChild variant="outline" size="sm" className="w-full">
+                <a href={`/api/photos/${photo.id}/original?download=1`}>
+                  <Download aria-hidden />
+                  Download
+                </a>
+              </Button>
+            )}
             <Button
               variant="destructive"
               size="sm"
@@ -144,6 +170,10 @@ export function LightboxSidebar({
 
         <TabsContent value="exif">
           <ExifPanel entries={metadata} />
+        </TabsContent>
+
+        <TabsContent value="edit">
+          <LightboxEditPanel />
         </TabsContent>
       </Tabs>
     </aside>

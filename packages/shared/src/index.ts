@@ -8,3 +8,4 @@ export * from "./jobs.js";
 export * from "./albums.js";
 export * from "./uploads.js";
 export * from "./formats.js";
+export * from "./photo-edits.js";

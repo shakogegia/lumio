@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { PhotoDTO } from "@lumio/shared";
+import { NO_EDITS, previewTransform, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
+import { displayUrl } from "@/lib/rendition-url";
 import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
+import { useEditSession } from "./use-edit-session";
 import { ZoomControls } from "./zoom-controls";
 
 export function ZoomableImage({
@@ -23,12 +25,51 @@ export function ZoomableImage({
   hasNext: boolean;
   step: (delta: 1 | -1) => void;
 }) {
-  const displaySrc = `/api/photos/${photo.id}/display`;
+  const { working } = useEditSession();
+  const savedRecipe = photo.edits ?? NO_EDITS;
+
+  const displaySrc = displayUrl(photo);
   const originalSrc = `/api/photos/${photo.id}/original`;
+
+  // Double-buffer the display rendition: when an Apply changes the rendition
+  // (same photo, new ?v=), keep showing the current one — transformed by the
+  // delta — until the new one has preloaded, then swap. Avoids a flash of the
+  // blur placeholder or the pre-edit orientation. (`key={photo.id}` in the
+  // lightbox remounts this component per photo, so this only fires on Apply.)
+  const [shown, setShown] = useState<{ src: string; recipe: PhotoEdits }>({
+    src: displaySrc,
+    recipe: savedRecipe,
+  });
+  useEffect(() => {
+    if (shown.src === displaySrc) return;
+    let cancelled = false;
+    const advance = () => {
+      if (!cancelled) setShown({ src: displaySrc, recipe: savedRecipe });
+    };
+    const img = new Image();
+    img.onload = advance;
+    img.onerror = advance;
+    img.src = displaySrc;
+    return () => {
+      cancelled = true;
+    };
+    // savedRecipe is captured intentionally with displaySrc (they change together).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displaySrc, shown.src]);
+
+  // Live edit preview = delta from the DISPLAYED rendition's recipe to `working`.
+  // Edits snap into place — no transition (no animation in the editor).
+  const t = previewTransform(shown.recipe, working);
+  const rotated = t.deg === 90 || t.deg === 270;
+  // Feed the zoom/pan engine the *previewed* orientation, so a rotated-but-unsaved
+  // image still pans and fits correctly (a 90/270 delta swaps width and height).
+  const viewW = rotated ? photo.height : photo.width;
+  const viewH = rotated ? photo.width : photo.height;
 
   const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
   const {
     viewportRef,
+    viewport,
     zoom,
     fitZoom,
     isZoomed,
@@ -38,7 +79,7 @@ export function ZoomableImage({
     stepIn,
     stepOut,
     handlers,
-  } = useZoomPan(photo.width, photo.height);
+  } = useZoomPan(viewW, viewH);
 
   // First zoom past fit: preload + decode the full original, then swap it in.
   // Cache hit means the swap is seamless; geometry is unchanged (same fit size).
@@ -54,27 +95,38 @@ export function ZoomableImage({
         if (!cancelled) setHiRes(true);
       })
       .catch(() => {
-        // Original missing/unreadable: keep showing the rendition (softer at
-        // high zoom but still usable).
+        // Original missing/unreadable: keep showing the rendition.
       });
     return () => {
       cancelled = true;
     };
   }, [isZoomed, hiRes, originalSrc]);
-  const src = hiRes ? originalSrc : displaySrc;
+  const src = isZoomed && hiRes ? originalSrc : shown.src;
 
   // Track the base display load for the blur-up. `everLoaded` latches true so the
-  // display->original src swap can't flash the blur back in.
+  // display->original and Apply src swaps can't flash the blur back in.
   const { loaded, ref, onLoad } = useImageLoaded(displaySrc);
   const [everLoaded, setEverLoaded] = useState(false);
   useEffect(() => {
-    // Update via a callback so the assignment is not a direct setState-in-effect
-    // call (the rule only flags synchronous direct calls in the effect body).
     const latch = () => setEverLoaded(true);
     if (loaded && !everLoaded) latch();
   }, [loaded, everLoaded]);
 
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
+
+  // A 90/270 rotation must be scaled so it fills the same space the re-baked
+  // rendition will: ratio of "contain of the swapped image" to "contain now".
+  // Uses photo dimensions (same aspect as the rendition) and the viewport from
+  // useZoomPan, so no second ResizeObserver is needed.
+  let fit = 1;
+  if (rotated && viewport.width > 0 && viewport.height > 0) {
+    const cw = viewport.width;
+    const ch = viewport.height;
+    const sNow = Math.min(cw / photo.width, ch / photo.height, 1);
+    const sPost = Math.min(cw / photo.height, ch / photo.width, 1);
+    if (sNow > 0) fit = sPost / sNow;
+  }
+  const editTransform = `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
 
   // Compose the blur-box and image-loaded callback-refs onto the <img>.
   const setImg = useCallback(
@@ -126,6 +178,7 @@ export function ZoomableImage({
           onLoad={onLoad}
           draggable={false}
           className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+          style={{ transform: editTransform, transformOrigin: "center center", transition: "none" }}
         />
         {/* eslint-enable @next/next/no-img-element */}
       </div>

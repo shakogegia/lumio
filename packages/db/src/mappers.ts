@@ -2,6 +2,7 @@ import type { Album, Photo, TrashedPhoto } from "@prisma/client";
 import {
   type AlbumDTO,
   type ColorLabel,
+  coercePhotoEdits,
   type ExifData,
   PhotoSource,
   type PhotoDTO,
@@ -20,6 +21,7 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,
     colorLabel: row.colorLabel as ColorLabel | null,
+    edits: coercePhotoEdits(row.edits),
     isFavorite: row.isFavorite,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -38,6 +40,7 @@ export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,
     colorLabel: row.colorLabel as ColorLabel | null,
+    edits: null,
     isFavorite: false,
     createdAt: row.deletedAt.toISOString(),
     updatedAt: row.deletedAt.toISOString(),

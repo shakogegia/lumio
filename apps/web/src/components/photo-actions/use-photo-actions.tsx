@@ -3,14 +3,14 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { ColorLabel } from "@lumio/shared";
+import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { useConfirm } from "@/components/confirm-dialog";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 
 /** Per-call hook into a successful action (e.g. clear/cancel the selection). */
-export type ActionOpts = { onSuccess?: () => void };
+export type ActionOpts = { onSuccess?: () => void; variant?: DownloadVariant };
 
 export interface PhotoActions {
   download: (ids: string[], opts?: ActionOpts) => Promise<void>;
@@ -72,7 +72,7 @@ export function usePhotoActions({
       if (ids.length === 0 || downloading) return;
       setDownloading(true);
       try {
-        await downloadSelection(ids);
+        await downloadSelection(ids, opts?.variant);
         opts?.onSuccess?.();
       } catch {
         toast.error("Failed to download photos.");

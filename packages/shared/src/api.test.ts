@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   coercePhotoSort,
+  downloadRequestSchema,
+  editPhotoSchema,
   photosQuerySchema,
   searchQuerySchema,
   setColorLabelSchema,
@@ -178,5 +180,22 @@ describe("photosQuerySchema month", () => {
 
   it("accepts a valid month on searchQuerySchema too", () => {
     expect(searchQuerySchema.parse({ month: "2026-06" }).month).toBe("2026-06");
+  });
+});
+
+describe("editPhotoSchema", () => {
+  it("accepts a valid recipe and null", () => {
+    expect(editPhotoSchema.safeParse({ edits: { rotate: 90, flipH: true, flipV: false } }).success).toBe(true);
+    expect(editPhotoSchema.safeParse({ edits: null }).success).toBe(true);
+  });
+  it("rejects bad rotate values", () => {
+    expect(editPhotoSchema.safeParse({ edits: { rotate: 45, flipH: false, flipV: false } }).success).toBe(false);
+  });
+});
+
+describe("downloadRequestSchema", () => {
+  it("defaults variant to original", () => {
+    const parsed = downloadRequestSchema.parse({ ids: ["a"] });
+    expect(parsed.variant).toBe("original");
   });
 });

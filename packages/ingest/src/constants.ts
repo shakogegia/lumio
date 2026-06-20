@@ -9,6 +9,9 @@ export const THUMBNAIL_MAX = 400;
  */
 export const DISPLAY_MAX = 2048;
 
+/** JPEG quality for full-resolution edited downloads (route + bulk zip). */
+export const EDITED_JPEG_QUALITY = 92;
+
 // Re-exported from @lumio/shared so the browser upload UI can import the list
 // without pulling the Node-only ingest pipeline into the client bundle.
 export { SUPPORTED_EXTENSIONS } from "@lumio/shared";

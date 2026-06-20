@@ -14,6 +14,7 @@ import { PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
 import { photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
+import { displayUrl } from "@/lib/rendition-url";
 import { usePhotoPages } from "./use-photo-pages";
 
 /** How far around the open photo to keep loaded (neighbors + film strip). */
@@ -47,6 +48,7 @@ export function usePhotoCollection(): PhotoCollectionValue {
   if (!v) throw new Error("usePhotoCollection must be used within PhotoCollectionProvider");
   return v;
 }
+
 
 export function PhotoCollectionProvider({
   scope,
@@ -138,7 +140,7 @@ export function PhotoCollectionProvider({
         const p = photoForIndex(i);
         if (p) {
           const img = new Image();
-          img.src = `/api/photos/${p.id}/display`;
+          img.src = displayUrl(p);
         }
       }
     }

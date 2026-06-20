@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Download, FolderPlus, Heart, Palette, Trash2 } from "lucide-react";
-import { COLOR_LABELS, computeFavoriteTarget } from "@lumio/shared";
+import { COLOR_LABELS, computeFavoriteTarget, hasEdits } from "@lumio/shared";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -44,6 +44,10 @@ export function PhotoContextMenu({
   const count = targetIds.length;
   // "photo" for a single target, "N photos" for many — no "1" on the singular.
   const photos = count === 1 ? "photo" : `${count} photos`;
+  // Only considers photos currently loaded in the store; a selection spanning
+  // unloaded pages could under-report edits and show the single "Download" item.
+  // Harmless — the server zip still bakes edits per-photo by the variant.
+  const anyEdited = collection.getPhotos(new Set(targetIds)).some((p) => hasEdits(p.edits));
 
   return (
     <ContextMenu
@@ -54,10 +58,23 @@ export function PhotoContextMenu({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-56">
         <ContextMenuGroup>
-          <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
-            <Download aria-hidden />
-            Download {photos}
-          </ContextMenuItem>
+          {anyEdited ? (
+            <>
+              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "edited" })}>
+                <Download aria-hidden />
+                Download {photos} edited
+              </ContextMenuItem>
+              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "original" })}>
+                <Download aria-hidden />
+                Download {photos} original
+              </ContextMenuItem>
+            </>
+          ) : (
+            <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
+              <Download aria-hidden />
+              Download {photos}
+            </ContextMenuItem>
+          )}
           <ContextMenuSub>
             <ContextMenuSubTrigger className="gap-2.5">
               <FolderPlus aria-hidden />

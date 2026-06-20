@@ -2,28 +2,29 @@ import { describe, expect, it } from "vitest";
 import { MatchType, PhotoSource, RuleOp } from "@lumio/shared";
 import { toAlbumDTO, toPhotoDTO, toTrashedPhotoDTO } from "./mappers.js";
 
+const baseRow = {
+  id: "p1",
+  path: "vacation/img1.jpg",
+  source: "filesystem" as const,
+  takenAt: new Date("2024-01-15T12:00:00.000Z"),
+  sortDate: new Date("2024-01-15T12:00:00.000Z"),
+  width: 800,
+  height: 600,
+  hash: "abc",
+  thumbhash: null,
+  fileSize: null,
+  fileMtimeMs: null,
+  exif: { cameraMake: "Lumio" },
+  colorLabel: null,
+  isFavorite: false,
+  createdAt: new Date("2024-02-01T00:00:00.000Z"),
+  updatedAt: new Date("2024-02-02T00:00:00.000Z"),
+  edits: null,
+};
+
 describe("toPhotoDTO", () => {
   it("maps a Prisma photo row to a PhotoDTO with ISO dates", () => {
-    const row = {
-      id: "p1",
-      path: "vacation/img1.jpg",
-      source: "filesystem" as const,
-      takenAt: new Date("2024-01-15T12:00:00.000Z"),
-      sortDate: new Date("2024-01-15T12:00:00.000Z"),
-      width: 800,
-      height: 600,
-      hash: "abc",
-      thumbhash: null,
-      fileSize: null,
-      fileMtimeMs: null,
-      exif: { cameraMake: "Lumio" },
-      colorLabel: null,
-      isFavorite: true,
-      createdAt: new Date("2024-02-01T00:00:00.000Z"),
-      updatedAt: new Date("2024-02-02T00:00:00.000Z"),
-    };
-
-    const dto = toPhotoDTO(row);
+    const dto = toPhotoDTO({ ...baseRow, isFavorite: true } as any);
 
     expect(dto.id).toBe("p1");
     expect(dto.source).toBe(PhotoSource.filesystem);
@@ -35,26 +36,29 @@ describe("toPhotoDTO", () => {
 
   it("maps a null takenAt to null", () => {
     const dto = toPhotoDTO({
+      ...baseRow,
       id: "p2",
       path: "x.jpg",
-      source: "filesystem" as const,
       takenAt: null,
-      sortDate: new Date("2024-02-01T00:00:00.000Z"),
-      width: 1,
-      height: 1,
       hash: null,
-      thumbhash: null,
-      fileSize: null,
-      fileMtimeMs: null,
       exif: {},
-      colorLabel: null,
-      isFavorite: false,
-      createdAt: new Date("2024-02-01T00:00:00.000Z"),
-      updatedAt: new Date("2024-02-01T00:00:00.000Z"),
-    });
+    } as any);
     expect(dto.takenAt).toBeNull();
     expect(dto.hash).toBeNull();
     expect(dto.isFavorite).toBe(false);
+  });
+
+  it("maps a valid edits recipe", () => {
+    const dto = toPhotoDTO({ ...baseRow, edits: { rotate: 90, flipH: true, flipV: false } } as any);
+    expect(dto.edits).toEqual({ rotate: 90, flipH: true, flipV: false });
+  });
+  it("maps null edits to null", () => {
+    const dto = toPhotoDTO({ ...baseRow, edits: null } as any);
+    expect(dto.edits).toBeNull();
+  });
+  it("maps malformed edits to null", () => {
+    const dto = toPhotoDTO({ ...baseRow, edits: { rotate: 45 } } as any);
+    expect(dto.edits).toBeNull();
   });
 });
 
