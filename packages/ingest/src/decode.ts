@@ -113,7 +113,7 @@ export interface DecodedInput {
   input: string | Buffer;
   /** Present iff `input` is raw pixels → caller passes sharp(input, { raw }). */
   raw?: { width: number; height: number; channels: number };
-  /** Whether Sharp must apply EXIF orientation. False for already-upright pixels (JXL/HEIC). */
+  /** Whether Sharp must apply EXIF orientation. False only for JXL (djxl bakes orientation into the raw pixels); native + the HEIC temp PNG still need it. */
   rotate: boolean;
   /** Remove any temp artifacts (HEIC temp PNG). No-op for native/JXL. */
   cleanup: () => Promise<void>;

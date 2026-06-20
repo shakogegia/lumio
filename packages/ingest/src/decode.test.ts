@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { decodeToSharpInput, decodeJxlToRaw, parsePAM, CONVERTERS, NATIVE_EXTENSIONS } from "./decode.js";
+import { decodeToSharpInput, decodeJxlToRaw, parsePAM, NATIVE_EXTENSIONS } from "./decode.js";
 
 const execFileAsync = promisify(execFile);
 
