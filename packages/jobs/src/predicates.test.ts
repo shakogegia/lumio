@@ -3,7 +3,6 @@ import {
   buildActivitySnapshot,
   formatActivity,
   isWorkerOnline,
-  pollInterval,
   shouldWrite,
   toJobDTO,
 } from "./predicates.js";
@@ -45,18 +44,6 @@ describe("shouldWrite", () => {
   });
   it("writes once the interval elapses", () => {
     expect(shouldWrite(1000, 1300, 250)).toBe(true);
-  });
-});
-
-describe("pollInterval", () => {
-  it("pauses on a hidden tab", () => {
-    expect(pollInterval(true, true)).toBeNull();
-  });
-  it("polls fast when a job is active", () => {
-    expect(pollInterval(true, false)).toBe(1500);
-  });
-  it("polls slow when idle", () => {
-    expect(pollInterval(false, false)).toBe(5000);
   });
 });
 

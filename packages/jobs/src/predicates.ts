@@ -29,12 +29,6 @@ export function shouldWrite(lastAt: number | null, now: number, minIntervalMs: n
   return lastAt === null || now - lastAt >= minIntervalMs;
 }
 
-/** Poll cadence (ms): null = paused (hidden tab); fast when active, slow when idle. */
-export function pollInterval(hasActive: boolean, hidden: boolean): number | null {
-  if (hidden) return null;
-  return hasActive ? 1500 : 5000;
-}
-
 /** Serialize a Job row to the wire DTO (drops dates the UI doesn't need). */
 export function toJobDTO(job: Job): JobDTO {
   return {

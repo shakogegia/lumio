@@ -1,26 +1,29 @@
 import { z } from "zod";
 
-/** Discrete, user-initiated background operations. Single source of truth. */
-export const JOB_TYPES = ["rescan", "purge_all", "empty_trash"] as const;
-export type JobType = (typeof JOB_TYPES)[number];
+/** Discrete, user-initiated background operations. Mirrors the Job.type column 1:1. */
+export enum JobType {
+  rescan = "rescan",
+  purge_all = "purge_all",
+  empty_trash = "empty_trash",
+}
 
-/** Job lifecycle states. */
-export const JOB_STATUSES = [
-  "queued",
-  "running",
-  "succeeded",
-  "failed",
-  "canceled",
-] as const;
-export type JobStatus = (typeof JOB_STATUSES)[number];
+/** Job lifecycle states. Mirrors the Job.status column 1:1. */
+export enum JobStatus {
+  queued = "queued",
+  running = "running",
+  succeeded = "succeeded",
+  failed = "failed",
+  canceled = "canceled",
+}
 
 /** Statuses that count as "in flight" (occupies the queue, shows in the UI). */
-export const ACTIVE_JOB_STATUSES = ["queued", "running"] as const;
+export const ACTIVE_JOB_STATUSES = [JobStatus.queued, JobStatus.running] as const;
 
-export const jobTypeSchema = z.enum(JOB_TYPES);
+/** Zod schema for a job type (strict — used in API validation). */
+export const jobTypeSchema = z.nativeEnum(JobType);
 
 export function isJobType(value: unknown): value is JobType {
-  return (JOB_TYPES as readonly unknown[]).includes(value);
+  return Object.values(JobType).includes(value as JobType);
 }
 
 /** Serialized job for the web (dates as ISO strings). */
