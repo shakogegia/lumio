@@ -1,10 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { JobType } from "@lumio/shared";
 import { useActivity } from "@/lib/use-activity";
 
 export type AsyncJobPhase = "idle" | "pending" | "error";
+
+/** Toast copy for the job's lifecycle: loading on start → success/error on settle. */
+export interface AsyncJobToasts {
+  pending: string;
+  success: string;
+  error?: string;
+}
+
+export interface AsyncJobOptions {
+  /** Called once the job leaves the active set (or the fast-job fallback fires). */
+  onComplete?: () => void;
+  /** When set, shows a loading toast on start that resolves to success/error. */
+  toasts?: AsyncJobToasts;
+}
 
 /**
  * The job is done when we're pending, it's no longer in the active set, and we
@@ -28,23 +43,32 @@ const FALLBACK_MS = 2500;
  * leaves the active set (or after a short fallback for jobs that finish between
  * polls, e.g. emptying an already-tiny trash). `finish` is idempotent.
  */
-export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () => void) {
+export function useAsyncJob(
+  jobType: JobType,
+  endpoint: string,
+  options: AsyncJobOptions = {},
+) {
   const snapshot = useActivity();
   const isActive = snapshot.jobs.some((j) => j.type === jobType);
   const [phase, setPhase] = useState<AsyncJobPhase>("idle");
   const sawActive = useRef(false);
   const pendingRef = useRef(false);
   const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Keep the latest onComplete without re-running the effect on every poll.
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  const toastId = useRef<string | number | undefined>(undefined);
+  // Keep the latest options without re-running the effect on every poll.
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const finish = useCallback(() => {
     if (!pendingRef.current) return; // idempotent: effect + fallback both call this
     pendingRef.current = false;
     sawActive.current = false;
     setPhase("idle");
-    onCompleteRef.current();
+    const { toasts, onComplete } = optionsRef.current;
+    if (toasts) {
+      toast.success(toasts.success, toastId.current != null ? { id: toastId.current } : undefined);
+    }
+    onComplete?.();
   }, []);
 
   useEffect(() => {
@@ -68,6 +92,8 @@ export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () =
     pendingRef.current = true;
     sawActive.current = false;
     setPhase("pending");
+    const { toasts } = optionsRef.current;
+    if (toasts) toastId.current = toast.loading(toasts.pending);
     try {
       const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(`${endpoint} failed: ${res.status}`);
@@ -79,6 +105,12 @@ export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () =
     } catch {
       pendingRef.current = false;
       setPhase("error");
+      if (toasts) {
+        toast.error(
+          toasts.error ?? "Something went wrong.",
+          toastId.current != null ? { id: toastId.current } : undefined,
+        );
+      }
     }
   }, [endpoint, finish]);
 

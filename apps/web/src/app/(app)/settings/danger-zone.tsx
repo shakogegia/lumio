@@ -28,9 +28,14 @@ export function DeleteAllPhotos({ photoCount }: { photoCount: number }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState("");
-  const { phase, isActive, run } = useAsyncJob(JobType.purge_all, "/api/photos/purge", () =>
-    router.refresh(),
-  );
+  const { phase, isActive, run } = useAsyncJob(JobType.purge_all, "/api/photos/purge", {
+    onComplete: () => router.refresh(),
+    toasts: {
+      pending: "Deleting all photos…",
+      success: "All photos deleted",
+      error: "Delete failed. Some files may remain.",
+    },
+  });
   const busy = phase === "pending" || isActive;
 
   const reset = () => {

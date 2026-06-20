@@ -46,9 +46,16 @@ export function TrashView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState(false);
   // "Empty trash" is an async job (worker-driven); restore/purge stay synchronous.
-  const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", () => {
-    setReloadKey((k) => k + 1);
-    sel.clear();
+  const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", {
+    onComplete: () => {
+      setReloadKey((k) => k + 1);
+      sel.clear();
+    },
+    toasts: {
+      pending: "Emptying trash…",
+      success: "Trash emptied",
+      error: "Failed to empty Trash.",
+    },
   });
   const emptying = emptyTrash.phase === "pending" || emptyTrash.isActive;
 

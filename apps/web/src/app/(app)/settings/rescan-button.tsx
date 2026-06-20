@@ -7,9 +7,14 @@ import { useAsyncJob } from "@/lib/use-async-job";
 
 export function RescanButton() {
   const router = useRouter();
-  const { phase, isActive, run } = useAsyncJob(JobType.rescan, "/api/rescan", () =>
-    router.refresh(),
-  );
+  const { phase, isActive, run } = useAsyncJob(JobType.rescan, "/api/rescan", {
+    onComplete: () => router.refresh(),
+    toasts: {
+      pending: "Rescanning library…",
+      success: "Rescan complete",
+      error: "Rescan failed. Check the worker logs.",
+    },
+  });
   const busy = phase === "pending" || isActive;
 
   return (
