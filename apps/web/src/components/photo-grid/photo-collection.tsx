@@ -12,6 +12,8 @@ import {
 import type { PhotoDTO } from "@lumio/shared";
 import { PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
 import { photoIdFromPathname } from "@/lib/pathname-photo-id";
+import type { DetailScope } from "@/lib/detail-scope";
+import { collectionForScope } from "@/lib/photo-collection-scope";
 import { usePhotoPages } from "./use-photo-pages";
 
 /** How far around the open photo to keep loaded (neighbors + film strip). */
@@ -46,6 +48,7 @@ export function usePhotoCollection(): PhotoCollectionValue {
 }
 
 export function PhotoCollectionProvider({
+  scope,
   endpoint = "/api/photos",
   params,
   urlForId,
@@ -55,6 +58,11 @@ export function PhotoCollectionProvider({
   initialPhoto = null,
   children,
 }: {
+  /** Serializable scope used to seed the provider from a Server Component (the
+   *  deep-link route): when present, endpoint/params/urlForId/baseUrl are derived
+   *  from it on the client, so no function or URLSearchParams prop has to cross
+   *  the RSC boundary. Client grid views pass the explicit props below instead. */
+  scope?: DetailScope;
   endpoint?: string;
   params?: URLSearchParams;
   /** Detail URL for a photo id (carries scope). Required when enableLightbox. */
@@ -66,12 +74,24 @@ export function PhotoCollectionProvider({
   initialPhoto?: PhotoDTO | null;
   children: React.ReactNode;
 }) {
-  const store = usePhotoPages(endpoint, params, PHOTO_PAGE_SIZE);
+  // Seeded from a Server Component? Derive the store source + URLs from `scope` on
+  // the client (collectionForScope is pure/client-safe). Otherwise use the
+  // explicit props the client grid views pass.
+  const derived = useMemo(() => (scope ? collectionForScope(scope) : null), [scope]);
+  const resolvedEndpoint = derived?.endpoint ?? endpoint;
+  const resolvedParams = derived?.params ?? params;
+  const resolvedBaseUrl = derived?.baseUrl ?? baseUrl;
+  const resolvedUrlForId = derived?.urlForId ?? urlForId;
+
+  const store = usePhotoPages(resolvedEndpoint, resolvedParams, PHOTO_PAGE_SIZE);
   const [openIndex, setOpenIndex] = useState<number | null>(initialIndex);
   // True once we've pushed a history entry for the lightbox this session, so
   // close() can pop it (restoring grid scroll) rather than replacing the URL.
   const pushed = useRef(false);
-  const url = useCallback((id: string) => (urlForId ? urlForId(id) : `/photo/${id}`), [urlForId]);
+  const url = useCallback(
+    (id: string) => (resolvedUrlForId ? resolvedUrlForId(id) : `/photo/${id}`),
+    [resolvedUrlForId],
+  );
 
   // Destructure the stable members of the store. usePhotoPages returns a fresh
   // object literal each render, so depending on `store` directly would recompute
@@ -173,11 +193,11 @@ export function PhotoCollectionProvider({
       window.history.back(); // pops the pushed entry → popstate closes + restores scroll
       return;
     }
-    if (typeof window !== "undefined" && baseUrl) {
-      window.history.replaceState(null, "", baseUrl);
+    if (typeof window !== "undefined" && resolvedBaseUrl) {
+      window.history.replaceState(null, "", resolvedBaseUrl);
     }
     setOpenIndex(null);
-  }, [baseUrl]);
+  }, [resolvedBaseUrl]);
 
   // Reconcile browser back/forward with open state. Read getLoadedIds through a
   // ref so the listener binds once instead of re-subscribing on every page fetch

@@ -1,4 +1,4 @@
-import { type DetailScope, detailScopeQuery } from "@/lib/photo-detail-loader";
+import { type DetailScope, detailScopeQuery } from "@/lib/detail-scope";
 
 export interface CollectionSource {
   /** List API the shared store paginates. */
