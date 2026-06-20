@@ -47,7 +47,6 @@ export function PhotoGrid({
   empty = PHOTOS_EMPTY,
   mode = "fill",
   columns: columnsProp = DEFAULT_COLUMNS,
-  selectMode = false,
   selectedIds,
   onSelectionChange,
   apiRef,
@@ -55,7 +54,6 @@ export function PhotoGrid({
   empty?: React.ReactNode;
   mode?: GridViewMode;
   columns?: number;
-  selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   apiRef?: React.Ref<PhotoGridHandle>;
@@ -84,10 +82,6 @@ export function PhotoGrid({
     if (!e.shiftKey) anchorRef.current = index;
     onSelectionChange(next);
   }
-
-  useEffect(() => {
-    if (!selectMode) anchorRef.current = null;
-  }, [selectMode]);
 
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);
@@ -195,7 +189,6 @@ export function PhotoGrid({
                     index={idx}
                     onOpen={enableLightbox ? open : undefined}
                     urlForId={urlForId}
-                    selectMode={selectMode}
                     isSelected={selectedIds?.has(photo.id) ?? false}
                     onTileClick={handleTileClick}
                   />

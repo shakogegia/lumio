@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, FolderPlus, Images, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, FolderMinus, FolderPlus, Images, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -53,7 +53,7 @@ export function AlbumView({
 
   function handleCancel() {
     setRemoveError(null);
-    sel.cancel();
+    sel.clear();
   }
 
   async function handleRemove() {
@@ -76,7 +76,7 @@ export function AlbumView({
         body: JSON.stringify({ photoIds: ids }),
       });
       if (res.ok) {
-        sel.cancel();
+        sel.clear();
         setReloadKey((k) => k + 1);
         router.refresh();
       } else {
@@ -108,7 +108,7 @@ export function AlbumView({
         body: JSON.stringify({ ids }),
       });
       if (!res.ok) throw new Error("trash failed");
-      sel.cancel();
+      sel.clear();
       setReloadKey((k) => k + 1);
       router.refresh();
     } catch {
@@ -140,7 +140,7 @@ export function AlbumView({
   return (
     <>
       {confirmDialog}
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title={albumName}
           count={sel.count}
@@ -200,15 +200,6 @@ export function AlbumView({
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={sel.enter}
-                aria-label="Select"
-                title="Select"
-              >
-                <SquareCheckBig aria-hidden />
-              </Button>
               <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
                 <a href={`/api/albums/${albumId}/download`}>
                   <Download aria-hidden />
@@ -233,7 +224,6 @@ export function AlbumView({
         <PhotoGrid
           mode={mode}
           columns={columns}
-          selectMode={sel.selectMode}
           selectedIds={sel.selected}
           onSelectionChange={sel.setSelected}
           empty={

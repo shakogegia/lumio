@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, FolderPlus, Loader2, Trash2 } from "lucide-react";
 import { downloadSelection } from "@/lib/download-client";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -56,7 +56,7 @@ export function LibraryView() {
       if (!res.ok) throw new Error("trash failed");
       // Drop the tiles in place (no remount) and leave select mode.
       gridRef.current?.removePhotos(ids);
-      sel.cancel();
+      sel.clear();
     } catch {
       toast.error("Failed to move photos to Trash.");
     } finally {
@@ -104,11 +104,11 @@ export function LibraryView() {
   return (
     <>
       {confirmDialog}
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
           count={sel.count}
-          onCancel={sel.cancel}
+          onCancel={sel.clear}
           actions={
             <>
               <ColorLabelMenu
@@ -156,15 +156,6 @@ export function LibraryView() {
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={sel.enter}
-                aria-label="Select"
-                title="Select"
-              >
-                <SquareCheckBig aria-hidden />
-              </Button>
             </>
           }
         />
@@ -181,7 +172,6 @@ export function LibraryView() {
           apiRef={gridRef}
           mode={mode}
           columns={columns}
-          selectMode={sel.selectMode}
           selectedIds={sel.selected}
           onSelectionChange={sel.setSelected}
         />
