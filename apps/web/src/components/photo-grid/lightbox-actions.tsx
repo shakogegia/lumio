@@ -5,6 +5,12 @@ import { Download, FilePenLine, Heart, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,20 +89,27 @@ export function LightboxActions({
             />
           </Button>
         )}
-        <Button
-          variant="outline"
-          size="icon"
-          aria-label={
-            photo.isFavorite ? "Remove from favorites" : "Add to favorites"
-          }
-          title={photo.isFavorite ? "Favorited (F)" : "Favorite (F)"}
-          onClick={() => void toggleFavorite()}
-        >
-          <Heart
-            fill={photo.isFavorite ? "currentColor" : "none"}
-            aria-hidden
-          />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={
+                photo.isFavorite ? "Remove from favorites" : "Add to favorites"
+              }
+              onClick={() => void toggleFavorite()}
+            >
+              <Heart
+                fill={photo.isFavorite ? "currentColor" : "none"}
+                aria-hidden
+              />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {photo.isFavorite ? "Remove from favorites" : "Favorite"}
+            <Kbd>F</Kbd>
+          </TooltipContent>
+        </Tooltip>
 
         {hasEdits(photo.edits) ? (
           <DropdownMenu>
