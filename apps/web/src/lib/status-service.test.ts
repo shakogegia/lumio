@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { dirSize } from "./status-service.js";
+import { countImageFiles, dirSize } from "./status-service.js";
 
 const base = await mkdtemp(path.join(tmpdir(), "lumio-dirsize-"));
 afterAll(async () => rm(base, { recursive: true, force: true }));
@@ -32,5 +32,24 @@ describe("dirSize", () => {
       ),
     );
     expect(await dirSize(dir)).toBe(2000);
+  });
+});
+
+describe("countImageFiles", () => {
+  it("returns 0 for a missing directory", async () => {
+    expect(await countImageFiles(path.join(base, "absent"))).toBe(0);
+  });
+
+  it("counts only supported image files, recursively, case-insensitively", async () => {
+    const dir = path.join(base, "lib");
+    const sub = path.join(dir, "2024");
+    await mkdir(sub, { recursive: true });
+    await writeFile(path.join(dir, "a.jpg"), "");
+    await writeFile(path.join(dir, "b.JPEG"), ""); // uppercase ext counts
+    await writeFile(path.join(dir, "c.png"), "");
+    await writeFile(path.join(dir, "notes.txt"), ""); // unsupported
+    await writeFile(path.join(dir, ".DS_Store"), ""); // unsupported
+    await writeFile(path.join(sub, "d.heic"), ""); // nested, supported
+    expect(await countImageFiles(dir)).toBe(4);
   });
 });

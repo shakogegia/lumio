@@ -1,7 +1,8 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@lumio/db";
-import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
+import { SUPPORTED_EXTENSIONS } from "@lumio/shared";
+import { CACHE_DIR, PHOTOS_DIR, TRASH_DIR } from "@/lib/paths";
 
 /**
  * Sum the bytes of every file under `dir` (recursively); 0 if the dir is absent.
@@ -38,6 +39,25 @@ export async function dirSize(dir: string): Promise<number> {
 }
 
 /**
+ * Count the supported image files under `dir` (recursively); 0 if absent. This
+ * matches what the ingester would index, so it can be compared against the photo
+ * count in the DB to surface drift (files not yet indexed, or rows whose files
+ * were removed without a reindex). Only needs the directory listing — no per-file
+ * stat — so it's much cheaper than `dirSize`.
+ */
+export async function countImageFiles(dir: string): Promise<number> {
+  let entries;
+  try {
+    entries = await readdir(dir, { recursive: true, withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  return entries.filter(
+    (e) => e.isFile() && SUPPORTED_EXTENSIONS.has(path.extname(e.name).toLowerCase()),
+  ).length;
+}
+
+/**
  * Catalog counts + photo storage. All cheap, indexed DB queries — no filesystem
  * walk. Photo storage is `SUM(fileSize)` (recorded per photo at ingest), which
  * is instant and stays consistent with the photo count (also from the DB).
@@ -62,28 +82,49 @@ export async function getCatalogStats() {
   };
 }
 
-// Cache size is the one figure that must hit the filesystem: the cache is
-// regenerable and can be wiped outside the app, so the FS — not the DB — is the
-// source of truth. Memoize briefly so navigating to Settings doesn't re-walk
-// tens of thousands of files every visit; an informational size tolerates a
-// little staleness. The Settings page streams this in via <Suspense> so the walk
-// never blocks the page render.
-const CACHE_SIZE_TTL_MS = 60_000;
-let cacheSizeMemo: { at: number; thumbnailsSize: number; displaysSize: number } | null = null;
+// These are the figures that must hit the filesystem: the cache is regenerable
+// and the trash holds deleted files — both can change out-of-band, so the FS
+// (not the DB) is the source of truth. Memoize briefly so navigating to Settings
+// doesn't re-walk tens of thousands of files every visit; an informational size
+// tolerates a little staleness. The Settings page streams these in via
+// <Suspense> so the walk never blocks the page render.
+const STORAGE_SIZE_TTL_MS = 60_000;
+let storageSizeMemo:
+  | { at: number; thumbnailsSize: number; displaysSize: number; trashSize: number }
+  | null = null;
 
-export async function getCacheSizes(): Promise<{
+export async function getStorageSizes(): Promise<{
   thumbnailsSize: number;
   displaysSize: number;
+  trashSize: number;
 }> {
   const now = Date.now();
-  if (cacheSizeMemo && now - cacheSizeMemo.at < CACHE_SIZE_TTL_MS) {
-    const { thumbnailsSize, displaysSize } = cacheSizeMemo;
-    return { thumbnailsSize, displaysSize };
+  if (storageSizeMemo && now - storageSizeMemo.at < STORAGE_SIZE_TTL_MS) {
+    const { thumbnailsSize, displaysSize, trashSize } = storageSizeMemo;
+    return { thumbnailsSize, displaysSize, trashSize };
   }
-  const [thumbnailsSize, displaysSize] = await Promise.all([
+  const [thumbnailsSize, displaysSize, trashSize] = await Promise.all([
     dirSize(path.join(CACHE_DIR, "thumbnails")),
     dirSize(path.join(CACHE_DIR, "displays")),
+    dirSize(TRASH_DIR),
   ]);
-  cacheSizeMemo = { at: now, thumbnailsSize, displaysSize };
-  return { thumbnailsSize, displaysSize };
+  storageSizeMemo = { at: now, thumbnailsSize, displaysSize, trashSize };
+  return { thumbnailsSize, displaysSize, trashSize };
+}
+
+// Image files actually on disk under PHOTOS_DIR. Compared against the DB photo
+// count on the Settings page to reveal drift. Just a directory listing (no
+// stats), but still memoized + streamed so it never blocks the page. Its own
+// memo so the cheap count streams in independently of the slower size walk.
+const FILE_COUNT_TTL_MS = 60_000;
+let fileCountMemo: { at: number; count: number } | null = null;
+
+export async function getPhotoFileCount(): Promise<number> {
+  const now = Date.now();
+  if (fileCountMemo && now - fileCountMemo.at < FILE_COUNT_TTL_MS) {
+    return fileCountMemo.count;
+  }
+  const count = await countImageFiles(PHOTOS_DIR);
+  fileCountMemo = { at: now, count };
+  return count;
 }

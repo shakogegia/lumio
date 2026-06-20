@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { getSettings } from "@lumio/db";
-import { getCacheSizes, getCatalogStats } from "@/lib/status-service";
+import {
+  getCatalogStats,
+  getPhotoFileCount,
+  getStorageSizes,
+} from "@/lib/status-service";
 import { formatBytes } from "@/lib/format";
 import {
   Card,
@@ -18,13 +22,20 @@ import { UploadTemplateForm } from "./upload-template-form";
 
 export const dynamic = "force-dynamic";
 
+/** Count of image files actually on disk; streamed so it never blocks the page. */
+async function FilesOnDisk() {
+  const count = await getPhotoFileCount();
+  return <InfoRow label="Files on disk" value={count.toLocaleString()} />;
+}
+
 /** Storage figures that require a filesystem walk; streamed so they never block the page. */
-async function CacheSizes() {
-  const { thumbnailsSize, displaysSize } = await getCacheSizes();
+async function StorageSizes() {
+  const { thumbnailsSize, displaysSize, trashSize } = await getStorageSizes();
   return (
     <>
       <InfoRow label="Thumbnail cache" value={formatBytes(thumbnailsSize)} />
       <InfoRow label="Preview cache" value={formatBytes(displaysSize)} />
+      <InfoRow label="Trash" value={formatBytes(trashSize)} />
     </>
   );
 }
@@ -48,6 +59,16 @@ export default async function SettingsPage() {
           <InfoList>
             <InfoRow label="Library folder" value={stats.photosDir} mono />
             <InfoRow label="Photos" value={stats.photoCount.toLocaleString()} />
+            <Suspense
+              fallback={
+                <InfoRow
+                  label="Files on disk"
+                  value={<span className="text-muted-foreground">counting…</span>}
+                />
+              }
+            >
+              <FilesOnDisk />
+            </Suspense>
             <InfoRow label="Albums" value={stats.albumCount.toLocaleString()} />
             <InfoRow
               label="Photo storage"
@@ -56,22 +77,19 @@ export default async function SettingsPage() {
             <Suspense
               fallback={
                 <>
-                  <InfoRow
-                    label="Thumbnail cache"
-                    value={
-                      <span className="text-muted-foreground">calculating…</span>
-                    }
-                  />
-                  <InfoRow
-                    label="Preview cache"
-                    value={
-                      <span className="text-muted-foreground">calculating…</span>
-                    }
-                  />
+                  {["Thumbnail cache", "Preview cache", "Trash"].map((label) => (
+                    <InfoRow
+                      key={label}
+                      label={label}
+                      value={
+                        <span className="text-muted-foreground">calculating…</span>
+                      }
+                    />
+                  ))}
                 </>
               }
             >
-              <CacheSizes />
+              <StorageSizes />
             </Suspense>
             <InfoRow
               label="Last updated"
