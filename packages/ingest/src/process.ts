@@ -27,33 +27,25 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
   try {
     const { exif, takenAt } = await extractMetadata(original);
 
-    let width: number;
-    let height: number;
-    let display: Buffer;
-    let thumbnail: Buffer;
+    // Stored dimensions are the *oriented* (as-displayed) size. EXIF orientations
+    // 5-8 rotate by 90/270° and therefore swap width and height.
+    const meta = await sharp(decoded.input).metadata();
+    const swap = (meta.orientation ?? 1) >= 5;
+    const width = (swap ? meta.height : meta.width) ?? 0;
+    const height = (swap ? meta.width : meta.height) ?? 0;
 
-    if (decoded.raw) {
-      // JXL: pixels are already decoded in memory, so re-wrapping the buffer
-      // costs no decode — derive BOTH renditions from full-quality raw.
-      const { width: w, height: h, channels } = decoded.raw;
-      const buf = decoded.input as Buffer;
-      const src = () => sharp(buf, { raw: { width: w, height: h, channels } });
-      width = w;
-      height = h;
-      display = await src().resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
-      thumbnail = await src().resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
-    } else {
-      // native / HEIC temp PNG: decode once for the display, then derive the thumbnail
-      // from that display buffer — skips a second full decode at the cost of one extra
-      // (visually negligible at <=400px) WebP recompression.
-      const meta = await sharp(decoded.input).metadata();
-      width = meta.width ?? 0;
-      height = meta.height ?? 0;
-      const pipe = sharp(decoded.input);
-      if (decoded.rotate) pipe.rotate(); // applies EXIF orientation in place
-      display = await pipe.resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
-      thumbnail = await sharp(display).resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
-    }
+    // Decode once for the display, auto-orienting via EXIF; then derive the
+    // thumbnail from that display buffer — one full decode instead of two, at the
+    // cost of a visually negligible second WebP recompression at <=400px.
+    const display = await sharp(decoded.input)
+      .rotate()
+      .resize(DISPLAY_MAX, DISPLAY_MAX, FIT)
+      .webp({ quality: 80 })
+      .toBuffer();
+    const thumbnail = await sharp(display)
+      .resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT)
+      .webp({ quality: 80 })
+      .toBuffer();
 
     const thumbhash = await computeThumbhash(thumbnail);
     const hash = createHash("sha256").update(original).digest("hex");

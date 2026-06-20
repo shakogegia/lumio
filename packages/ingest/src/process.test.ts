@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -11,6 +11,22 @@ async function hasBin(bin: string): Promise<boolean> {
   try { await execFileAsync("which", [bin]); return true; } catch { return false; }
 }
 const JXL_TOOLS = (await hasBin("cjxl")) && (await hasBin("djxl"));
+
+/**
+ * Build a float (HDR) JXL by transcoding a hand-written PFM — the case Nikon
+ * NEF→JXL exports produce, where the integer PAM path fails and only the JPEG
+ * transcode works. `PF` = RGB float; a negative scale means little-endian.
+ */
+async function makeFloatJxl(dir: string, name: string, w: number, h: number): Promise<string> {
+  const header = Buffer.from(`PF\n${w} ${h}\n-1.0\n`, "ascii");
+  const body = Buffer.alloc(w * h * 3 * 4);
+  for (let i = 0; i < w * h * 3; i++) body.writeFloatLE(((i % 255) / 255) * 0.8 + 0.1, i * 4);
+  const pfm = path.join(dir, `${name}.pfm`);
+  const jxl = path.join(dir, `${name}.jxl`);
+  await writeFile(pfm, Buffer.concat([header, body]));
+  await execFileAsync("cjxl", [pfm, jxl, "-q", "90"]);
+  return jxl;
+}
 
 const dir = await mkdtemp(path.join(tmpdir(), "lumio-proc-"));
 const fixture = path.join(dir, "fixture.jpg");
@@ -104,8 +120,9 @@ describe.skipIf(!JXL_TOOLS)("processImage — JXL", () => {
     expect(dispMeta.format).toBe("webp");
   });
 
-  it("applies EXIF orientation (djxl bakes it) — a rotated source decodes upright", async () => {
+  it("applies EXIF orientation — a rotated source decodes upright", async () => {
     // Source is 400x200 tagged orientation=6 (90° CW) → should present as 200x400.
+    // djxl's JPEG output carries the EXIF orientation tag, which Sharp applies.
     const src = path.join(dir, "oriented-src.jpg");
     const jxl = path.join(dir, "oriented.jxl");
     await sharp({ create: { width: 400, height: 200, channels: 3, background: "#445566" } })
@@ -117,5 +134,19 @@ describe.skipIf(!JXL_TOOLS)("processImage — JXL", () => {
     const result = await processImage(jxl);
     expect(result.width).toBe(200);
     expect(result.height).toBe(400);
+  });
+
+  it("decodes a float/HDR .jxl (the NEF case) instead of failing on PAM encode", async () => {
+    // Regression: float JXLs cannot be encoded to PAM ("djxl exited 1" → upload 500).
+    // The JPEG transcode tonemaps them to 8-bit so processing succeeds.
+    const jxl = await makeFloatJxl(dir, "float", 48, 32);
+
+    const result = await processImage(jxl);
+
+    expect(result.width).toBe(48);
+    expect(result.height).toBe(32);
+    expect(result.thumbhash.length).toBeGreaterThan(0);
+    const dispMeta = await sharp(result.display).metadata();
+    expect(dispMeta.format).toBe("webp");
   });
 });

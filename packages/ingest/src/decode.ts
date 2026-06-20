@@ -6,71 +6,6 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-export interface PamHeader {
-  width: number;
-  height: number;
-  /** Channel count from PAM DEPTH: 1 gray, 3 RGB, 4 RGBA. */
-  channels: number;
-  /** Byte offset where the raw pixel body begins (just past `ENDHDR\n`). */
-  offset: number;
-}
-
-/**
- * Parse a binary PAM (`P7`) header — the format `djxl --output_format pam`
- * emits. The header is ASCII `KEY VALUE` lines terminated by `ENDHDR\n`;
- * raw pixels follow immediately.
- */
-export function parsePAM(buf: Buffer): PamHeader {
-  const marker = "ENDHDR\n";
-  const end = buf.indexOf(marker);
-  if (end === -1) throw new Error("invalid PAM: no ENDHDR marker");
-  const header = buf.toString("ascii", 0, end).split("\n");
-  const field = (key: string): number => {
-    const line = header.find((l) => l.startsWith(key));
-    if (!line) throw new Error(`invalid PAM: missing ${key}`);
-    return Number(line.split(/\s+/)[1]);
-  };
-  return {
-    width: field("WIDTH"),
-    height: field("HEIGHT"),
-    channels: field("DEPTH"),
-    offset: end + marker.length,
-  };
-}
-
-export interface RawImage {
-  buffer: Buffer;
-  width: number;
-  height: number;
-  channels: 1 | 2 | 3 | 4;
-}
-
-/** Run `djxl <path> - --output_format pam` and collect stdout. */
-function runDjxlPam(absPath: string): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("djxl", [absPath, "-", "--output_format", "pam"]);
-    const chunks: Buffer[] = [];
-    child.stdout.on("data", (c: Buffer) => chunks.push(c));
-    child.stderr.on("data", () => {}); // djxl logs progress to stderr; ignore
-    child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`djxl exited ${code}`)),
-    );
-  });
-}
-
-/**
- * Decode a JXL to raw pixels in memory by piping `djxl` PAM output to stdout —
- * no temp file, no PNG re-encode. djxl bakes EXIF orientation into the pixels,
- * so the result is already upright (no Sharp `.rotate()` needed downstream).
- */
-export async function decodeJxlToRaw(absPath: string): Promise<RawImage> {
-  const pam = await runDjxlPam(absPath);
-  const { width, height, channels, offset } = parsePAM(pam);
-  // djxl PAM DEPTH is 1/3/4; narrow to Sharp's Channels type.
-  return { buffer: pam.subarray(offset), width, height, channels: channels as 1 | 2 | 3 | 4 };
-}
-
 /** Extensions sharp/libvips reads directly (no external decode needed). */
 export const NATIVE_EXTENSIONS = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".avif", ".tiff", ".tif", ".gif",
@@ -109,32 +44,52 @@ async function resolveConverter(ext: string): Promise<Converter | null> {
   return null;
 }
 
+/**
+ * Transcode a JXL to a JPEG buffer by piping `djxl --output_format jpeg` to
+ * stdout — no temp file. JPEG is the right intermediate because djxl can encode
+ * *any* JXL into it: it tonemaps float/HDR and high-bit-depth pixels down to
+ * 8-bit (which the integer PAM/PPM encoders cannot do — they fail outright), and
+ * it losslessly reconstructs the original JPEG for JPEG-sourced JXLs. Sharp then
+ * reads the JPEG like any native input, honouring its EXIF orientation. On
+ * failure the rejection carries djxl's own stderr so the cause is diagnosable.
+ */
+function decodeJxlToJpeg(absPath: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("djxl", [absPath, "-", "--output_format", "jpeg"]);
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    child.stdout.on("data", (c: Buffer) => out.push(c));
+    child.stderr.on("data", (c: Buffer) => err.push(c));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) return resolve(Buffer.concat(out));
+      const last = Buffer.concat(err).toString().trim().split("\n").pop() ?? "";
+      reject(new Error(`djxl failed (exit ${code}) for ${path.basename(absPath)}: ${last}`));
+    });
+  });
+}
+
 export interface DecodedInput {
-  /** Sharp input: the original path (native), a raw pixel buffer (JXL), or a temp PNG path (HEIC). */
+  /** A Sharp-readable input: the original path (native), a transcoded JPEG buffer (JXL), or a temp PNG path (HEIC). */
   input: string | Buffer;
-  /** Present iff `input` is raw pixels → caller passes sharp(input, { raw }). */
-  raw?: { width: number; height: number; channels: 1 | 2 | 3 | 4 };
-  /** Whether Sharp must apply EXIF orientation. False only for JXL (djxl bakes orientation into the raw pixels); native + the HEIC temp PNG still need it. */
-  rotate: boolean;
   /** Remove any temp artifacts (HEIC temp PNG). No-op for native/JXL. */
   cleanup: () => Promise<void>;
 }
 
 /**
  * Return a Sharp-ready input for `absPath`:
- *  - native formats pass the path straight through (rotate via EXIF),
- *  - `.jxl` is piped through djxl into a raw pixel buffer (already upright),
+ *  - native formats pass the path straight through,
+ *  - `.jxl` is transcoded to an in-memory JPEG via djxl,
  *  - HEIC/HEIF are converted to a temp PNG via an external tool (with cleanup).
  * Throws if a non-native format has no installed decoder.
  */
 export async function decodeToSharpInput(absPath: string): Promise<DecodedInput> {
   const ext = path.extname(absPath).toLowerCase();
   if (NATIVE_EXTENSIONS.has(ext)) {
-    return { input: absPath, rotate: true, cleanup: async () => {} };
+    return { input: absPath, cleanup: async () => {} };
   }
   if (ext === ".jxl") {
-    const { buffer, width, height, channels } = await decodeJxlToRaw(absPath);
-    return { input: buffer, raw: { width, height, channels }, rotate: false, cleanup: async () => {} };
+    return { input: await decodeJxlToJpeg(absPath), cleanup: async () => {} };
   }
   const converter = await resolveConverter(ext);
   if (!converter) {
@@ -150,7 +105,6 @@ export async function decodeToSharpInput(absPath: string): Promise<DecodedInput>
   }
   return {
     input: out,
-    rotate: true,
     cleanup: async () => {
       await rm(dir, { recursive: true, force: true });
     },
