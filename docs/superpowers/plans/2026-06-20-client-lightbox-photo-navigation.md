@@ -809,12 +809,22 @@ export function PhotoCollectionProvider({
   const open = useCallback(
     (index: number) => {
       if (!enableLightbox) return;
-      const p = photoForIndex(index);
-      setOpenIndex(index);
-      if (p && typeof window !== "undefined") {
-        window.history.pushState(null, "", url(p.id));
-        pushed.current = true;
-      }
+      setOpenIndex((cur) => {
+        // First open this session pushes ONE history entry; navigating within the
+        // already-open lightbox (film-strip jumps, arrows) only replaces — the
+        // URL-sync effect handles that. Keeps `pushed` meaning exactly "one back()
+        // returns to the grid", so close() stays correct no matter how many strip
+        // jumps happen. (Pushing on every open() would make close() walk back
+        // through photos instead of closing.)
+        if (cur === null && typeof window !== "undefined") {
+          const p = photoForIndex(index);
+          if (p) {
+            window.history.pushState(null, "", url(p.id));
+            pushed.current = true;
+          }
+        }
+        return index;
+      });
     },
     [enableLightbox, photoForIndex, url],
   );
