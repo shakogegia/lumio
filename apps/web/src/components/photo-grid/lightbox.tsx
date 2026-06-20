@@ -100,9 +100,14 @@ export function Lightbox() {
 
   const STRIP_RADIUS = 25;
   const strip = useMemo(() => {
-    if (openIndex === null || total === null) return [];
+    if (openIndex === null) return [];
     const lo = Math.max(0, openIndex - STRIP_RADIUS);
-    const hi = Math.min(total - 1, openIndex + STRIP_RADIUS);
+    // `total` is null until the store's first page loads (deep-link / refresh).
+    // Don't gate the strip on it — include whatever's already loaded (at least the
+    // SSR'd photo at openIndex) so the strip renders at its final height from the
+    // first paint instead of popping in a moment later and shifting the image up.
+    const hi =
+      total === null ? openIndex + STRIP_RADIUS : Math.min(total - 1, openIndex + STRIP_RADIUS);
     const out: { id: string; index: number }[] = [];
     for (let i = lo; i <= hi; i++) {
       const p = photoAt(i);

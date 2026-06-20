@@ -155,23 +155,23 @@ export function PhotoCollectionProvider({
   const open = useCallback(
     (index: number) => {
       if (!enableLightbox) return;
-      setOpenIndex((cur) => {
-        // First open this session pushes ONE history entry; navigating within the
-        // already-open lightbox (film-strip jumps, arrows) only replaces — the
-        // URL-sync effect handles that. Keeps `pushed` meaning exactly "one back()
-        // returns to the grid", so close() stays correct no matter how many strip
-        // jumps happen.
-        if (cur === null && typeof window !== "undefined") {
-          const p = photoForIndex(index);
-          if (p) {
-            window.history.pushState(null, "", url(p.id));
-            pushed.current = true;
-          }
+      // First open of this session pushes ONE history entry; navigating within the
+      // already-open lightbox (film-strip jumps, arrows) only replaces — the
+      // URL-sync effect handles that, so `pushed` always means "one back() returns
+      // to the grid" and close() stays correct. The pushState runs HERE in the
+      // event handler, reading the current openIndex — NOT inside a setState
+      // updater (React may invoke updaters during render, and a side effect there
+      // throws "cannot update Router while rendering").
+      if (openIndex === null && typeof window !== "undefined") {
+        const p = photoForIndex(index);
+        if (p) {
+          window.history.pushState(null, "", url(p.id));
+          pushed.current = true;
         }
-        return index;
-      });
+      }
+      setOpenIndex(index);
     },
-    [enableLightbox, photoForIndex, url],
+    [enableLightbox, openIndex, photoForIndex, url],
   );
 
   const step = useCallback(
