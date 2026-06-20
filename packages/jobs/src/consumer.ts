@@ -16,6 +16,7 @@ export interface ConsumerOptions {
 
 /** Sleep that resolves early if the signal aborts. */
 export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
     signal?.addEventListener(
@@ -49,7 +50,8 @@ export async function processNextJob(
     await handler(report);
     await markJobSucceeded(db, job.id);
   } catch (err) {
-    await markJobFailed(db, job.id, (err as Error).message);
+    const message = err instanceof Error ? err.message : String(err);
+    await markJobFailed(db, job.id, message);
   } finally {
     options.onSettle?.(job);
   }

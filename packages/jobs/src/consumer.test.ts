@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { JobType } from "@lumio/shared";
-import { processNextJob } from "./consumer.js";
+import { processNextJob, sleep } from "./consumer.js";
 
 function dbWithClaim(row: unknown) {
   return {
@@ -59,5 +59,14 @@ describe("processNextJob", () => {
       where: { id: "j3" },
       data: expect.objectContaining({ status: "failed" }),
     });
+  });
+});
+
+describe("sleep", () => {
+  it("resolves immediately when the signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    // Would hang for 100s (test timeout) without the early-exit guard.
+    await sleep(100_000, controller.signal);
   });
 });
