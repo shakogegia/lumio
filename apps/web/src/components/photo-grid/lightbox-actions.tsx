@@ -83,7 +83,7 @@ export function LightboxActions({
       <div className="flex items-center gap-1">
         {edited && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             className="size-7"
             aria-label="Reset edits"
@@ -97,7 +97,7 @@ export function LightboxActions({
           </Button>
         )}
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           className="size-7"
           aria-label={
@@ -116,7 +116,7 @@ export function LightboxActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 className="size-7"
                 aria-label="Download"
@@ -145,7 +145,7 @@ export function LightboxActions({
         ) : (
           <Button
             asChild
-            variant="outline"
+            variant="ghost"
             size="icon"
             className="size-7"
             aria-label="Download"
@@ -158,7 +158,7 @@ export function LightboxActions({
         )}
 
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           aria-label="Move to Trash"
           title="Move to Trash"
