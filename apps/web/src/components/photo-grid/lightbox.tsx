@@ -92,6 +92,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             hasPrev={hasPrev}
             hasNext={hasNext}
             step={(d) => guard(() => step(d))}
+            onTrashed={onTrashed}
           />
           {strip.length > 0 && (
             <FilmStrip
@@ -102,7 +103,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             />
           )}
         </div>
-        <LightboxSidebar photo={photo} onTrashed={onTrashed} />
+        <LightboxSidebar photo={photo} />
       </div>
     </div>
   );

@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { NO_EDITS, previewTransform, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
+import {
+  NO_EDITS,
+  previewTransform,
+  type PhotoDTO,
+  type PhotoEdits,
+} from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
@@ -12,18 +17,20 @@ import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
 import { useEditSession } from "./use-edit-session";
-import { ZoomControls } from "./zoom-controls";
+import { LightboxHeader } from "./lightbox-header";
 
 export function ZoomableImage({
   photo,
   hasPrev,
   hasNext,
   step,
+  onTrashed,
 }: {
   photo: PhotoDTO;
   hasPrev: boolean;
   hasNext: boolean;
   step: (delta: 1 | -1) => void;
+  onTrashed: () => void;
 }) {
   const { working } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
@@ -66,7 +73,11 @@ export function ZoomableImage({
   const viewW = rotated ? photo.height : photo.width;
   const viewH = rotated ? photo.width : photo.height;
 
-  const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
+  const { containerRef, setImgEl, blurBox } = useBlurBox(
+    photo.width,
+    photo.height,
+    photo.id,
+  );
   const {
     viewportRef,
     viewport,
@@ -112,7 +123,10 @@ export function ZoomableImage({
     if (loaded && !everLoaded) latch();
   }, [loaded, everLoaded]);
 
-  const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
+  const blurUrl = useMemo(
+    () => thumbhashDataUrl(photo.thumbhash),
+    [photo.thumbhash],
+  );
 
   // A 90/270 rotation must be scaled so it fills the same space the re-baked
   // rendition will: ratio of "contain of the swapped image" to "contain now".
@@ -138,51 +152,10 @@ export function ZoomableImage({
   );
 
   return (
-    <div
-      ref={viewportRef}
-      className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
-      style={{ touchAction: "none" }}
-    >
-      <div
-        ref={containerRef}
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ transform, transformOrigin: "center", cursor }}
-        onPointerDown={handlers.onPointerDown}
-        onPointerMove={handlers.onPointerMove}
-        onPointerUp={handlers.onPointerUp}
-        onPointerCancel={handlers.onPointerCancel}
-        onDoubleClick={handlers.onDoubleClick}
-      >
-        {/* eslint-disable @next/next/no-img-element */}
-        {blurUrl && blurBox && (
-          <img
-            src={blurUrl}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
-            style={{
-              left: blurBox.left,
-              top: blurBox.top,
-              width: blurBox.width,
-              height: blurBox.height,
-              opacity: everLoaded ? 0 : 1,
-            }}
-          />
-        )}
-        <img
-          ref={setImg}
-          src={src}
-          alt={photo.path}
-          width={photo.width}
-          height={photo.height}
-          onLoad={onLoad}
-          draggable={false}
-          className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-          style={{ transform: editTransform, transformOrigin: "center center", transition: "none" }}
-        />
-        {/* eslint-enable @next/next/no-img-element */}
-      </div>
-      <ZoomControls
+    <>
+      <LightboxHeader
+        photo={photo}
+        onTrashed={onTrashed}
         zoom={zoom}
         min={fitZoom}
         onZoom={setZoom}
@@ -191,9 +164,66 @@ export function ZoomableImage({
         canStepIn={zoom < MAX_ZOOM - 0.5}
         canStepOut={isZoomed}
       />
-      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
-      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
-    </div>
+      <div
+        ref={viewportRef}
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+        style={{ touchAction: "none" }}
+      >
+        <div
+          ref={containerRef}
+          className="absolute inset-4 flex items-center justify-center"
+          style={{ transform, transformOrigin: "center", cursor }}
+          onPointerDown={handlers.onPointerDown}
+          onPointerMove={handlers.onPointerMove}
+          onPointerUp={handlers.onPointerUp}
+          onPointerCancel={handlers.onPointerCancel}
+          onDoubleClick={handlers.onDoubleClick}
+        >
+          {/* eslint-disable @next/next/no-img-element */}
+          {blurUrl && blurBox && (
+            <img
+              src={blurUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute object-cover transition-opacity duration-500"
+              style={{
+                left: blurBox.left,
+                top: blurBox.top,
+                width: blurBox.width,
+                height: blurBox.height,
+                opacity: everLoaded ? 0 : 1,
+              }}
+            />
+          )}
+          <img
+            ref={setImg}
+            src={src}
+            alt={photo.path}
+            width={photo.width}
+            height={photo.height}
+            onLoad={onLoad}
+            draggable={false}
+            className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+            style={{
+              transform: editTransform,
+              transformOrigin: "center center",
+              transition: "none",
+            }}
+          />
+          {/* eslint-enable @next/next/no-img-element */}
+        </div>
+        {hasPrev && (
+          <NavArrow
+            side="left"
+            label="Previous photo"
+            onClick={() => step(-1)}
+          />
+        )}
+        {hasNext && (
+          <NavArrow side="right" label="Next photo" onClick={() => step(1)} />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -212,7 +242,12 @@ function NavArrow({
   // the same transform and would otherwise wipe out the vertical centering on
   // click. Keeping them on separate elements lets the press-nudge coexist.
   return (
-    <div className={cn("absolute top-1/2 z-10 -translate-y-1/2", side === "left" ? "left-2" : "right-2")}>
+    <div
+      className={cn(
+        "absolute top-1/2 z-10 -translate-y-1/2",
+        side === "left" ? "left-2" : "right-2",
+      )}
+    >
       <Button
         variant="outline"
         size="icon"
