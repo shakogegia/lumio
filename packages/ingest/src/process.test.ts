@@ -4,6 +4,13 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { processImage } from "./process.js";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const execFileAsync = promisify(execFile);
+async function hasBin(bin: string): Promise<boolean> {
+  try { await execFileAsync("which", [bin]); return true; } catch { return false; }
+}
+const JXL_TOOLS = (await hasBin("cjxl")) && (await hasBin("djxl"));
 
 const dir = await mkdtemp(path.join(tmpdir(), "lumio-proc-"));
 const fixture = path.join(dir, "fixture.jpg");
@@ -70,5 +77,45 @@ describe("processImage", () => {
 
     const result = await processImage(noexif);
     expect(result.takenAt).toBeNull();
+  });
+});
+
+describe.skipIf(!JXL_TOOLS)("processImage — JXL", () => {
+  it("decodes a .jxl into thumbnail + display + thumbhash with correct dims", async () => {
+    const src = path.join(dir, "jxl-src.png");
+    const jxl = path.join(dir, "photo.jxl");
+    await sharp({ create: { width: 300, height: 200, channels: 3, background: "#779988" } })
+      .png()
+      .toFile(src);
+    await execFileAsync("cjxl", [src, jxl, "-q", "90"]);
+
+    const result = await processImage(jxl);
+
+    expect(result.width).toBe(300);
+    expect(result.height).toBe(200);
+    expect(result.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.thumbhash.length).toBeGreaterThan(0);
+
+    const thumbMeta = await sharp(result.thumbnail).metadata();
+    expect(thumbMeta.format).toBe("webp");
+    expect(Math.max(thumbMeta.width ?? 0, thumbMeta.height ?? 0)).toBeLessThanOrEqual(400);
+
+    const dispMeta = await sharp(result.display).metadata();
+    expect(dispMeta.format).toBe("webp");
+  });
+
+  it("applies EXIF orientation (djxl bakes it) — a rotated source decodes upright", async () => {
+    // Source is 400x200 tagged orientation=6 (90° CW) → should present as 200x400.
+    const src = path.join(dir, "oriented-src.jpg");
+    const jxl = path.join(dir, "oriented.jxl");
+    await sharp({ create: { width: 400, height: 200, channels: 3, background: "#445566" } })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toFile(src);
+    await execFileAsync("cjxl", [src, jxl, "--lossless_jpeg=1"]);
+
+    const result = await processImage(jxl);
+    expect(result.width).toBe(200);
+    expect(result.height).toBe(400);
   });
 });
