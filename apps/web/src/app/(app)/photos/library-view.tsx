@@ -15,7 +15,9 @@ import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-g
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { Lightbox } from "@/components/photo-grid/lightbox";
 import { photoHref } from "@/lib/photo-href";
+import { computeFavoriteTarget } from "@lumio/shared";
 import { SelectionToolbar } from "./selection-toolbar";
+import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { HeaderBar } from "@/components/header-bar";
@@ -41,6 +43,14 @@ export function LibraryView() {
           onCancel={sel.clear}
           actions={
             <>
+              <FavoriteButton
+                disabled={sel.count === 0 || actions.pending.favorite}
+                pending={actions.pending.favorite}
+                onClick={() => {
+                  const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
+                  void actions.favorite([...sel.selected], target);
+                }}
+              />
               <ColorLabelMenu
                 disabled={sel.count === 0 || actions.pending.label}
                 onPick={(label) => void actions.applyLabel([...sel.selected], label)}
