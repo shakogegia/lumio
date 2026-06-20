@@ -93,7 +93,11 @@ export function LightboxSidebar({
           {regularAlbums.length > 0 && (
             <>
               <Separator />
-              <AlbumMembership photo={photo} regularAlbums={regularAlbums} />
+              {/* Keyed on photo.id so membership state re-initializes to null on
+                  each photo: a toggle during arrow-nav can't compute nextIds from
+                  the previous photo's membership. The album LIST fetch stays in
+                  the parent, so it isn't re-fetched per navigation. */}
+              <AlbumMembership key={photo.id} photo={photo} regularAlbums={regularAlbums} />
             </>
           )}
           <Separator />
@@ -158,16 +162,21 @@ function AlbumMembership({
       : [...(albumIds ?? []), album.id];
     setPending(album.id);
     try {
-      if (isMember) {
-        await fetch(`/api/albums/${album.id}/photos/${photo.id}`, {
-          method: "DELETE",
-        });
-      } else {
-        await fetch(`/api/albums/${album.id}/photos`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: [photo.id] }),
-        });
+      const res = isMember
+        ? await fetch(`/api/albums/${album.id}/photos/${photo.id}`, {
+            method: "DELETE",
+          })
+        : await fetch(`/api/albums/${album.id}/photos`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ photoIds: [photo.id] }),
+          });
+      // Only commit the optimistic local + store update once the server confirms
+      // (a smart album → 400, a deleted album → 404 would otherwise leave phantom
+      // membership in the UI and the shared grid store).
+      if (!res.ok) {
+        toast.error("Failed to update album.");
+        return;
       }
       setAlbumIds(nextIds);
       patchPhotos(new Set([photo.id]), { albumIds: nextIds });
