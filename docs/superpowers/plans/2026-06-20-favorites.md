@@ -24,6 +24,8 @@
 **Known v1 limitations (out of scope, noted for follow-up):**
 - The `/favorites` lightbox uses the library `photoHref` (no dedicated `DetailScope`), so a hard refresh of a deep-linked favorite walks the whole library for arrow neighbors. In-app arrow nav and the film strip stay favorites-scoped (they read the provider's own collection).
 - Unfavoriting a *selected* photo via its hover heart in the `/favorites` view leaves its (now-removed) id in the selection set until the next selection change. Harmless; not cleaned up.
+- The lightbox sidebar favorite toggle is **patch-only** (it flips the heart in place) on every surface, including `/favorites` — it does NOT drop the photo from the favorites grid the way the hover heart / toolbar / context menu do. This is deliberate: the sidebar must also work on the standalone `/photo/[id]` route, which has no `PhotoActionsProvider`, and removing the open photo would need extra lightbox last-item/close handling. Net effect: unfavoriting from the detail view leaves the photo in the `/favorites` grid (with an empty heart) until you navigate away or reload. Follow-up: add a `favorites` `DetailScope` + route the sidebar through the shared action so all five surfaces share one path.
+- The toolbar `FavoriteButton` is always an outline heart; it does not render a filled state when the whole selection is already favorited (the design spec mentioned this). Computing fill would require running the smart-toggle target on every render rather than only on click; deferred as a minor polish.
 
 ---
 
