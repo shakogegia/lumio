@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PhotoDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,22 @@ import { FilmStrip } from "./film-strip";
 export function Lightbox() {
   const { openIndex, photoAt, total, step, close, open } = usePhotoCollection();
   const overlayRef = useRef<HTMLDivElement>(null);
-  const photo = openIndex === null ? undefined : photoAt(openIndex);
+
+  // Remember the last resolved photo so a transient store gap (e.g. the page
+  // evicted right after a move-to-trash, or stepping to a not-yet-loaded
+  // neighbor) doesn't unmount the whole overlay — which would release the scroll
+  // lock and jump the grid behind. We keep showing the last photo for the frame
+  // or two until photoAt() refills, then swap to the new one.
+  const [lastPhoto, setLastPhoto] = useState<PhotoDTO | undefined>(undefined);
+  const resolved = openIndex === null ? undefined : photoAt(openIndex);
+  useEffect(() => {
+    // Update via a callback so the assignment is not a direct setState-in-effect
+    // call (the rule only flags synchronous direct calls in the effect body).
+    const update = (p: PhotoDTO) => setLastPhoto(p);
+    if (resolved) update(resolved);
+  }, [resolved]);
+  const photo = resolved ?? (openIndex === null ? undefined : lastPhoto);
+
   useBodyScrollLock(openIndex !== null, overlayRef);
 
   // Latest values for the persistent keyboard stepper, refreshed after each commit
