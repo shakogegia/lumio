@@ -171,7 +171,7 @@ export function ZoomableImage({
       >
         <div
           ref={containerRef}
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-4 flex items-center justify-center"
           style={{ transform, transformOrigin: "center", cursor }}
           onPointerDown={handlers.onPointerDown}
           onPointerMove={handlers.onPointerMove}
@@ -185,7 +185,7 @@ export function ZoomableImage({
               src={blurUrl}
               alt=""
               aria-hidden
-              className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
+              className="pointer-events-none absolute object-cover transition-opacity duration-500"
               style={{
                 left: blurBox.left,
                 top: blurBox.top,

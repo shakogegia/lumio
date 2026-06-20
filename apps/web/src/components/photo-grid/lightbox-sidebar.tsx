@@ -2,8 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { FilePenLine, Search } from "lucide-react";
-import { hasEdits } from "@lumio/shared";
+import { Search } from "lucide-react";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,10 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
-import { useEditSession } from "./use-edit-session";
 
 export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
-  const { dirty } = useEditSession();
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
@@ -45,26 +42,8 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
         <div className="flex shrink-0 items-center border-b px-3 py-2">
           <TabsList className="w-full">
             <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="edit">Edit</TabsTrigger>
             <TabsTrigger value="exif">EXIF</TabsTrigger>
-            <TabsTrigger
-              value="edit"
-              title={
-                dirty
-                  ? "Unsaved changes"
-                  : hasEdits(photo.edits)
-                    ? "Edited"
-                    : undefined
-              }
-            >
-              {(dirty || hasEdits(photo.edits)) && (
-                <FilePenLine
-                  data-icon="inline-start"
-                  aria-hidden
-                  className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
-                />
-              )}
-              Edit
-            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -92,12 +71,12 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
             )}
           </TabsContent>
 
-          <TabsContent value="exif">
-            <ExifPanel entries={metadata} />
-          </TabsContent>
-
           <TabsContent value="edit" className="lg:flex lg:flex-col">
             <LightboxEditPanel />
+          </TabsContent>
+
+          <TabsContent value="exif">
+            <ExifPanel entries={metadata} />
           </TabsContent>
         </div>
       </Tabs>

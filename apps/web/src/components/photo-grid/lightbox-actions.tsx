@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { Download, Heart, Trash2 } from "lucide-react";
+import { Download, FilePenLine, Heart, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection } from "./photo-collection";
+import { useEditSession } from "./use-edit-session";
 
-/** Icon-button row for the lightbox header: favorite, download, move to trash. */
+/** Icon-button row for the lightbox header: reset edits (when edited),
+ *  favorite, download, move to trash. */
 export function LightboxActions({
   photo,
   onTrashed,
@@ -24,6 +26,9 @@ export function LightboxActions({
 }) {
   const { removePhotos, patchPhotos } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
+  const { dirty, reset } = useEditSession();
+  // Edited = unsaved working changes, or persisted edits baked into the photo.
+  const edited = dirty || hasEdits(photo.edits);
 
   async function trash() {
     const ok = await confirm({
@@ -60,10 +65,36 @@ export function LightboxActions({
     patchPhotos(new Set([photo.id]), { isFavorite: next });
   }
 
+  async function resetEdits() {
+    const ok = await confirm({
+      title: "Reset edits?",
+      description:
+        "Revert this photo to its original. Apply afterwards to save the change.",
+      confirmLabel: "Reset",
+      destructive: true,
+    });
+    if (!ok) return;
+    reset();
+  }
+
   return (
     <>
       {confirmDialog}
       <div className="flex items-center gap-1">
+        {edited && (
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Reset edits"
+            title={dirty ? "Reset edits (unsaved changes)" : "Reset edits"}
+            onClick={() => void resetEdits()}
+          >
+            <FilePenLine
+              aria-hidden
+              className={dirty ? "text-amber-500" : "text-primary"}
+            />
+          </Button>
+        )}
         <Button
           variant="outline"
           size="icon"
