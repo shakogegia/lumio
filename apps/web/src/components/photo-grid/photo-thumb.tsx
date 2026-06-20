@@ -22,13 +22,22 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
   const containScale = valid ? Math.min(w, h) / Math.max(w, h) : 1;
   // Only "fill" covers; "fit" and "card" show the whole photo (contained).
   const cover = mode === "fill";
+  // The blur placeholder must occupy the *exact same* box as the thumbnail — not
+  // fill the square tile — so the contained ("fit"/"card") modes don't bleed the
+  // blur into the letterbox. The thumbnail's box here is deterministic (aspect +
+  // contain scale), so the blur reuses the same geometry rather than measuring.
+  const boxStyle = {
+    width: aspect >= 1 ? `${aspect * 100}%` : "100%",
+    height: aspect >= 1 ? "100%" : `${100 / aspect}%`,
+    transform: `translate(-50%, -50%) scale(${cover ? 1 : containScale})`,
+  } as const;
   return (
     <div className="group/tile relative h-full w-full overflow-hidden rounded-sm">
       {blurUrl && (
         <div
           aria-hidden
-          className="absolute inset-0 rounded-sm bg-cover bg-center transition-opacity duration-300"
-          style={{ backgroundImage: `url(${blurUrl})`, opacity: loaded ? 0 : 1 }}
+          className="absolute left-1/2 top-1/2 max-w-none rounded-sm bg-cover bg-center transition-[transform,opacity] duration-300 ease-out"
+          style={{ ...boxStyle, backgroundImage: `url(${blurUrl})`, opacity: loaded ? 0 : 1 }}
         />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -43,11 +52,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         // The element is sized to the cover rectangle (long edge overflows the
         // square and is clipped); contain is the same element scaled down.
         className="absolute left-1/2 top-1/2 max-w-none rounded-sm object-cover transition-[transform,opacity] duration-300 ease-out group-hover/tile:opacity-90"
-        style={{
-          width: aspect >= 1 ? `${aspect * 100}%` : "100%",
-          height: aspect >= 1 ? "100%" : `${(100 / aspect)}%`,
-          transform: `translate(-50%, -50%) scale(${cover ? 1 : containScale})`,
-        }}
+        style={boxStyle}
       />
     </div>
   );

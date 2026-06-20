@@ -29,7 +29,7 @@ export function RefreshStatsButton() {
   return (
     <Button variant="ghost" size="sm" onClick={recalculate} disabled={busy}>
       <RefreshCw className={busy ? "animate-spin" : undefined} />
-      {busy ? "Recalculating…" : "Recalculate sizes"}
+      Recalculate sizes
     </Button>
   );
 }
