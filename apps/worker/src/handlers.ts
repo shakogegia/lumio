@@ -6,6 +6,7 @@ import { scanAndIngest } from "./scan.js";
 
 /** Injectable seams so the registry is unit-testable without a DB/filesystem. */
 export interface HandlerDeps {
+  /** Returns ScanSummary; typed as unknown here since the handler ignores it (keeps the seam loose). */
   scan: (onProgress?: (done: number, total: number) => void) => Promise<unknown>;
   purgeAll: () => Promise<{ deleted: number }>;
   emptyTrash: () => Promise<{ deleted: number }>;
@@ -22,7 +23,11 @@ export function buildHandlers(deps: HandlerDeps = defaultDeps): Required<JobHand
   return {
     [JobType.rescan]: async (report) => {
       await deps.scan((done, total) => {
-        void report(done, total, "Scanning…");
+        // Progress writes are best-effort telemetry: never block or fail the scan,
+        // but don't silently swallow a write error either.
+        void report(done, total, "Scanning…").catch((err) => {
+          console.warn(`progress write failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
       });
     },
     [JobType.purge_all]: async (report) => {
