@@ -7,6 +7,11 @@ export function hasEdits(e: PhotoEdits | null): boolean {
   return e !== null && (e.rotate !== 0 || e.flipH || e.flipV);
 }
 
+/** Structural equality of two recipes. */
+export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
+  return a.rotate === b.rotate && a.flipH === b.flipH && a.flipV === b.flipV;
+}
+
 function withRotate(e: PhotoEdits, rotate: number): PhotoEdits {
   return { ...e, rotate: (((rotate % 360) + 360) % 360) as PhotoEdits["rotate"] };
 }

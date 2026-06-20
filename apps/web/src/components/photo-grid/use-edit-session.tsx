@@ -7,6 +7,7 @@ import {
   hasEdits,
   rotateLeft as recipeRotateLeft,
   rotateRight as recipeRotateRight,
+  sameEdits,
   toggleFlipH as recipeFlipH,
   toggleFlipV as recipeFlipV,
   type PhotoDTO,
@@ -43,10 +44,6 @@ export function useEditSession(): EditSessionValue {
   const v = useContext(Ctx);
   if (!v) throw new Error("useEditSession must be used within EditSessionProvider");
   return v;
-}
-
-function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
-  return a.rotate === b.rotate && a.flipH === b.flipH && a.flipV === b.flipV;
 }
 
 /** Undo/redo history of working recipes; `stack[index]` is the live recipe. */

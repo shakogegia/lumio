@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PhotoDTO } from "@lumio/shared";
-import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
 import { renditionVersion } from "@/lib/rendition-url";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { usePhotoCollection } from "./photo-collection";
 import { EditSessionProvider, useEditSession } from "./use-edit-session";
+import { useLightboxKeyboard } from "./use-lightbox-keyboard";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
 import { ZoomableImage } from "./zoomable-image";
@@ -64,105 +64,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useBodyScrollLock(true, overlayRef);
-
-  // Latest values for the persistent keyboard stepper + guarded nav, refreshed
-  // after each commit (writing refs during render is disallowed by the lint).
-  const stepRef = useRef(step);
-  const closeRef = useRef(close);
-  const openIdxRef = useRef(openIndex);
-  const totalRef = useRef(total);
-  const guardRef = useRef(guard);
-  const dirtyRef = useRef(dirty);
-  const undoRef = useRef(undo);
-  const redoRef = useRef(redo);
-  const canUndoRef = useRef(canUndo);
-  const canRedoRef = useRef(canRedo);
-  useEffect(() => {
-    stepRef.current = step;
-    closeRef.current = close;
-    openIdxRef.current = openIndex;
-    totalRef.current = total;
-    guardRef.current = guard;
-    dirtyRef.current = dirty;
-    undoRef.current = undo;
-    redoRef.current = redo;
-    canUndoRef.current = canUndo;
-    canRedoRef.current = canRedo;
-  });
-
-  useEffect(() => {
-    const stepper = createHoldStepper({
-      getTarget: () => ({
-        canStep: (dir) => {
-          const i = openIdxRef.current;
-          if (i === null) return false;
-          return dir === "next"
-            ? totalRef.current !== null && i < totalRef.current - 1
-            : i > 0;
-        },
-        step: (dir) => stepRef.current(dir === "next" ? 1 : -1),
-      }),
-      schedule: (fn) => {
-        const id = setInterval(fn, HOLD_STEP_MS);
-        return () => clearInterval(id);
-      },
-    });
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        guardRef.current(() => closeRef.current());
-        return;
-      }
-      const el = document.activeElement;
-      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
-      // Undo / redo edits: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, or Ctrl+Y.
-      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
-        if (e.shiftKey) {
-          if (canRedoRef.current) {
-            e.preventDefault();
-            redoRef.current();
-          }
-        } else if (canUndoRef.current) {
-          e.preventDefault();
-          undoRef.current();
-        }
-        return;
-      }
-      if (e.ctrlKey && !e.metaKey && (e.key === "y" || e.key === "Y")) {
-        if (canRedoRef.current) {
-          e.preventDefault();
-          redoRef.current();
-        }
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      const delta: 1 | -1 = e.key === "ArrowRight" ? 1 : -1;
-      // With unsaved edits, a single press prompts to discard (no hold-repeat, so
-      // the confirm dialog doesn't fire on every interval tick).
-      if (dirtyRef.current) {
-        if (e.repeat) return;
-        guardRef.current(() => stepRef.current(delta));
-        return;
-      }
-      if (e.repeat) return;
-      stepper.press(delta === 1 ? "next" : "prev");
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (dirtyRef.current) return;
-      if (e.key === "ArrowLeft") stepper.release("prev");
-      else if (e.key === "ArrowRight") stepper.release("next");
-    };
-    const onBlur = () => stepper.stop();
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      stepper.stop();
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("keyup", onKeyUp);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, []);
+  useLightboxKeyboard({ openIndex, total, dirty, canUndo, canRedo, step, close, guard, undo, redo });
 
   const onTrashed = useCallback(() => {
     // Were we on the last photo? close. Otherwise the store shifts the next photo

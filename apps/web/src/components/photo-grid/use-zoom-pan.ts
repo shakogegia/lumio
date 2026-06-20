@@ -22,6 +22,8 @@ const PINCH_SENSITIVITY = 100;
 
 export interface ZoomPan {
   viewportRef: React.RefObject<HTMLDivElement | null>;
+  /** Measured viewport size (CSS px); 0×0 until first measured. */
+  viewport: Size;
   zoom: number;
   fitZoom: number;
   isZoomed: boolean;
@@ -187,6 +189,7 @@ export function useZoomPan(width: number, height: number): ZoomPan {
 
   return {
     viewportRef,
+    viewport,
     zoom: effZoom,
     fitZoom,
     isZoomed,

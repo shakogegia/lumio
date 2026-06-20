@@ -18,20 +18,8 @@ vi.mock("@lumio/ingest", () => ({
     input: { file: abs },
     cleanup: vi.fn(async () => undefined),
   })),
-  applyEdits: vi.fn(() => ({
-    jpeg: vi.fn(() => ({
-      toBuffer: vi.fn(async () => Buffer.from("EDITED_JPEG")),
-    })),
-  })),
+  encodeEditedJpeg: vi.fn(async () => Buffer.from("EDITED_JPEG")),
 }));
-vi.mock("sharp", () => {
-  const sharpMock = vi.fn(() => ({
-    rotate: vi.fn(() => ({
-      toBuffer: vi.fn(async () => Buffer.from("ORIENTED")),
-    })),
-  }));
-  return { default: sharpMock };
-});
 
 describe("dedupeEntryName", () => {
   it("returns the basename unchanged the first time", () => {

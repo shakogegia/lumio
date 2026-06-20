@@ -69,6 +69,7 @@ export function ZoomableImage({
   const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
   const {
     viewportRef,
+    viewport,
     zoom,
     fitZoom,
     isZoomed,
@@ -111,39 +112,18 @@ export function ZoomableImage({
     if (loaded && !everLoaded) latch();
   }, [loaded, everLoaded]);
 
-  // Natural size of the displayed rendition, for the rotate-fit calculation.
-  const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
-  const onImgLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      onLoad();
-      const img = e.currentTarget;
-      setNat({ w: img.naturalWidth, h: img.naturalHeight });
-    },
-    [onLoad],
-  );
-
-  // Viewport content box for the rotate-fit ratio.
-  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [viewportRef]);
-
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
   // A 90/270 rotation must be scaled so it fills the same space the re-baked
   // rendition will: ratio of "contain of the swapped image" to "contain now".
+  // Uses photo dimensions (same aspect as the rendition) and the viewport from
+  // useZoomPan, so no second ResizeObserver is needed.
   let fit = 1;
-  if (rotated && nat && box) {
-    const cw = Math.max(1, box.w);
-    const ch = Math.max(1, box.h);
-    const sNow = Math.min(cw / nat.w, ch / nat.h, 1);
-    const sPost = Math.min(cw / nat.h, ch / nat.w, 1);
+  if (rotated && viewport.width > 0 && viewport.height > 0) {
+    const cw = viewport.width;
+    const ch = viewport.height;
+    const sNow = Math.min(cw / photo.width, ch / photo.height, 1);
+    const sPost = Math.min(cw / photo.height, ch / photo.width, 1);
     if (sNow > 0) fit = sPost / sNow;
   }
   const editTransform = `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
@@ -195,7 +175,7 @@ export function ZoomableImage({
           alt={photo.path}
           width={photo.width}
           height={photo.height}
-          onLoad={onImgLoad}
+          onLoad={onLoad}
           draggable={false}
           className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
           style={{ transform: editTransform, transformOrigin: "center center", transition: "none" }}

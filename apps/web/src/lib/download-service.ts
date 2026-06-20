@@ -1,10 +1,16 @@
 import { existsSync } from "node:fs";
 import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
-import sharp from "sharp";
 import { coercePhotoEdits, hasEdits, type DownloadVariant } from "@lumio/shared";
-import { applyEdits, decodeToSharpInput } from "@lumio/ingest";
+import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
 import { originalPath } from "@/lib/paths";
+
+/** A path's basename with the extension swapped to `.jpg` (edited exports). */
+export function jpegName(relPath: string): string {
+  const base = relPath.split("/").pop() || relPath;
+  const dot = base.lastIndexOf(".");
+  return `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
+}
 
 /**
  * Build a download filename for an entry inside a zip. Entries are flattened to
@@ -102,13 +108,8 @@ export function streamPhotosZip(
           try {
             const decoded = await decodeToSharpInput(abs);
             try {
-              const oriented = await sharp(decoded.input).rotate().toBuffer();
-              const jpeg = await applyEdits(sharp(oriented), recipe)
-                .jpeg({ quality: 92 })
-                .toBuffer();
-              const dot = base.lastIndexOf(".");
-              const name = `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
-              archive.append(jpeg, { name: dedupeEntryName(name, used) });
+              const jpeg = await encodeEditedJpeg(decoded.input, recipe);
+              archive.append(jpeg, { name: dedupeEntryName(jpegName(photo.path), used) });
             } finally {
               await decoded.cleanup();
             }

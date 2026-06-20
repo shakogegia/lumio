@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import type { Sharp } from "sharp";
-import type { PhotoEdits } from "@lumio/shared";
-import { DISPLAY_MAX, THUMBNAIL_MAX } from "./constants.js";
+import { hasEdits, type PhotoEdits } from "@lumio/shared";
+import { DISPLAY_MAX, THUMBNAIL_MAX, EDITED_JPEG_QUALITY } from "./constants.js";
 import { computeThumbhash } from "./thumbhash.js";
 
 const FIT = { fit: "inside", withoutEnlargement: true } as const;
@@ -28,6 +28,19 @@ export function applyEdits(img: Sharp, edits: PhotoEdits | null): Sharp {
 }
 
 /**
+ * Encode a full-resolution edited JPEG: bake EXIF orientation into a buffer, then
+ * apply the recipe (so auto-orient and explicit rotate don't mix) and JPEG-encode.
+ * Shared by the edited-download route and the edited bulk-zip.
+ */
+export async function encodeEditedJpeg(
+  input: RenditionInput,
+  edits: PhotoEdits | null,
+): Promise<Buffer> {
+  const oriented = await sharp(input).rotate().toBuffer();
+  return applyEdits(sharp(oriented), edits).jpeg({ quality: EDITED_JPEG_QUALITY }).toBuffer();
+}
+
+/**
  * Build the display + thumbnail WebP renditions (and thumbhash + oriented size)
  * for an image, optionally with a user edit recipe. The no-edit path matches the
  * original ingest pipeline (single decode → auto-orient → resize). With geometry
@@ -38,16 +51,14 @@ export async function buildRenditions(
   input: RenditionInput,
   edits: PhotoEdits | null,
 ): Promise<Renditions> {
-  const geom = !!edits && (edits.rotate !== 0 || edits.flipH || edits.flipV);
+  const geom = hasEdits(edits);
 
   let source: RenditionInput = input;
-  let exifBaked = false;
   if (geom) {
     source = await sharp(input).rotate().toBuffer(); // EXIF orientation now baked in
-    exifBaked = true;
   }
 
-  const start = () => (exifBaked ? sharp(source) : sharp(source).rotate());
+  const start = () => (geom ? sharp(source) : sharp(source).rotate());
   const display = await applyEdits(start(), edits)
     .resize(DISPLAY_MAX, DISPLAY_MAX, FIT)
     .webp({ quality: 80 })
@@ -61,7 +72,7 @@ export async function buildRenditions(
   const meta = await sharp(source).metadata();
   let width: number;
   let height: number;
-  if (exifBaked) {
+  if (geom) {
     width = meta.width ?? 0;
     height = meta.height ?? 0;
   } else {
