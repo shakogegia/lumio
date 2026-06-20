@@ -37,19 +37,20 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
       // costs no decode — derive BOTH renditions from full-quality raw.
       const { width: w, height: h, channels } = decoded.raw;
       const buf = decoded.input as Buffer;
-      const src = () => sharp(buf, { raw: { width: w, height: h, channels: channels as 1 | 2 | 3 | 4 } });
+      const src = () => sharp(buf, { raw: { width: w, height: h, channels } });
       width = w;
       height = h;
       display = await src().resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
       thumbnail = await src().resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
     } else {
-      // native / HEIC temp PNG: decode once for the display, then derive the
-      // thumbnail from that buffer (one full decode instead of two).
+      // native / HEIC temp PNG: decode once for the display, then derive the thumbnail
+      // from that display buffer — skips a second full decode at the cost of one extra
+      // (visually negligible at <=400px) WebP recompression.
       const meta = await sharp(decoded.input).metadata();
       width = meta.width ?? 0;
       height = meta.height ?? 0;
       const pipe = sharp(decoded.input);
-      if (decoded.rotate) pipe.rotate();
+      if (decoded.rotate) pipe.rotate(); // applies EXIF orientation in place
       display = await pipe.resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
       thumbnail = await sharp(display).resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
     }

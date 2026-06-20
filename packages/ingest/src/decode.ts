@@ -42,7 +42,7 @@ export interface RawImage {
   buffer: Buffer;
   width: number;
   height: number;
-  channels: number;
+  channels: 1 | 2 | 3 | 4;
 }
 
 /** Run `djxl <path> - --output_format pam` and collect stdout. */
@@ -67,7 +67,8 @@ function runDjxlPam(absPath: string): Promise<Buffer> {
 export async function decodeJxlToRaw(absPath: string): Promise<RawImage> {
   const pam = await runDjxlPam(absPath);
   const { width, height, channels, offset } = parsePAM(pam);
-  return { buffer: pam.subarray(offset), width, height, channels };
+  // djxl PAM DEPTH is 1/3/4; narrow to Sharp's Channels type.
+  return { buffer: pam.subarray(offset), width, height, channels: channels as 1 | 2 | 3 | 4 };
 }
 
 /** Extensions sharp/libvips reads directly (no external decode needed). */
@@ -112,7 +113,7 @@ export interface DecodedInput {
   /** Sharp input: the original path (native), a raw pixel buffer (JXL), or a temp PNG path (HEIC). */
   input: string | Buffer;
   /** Present iff `input` is raw pixels → caller passes sharp(input, { raw }). */
-  raw?: { width: number; height: number; channels: number };
+  raw?: { width: number; height: number; channels: 1 | 2 | 3 | 4 };
   /** Whether Sharp must apply EXIF orientation. False only for JXL (djxl bakes orientation into the raw pixels); native + the HEIC temp PNG still need it. */
   rotate: boolean;
   /** Remove any temp artifacts (HEIC temp PNG). No-op for native/JXL. */
