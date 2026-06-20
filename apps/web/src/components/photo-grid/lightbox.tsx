@@ -134,7 +134,12 @@ export function Lightbox() {
         <div className="flex min-w-0 flex-1 flex-col">
           <LightboxImage photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
           {strip.length > 0 && (
-            <FilmStrip items={strip} currentId={photo.id} onPick={(i) => open(i)} />
+            <FilmStrip
+              items={strip}
+              currentId={photo.id}
+              onPick={(i) => open(i)}
+              onStep={step}
+            />
           )}
         </div>
         <LightboxSidebar photo={photo} onTrashed={onTrashed} />
