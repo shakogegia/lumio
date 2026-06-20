@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, Circle } from "lucide-react";
 import { colorLabelHex, type PhotoDTO, type PhotoSort } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
@@ -19,7 +18,8 @@ export function PhotoGridTile({
   mode,
   albumId,
   sort,
-  hrefFor,
+  onOpen,
+  urlForId,
   selectMode,
   isSelected,
   index,
@@ -29,8 +29,8 @@ export function PhotoGridTile({
   mode: GridViewMode;
   albumId?: string;
   sort?: PhotoSort;
-  /** Detail-route href override; defaults to the album/library scope. */
-  hrefFor?: (id: string) => string;
+  onOpen?: (index: number) => void;
+  urlForId?: (id: string) => string;
   selectMode: boolean;
   isSelected: boolean;
   index: number;
@@ -75,12 +75,18 @@ export function PhotoGridTile({
   }
 
   return (
-    <Link
-      href={hrefFor ? hrefFor(photo.id) : photoHref(photo.id, albumId, sort)}
+    <a
+      href={urlForId ? urlForId(photo.id) : photoHref(photo.id, albumId, sort)}
+      onClick={(e) => {
+        if (!onOpen) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        onOpen(index);
+      }}
       className={cn(cellVariants({ mode }), labelHex && "label-mat")}
       style={labelStyle}
     >
       {thumb}
-    </Link>
+    </a>
   );
 }

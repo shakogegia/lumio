@@ -5,7 +5,7 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { rowCount, GRID_GAP, DEFAULT_COLUMNS, PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
 import { computeSelection } from "@/lib/grid-selection";
-import type { PhotoDTO, PhotoSort } from "@lumio/shared";
+import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import {
   Empty,
@@ -14,7 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { usePhotoPages } from "./use-photo-pages";
+import { usePhotoCollection } from "./photo-collection";
 import { PhotoGridSkeleton } from "./photo-grid-skeleton";
 import { PhotoGridTile } from "./photo-grid-tile";
 
@@ -44,35 +44,27 @@ export type PhotoGridHandle = {
 };
 
 export function PhotoGrid({
-  endpoint = "/api/photos",
-  albumId,
   empty = PHOTOS_EMPTY,
   mode = "fill",
   columns: columnsProp = DEFAULT_COLUMNS,
-  params,
-  sort,
-  hrefFor,
   selectMode = false,
   selectedIds,
   onSelectionChange,
   apiRef,
 }: {
-  endpoint?: string;
-  albumId?: string;
   empty?: React.ReactNode;
   mode?: GridViewMode;
   columns?: number;
-  params?: URLSearchParams;
-  sort?: PhotoSort;
-  hrefFor?: (id: string) => string;
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   apiRef?: React.Ref<PhotoGridHandle>;
 }) {
   const columns = Math.max(1, columnsProp);
-  const { total, photoAt, getLoadedIds, ensureRange, error, retry, patchPhotos, removePhotos } =
-    usePhotoPages(endpoint, params, PHOTO_PAGE_SIZE);
+  const {
+    total, photoAt, getLoadedIds, ensureRange, error, retry,
+    patchPhotos, removePhotos, open, urlForId, enableLightbox,
+  } = usePhotoCollection();
   useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos }), [patchPhotos, removePhotos]);
 
   // Index of the last plain-clicked tile, used as the shift-range anchor.
@@ -200,12 +192,11 @@ export function PhotoGrid({
                     key={photo.id}
                     photo={photo}
                     mode={mode}
-                    albumId={albumId}
-                    sort={sort}
-                    hrefFor={hrefFor}
+                    index={idx}
+                    onOpen={enableLightbox ? open : undefined}
+                    urlForId={urlForId}
                     selectMode={selectMode}
                     isSelected={selectedIds?.has(photo.id) ?? false}
-                    index={idx}
                     onTileClick={handleTileClick}
                   />
                 );
