@@ -29,6 +29,7 @@ export function NavLink({ item, active, className, ...props }: NavLinkProps) {
   return (
     <Link
       href={item.href}
+      prefetch={false}
       aria-current={active ? "page" : undefined}
       title={item.label}
       className={cn(

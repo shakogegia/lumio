@@ -61,6 +61,7 @@ export function SidebarAlbums({
             <li key={album.id}>
               <Link
                 href={`/albums/${album.id}`}
+                prefetch={false}
                 className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted"
               >
                 <div className="flex aspect-[4/3] w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted">
