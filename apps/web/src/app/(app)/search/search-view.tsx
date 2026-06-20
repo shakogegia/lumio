@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2, X } from "lucide-react";
+import { Download, Loader2, SquareCheckBig, Trash2, X } from "lucide-react";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { useGridView } from "@/lib/use-grid-view";
@@ -11,6 +11,7 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { Button } from "@/components/ui/button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
@@ -144,16 +145,12 @@ export function SearchView() {
                         disabled={sel.count === 0 || actions.pending.label}
                         onPick={(label) => void actions.applyLabel([...sel.selected], label)}
                       />
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
+                      <AddToAlbumMenu
                         disabled={sel.count === 0}
-                        onClick={() => actions.addToAlbum([...sel.selected])}
-                        aria-label="Add to album"
-                        title="Add to album"
-                      >
-                        <FolderPlus aria-hidden />
-                      </Button>
+                        excludeAlbumId={actions.excludeAlbumId}
+                        onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
+                        onCreateNew={() => actions.addToAlbum([...sel.selected])}
+                      />
                       <Button
                         variant="outline"
                         size="icon-sm"

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, FolderPlus, Images, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, FolderMinus, Images, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/empty";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 
 export function AlbumView({
   albumId,
@@ -105,16 +106,12 @@ export function AlbumView({
           onCancel={handleCancel}
           actions={
             <>
-              <Button
-                variant="outline"
-                size="icon-sm"
+              <AddToAlbumMenu
                 disabled={sel.count === 0}
-                onClick={() => actions.addToAlbum([...sel.selected])}
-                aria-label="Add to album"
-                title="Add to album"
-              >
-                <FolderPlus aria-hidden />
-              </Button>
+                excludeAlbumId={actions.excludeAlbumId}
+                onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
+                onCreateNew={() => actions.addToAlbum([...sel.selected])}
+              />
               {!isSmart && (
                 <Button
                   variant="destructive"

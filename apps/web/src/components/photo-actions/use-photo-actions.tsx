@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ColorLabel } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
@@ -15,7 +16,12 @@ export interface PhotoActions {
   download: (ids: string[], opts?: ActionOpts) => Promise<void>;
   applyLabel: (ids: string[], label: ColorLabel | null, opts?: ActionOpts) => Promise<void>;
   trash: (ids: string[], opts?: ActionOpts) => Promise<void>;
+  /** Open the "create / pick album" dialog (the "New album…" path). */
   addToAlbum: (ids: string[], opts?: ActionOpts) => void;
+  /** Add straight to an existing album, no dialog (the nested-menu path). */
+  addToAlbumDirect: (ids: string[], albumId: string, opts?: ActionOpts) => Promise<void>;
+  /** The album currently being viewed, so album pickers can exclude it. */
+  excludeAlbumId?: string;
   pending: { download: boolean; label: boolean; trash: boolean };
   /** Dialogs (add-to-album + trash confirm). Render once per view. */
   element: React.ReactNode;
@@ -46,6 +52,7 @@ export function usePhotoActions({
    *  search result count or an album `router.refresh()`). */
   onTrashed?: (ids: string[]) => void;
 }): PhotoActions {
+  const router = useRouter();
   const { confirm, confirmDialog } = useConfirm();
   const [downloading, setDownloading] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
@@ -127,6 +134,26 @@ export function usePhotoActions({
     setAlbumTarget({ ids, onSuccess: opts?.onSuccess });
   }, []);
 
+  const addToAlbumDirect = useCallback(
+    async (ids: string[], albumId: string, opts?: ActionOpts) => {
+      if (ids.length === 0) return;
+      try {
+        const res = await fetch(`/api/albums/${albumId}/photos`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoIds: ids }),
+        });
+        if (!res.ok) throw new Error("add failed");
+        // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
+        router.refresh();
+        opts?.onSuccess?.();
+      } catch {
+        toast.error("Failed to add photos to the album.");
+      }
+    },
+    [router],
+  );
+
   const element = (
     <>
       {confirmDialog}
@@ -150,6 +177,8 @@ export function usePhotoActions({
     applyLabel,
     trash,
     addToAlbum,
+    addToAlbumDirect,
+    excludeAlbumId,
     pending: { download: downloading, label: labelPending, trash: deleting },
     element,
   };

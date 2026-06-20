@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -16,6 +16,7 @@ import { Lightbox } from "@/components/photo-grid/lightbox";
 import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "./selection-toolbar";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
@@ -42,16 +43,12 @@ export function LibraryView() {
                 disabled={sel.count === 0 || actions.pending.label}
                 onPick={(label) => void actions.applyLabel([...sel.selected], label)}
               />
-              <Button
-                variant="outline"
-                size="icon-sm"
+              <AddToAlbumMenu
                 disabled={sel.count === 0}
-                onClick={() => actions.addToAlbum([...sel.selected])}
-                aria-label="Add to album"
-                title="Add to album"
-              >
-                <FolderPlus aria-hidden />
-              </Button>
+                excludeAlbumId={actions.excludeAlbumId}
+                onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
+                onCreateNew={() => actions.addToAlbum([...sel.selected])}
+              />
               <Button
                 variant="outline"
                 size="icon-sm"
