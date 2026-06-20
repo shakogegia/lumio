@@ -89,15 +89,17 @@ export function FilmStrip({
   // native horizontal scroll — React's synthetic onWheel is passive at the root, so
   // it can't. The strip still follows the active photo via the auto-center effect.
   useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
+    // `c` (the viewport) is always mounted while FilmStrip renders, so the guard
+    // is just type-narrowing — the element is stable, so binding once is enough.
+    const c = viewportRef.current;
+    if (!c) return;
     const stepper = createWheelStepper({ onStep: (d) => onStepRef.current(d) });
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       stepper.handle(e);
     };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    c.addEventListener("wheel", onWheel, { passive: false });
+    return () => c.removeEventListener("wheel", onWheel);
   }, []);
 
   // Drag the custom thumb to scroll the strip.
