@@ -28,15 +28,15 @@ export async function listPhotos(
   return { items: rows.map(toPhotoDTO), total };
 }
 
-/** Minimal {id, path} for a set of photo ids, in canonical order, for zipping. */
+/** Minimal {id, path, edits} for a set of photo ids, in canonical order, for zipping. */
 export async function listPhotosForDownload(
   ids: string[],
   db: Db = prisma,
-): Promise<{ id: string; path: string }[]> {
+): Promise<{ id: string; path: string; edits: unknown }[]> {
   return db.photo.findMany({
     where: { id: { in: ids } },
     orderBy: PHOTO_ORDER,
-    select: { id: true, path: true },
+    select: { id: true, path: true, edits: true },
   });
 }
 

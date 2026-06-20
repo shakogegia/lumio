@@ -1,3 +1,5 @@
+import type { DownloadVariant } from "@lumio/shared";
+
 /** Trigger a browser download of a same-origin URL via a transient anchor.
  *  The server's Content-Disposition supplies the filename. */
 export function downloadFromUrl(url: string): void {
@@ -10,21 +12,26 @@ export function downloadFromUrl(url: string): void {
 }
 
 /**
- * Download the selected photos: a bare original for one, a streamed zip for
- * many. The 2+ path POSTs the ids, reads the response as a blob, and saves it
- * via an object URL (blob URLs ignore Content-Disposition, so the filename is
- * set client-side). Throws on a failed request so callers can surface an error.
+ * Download the selected photos: a bare original (or edited) for one, a
+ * streamed zip for many. The 2+ path POSTs the ids + variant, reads the
+ * response as a blob, and saves it via an object URL (blob URLs ignore
+ * Content-Disposition, so the filename is set client-side). Throws on a
+ * failed request so callers can surface an error.
  */
-export async function downloadSelection(ids: string[]): Promise<void> {
+export async function downloadSelection(
+  ids: string[],
+  variant: DownloadVariant = "original",
+): Promise<void> {
   if (ids.length === 0) return;
   if (ids.length === 1) {
-    downloadFromUrl(`/api/photos/${ids[0]}/original?download=1`);
+    const path = variant === "edited" ? "edited" : "original";
+    downloadFromUrl(`/api/photos/${ids[0]}/${path}?download=1`);
     return;
   }
   const res = await fetch("/api/photos/download", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ ids, variant }),
   });
   if (!res.ok) throw new Error("download failed");
   const blob = await res.blob();
@@ -32,7 +39,7 @@ export async function downloadSelection(ids: string[]): Promise<void> {
   try {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `lumio-photos-${ids.length}.zip`;
+    a.download = `lumio-photos-${ids.length}${variant === "edited" ? "-edited" : ""}.zip`;
     document.body.appendChild(a);
     a.click();
     a.remove();

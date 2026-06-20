@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   attachmentDisposition,
   dedupeEntryName,
@@ -76,6 +76,7 @@ describe("streamPhotosZip", () => {
         { id: "3", path: "missing.jpg" },
       ],
       "test.zip",
+      "original",
       (rel) => path.join(dir, rel),
     );
 
@@ -90,5 +91,60 @@ describe("streamPhotosZip", () => {
     expect(buf.includes(Buffer.from("a.jpg"))).toBe(true);
     expect(buf.includes(Buffer.from("b.jpg"))).toBe(true);
     expect(buf.includes(Buffer.from("missing.jpg"))).toBe(false);
+  });
+
+  it("edited variant: edited photo gets a .jpg entry, unedited photo keeps its original basename", async () => {
+    // Mock @lumio/ingest so tests don't need real sharp JPEG pipeline.
+    vi.mock("@lumio/ingest", () => ({
+      decodeToSharpInput: vi.fn(async (abs: string) => ({
+        input: { file: abs },
+        cleanup: vi.fn(async () => undefined),
+      })),
+      applyEdits: vi.fn((_sharpInst: unknown, _recipe: unknown) => ({
+        jpeg: vi.fn(() => ({
+          toBuffer: vi.fn(async () => Buffer.from("EDITED_JPEG")),
+        })),
+      })),
+    }));
+
+    // Mock sharp so the rotate().toBuffer() chain works.
+    vi.mock("sharp", () => {
+      const sharpMock = vi.fn(() => ({
+        rotate: vi.fn(() => ({
+          toBuffer: vi.fn(async () => Buffer.from("ORIENTED")),
+        })),
+      }));
+      return { default: sharpMock };
+    });
+
+    const dir = await mkdtemp(path.join(tmpdir(), "lumio-dl-edited-"));
+    await writeFile(path.join(dir, "photo.cr2"), "RAW_BYTES");
+    await writeFile(path.join(dir, "plain.jpg"), "PLAIN_BYTES");
+
+    // "photo.cr2" has edits (rotate:90 means hasEdits → true); "plain.jpg" has no edits.
+    const editedEdits = { rotate: 90, flipH: false, flipV: false };
+    const res = streamPhotosZip(
+      [
+        { id: "1", path: "photo.cr2", edits: editedEdits },
+        { id: "2", path: "plain.jpg", edits: null },
+      ],
+      "test-edited.zip",
+      "edited",
+      (rel) => path.join(dir, rel),
+    );
+
+    expect(res.headers.get("Content-Type")).toBe("application/zip");
+
+    const buf = Buffer.from(await res.arrayBuffer());
+    expect(buf.subarray(0, 2).toString("latin1")).toBe("PK");
+
+    // The edited photo's entry should be renamed to .jpg.
+    expect(buf.includes(Buffer.from("photo.jpg"))).toBe(true);
+    // The original .cr2 name should NOT appear.
+    expect(buf.includes(Buffer.from("photo.cr2"))).toBe(false);
+    // The unedited photo keeps its original basename.
+    expect(buf.includes(Buffer.from("plain.jpg"))).toBe(true);
+
+    vi.restoreAllMocks();
   });
 });

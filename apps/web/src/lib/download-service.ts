@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
 import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
+import sharp from "sharp";
+import { coercePhotoEdits, hasEdits, type DownloadVariant } from "@lumio/shared";
+import { applyEdits, decodeToSharpInput } from "@lumio/ingest";
 import { originalPath } from "@/lib/paths";
 
 /**
@@ -53,16 +56,19 @@ export function attachmentDisposition(filename: string): string {
 }
 
 /**
- * Stream the given photos' originals as a single stored (uncompressed) zip.
- * Originals are already-compressed images, so storing avoids wasted CPU and
- * streams from disk with flat memory. `resolve` maps a photo's stored relative
+ * Stream the given photos as a single stored (uncompressed) zip. When
+ * `variant` is "edited", photos that carry edit recipes are re-rendered to
+ * full-res JPEG with the recipe baked in; photos without edits keep their
+ * original bytes. When `variant` is "original" (the default), every photo
+ * uses its original bytes unchanged. `resolve` maps a photo's stored relative
  * path to an absolute path on disk (defaults to `originalPath`, the
  * traversal-guarded resolver; overridable for tests). Missing originals are
  * logged and skipped — never fatal.
  */
 export function streamPhotosZip(
-  photos: { id: string; path: string }[],
+  photos: { id: string; path: string; edits?: unknown }[],
   zipName: string,
+  variant: DownloadVariant = "original",
   resolve: (relPath: string) => string = originalPath,
 ): Response {
   const archive = new ZipArchive({ store: true });
@@ -78,16 +84,34 @@ export function streamPhotosZip(
   archive.pipe(pass);
 
   const used = new Set<string>();
-  for (const photo of photos) {
-    const abs = resolve(photo.path);
-    if (!existsSync(abs)) {
-      console.warn("[download] skipping missing original:", photo.path);
-      continue;
+  void (async () => {
+    for (const photo of photos) {
+      const abs = resolve(photo.path);
+      if (!existsSync(abs)) {
+        console.warn("[download] skipping missing original:", photo.path);
+        continue;
+      }
+      const base = photo.path.split("/").pop() || photo.path;
+      const recipe = coercePhotoEdits(photo.edits);
+      if (variant === "edited" && hasEdits(recipe)) {
+        const decoded = await decodeToSharpInput(abs);
+        try {
+          const oriented = await sharp(decoded.input).rotate().toBuffer();
+          const jpeg = await applyEdits(sharp(oriented), recipe)
+            .jpeg({ quality: 92 })
+            .toBuffer();
+          const dot = base.lastIndexOf(".");
+          const name = `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
+          archive.append(jpeg, { name: dedupeEntryName(name, used) });
+        } finally {
+          await decoded.cleanup();
+        }
+      } else {
+        archive.file(abs, { name: dedupeEntryName(base, used) });
+      }
     }
-    const base = photo.path.split("/").pop() || photo.path;
-    archive.file(abs, { name: dedupeEntryName(base, used) });
-  }
-  void archive.finalize();
+    void archive.finalize();
+  })();
 
   return new Response(Readable.toWeb(pass) as unknown as ReadableStream<Uint8Array>, {
     headers: {
