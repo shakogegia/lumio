@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { parseGridColumns } from "./use-grid-columns";
 
 describe("parseGridColumns", () => {
-  it("defaults to 5 when nothing is stored", () => {
-    expect(parseGridColumns(null)).toBe(5);
-    expect(parseGridColumns("")).toBe(5);
+  it("defaults to 12 when nothing is stored", () => {
+    expect(parseGridColumns(null)).toBe(12);
+    expect(parseGridColumns("")).toBe(12);
   });
 
-  it("defaults to 5 for non-numeric input", () => {
-    expect(parseGridColumns("garbage")).toBe(5);
-    expect(parseGridColumns("NaN")).toBe(5);
+  it("defaults to 12 for non-numeric input", () => {
+    expect(parseGridColumns("garbage")).toBe(12);
+    expect(parseGridColumns("NaN")).toBe(12);
   });
 
   it("returns valid in-range values as-is", () => {

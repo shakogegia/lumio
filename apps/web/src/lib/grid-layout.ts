@@ -5,7 +5,9 @@ export const GRID_GAP = 4;
 // so every step changes the layout at any viewport width.
 export const COLUMNS_MIN = 2;
 export const COLUMNS_MAX = 12;
-export const DEFAULT_COLUMNS = 5;
+// Default photo-tile density. More columns means smaller tiles, so the smallest
+// grid size is COLUMNS_MAX columns.
+export const DEFAULT_COLUMNS = COLUMNS_MAX;
 
 // localStorage key for the persisted column count. Shared by the client store
 // and the pre-paint inline script in the root layout (which reads it to set the
