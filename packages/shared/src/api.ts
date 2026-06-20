@@ -26,11 +26,17 @@ export function coercePhotoSort(value: unknown): PhotoSort {
     : DEFAULT_PHOTO_SORT;
 }
 
+/** A `YYYY-MM` month filter (e.g. "2026-06"). Strict zero-padded month 01–12. */
+export const monthParamSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM form");
+
 /** Query params for GET /api/photos. */
 export const photosQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
+  month: monthParamSchema.optional(),
 });
 
 export type PhotosQuery = z.infer<typeof photosQuerySchema>;
@@ -61,6 +67,7 @@ export const searchQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
+  month: monthParamSchema.optional(),
 });
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
