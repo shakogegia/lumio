@@ -84,7 +84,7 @@ Dispatch by extension:
 - **JXL** (`.jxl`): `spawn('djxl', [path, '-', '--output_format', 'pam'])`, collect stdout, parse the PAM header, return `{ input: rawBody, raw: {width,height,channels}, rotate: false, cleanup: noop }`. **No temp file, no disk.**
 - **HEIC/HEIF**: keep the existing `sips`/`heif-convert` → temp-PNG path with `cleanup` (sips can't stream; library is JXL, so untouched). `rotate: true`.
 
-**PAM, not PPM** (verified): PAM (`P7`) carries `DEPTH`/`TUPLTYPE`, so the pipe handles **RGBA** (`DEPTH 4`, alpha preserved) and **grayscale** (`djxl` normalizes to `DEPTH 3` RGB). PPM (`P6`) is RGB-only and would silently drop alpha. Header is ASCII lines terminated by `ENDHDR\n`; the raw body follows immediately.
+**PAM, not PPM** (verified): PAM (`P7`) carries `DEPTH`/`TUPLTYPE`, so the pipe handles **RGBA** (`DEPTH 4`, alpha preserved) and **grayscale** (`djxl` may emit `DEPTH 1`). The code reads `DEPTH` dynamically and passes it straight to `sharp(raw, { channels })`, so 1/3/4 all work — do NOT hard-code 3 channels. PPM (`P6`) is RGB-only and would silently drop alpha. Header is ASCII lines terminated by `ENDHDR\n`; the raw body follows immediately.
 
 **Use `spawn`, not `execFile`** — a 45 MP RGB image is ~136 MB of raw stdout, far over `execFile`'s 1 MB `maxBuffer`. Collect chunks, `Buffer.concat` on `close`.
 
@@ -138,7 +138,7 @@ try {
 ### Correctness (all verified by measurement, not assumed)
 
 - **Orientation:** a 400×200 image tagged EXIF `orientation=6`, transcoded to JXL, decodes via **both** the old PNG path and the new PAM pipe to **200×400 with no residual EXIF orientation** — `djxl` bakes orientation into pixels. `rotate: false` on the JXL path is equivalent to today (where `.rotate()` was already a no-op on the EXIF-less temp PNG). **No regression.**
-- **Alpha / grayscale:** RGBA round-trips (`DEPTH 4` → `sharp(raw,{channels:4})`); grayscale is normalized by `djxl` to `DEPTH 3` RGB. Both encode correctly.
+- **Alpha / grayscale:** RGBA round-trips (`DEPTH 4` → `sharp(raw,{channels:4})`); grayscale comes through as `djxl`'s emitted `DEPTH` (often `1`), read dynamically and passed to Sharp's `channels`. Both encode correctly.
 - **Stored dimensions:** JXL uses PAM header dims (orientation already applied — same values the old PNG path produced); native keeps `metadata()`. Equivalent.
 - **`hash` + EXIF + `thumbhash`:** unchanged (hash/EXIF from original bytes; thumbhash from the final thumbnail buffer, so ingest and the existing backfill stay identical).
 
