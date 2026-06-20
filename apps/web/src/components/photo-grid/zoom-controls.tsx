@@ -23,8 +23,11 @@ export function ZoomControls({
   canStepIn: boolean;
   canStepOut: boolean;
 }) {
+  // At the fit minimum we label "Fit" (it may be any sub-100% value); otherwise
+  // the rounded percent, where 100% is true 1:1 original pixels.
+  const atFit = zoom <= min + 0.5;
   return (
-    <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border bg-background/70 px-2 py-1 backdrop-blur">
+    <div className="pointer-events-none absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border bg-background/70 px-2 py-1 opacity-0 backdrop-blur transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
       <Button
         variant="outline"
         size="icon"
@@ -54,6 +57,9 @@ export function ZoomControls({
       >
         <Plus className="size-4" />
       </Button>
+      <span className="w-9 shrink-0 select-none text-right text-[11px] tabular-nums text-muted-foreground">
+        {atFit ? "Fit" : `${Math.round(zoom)}%`}
+      </span>
     </div>
   );
 }
