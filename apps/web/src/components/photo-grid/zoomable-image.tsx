@@ -88,7 +88,7 @@ export function ZoomableImage({
   return (
     <div
       ref={viewportRef}
-      className="group relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+      className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
       style={{ touchAction: "none" }}
     >
       <div
