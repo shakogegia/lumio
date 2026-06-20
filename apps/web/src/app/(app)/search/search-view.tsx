@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2, X } from "lucide-react";
+import { Download, FolderPlus, Loader2, Trash2, X } from "lucide-react";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { useGridView } from "@/lib/use-grid-view";
@@ -56,15 +56,15 @@ export function SearchView() {
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
 
   // The result set changes when the query changes, so any selection would point
-  // at photos no longer shown. Drop it and leave select mode whenever the query
-  // changes. Keyed on the serialized filters — the same value that remounts the
-  // grid below — so the toolbar resets in lockstep with the grid. `sel.cancel`
-  // is stable (useCallback), so this only fires on an actual query change; the
-  // first run (initial filters) is a harmless no-op.
+  // at photos no longer shown. Clear it whenever the query changes. Keyed on the
+  // serialized filters — the same value that remounts the grid below — so the
+  // toolbar resets in lockstep with the grid. `sel.clear` is stable (useCallback),
+  // so this only fires on an actual query change; the first run (initial filters)
+  // is a harmless no-op.
   // Destructured so the dep is a plain stable identifier — eslint resolves the
-  // member access `sel.cancel` to the whole `sel` object (recreated each render)
+  // member access `sel.clear` to the whole `sel` object (recreated each render)
   // and would otherwise demand it as a dep, causing a re-run loop.
-  const { cancel: resetSelection } = sel;
+  const { clear: resetSelection } = sel;
   const serialized = serialize(filters);
   useEffect(() => {
     resetSelection();
@@ -102,7 +102,7 @@ export function SearchView() {
       gridRef.current?.removePhotos(ids);
       // Keep the toolbar count consistent with the tiles we just removed.
       setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.size)));
-      sel.cancel();
+      sel.clear();
     } catch {
       toast.error("Failed to move photos to Trash.");
     } finally {
@@ -196,10 +196,8 @@ export function SearchView() {
               {/* Two-state toolbar row. Inline (not the sticky HeaderBar/SelectionToolbar)
                   because the sticky search box already owns top-0 above. */}
               <div className="mb-2 flex items-center justify-between gap-4">
-                {sel.selectMode ? (
-                  <span className="text-sm font-medium">
-                    {sel.count > 0 ? `${sel.count} selected` : "Select photos"}
-                  </span>
+                {sel.count > 0 ? (
+                  <span className="text-sm font-medium">{sel.count} selected</span>
                 ) : (
                   <span className="text-sm text-muted-foreground">
                     {searchCount !== null
@@ -208,7 +206,7 @@ export function SearchView() {
                   </span>
                 )}
                 <div className="flex items-center gap-2">
-                  {sel.selectMode ? (
+                  {sel.count > 0 ? (
                     <>
                       <ColorLabelMenu
                         disabled={sel.count === 0 || labelPending}
@@ -247,7 +245,7 @@ export function SearchView() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        onClick={sel.cancel}
+                        onClick={sel.clear}
                         aria-label="Cancel"
                         title="Cancel"
                       >
@@ -259,15 +257,6 @@ export function SearchView() {
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={sel.enter}
-                        aria-label="Select"
-                        title="Select"
-                      >
-                        <SquareCheckBig aria-hidden />
-                      </Button>
                     </>
                   )}
                 </div>
@@ -283,7 +272,6 @@ export function SearchView() {
                   apiRef={gridRef}
                   mode={mode}
                   columns={columns}
-                  selectMode={sel.selectMode}
                   selectedIds={sel.selected}
                   onSelectionChange={sel.setSelected}
                   empty={<SearchEmpty />}
