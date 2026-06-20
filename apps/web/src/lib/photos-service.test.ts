@@ -1,13 +1,8 @@
-import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   getNeighborsForWhere,
   getPhotoNeighbors,
   listPhotos,
-  purgeAllPhotos,
   setPhotoColorLabel,
 } from "./photos-service.js";
 
@@ -64,64 +59,6 @@ describe("listPhotos", () => {
     const db = fakeDb([row("a")]);
     await listPhotos({ limit: 2, offset: 0, sort: "imported-desc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
-  });
-});
-
-describe("purgeAllPhotos", () => {
-  it("deletes originals + cached files and wipes the table", async () => {
-    const photosDir = await mkdtemp(path.join(tmpdir(), "lumio-photos-"));
-    const cacheDir = await mkdtemp(path.join(tmpdir(), "lumio-cache-"));
-    await mkdir(path.join(cacheDir, "thumbnails"), { recursive: true });
-    await mkdir(path.join(cacheDir, "displays"), { recursive: true });
-
-    const photos = [
-      { id: "a", path: "a.jpg" },
-      { id: "b", path: "b.jpg" },
-    ];
-    const original = (p: (typeof photos)[number]) => path.join(photosDir, p.path);
-    const thumb = (p: (typeof photos)[number]) => path.join(cacheDir, "thumbnails", `${p.id}.webp`);
-    const display = (p: (typeof photos)[number]) => path.join(cacheDir, "displays", `${p.id}.webp`);
-
-    for (const p of photos) {
-      await writeFile(original(p), "orig");
-      await writeFile(thumb(p), "thumb");
-      await writeFile(display(p), "display");
-    }
-
-    let deleteManyCalled = false;
-    const db = {
-      photo: {
-        findMany: async () => photos,
-        deleteMany: async () => {
-          deleteManyCalled = true;
-          return { count: photos.length };
-        },
-      },
-    };
-
-    const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
-
-    expect(result).toEqual({ deleted: 2 });
-    expect(deleteManyCalled).toBe(true);
-    for (const p of photos) {
-      expect(existsSync(original(p))).toBe(false);
-      expect(existsSync(thumb(p))).toBe(false);
-      expect(existsSync(display(p))).toBe(false);
-    }
-  });
-
-  it("ignores already-missing files", async () => {
-    const photosDir = await mkdtemp(path.join(tmpdir(), "lumio-photos-"));
-    const cacheDir = await mkdtemp(path.join(tmpdir(), "lumio-cache-"));
-    const db = {
-      photo: {
-        findMany: async () => [{ id: "gone", path: "gone.jpg" }],
-        deleteMany: async () => ({ count: 1 }),
-      },
-    };
-
-    const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
-    expect(result).toEqual({ deleted: 1 });
   });
 });
 

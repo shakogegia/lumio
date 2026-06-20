@@ -1,5 +1,3 @@
-import { rm } from "node:fs/promises";
-import path from "node:path";
 import { type Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
 import type {
   ColorLabel,
@@ -10,7 +8,6 @@ import type {
   PhotoStripItem,
 } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
-import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "photo">;
@@ -126,38 +123,4 @@ export async function getNeighborsForWhere(
     nextId: after[0]?.id ?? null,
     strip: [...before, current, ...after],
   };
-}
-
-export interface PurgeDeps {
-  db: Db;
-  photosDir: string;
-  cacheDir: string;
-}
-
-export interface PurgeResult {
-  deleted: number;
-}
-
-/**
- * Danger zone: delete every photo from the database and the filesystem,
- * including the original files and their cached thumbnails/displays.
- *
- * Files are removed best-effort (missing files are ignored) before the rows
- * are deleted, so a rescan won't re-import originals that survived a wipe.
- */
-export async function purgeAllPhotos(
-  deps: PurgeDeps = { db: prisma, photosDir: PHOTOS_DIR, cacheDir: CACHE_DIR },
-): Promise<PurgeResult> {
-  const photos = await deps.db.photo.findMany({ select: { id: true, path: true } });
-
-  await Promise.all(
-    photos.flatMap((p) => [
-      rm(path.join(deps.photosDir, p.path), { force: true }),
-      rm(path.join(deps.cacheDir, "thumbnails", `${p.id}.webp`), { force: true }),
-      rm(path.join(deps.cacheDir, "displays", `${p.id}.webp`), { force: true }),
-    ]),
-  );
-
-  const { count } = await deps.db.photo.deleteMany({});
-  return { deleted: count };
 }
