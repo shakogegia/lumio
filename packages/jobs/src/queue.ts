@@ -14,6 +14,7 @@ export function findActiveJob(db: JobDb, type: JobType): Promise<Job | null> {
 
 /** Enqueue a job, de-duping against an already-active job of the same type. */
 export async function enqueueJob(db: JobDb, type: JobType): Promise<Job> {
+  // Single-host: the read-then-create window is negligible. With multiple web replicas, swap for an INSERT ... WHERE NOT EXISTS or a unique partial index.
   const active = await findActiveJob(db, type);
   if (active) return active;
   return db.job.create({ data: { type } });
@@ -60,6 +61,7 @@ export async function markJobFailed(db: JobDb, id: string, error: string): Promi
  * claimed row, or null if the queue is empty.
  */
 export async function claimNextJob(db: JobDb): Promise<Job | null> {
+  // RETURNING * yields the quoted camelCase columns ("startedAt" etc.), so the Job type holds.
   const rows = await db.$queryRaw<Job[]>`
     UPDATE "Job" SET status = 'running', "startedAt" = now()
     WHERE id = (

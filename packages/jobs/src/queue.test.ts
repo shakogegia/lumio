@@ -80,7 +80,7 @@ describe("markJobSucceeded / markJobFailed", () => {
     await markJobSucceeded(db as never, "j1");
     expect(db.job.update).toHaveBeenCalledWith({
       where: { id: "j1" },
-      data: expect.objectContaining({ status: "succeeded" }),
+      data: expect.objectContaining({ status: "succeeded", finishedAt: expect.any(Date) }),
     });
   });
 
@@ -89,7 +89,7 @@ describe("markJobSucceeded / markJobFailed", () => {
     await markJobFailed(db as never, "j1", "boom");
     expect(db.job.update).toHaveBeenCalledWith({
       where: { id: "j1" },
-      data: expect.objectContaining({ status: "failed", error: "boom" }),
+      data: expect.objectContaining({ status: "failed", error: "boom", finishedAt: expect.any(Date) }),
     });
   });
 });
