@@ -1,27 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
-/** Owns select-mode toggle + the selected photo-id set. Page-agnostic. */
+/** Owns the selected photo-id set. Selection is always available (no mode). */
 export function useGridSelection() {
-  const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
-  const enter = useCallback(() => setSelectMode(true), []);
   const clear = useCallback(() => setSelected(new Set()), []);
-  const cancel = useCallback(() => {
-    setSelectMode(false);
-    setSelected(new Set());
-  }, []);
 
-  // Escape while selecting: clear the selection first; press it again (nothing
-  // selected) to leave select mode. Trash runs in permanent select mode
-  // (selectMode stays false), so there Escape only ever clears.
+  // Escape clears the selection. Let text fields and open overlays (dialogs, the
+  // color-label menu, the photo viewer) keep Escape for themselves.
   const hasSelection = selected.size > 0;
   useEffect(() => {
-    if (!selectMode && !hasSelection) return; // nothing for Escape to do
+    if (!hasSelection) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      // Let text fields and open overlays (dialogs, the color-label menu in the
-      // toolbar, the photo viewer) keep Escape for themselves.
       const target = e.target as HTMLElement | null;
       if (target?.isContentEditable || target?.closest("input, textarea, select")) {
         return;
@@ -34,19 +25,15 @@ export function useGridSelection() {
         return;
       }
       e.preventDefault();
-      if (hasSelection) clear();
-      else cancel();
+      clear();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [selectMode, hasSelection, clear, cancel]);
+  }, [hasSelection, clear]);
 
   return {
-    selectMode,
     selected,
     setSelected,
-    enter,
-    cancel,
     clear,
     count: selected.size,
   };
