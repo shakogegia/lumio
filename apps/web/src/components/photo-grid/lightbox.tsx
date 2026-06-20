@@ -1,18 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PhotoDTO } from "@lumio/shared";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
-import { thumbhashDataUrl } from "@/lib/thumbhash-url";
-import { useImageLoaded } from "@/lib/use-image-loaded";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
-import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
+import { ZoomableImage } from "./zoomable-image";
 
 export function Lightbox() {
   const { openIndex, photoAt, total, step, close, open } = usePhotoCollection();
@@ -132,7 +127,7 @@ export function Lightbox() {
     >
       <div className="flex flex-col lg:h-dvh lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col">
-          <LightboxImage photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
+          <ZoomableImage key={photo.id} photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
           {strip.length > 0 && (
             <FilmStrip
               items={strip}
@@ -144,90 +139,6 @@ export function Lightbox() {
         </div>
         <LightboxSidebar photo={photo} onTrashed={onTrashed} />
       </div>
-    </div>
-  );
-}
-
-function LightboxImage({
-  photo,
-  hasPrev,
-  hasNext,
-  step,
-}: {
-  photo: PhotoDTO;
-  hasPrev: boolean;
-  hasNext: boolean;
-  step: (delta: 1 | -1) => void;
-}) {
-  const src = `/api/photos/${photo.id}/display`;
-  const { loaded, ref, onLoad } = useImageLoaded(src);
-  const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
-  const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
-
-  // Compose the two callback-refs onto the <img>: setImgEl (blur-box measurement)
-  // and ref (useImageLoaded). Both are callback-refs, so we can call them directly
-  // in a useCallback without any .current mutation (avoids react-hooks/immutability).
-  const setImg = useCallback(
-    (node: HTMLImageElement | null) => {
-      setImgEl(node);
-      ref(node);
-    },
-    [setImgEl, ref],
-  );
-
-  return (
-    <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-      {/* eslint-disable @next/next/no-img-element */}
-      {blurUrl && blurBox && (
-        <img
-          src={blurUrl}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
-          style={{
-            left: blurBox.left,
-            top: blurBox.top,
-            width: blurBox.width,
-            height: blurBox.height,
-            opacity: loaded ? 0 : 1,
-          }}
-        />
-      )}
-      <img
-        ref={setImg}
-        src={src}
-        alt={photo.path}
-        width={photo.width}
-        height={photo.height}
-        onLoad={onLoad}
-        className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-      />
-      {/* eslint-enable @next/next/no-img-element */}
-      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
-      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
-    </div>
-  );
-}
-
-function NavArrow({
-  side,
-  label,
-  onClick,
-}: {
-  side: "left" | "right";
-  label: string;
-  onClick: () => void;
-}) {
-  const Icon = side === "left" ? ChevronLeft : ChevronRight;
-  // The absolute centering (-translate-y-1/2) lives on this wrapper, not the
-  // Button: the shadcn Button toggles `translate-y-px` on :active, which writes
-  // the same transform and would otherwise wipe out the vertical centering on
-  // click. Keeping them on separate elements lets the press-nudge coexist.
-  return (
-    <div className={cn("absolute top-1/2 -translate-y-1/2", side === "left" ? "left-2" : "right-2")}>
-      <Button variant="outline" size="icon" className="backdrop-blur" aria-label={label} onClick={onClick}>
-        <Icon className="size-5" />
-      </Button>
     </div>
   );
 }
