@@ -14,10 +14,6 @@ import { useZoomPan } from "./use-zoom-pan";
 import { useEditSession } from "./use-edit-session";
 import { ZoomControls } from "./zoom-controls";
 
-function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
-  return a.rotate === b.rotate && a.flipH === b.flipH && a.flipV === b.flipV;
-}
-
 export function ZoomableImage({
   photo,
   hasPrev,
@@ -31,9 +27,6 @@ export function ZoomableImage({
 }) {
   const { working } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
-  // True while previewing an unsaved edit — disables zoom and shows the live
-  // rotate/flip transform instead.
-  const editing = !sameEdits(working, savedRecipe);
 
   const displaySrc = displayUrl(photo);
   const originalSrc = `/api/photos/${photo.id}/original`;
@@ -64,6 +57,15 @@ export function ZoomableImage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displaySrc, shown.src]);
 
+  // Live edit preview = delta from the DISPLAYED rendition's recipe to `working`.
+  // Edits snap into place — no transition (no animation in the editor).
+  const t = previewTransform(shown.recipe, working);
+  const rotated = t.deg === 90 || t.deg === 270;
+  // Feed the zoom/pan engine the *previewed* orientation, so a rotated-but-unsaved
+  // image still pans and fits correctly (a 90/270 delta swaps width and height).
+  const viewW = rotated ? photo.height : photo.width;
+  const viewH = rotated ? photo.width : photo.height;
+
   const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
   const {
     viewportRef,
@@ -75,21 +77,14 @@ export function ZoomableImage({
     setZoom,
     stepIn,
     stepOut,
-    reset,
     handlers,
-  } = useZoomPan(photo.width, photo.height, editing);
+  } = useZoomPan(viewW, viewH);
 
-  // Reset zoom to fit when an edit preview starts (can't pan a rotating image).
-  useEffect(() => {
-    const r = () => reset();
-    if (editing && isZoomed) r();
-  }, [editing, isZoomed, reset]);
-
-  // First zoom past fit (and not editing): preload + decode the full original,
-  // then swap it in. Cache hit means the swap is seamless; geometry is unchanged.
+  // First zoom past fit: preload + decode the full original, then swap it in.
+  // Cache hit means the swap is seamless; geometry is unchanged (same fit size).
   const [hiRes, setHiRes] = useState(false);
   useEffect(() => {
-    if (!isZoomed || hiRes || editing) return;
+    if (!isZoomed || hiRes) return;
     let cancelled = false;
     const img = new Image();
     img.src = originalSrc;
@@ -104,8 +99,8 @@ export function ZoomableImage({
     return () => {
       cancelled = true;
     };
-  }, [isZoomed, hiRes, editing, originalSrc]);
-  const src = isZoomed && hiRes && !editing ? originalSrc : shown.src;
+  }, [isZoomed, hiRes, originalSrc]);
+  const src = isZoomed && hiRes ? originalSrc : shown.src;
 
   // Track the base display load for the blur-up. `everLoaded` latches true so the
   // display->original and Apply src swaps can't flash the blur back in.
@@ -141,10 +136,8 @@ export function ZoomableImage({
 
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
-  // Live edit preview = delta from the DISPLAYED rendition's recipe to `working`.
-  // Edits snap into place — no transition (no animation in the editor).
-  const t = previewTransform(shown.recipe, working);
-  const rotated = t.deg === 90 || t.deg === 270;
+  // A 90/270 rotation must be scaled so it fills the same space the re-baked
+  // rendition will: ratio of "contain of the swapped image" to "contain now".
   let fit = 1;
   if (rotated && nat && box) {
     const cw = Math.max(1, box.w);
@@ -173,7 +166,7 @@ export function ZoomableImage({
       <div
         ref={containerRef}
         className="absolute inset-0 flex items-center justify-center"
-        style={{ transform, transformOrigin: "center", cursor: editing ? "default" : cursor }}
+        style={{ transform, transformOrigin: "center", cursor }}
         onPointerDown={handlers.onPointerDown}
         onPointerMove={handlers.onPointerMove}
         onPointerUp={handlers.onPointerUp}
@@ -209,17 +202,15 @@ export function ZoomableImage({
         />
         {/* eslint-enable @next/next/no-img-element */}
       </div>
-      {!editing && (
-        <ZoomControls
-          zoom={zoom}
-          min={fitZoom}
-          onZoom={setZoom}
-          onStepIn={stepIn}
-          onStepOut={stepOut}
-          canStepIn={zoom < MAX_ZOOM - 0.5}
-          canStepOut={isZoomed}
-        />
-      )}
+      <ZoomControls
+        zoom={zoom}
+        min={fitZoom}
+        onZoom={setZoom}
+        onStepIn={stepIn}
+        onStepOut={stepOut}
+        canStepIn={zoom < MAX_ZOOM - 0.5}
+        canStepOut={isZoomed}
+      />
       {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
       {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
     </div>
