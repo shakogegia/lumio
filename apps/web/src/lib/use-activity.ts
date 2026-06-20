@@ -25,7 +25,10 @@ export function useActivity(): ActivitySnapshot {
     const tick = async () => {
       try {
         const res = await fetch("/api/activity", { cache: "no-store" });
-        if (res.ok && !cancelled) setSnapshot(await res.json());
+        if (!cancelled) {
+          if (res.ok) setSnapshot(await res.json());
+          else console.warn(`/api/activity returned ${res.status}`);
+        }
       } catch {
         // transient — keep the last snapshot, try again next tick
       }
@@ -34,7 +37,7 @@ export function useActivity(): ActivitySnapshot {
 
     const schedule = () => {
       if (cancelled) return;
-      const hidden = typeof document !== "undefined" && document.hidden;
+      const hidden = document.hidden;
       const hasActive = latest.current.jobs.length > 0;
       const ms = pollInterval(hasActive, hidden);
       if (ms === null) return; // paused; visibilitychange will restart it
