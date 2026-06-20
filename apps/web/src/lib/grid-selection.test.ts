@@ -28,4 +28,13 @@ describe("computeSelection", () => {
     const next = computeSelection(new Set(), IDS, 2, true, null);
     expect([...next]).toEqual(["c"]);
   });
+
+  it("nets to a no-op when the same tile is toggled twice (double-click invariant)", () => {
+    // A double-click fires two plain clicks before the detail opens; toggling the
+    // same tile twice must leave the selection exactly as it started.
+    const start = new Set(["a", "c"]);
+    const once = computeSelection(start, IDS, 2, false, null); // "c" off
+    const twice = computeSelection(once, IDS, 2, false, null); // "c" back on
+    expect([...twice].sort()).toEqual(["a", "c"]);
+  });
 });

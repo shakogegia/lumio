@@ -165,7 +165,6 @@ export function TrashView() {
       <PhotoCollectionProvider key={reloadKey} endpoint="/api/trash" enableLightbox={false}>
         <PhotoGrid
           apiRef={gridRef}
-          selectMode
           selectedIds={sel.selected}
           onSelectionChange={sel.setSelected}
           empty={TRASH_EMPTY}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { FolderOpen, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,10 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
 
   const { regular, smart } = partitionAlbums(albums);
 
+  function open(id: string) {
+    router.push(`/albums/${id}`);
+  }
+
   function toggle(id: string) {
     sel.setSelected((prev) => {
       const next = new Set(prev);
@@ -61,7 +65,7 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
         body: JSON.stringify({ ids }),
       });
       if (!res.ok) throw new Error("delete failed");
-      sel.cancel();
+      sel.clear();
       router.refresh();
     } catch {
       toast.error("Failed to delete albums.");
@@ -91,11 +95,11 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
   return (
     <>
       {confirmDialog}
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title="Select albums"
           count={sel.count}
-          onCancel={sel.cancel}
+          onCancel={sel.clear}
           actions={
             <Button
               variant="destructive"
@@ -115,15 +119,6 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           actions={
             <>
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={sel.enter}
-                aria-label="Select"
-                title="Select"
-              >
-                <SquareCheckBig aria-hidden />
-              </Button>
               <NewAlbumDialog />
             </>
           }
@@ -135,18 +130,18 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           <AlbumSection
             title="Albums"
             albums={regular}
-            selectMode={sel.selectMode}
             selected={sel.selected}
             onToggle={toggle}
+            onOpen={open}
           />
         )}
         {smart.length > 0 && (
           <AlbumSection
             title="Smart Albums"
             albums={smart}
-            selectMode={sel.selectMode}
             selected={sel.selected}
             onToggle={toggle}
+            onOpen={open}
           />
         )}
       </div>
@@ -157,15 +152,15 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
 function AlbumSection({
   title,
   albums,
-  selectMode,
   selected,
   onToggle,
+  onOpen,
 }: {
   title: string;
   albums: AlbumSummaryDTO[];
-  selectMode: boolean;
   selected: Set<string>;
   onToggle: (id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   return (
     <section>
@@ -183,9 +178,9 @@ function AlbumSection({
           <AlbumCard
             key={album.id}
             album={album}
-            selectMode={selectMode}
             isSelected={selected.has(album.id)}
             onToggle={onToggle}
+            onOpen={onOpen}
           />
         ))}
       </div>

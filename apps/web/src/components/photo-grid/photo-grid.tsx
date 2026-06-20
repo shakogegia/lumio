@@ -47,7 +47,6 @@ export function PhotoGrid({
   empty = PHOTOS_EMPTY,
   mode = "fill",
   columns: columnsProp = DEFAULT_COLUMNS,
-  selectMode = false,
   selectedIds,
   onSelectionChange,
   apiRef,
@@ -55,7 +54,6 @@ export function PhotoGrid({
   empty?: React.ReactNode;
   mode?: GridViewMode;
   columns?: number;
-  selectMode?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
   apiRef?: React.Ref<PhotoGridHandle>;
@@ -101,9 +99,13 @@ export function PhotoGrid({
     [onSelectionChange, selectedIds],
   );
 
+  // Reset the shift-range anchor whenever the selection empties (Escape, the
+  // toolbar's clear, or a bulk action) so the next shift-click ranges from a
+  // fresh plain click instead of a stale index.
+  const selectedCount = selectedIds?.size ?? 0;
   useEffect(() => {
-    if (!selectMode) anchorRef.current = null;
-  }, [selectMode]);
+    if (selectedCount === 0) anchorRef.current = null;
+  }, [selectedCount]);
 
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);
@@ -202,7 +204,7 @@ export function PhotoGrid({
                 // the SAME grid as the tiles, so it lands pixel-for-pixel where the
                 // photo will (a tiled background drifts from the CSS-grid tracks at
                 // fractional widths — and only at some column counts).
-                if (!photo) return <div key={i} aria-hidden className="rounded-sm bg-muted" />;
+                if (!photo) return <div key={i} aria-hidden className="bg-muted" />;
                 return (
                   <PhotoGridTile
                     key={photo.id}
@@ -211,7 +213,6 @@ export function PhotoGrid({
                     index={idx}
                     onOpen={enableLightbox ? open : undefined}
                     urlForId={urlForId}
-                    selectMode={selectMode}
                     isSelected={selectedIds?.has(photo.id) ?? false}
                     onTileClick={handleTileClick}
                     selectedIds={selectedIds}

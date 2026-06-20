@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, FolderPlus, Loader2, Trash2 } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
@@ -15,7 +15,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
-import { selectableIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
+import { summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { computeSelection } from "@/lib/grid-selection";
 import { SelectionToolbar } from "../photos/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
@@ -121,11 +121,12 @@ export function UploadClient() {
 
   // Last plain-clicked row index; the anchor for shift-click range selection.
   const anchorRef = useRef<number | null>(null);
+
+  // Reset the anchor when the selection empties so a later shift-click ranges
+  // from a fresh plain click instead of a stale index (mirrors the photo grid).
   useEffect(() => {
-    // Drop the anchor when leaving select mode so a later shift-click doesn't
-    // extend from a stale index (mirrors the photo grid).
-    if (!sel.selectMode) anchorRef.current = null;
-  }, [sel.selectMode]);
+    if (sel.count === 0) anchorRef.current = null;
+  }, [sel.count]);
 
   // Stable per-tile callbacks (identity preserved across renders) so React.memo
   // on UploadTile actually skips unchanged tiles when one selection toggles.
@@ -210,7 +211,7 @@ export function UploadClient() {
       });
       if (!res.ok) throw new Error("trash failed");
       setRows((prev) => prev.filter((r) => !(r.photoId && selectedIds.has(r.photoId))));
-      sel.cancel();
+      sel.clear();
       router.refresh();
     } catch {
       toast.error("Failed to move photos to Trash.");
@@ -220,18 +221,17 @@ export function UploadClient() {
   }, [sel, deleting, confirm, router]);
 
   const summary = summarizeRows(rows);
-  const ids = selectableIds(rows);
   const hasRows = rows.length > 0;
 
   return (
     <>
       {confirmDialog}
 
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
           count={sel.count}
-          onCancel={sel.cancel}
+          onCancel={sel.clear}
           actions={
             <>
               <ColorLabelMenu
@@ -275,21 +275,7 @@ export function UploadClient() {
         <HeaderBar
           title="Upload"
           actions={
-            hasRows ? (
-              <>
-                <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={ids.length === 0}
-                  onClick={sel.enter}
-                  aria-label="Select"
-                  title="Select"
-                >
-                  <SquareCheckBig aria-hidden />
-                </Button>
-              </>
-            ) : null
+            hasRows ? <GridSizeMenu columns={columns} onColumnsChange={setColumns} /> : null
           }
         />
       )}
@@ -324,7 +310,6 @@ export function UploadClient() {
                 status={row.status}
                 message={row.message}
                 colorLabel={row.colorLabel}
-                selectMode={sel.selectMode}
                 selected={Boolean(row.photoId && sel.selected.has(row.photoId))}
                 onTileClick={handleTileClick}
                 onRetry={retryRow}

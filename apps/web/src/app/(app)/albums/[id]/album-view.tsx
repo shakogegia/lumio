@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, Images, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, FolderMinus, Images, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -59,7 +59,7 @@ export function AlbumView({
 
   function handleCancel() {
     setRemoveError(null);
-    sel.cancel();
+    sel.clear();
   }
 
   async function handleRemove() {
@@ -82,7 +82,7 @@ export function AlbumView({
         body: JSON.stringify({ photoIds: ids }),
       });
       if (res.ok) {
-        sel.cancel();
+        sel.clear();
         setReloadKey((k) => k + 1);
         router.refresh();
       } else {
@@ -99,7 +99,7 @@ export function AlbumView({
     <>
       {confirmDialog}
       {actions.element}
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title={albumName}
           count={sel.count}
@@ -109,7 +109,7 @@ export function AlbumView({
               <AddToAlbumMenu
                 disabled={sel.count === 0}
                 excludeAlbumId={actions.excludeAlbumId}
-                onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
+                onPick={(targetId) => void actions.addToAlbumDirect([...sel.selected], targetId)}
                 onCreateNew={() => actions.addToAlbum([...sel.selected])}
               />
               {!isSmart && (
@@ -138,7 +138,7 @@ export function AlbumView({
                 variant="destructive"
                 size="icon-sm"
                 disabled={sel.count === 0 || actions.pending.trash}
-                onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.cancel })}
+                onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.clear })}
                 aria-label="Delete"
                 title="Delete"
               >
@@ -155,15 +155,6 @@ export function AlbumView({
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={sel.enter}
-                aria-label="Select"
-                title="Select"
-              >
-                <SquareCheckBig aria-hidden />
-              </Button>
               <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
                 <a href={`/api/albums/${albumId}/download`}>
                   <Download aria-hidden />
@@ -190,7 +181,6 @@ export function AlbumView({
             apiRef={gridRef}
             mode={mode}
             columns={columns}
-            selectMode={sel.selectMode}
             selectedIds={sel.selected}
             onSelectionChange={sel.setSelected}
             empty={

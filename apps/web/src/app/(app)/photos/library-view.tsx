@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Download, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -32,11 +32,11 @@ export function LibraryView() {
   return (
     <>
       {actions.element}
-      {sel.selectMode ? (
+      {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
           count={sel.count}
-          onCancel={sel.cancel}
+          onCancel={sel.clear}
           actions={
             <>
               <ColorLabelMenu
@@ -63,7 +63,7 @@ export function LibraryView() {
                 variant="destructive"
                 size="icon-sm"
                 disabled={sel.count === 0 || actions.pending.trash}
-                onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.cancel })}
+                onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.clear })}
                 aria-label="Delete"
                 title="Delete"
               >
@@ -80,15 +80,6 @@ export function LibraryView() {
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                onClick={sel.enter}
-                aria-label="Select"
-                title="Select"
-              >
-                <SquareCheckBig aria-hidden />
-              </Button>
             </>
           }
         />
@@ -106,7 +97,6 @@ export function LibraryView() {
             apiRef={gridRef}
             mode={mode}
             columns={columns}
-            selectMode={sel.selectMode}
             selectedIds={sel.selected}
             onSelectionChange={sel.setSelected}
           />
