@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { PhotoDTO } from "@lumio/shared";
+import { previewTransform, type PhotoDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
@@ -12,12 +12,14 @@ import { displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
+import { EditSessionProvider, useEditSession } from "./use-edit-session";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
 
+type StripItem = { id: string; index: number; v: number };
+
 export function Lightbox() {
-  const { openIndex, photoAt, total, step, close, open } = usePhotoCollection();
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const { openIndex, photoAt, total } = usePhotoCollection();
 
   // Remember the last resolved photo so a transient store gap (e.g. the page
   // evicted right after a move-to-trash, or stepping to a not-yet-loaded
@@ -34,26 +36,62 @@ export function Lightbox() {
   }, [resolved]);
   const photo = resolved ?? (openIndex === null ? undefined : lastPhoto);
 
-  useBodyScrollLock(openIndex !== null, overlayRef);
+  const STRIP_RADIUS = 25;
+  const strip = useMemo<StripItem[]>(() => {
+    if (openIndex === null) return [];
+    const lo = Math.max(0, openIndex - STRIP_RADIUS);
+    // `total` is null until the store's first page loads (deep-link / refresh).
+    // Don't gate the strip on it — include whatever's already loaded (at least the
+    // SSR'd photo at openIndex) so the strip renders at its final height from the
+    // first paint instead of popping in a moment later and shifting the image up.
+    const hi =
+      total === null ? openIndex + STRIP_RADIUS : Math.min(total - 1, openIndex + STRIP_RADIUS);
+    const out: StripItem[] = [];
+    for (let i = lo; i <= hi; i++) {
+      const p = photoAt(i);
+      if (p) out.push({ id: p.id, index: i, v: renditionVersion(p.updatedAt) });
+    }
+    return out;
+  }, [openIndex, total, photoAt]);
 
-  // Latest values for the persistent keyboard stepper, refreshed after each commit
-  // (writing refs during render is disallowed by react-hooks/refs).
+  if (openIndex === null || !photo) return null;
+
+  return (
+    <EditSessionProvider photo={photo}>
+      <LightboxOverlay photo={photo} strip={strip} />
+    </EditSessionProvider>
+  );
+}
+
+function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
+  const { openIndex, total, step, close, open } = usePhotoCollection();
+  const { guard, dirty } = useEditSession();
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useBodyScrollLock(true, overlayRef);
+
+  // Latest values for the persistent keyboard stepper + guarded nav, refreshed
+  // after each commit (writing refs during render is disallowed by the lint).
   const stepRef = useRef(step);
-  const openRef = useRef(openIndex);
+  const closeRef = useRef(close);
+  const openIdxRef = useRef(openIndex);
   const totalRef = useRef(total);
+  const guardRef = useRef(guard);
+  const dirtyRef = useRef(dirty);
   useEffect(() => {
     stepRef.current = step;
-    openRef.current = openIndex;
+    closeRef.current = close;
+    openIdxRef.current = openIndex;
     totalRef.current = total;
+    guardRef.current = guard;
+    dirtyRef.current = dirty;
   });
 
-  const isOpen = openIndex !== null;
   useEffect(() => {
-    if (!isOpen) return;
     const stepper = createHoldStepper({
       getTarget: () => ({
         canStep: (dir) => {
-          const i = openRef.current;
+          const i = openIdxRef.current;
           if (i === null) return false;
           return dir === "next"
             ? totalRef.current !== null && i < totalRef.current - 1
@@ -68,16 +106,26 @@ export function Lightbox() {
     });
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        close();
+        guardRef.current(() => closeRef.current());
         return;
       }
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat) return;
-      if (e.key === "ArrowLeft") stepper.press("prev");
-      else if (e.key === "ArrowRight") stepper.press("next");
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const delta: 1 | -1 = e.key === "ArrowRight" ? 1 : -1;
+      // With unsaved edits, a single press prompts to discard (no hold-repeat, so
+      // the confirm dialog doesn't fire on every interval tick).
+      if (dirtyRef.current) {
+        if (e.repeat) return;
+        guardRef.current(() => stepRef.current(delta));
+        return;
+      }
+      if (e.repeat) return;
+      stepper.press(delta === 1 ? "next" : "prev");
     };
     const onKeyUp = (e: KeyboardEvent) => {
+      if (dirtyRef.current) return;
       if (e.key === "ArrowLeft") stepper.release("prev");
       else if (e.key === "ArrowRight") stepper.release("next");
     };
@@ -91,51 +139,40 @@ export function Lightbox() {
       document.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
-  }, [isOpen, close]);
+  }, []);
 
-  const onTrashed = () => {
+  const onTrashed = useCallback(() => {
     // Were we on the last photo? close. Otherwise the store shifts the next photo
     // into this index and the provider's URL-sync effect updates the address bar.
     if (openIndex === null || total === null || openIndex >= total - 1) close();
-  };
+  }, [openIndex, total, close]);
 
-  const STRIP_RADIUS = 25;
-  const strip = useMemo(() => {
-    if (openIndex === null) return [];
-    const lo = Math.max(0, openIndex - STRIP_RADIUS);
-    // `total` is null until the store's first page loads (deep-link / refresh).
-    // Don't gate the strip on it — include whatever's already loaded (at least the
-    // SSR'd photo at openIndex) so the strip renders at its final height from the
-    // first paint instead of popping in a moment later and shifting the image up.
-    const hi =
-      total === null ? openIndex + STRIP_RADIUS : Math.min(total - 1, openIndex + STRIP_RADIUS);
-    const out: { id: string; index: number; v: number }[] = [];
-    for (let i = lo; i <= hi; i++) {
-      const p = photoAt(i);
-      if (p) out.push({ id: p.id, index: i, v: renditionVersion(p.updatedAt) });
-    }
-    return out;
-  }, [openIndex, total, photoAt]);
-
-  if (openIndex === null || !photo) return null;
-
-  const hasPrev = openIndex > 0;
-  const hasNext = total !== null && openIndex < total - 1;
+  const hasPrev = openIndex !== null && openIndex > 0;
+  const hasNext = openIndex !== null && total !== null && openIndex < total - 1;
 
   return (
     <div
       ref={overlayRef}
       className="fixed inset-y-0 left-[76px] right-0 z-40 overflow-y-auto bg-background lg:bg-background/85 lg:backdrop-blur-xl"
       onClick={(e) => {
-        // Click on the backdrop (not a child) closes.
-        if (e.target === e.currentTarget) close();
+        // Click on the backdrop (not a child) closes — guarded for unsaved edits.
+        if (e.target === e.currentTarget) guard(() => close());
       }}
     >
       <div className="flex flex-col lg:h-dvh lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col">
-          <LightboxImage photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
+          <LightboxImage
+            photo={photo}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onStep={(d) => guard(() => step(d))}
+          />
           {strip.length > 0 && (
-            <FilmStrip items={strip} currentId={photo.id} onPick={(i) => open(i)} />
+            <FilmStrip
+              items={strip}
+              currentId={photo.id}
+              onPick={(i) => guard(() => open(i))}
+            />
           )}
         </div>
         <LightboxSidebar photo={photo} onTrashed={onTrashed} />
@@ -148,13 +185,14 @@ function LightboxImage({
   photo,
   hasPrev,
   hasNext,
-  step,
+  onStep,
 }: {
   photo: PhotoDTO;
   hasPrev: boolean;
   hasNext: boolean;
-  step: (delta: 1 | -1) => void;
+  onStep: (delta: 1 | -1) => void;
 }) {
+  const { working, saved, dirty } = useEditSession();
   const src = displayUrl(photo);
   const { loaded, ref, onLoad } = useImageLoaded(src);
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
@@ -170,6 +208,17 @@ function LightboxImage({
     },
     [setImgEl, ref],
   );
+
+  // Live preview: the displayed rendition is already baked with `saved`, so apply
+  // only the delta to `working`. A 90/270 delta is scaled to fit within its box
+  // (transient — the re-baked rendition fills correctly after Apply).
+  const t = previewTransform(saved, working);
+  const identity = t.deg === 0 && !t.mirror;
+  const rotated = t.deg === 90 || t.deg === 270;
+  const fit = rotated ? Math.min(photo.width, photo.height) / Math.max(photo.width, photo.height) : 1;
+  const transform = identity
+    ? undefined
+    : `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
 
   return (
     <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">
@@ -197,10 +246,15 @@ function LightboxImage({
         height={photo.height}
         onLoad={onLoad}
         className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+        style={{
+          transform,
+          transformOrigin: "center",
+          transition: dirty ? "transform 150ms ease" : undefined,
+        }}
       />
       {/* eslint-enable @next/next/no-img-element */}
-      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
-      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
+      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => onStep(-1)} />}
+      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => onStep(1)} />}
     </div>
   );
 }

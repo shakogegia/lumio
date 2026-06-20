@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useConfirm } from "@/components/confirm-dialog";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
+import { LightboxEditPanel } from "./lightbox-edit-panel";
 
 export function LightboxSidebar({
   photo,
@@ -81,6 +82,7 @@ export function LightboxSidebar({
         <TabsList className="w-full">
           <TabsTrigger value="info">Info</TabsTrigger>
           <TabsTrigger value="exif">EXIF</TabsTrigger>
+          <TabsTrigger value="edit">Edit</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="space-y-4">
@@ -121,6 +123,10 @@ export function LightboxSidebar({
 
         <TabsContent value="exif">
           <ExifPanel entries={metadata} />
+        </TabsContent>
+
+        <TabsContent value="edit">
+          <LightboxEditPanel />
         </TabsContent>
       </Tabs>
     </aside>

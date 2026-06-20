@@ -48,3 +48,57 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
   if (typeof e.flipH !== "boolean" || typeof e.flipV !== "boolean") return null;
   return { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV };
 }
+
+/**
+ * The CSS transform to PREVIEW `working` when the on-screen image already shows
+ * `saved` (the lightbox renders the baked, already-edited rendition). We must
+ * apply only the DELTA `working ∘ saved⁻¹`, or an already-edited photo would be
+ * transformed twice. Returns the delta as a clockwise rotation (deg) plus an
+ * optional horizontal mirror — together these cover all 8 orientations.
+ *
+ * The dihedral group D4 is represented as `{ a, f }` = `Rot(a·90°) ∘ MirrorX^f`,
+ * which composes as `(a₁ + (f₁ ? −a₂ : a₂), f₁ ⊕ f₂)` and whose CSS form is
+ * `rotate(a·90deg)` followed by `scaleX(-1)` when `f` (scaleX applies first).
+ */
+interface D4 {
+  a: 0 | 1 | 2 | 3;
+  f: 0 | 1;
+}
+
+function recipeToD4(e: PhotoEdits): D4 {
+  // Canonical order: flipH (MirrorX) → flipV (= Rot180 ∘ MirrorX) → rotate.
+  const h: D4 = { a: 0, f: e.flipH ? 1 : 0 };
+  const v: D4 = e.flipV ? { a: 2, f: 1 } : { a: 0, f: 0 };
+  const r: D4 = { a: ((e.rotate / 90) % 4) as D4["a"], f: 0 };
+  return composeD4(r, composeD4(v, h));
+}
+
+/** P ∘ Q (apply Q, then P). */
+function composeD4(p: D4, q: D4): D4 {
+  return {
+    a: ((((p.a + (p.f ? -q.a : q.a)) % 4) + 4) % 4) as D4["a"],
+    f: ((p.f + q.f) % 2) as D4["f"],
+  };
+}
+
+function inverseD4(p: D4): D4 {
+  // f=1 elements are involutions; f=0 are pure rotations.
+  return p.f ? p : { a: (((4 - p.a) % 4) as D4["a"]), f: 0 };
+}
+
+export interface PreviewTransform {
+  /** Clockwise rotation in degrees: 0 | 90 | 180 | 270. */
+  deg: number;
+  /** Whether to also mirror horizontally (scaleX(-1)). */
+  mirror: boolean;
+}
+
+export function previewTransform(
+  saved: PhotoEdits | null,
+  working: PhotoEdits | null,
+): PreviewTransform {
+  const s = recipeToD4(saved ?? NO_EDITS);
+  const w = recipeToD4(working ?? NO_EDITS);
+  const d = composeD4(w, inverseD4(s)); // delta = working ∘ saved⁻¹
+  return { deg: d.a * 90, mirror: d.f === 1 };
+}
