@@ -37,6 +37,10 @@ export const photosQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
   month: monthParamSchema.optional(),
+  favorite: z
+    .enum(["true", "false"])
+    .transform((v) => v === "true")
+    .optional(),
 });
 
 export type PhotosQuery = z.infer<typeof photosQuerySchema>;
@@ -84,3 +88,11 @@ export const setColorLabelSchema = z.object({
 });
 
 export type SetColorLabelBody = z.infer<typeof setColorLabelSchema>;
+
+/** Body for POST /api/photos/favorite. */
+export const setFavoriteSchema = z.object({
+  photoIds: z.array(z.string().min(1)).min(1),
+  isFavorite: z.boolean(),
+});
+
+export type SetFavoriteBody = z.infer<typeof setFavoriteSchema>;

@@ -22,6 +22,7 @@ export interface PhotoDTO {
   thumbhash: string | null;
   exif: ExifData;
   colorLabel: ColorLabel | null;
+  isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
   albumIds?: string[];
