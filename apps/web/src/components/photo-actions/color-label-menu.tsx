@@ -26,9 +26,14 @@ export function ColorLabelMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" disabled={disabled}>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          disabled={disabled}
+          aria-label="Color label"
+          title="Color label"
+        >
           <Palette aria-hidden />
-          Color
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">

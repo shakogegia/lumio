@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ArchiveRestore, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -101,18 +101,23 @@ export function TrashView() {
             {count > 0 && (
               <>
                 <Button
-                  size="sm"
+                  variant="outline"
+                  size="icon-sm"
                   disabled={pending || emptying}
+                  aria-label="Restore"
+                  title="Restore"
                   onClick={() =>
                     void act("/api/trash/restore", { ids }, null, "Failed to restore photos.", false)
                   }
                 >
-                  Restore
+                  <ArchiveRestore aria-hidden />
                 </Button>
                 <Button
                   variant="destructive"
-                  size="sm"
+                  size="icon-sm"
                   disabled={pending || emptying}
+                  aria-label="Delete permanently"
+                  title="Delete permanently"
                   onClick={() =>
                     void act(
                       "/api/trash/purge",
@@ -128,7 +133,7 @@ export function TrashView() {
                     )
                   }
                 >
-                  Delete permanently
+                  <Trash2 aria-hidden />
                 </Button>
               </>
             )}
