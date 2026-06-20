@@ -1,9 +1,11 @@
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import chokidar from "chokidar";
 import { prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS, ingestPath, removePath } from "@lumio/ingest";
 import { PHOTOS_DIR } from "./config.js";
 import { ingestDeps, removeDeps } from "./deps.js";
+import { timedLine } from "./format.js";
 import { scanAndIngest } from "./scan.js";
 
 const isSupported = (p: string): boolean =>
@@ -22,8 +24,9 @@ export async function watchAndIngest(): Promise<void> {
     if (!isSupported(abs)) return;
     const rel = path.relative(PHOTOS_DIR, abs);
     try {
+      const start = performance.now();
       await ingestPath(rel, ingestDeps);
-      console.log(`+ ${rel}`);
+      console.log(`+ ${timedLine(rel, performance.now() - start)}`);
     } catch (err) {
       console.warn(`skip ${rel}: ${(err as Error).message}`);
     }
