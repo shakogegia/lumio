@@ -3,7 +3,9 @@
 import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import { useAsyncJob } from "@/lib/use-async-job";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { HeaderBar } from "@/components/header-bar";
@@ -43,6 +45,12 @@ export function TrashView() {
   // pages); selective actions drop tiles in place via the grid handle instead.
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState(false);
+  // "Empty trash" is an async job (worker-driven); restore/purge stay synchronous.
+  const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", () => {
+    setReloadKey((k) => k + 1);
+    sel.clear();
+  });
+  const emptying = emptyTrash.phase === "pending" || emptyTrash.isActive;
 
   async function act(
     url: string,
@@ -87,7 +95,7 @@ export function TrashView() {
               <>
                 <Button
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || emptying}
                   onClick={() =>
                     void act("/api/trash/restore", { ids }, null, "Failed to restore photos.", false)
                   }
@@ -97,7 +105,7 @@ export function TrashView() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  disabled={pending}
+                  disabled={pending || emptying}
                   onClick={() =>
                     void act(
                       "/api/trash/purge",
@@ -120,23 +128,22 @@ export function TrashView() {
             <Button
               variant="outline"
               size="sm"
-              disabled={pending}
-              onClick={() =>
-                void act(
-                  "/api/trash/empty",
-                  null,
-                  {
+              disabled={pending || emptying}
+              onClick={async () => {
+                if (
+                  await confirm({
                     title: "Empty Trash?",
-                    description: "All photos in Trash will be permanently deleted. This can't be undone.",
+                    description:
+                      "All photos in Trash will be permanently deleted. This can't be undone.",
                     confirmLabel: "Empty trash",
                     destructive: true,
-                  },
-                  "Failed to empty Trash.",
-                  true,
-                )
-              }
+                  })
+                ) {
+                  void emptyTrash.run();
+                }
+              }}
             >
-              Empty trash
+              {emptying ? "Emptying…" : "Empty trash"}
             </Button>
           </>
         }
