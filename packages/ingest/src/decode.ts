@@ -82,10 +82,6 @@ interface Converter {
 
 /** Format -> ordered candidate converters (first whose binary is on PATH wins). */
 export const CONVERTERS: Record<string, Converter[]> = {
-  ".jxl": [
-    { bin: "djxl", args: (i, o) => [i, o] },
-    { bin: "sips", args: (i, o) => ["-s", "format", "png", i, "--out", o] },
-  ],
   ".heic": [
     { bin: "sips", args: (i, o) => ["-s", "format", "png", i, "--out", o] },
     { bin: "heif-convert", args: (i, o) => [i, o] },
@@ -112,22 +108,32 @@ async function resolveConverter(ext: string): Promise<Converter | null> {
   return null;
 }
 
-export interface Decoded {
-  /** Path to a sharp-readable image (the original, or a temp PNG). */
-  path: string;
-  /** Remove any temp artifacts. No-op for native passthrough. */
+export interface DecodedInput {
+  /** Sharp input: the original path (native), a raw pixel buffer (JXL), or a temp PNG path (HEIC). */
+  input: string | Buffer;
+  /** Present iff `input` is raw pixels → caller passes sharp(input, { raw }). */
+  raw?: { width: number; height: number; channels: number };
+  /** Whether Sharp must apply EXIF orientation. False for already-upright pixels (JXL/HEIC). */
+  rotate: boolean;
+  /** Remove any temp artifacts (HEIC temp PNG). No-op for native/JXL. */
   cleanup: () => Promise<void>;
 }
 
 /**
- * Return a sharp-readable path for `absPath`. Native formats pass through
- * unchanged; JXL/HEIC/HEIF are converted to a temp PNG via an external tool.
- * Throws if the format needs a converter but none is installed.
+ * Return a Sharp-ready input for `absPath`:
+ *  - native formats pass the path straight through (rotate via EXIF),
+ *  - `.jxl` is piped through djxl into a raw pixel buffer (already upright),
+ *  - HEIC/HEIF are converted to a temp PNG via an external tool (with cleanup).
+ * Throws if a non-native format has no installed decoder.
  */
-export async function decodeToReadable(absPath: string): Promise<Decoded> {
+export async function decodeToSharpInput(absPath: string): Promise<DecodedInput> {
   const ext = path.extname(absPath).toLowerCase();
   if (NATIVE_EXTENSIONS.has(ext)) {
-    return { path: absPath, cleanup: async () => {} };
+    return { input: absPath, rotate: true, cleanup: async () => {} };
+  }
+  if (ext === ".jxl") {
+    const { buffer, width, height, channels } = await decodeJxlToRaw(absPath);
+    return { input: buffer, raw: { width, height, channels }, rotate: false, cleanup: async () => {} };
   }
   const converter = await resolveConverter(ext);
   if (!converter) {
@@ -138,13 +144,12 @@ export async function decodeToReadable(absPath: string): Promise<Decoded> {
   try {
     await execFileAsync(converter.bin, converter.args(absPath, out));
   } catch (err) {
-    // The caller never receives a Decoded (so can't cleanup); remove the temp
-    // dir here so a corrupt file doesn't leak a dir on every scan cycle.
     await rm(dir, { recursive: true, force: true });
     throw err;
   }
   return {
-    path: out,
+    input: out,
+    rotate: true,
     cleanup: async () => {
       await rm(dir, { recursive: true, force: true });
     },

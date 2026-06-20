@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { decodeToReadable, decodeJxlToRaw, CONVERTERS, NATIVE_EXTENSIONS, parsePAM } from "./decode.js";
+import { decodeToSharpInput, decodeJxlToRaw, parsePAM, CONVERTERS, NATIVE_EXTENSIONS } from "./decode.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,39 +29,46 @@ afterAll(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-describe("decodeToReadable", () => {
-  it("native passthrough: returns original path and cleanup leaves file intact", async () => {
+describe("decodeToSharpInput", () => {
+  it("native passthrough: returns the original path, rotate:true, no temp", async () => {
     const tmpPng = path.join(dir, "fixture.png");
     await sharp({ create: { width: 16, height: 16, channels: 3, background: "#ff0000" } })
       .png()
       .toFile(tmpPng);
 
-    const decoded = await decodeToReadable(tmpPng);
-    expect(decoded.path).toBe(tmpPng);
+    const decoded = await decodeToSharpInput(tmpPng);
+    expect(decoded.input).toBe(tmpPng);
+    expect(decoded.raw).toBeUndefined();
+    expect(decoded.rotate).toBe(true);
 
     await decoded.cleanup();
-
-    // File should still exist after cleanup (cleanup is a no-op for native)
     const s = await stat(tmpPng);
-    expect(s.isFile()).toBe(true);
+    expect(s.isFile()).toBe(true); // cleanup is a no-op for native
   });
 
   it("rejects with 'no external decoder available' for unknown extensions", async () => {
-    await expect(decodeToReadable("/tmp/whatever.xyz")).rejects.toThrow(
+    await expect(decodeToSharpInput("/tmp/whatever.xyz")).rejects.toThrow(
       "no external decoder available",
     );
   });
 
-  it("CONVERTERS has djxl as first candidate for .jxl", () => {
-    expect(CONVERTERS[".jxl"]?.[0]?.bin).toBe("djxl");
-  });
+  it.skipIf(!JXL_TOOLS)("jxl: returns a raw buffer with dims and rotate:false", async () => {
+    const src = path.join(dir, "dispatch-src.png");
+    const jxl = path.join(dir, "dispatch.jxl");
+    await makeJxl(src, jxl, 32, 20);
 
-  it("NATIVE_EXTENSIONS includes common sharp-readable formats", () => {
-    expect(NATIVE_EXTENSIONS.has(".jpg")).toBe(true);
-    expect(NATIVE_EXTENSIONS.has(".jpeg")).toBe(true);
-    expect(NATIVE_EXTENSIONS.has(".png")).toBe(true);
-    expect(NATIVE_EXTENSIONS.has(".webp")).toBe(true);
+    const decoded = await decodeToSharpInput(jxl);
+    expect(Buffer.isBuffer(decoded.input)).toBe(true);
+    expect(decoded.raw).toEqual({ width: 32, height: 20, channels: 3 });
+    expect(decoded.rotate).toBe(false);
   });
+});
+
+it("NATIVE_EXTENSIONS includes common sharp-readable formats", () => {
+  expect(NATIVE_EXTENSIONS.has(".jpg")).toBe(true);
+  expect(NATIVE_EXTENSIONS.has(".jpeg")).toBe(true);
+  expect(NATIVE_EXTENSIONS.has(".png")).toBe(true);
+  expect(NATIVE_EXTENSIONS.has(".webp")).toBe(true);
 });
 
 describe("parsePAM", () => {
