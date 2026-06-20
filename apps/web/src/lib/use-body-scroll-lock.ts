@@ -26,7 +26,7 @@ export function useBodyScrollLock(active: boolean, padRef?: React.RefObject<HTML
     body.style.right = "0";
     body.style.width = "100%";
     const padEl = padRef?.current;
-    // eslint-disable-next-line react-hooks/immutability
+    // eslint-disable-next-line react-hooks/immutability -- padRef is a ref arg; mutating .current's DOM style is the hook's purpose. (RouteOverlay did the same via a local useRef, which the rule doesn't flag.)
     if (scrollbarWidth > 0 && padEl) padEl.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
       body.style.position = prev.position;
