@@ -31,6 +31,7 @@ export interface PhotoDTO {
   exif: ExifData;
   colorLabel: ColorLabel | null;
   edits: PhotoEdits | null;
+  isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
   albumIds?: string[];

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { createWheelStepper } from "@/lib/wheel-step-nav";
 
 // Width of the soft fade applied at a scrollable edge, in px.
 const FADE = 28;
@@ -19,14 +20,24 @@ export function FilmStrip({
   items,
   currentId,
   onPick,
+  onStep,
 }: {
   items: { id: string; index: number; v: number }[];
   currentId: string;
   onPick: (index: number) => void;
+  /** Advance the active photo by ±1 (wheel/trackpad navigation). */
+  onStep: (delta: 1 | -1) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+
+  // Keep a ref to the latest onStep so the wheel listener can bind once (below)
+  // without re-attaching every render. Assigned in an effect, not during render.
+  const onStepRef = useRef(onStep);
+  useEffect(() => {
+    onStepRef.current = onStep;
+  });
 
   // Which edges still have off-screen photos — drives the fade mask.
   const [edges, setEdges] = useState({ left: false, right: false });
@@ -72,6 +83,24 @@ export function FilmStrip({
     window.addEventListener("resize", sync);
     return () => window.removeEventListener("resize", sync);
   }, [sync]);
+
+  // Wheel/trackpad over the strip navigates photos (Lightroom/iCloud-style) instead
+  // of scrolling thumbnails. The listener must be non-passive to preventDefault the
+  // native horizontal scroll — React's synthetic onWheel is passive at the root, so
+  // it can't. The strip still follows the active photo via the auto-center effect.
+  useEffect(() => {
+    // `c` (the viewport) is always mounted while FilmStrip renders, so the guard
+    // is just type-narrowing — the element is stable, so binding once is enough.
+    const c = viewportRef.current;
+    if (!c) return;
+    const stepper = createWheelStepper({ onStep: (d) => onStepRef.current(d) });
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      stepper.handle(e);
+    };
+    c.addEventListener("wheel", onWheel, { passive: false });
+    return () => c.removeEventListener("wheel", onWheel);
+  }, []);
 
   // Drag the custom thumb to scroll the strip.
   function startDrag(e: React.PointerEvent<HTMLDivElement>) {

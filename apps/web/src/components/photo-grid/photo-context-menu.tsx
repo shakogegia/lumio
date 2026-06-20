@@ -1,7 +1,8 @@
 "use client";
 
-import { Download, FolderPlus, Palette, Trash2 } from "lucide-react";
-import { COLOR_LABELS, hasEdits } from "@lumio/shared";
+import { useState } from "react";
+import { Download, FolderPlus, Heart, Palette, Trash2 } from "lucide-react";
+import { COLOR_LABELS, computeFavoriteTarget, hasEdits } from "@lumio/shared";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -14,8 +15,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
+import { usePhotoCollection } from "./photo-collection";
 import { AlbumPickerItems } from "@/components/photo-actions/album-picker-items";
-import { usePhotoCollectionOptional } from "./photo-collection";
 
 /**
  * Wraps a grid tile as a right-click context-menu trigger: a group of actions
@@ -36,7 +37,8 @@ export function PhotoContextMenu({
   children: React.ReactNode;
 }) {
   const actions = usePhotoActionsContext();
-  const collection = usePhotoCollectionOptional();
+  const collection = usePhotoCollection();
+  const [favoriteTarget, setFavoriteTarget] = useState(true);
   if (!actions) return <>{children}</>;
 
   const count = targetIds.length;
@@ -45,10 +47,14 @@ export function PhotoContextMenu({
   // Only considers photos currently loaded in the store; a selection spanning
   // unloaded pages could under-report edits and show the single "Download" item.
   // Harmless — the server zip still bakes edits per-photo by the variant.
-  const anyEdited = (collection?.photosByIds(targetIds) ?? []).some((p) => hasEdits(p.edits));
+  const anyEdited = collection.getPhotos(new Set(targetIds)).some((p) => hasEdits(p.edits));
 
   return (
-    <ContextMenu>
+    <ContextMenu
+      onOpenChange={(open) => {
+        if (open) setFavoriteTarget(computeFavoriteTarget(collection.getPhotos(new Set(targetIds))));
+      }}
+    >
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-56">
         <ContextMenuGroup>
@@ -109,6 +115,10 @@ export function PhotoContextMenu({
               </ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
+          <ContextMenuItem onSelect={() => void actions.favorite(targetIds, favoriteTarget)}>
+            <Heart aria-hidden />
+            {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
+          </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuItem

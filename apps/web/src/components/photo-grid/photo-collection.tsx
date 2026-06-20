@@ -26,7 +26,7 @@ interface PhotoCollectionValue {
   total: number | null;
   photoAt: (index: number) => PhotoDTO | undefined;
   getLoadedIds: () => string[];
-  photosByIds: (ids: string[]) => PhotoDTO[];
+  getPhotos: (ids: Set<string>) => PhotoDTO[];
   ensureRange: (start: number, end: number) => void;
   patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
   removePhotos: (ids: Set<string>) => void;
@@ -49,9 +49,6 @@ export function usePhotoCollection(): PhotoCollectionValue {
   return v;
 }
 
-export function usePhotoCollectionOptional(): PhotoCollectionValue | null {
-  return useContext(Ctx);
-}
 
 export function PhotoCollectionProvider({
   scope,
@@ -109,6 +106,7 @@ export function PhotoCollectionProvider({
     total,
     photoAt,
     getLoadedIds,
+    getPhotos,
     ensureRange,
     patchPhotos,
     removePhotos,
@@ -126,22 +124,6 @@ export function PhotoCollectionProvider({
       return undefined;
     },
     [photoAt, initialPhoto, initialIndex],
-  );
-
-  const photosByIds = useCallback(
-    (ids: string[]): PhotoDTO[] => {
-      const loaded = getLoadedIds(); // sparse array: index -> id
-      const out: PhotoDTO[] = [];
-      for (const id of ids) {
-        const idx = loaded.indexOf(id);
-        if (idx !== -1) {
-          const p = photoForIndex(idx);
-          if (p) out.push(p);
-        }
-      }
-      return out;
-    },
-    [getLoadedIds, photoForIndex],
   );
 
   // Keep the window around the open photo loaded.
@@ -260,7 +242,7 @@ export function PhotoCollectionProvider({
       total,
       photoAt: photoForIndex,
       getLoadedIds,
-      photosByIds,
+      getPhotos,
       ensureRange,
       patchPhotos,
       removePhotos,
@@ -277,7 +259,7 @@ export function PhotoCollectionProvider({
       total,
       photoForIndex,
       getLoadedIds,
-      photosByIds,
+      getPhotos,
       ensureRange,
       patchPhotos,
       removePhotos,

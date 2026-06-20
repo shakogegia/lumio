@@ -6,9 +6,11 @@ import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
 import { resolveTargets } from "@/lib/resolve-targets";
 import { cellVariants } from "./cell-variants";
+import { FavoriteHeart } from "./favorite-heart";
 import { PhotoContextMenu } from "./photo-context-menu";
 import { PhotoThumb } from "./photo-thumb";
 import { SelectionRing } from "./selection-ring";
+import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
 
 /**
  * One grid cell. Selection is always available: a plain left click toggles the
@@ -48,6 +50,7 @@ export function PhotoGridTile({
   onTrash?: (ids: string[]) => void;
 }) {
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
+  const actions = usePhotoActionsContext();
 
   // In card mode a labeled photo tints its mat. The hex is exposed as a CSS
   // variable and the `.label-mat` class (in globals.css) decides how to render it
@@ -87,10 +90,16 @@ export function PhotoGridTile({
           e.preventDefault();
           onOpen(index);
         }}
-        className={cn(cellVariants({ mode }), "select-none", labelHex && "label-mat")}
+        className={cn(cellVariants({ mode }), "group/cell select-none", labelHex && "label-mat")}
         style={labelStyle}
       >
         {thumb}
+        {actions && (
+          <FavoriteHeart
+            active={photo.isFavorite}
+            onToggle={() => void actions.favorite([photo.id], !photo.isFavorite)}
+          />
+        )}
         {isSelected && <SelectionRing />}
       </a>
     </PhotoContextMenu>

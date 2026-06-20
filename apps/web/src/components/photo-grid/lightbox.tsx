@@ -1,20 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { NO_EDITS, previewTransform, type PhotoDTO } from "@lumio/shared";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import type { PhotoDTO } from "@lumio/shared";
 import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
-import { thumbhashDataUrl } from "@/lib/thumbhash-url";
-import { useImageLoaded } from "@/lib/use-image-loaded";
-import { displayUrl, renditionVersion } from "@/lib/rendition-url";
+import { renditionVersion } from "@/lib/rendition-url";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
-import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
 import { EditSessionProvider, useEditSession } from "./use-edit-session";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
+import { ZoomableImage } from "./zoomable-image";
 
 type StripItem = { id: string; index: number; v: number };
 
@@ -189,211 +184,24 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     >
       <div className="flex flex-col lg:h-dvh lg:flex-row">
         <div className="flex min-w-0 flex-1 flex-col">
-          <LightboxImage
+          <ZoomableImage
+            key={photo.id}
             photo={photo}
             hasPrev={hasPrev}
             hasNext={hasNext}
-            onStep={(d) => guard(() => step(d))}
+            step={(d) => guard(() => step(d))}
           />
           {strip.length > 0 && (
             <FilmStrip
               items={strip}
               currentId={photo.id}
               onPick={(i) => guard(() => open(i))}
+              onStep={(d) => guard(() => step(d))}
             />
           )}
         </div>
         <LightboxSidebar photo={photo} onTrashed={onTrashed} />
       </div>
-    </div>
-  );
-}
-
-function LightboxImage({
-  photo,
-  hasPrev,
-  hasNext,
-  onStep,
-}: {
-  photo: PhotoDTO;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onStep: (delta: 1 | -1) => void;
-}) {
-  const { working } = useEditSession();
-
-  // What the photo SHOULD show right now (recipe baked into its renditions).
-  const target = useMemo(
-    () => ({ src: displayUrl(photo), recipe: photo.edits ?? NO_EDITS, photoId: photo.id }),
-    [photo],
-  );
-  // Double-buffer: `disp` is the rendition actually on screen. We only advance it
-  // to a new SAME-photo rendition (after Apply) once that rendition has preloaded,
-  // and we keep the live transform measured against `disp.recipe` — so the swap
-  // from "old rendition + CSS transform" to "new baked rendition" is seamless
-  // (no blur placeholder, no flash of the pre-edit orientation).
-  const [disp, setDisp] = useState(target);
-  const [allowBlur, setAllowBlur] = useState(true);
-  useEffect(() => {
-    if (target.photoId !== disp.photoId) {
-      const swap = () => {
-        setDisp(target);
-        setAllowBlur(true); // new photo → blur placeholder is appropriate
-      };
-      swap();
-      return;
-    }
-    if (target.src !== disp.src) {
-      // Same photo, new rendition (Apply): preload, then swap with no blur.
-      let cancelled = false;
-      const finish = () => {
-        if (cancelled) return;
-        setDisp(target);
-        setAllowBlur(false);
-      };
-      const img = new Image();
-      img.onload = finish;
-      img.onerror = finish;
-      img.src = target.src;
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [target, disp.photoId, disp.src]);
-
-  // Preview = delta from the DISPLAYED rendition's recipe to `working`.
-  const t = previewTransform(disp.recipe, working);
-
-  // Continuous rotation angle so repeated rotations keep spinning forward through
-  // a full circle instead of unwinding (CSS would take the short path 270°→0°).
-  const [contDeg, setContDeg] = useState(t.deg);
-  useEffect(() => {
-    const bump = () =>
-      setContDeg((prev) => {
-        const diff = (((t.deg - prev) % 360) + 360) % 360;
-        return prev + (diff > 180 ? diff - 360 : diff); // shortest signed step
-      });
-    bump();
-  }, [t.deg]);
-
-  // Suppress the transform transition on the frame the rendition swaps (Apply /
-  // nav) AND whenever a flip toggles: flips snap (a CSS scale through 0 looks like
-  // a collapse along the long edge), while rotations animate.
-  const [animate, setAnimate] = useState(false);
-  useEffect(() => {
-    const enable = (v: boolean) => setAnimate(v);
-    enable(false);
-    const id = requestAnimationFrame(() => setAnimate(true));
-    return () => cancelAnimationFrame(id);
-  }, [disp.src, disp.photoId, t.mirror]);
-
-  const { loaded, ref, onLoad } = useImageLoaded(disp.src);
-  const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
-  const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);
-
-  // Natural size of the displayed rendition (for the rotate fit math).
-  const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
-  const onImgLoad = useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      onLoad();
-      const img = e.currentTarget;
-      setNat({ w: img.naturalWidth, h: img.naturalHeight });
-    },
-    [onLoad],
-  );
-
-  // Track the container's content box for the contain-fit calculation.
-  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [containerRef]);
-
-  // Compose callback-refs onto the <img>: setImgEl (blur-box) + ref (loaded).
-  const setImg = useCallback(
-    (node: HTMLImageElement | null) => {
-      setImgEl(node);
-      ref(node);
-    },
-    [setImgEl, ref],
-  );
-
-  const rotated = t.deg === 90 || t.deg === 270;
-  // A 90/270 rotation must be scaled so it fills the same space the re-baked
-  // rendition will: ratio of "contain of the swapped image" to "contain now".
-  let fit = 1;
-  if (rotated && nat && box) {
-    const cw = Math.max(1, box.w - 32); // container minus p-4 (16px each side)
-    const ch = Math.max(1, box.h - 32);
-    const sNow = Math.min(cw / nat.w, ch / nat.h, 1);
-    const sPost = Math.min(cw / nat.h, ch / nat.w, 1);
-    if (sNow > 0) fit = sPost / sNow;
-  }
-  const transform = `rotate(${contDeg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
-
-  return (
-    <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-      {/* eslint-disable @next/next/no-img-element */}
-      {allowBlur && blurUrl && blurBox && (
-        <img
-          src={blurUrl}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
-          style={{
-            left: blurBox.left,
-            top: blurBox.top,
-            width: blurBox.width,
-            height: blurBox.height,
-            opacity: loaded ? 0 : 1,
-          }}
-        />
-      )}
-      <img
-        ref={setImg}
-        src={disp.src}
-        alt={photo.path}
-        width={nat?.w ?? photo.width}
-        height={nat?.h ?? photo.height}
-        onLoad={onImgLoad}
-        className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-        style={{
-          transform,
-          transformOrigin: "center center",
-          transition: animate ? "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
-        }}
-      />
-      {/* eslint-enable @next/next/no-img-element */}
-      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => onStep(-1)} />}
-      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => onStep(1)} />}
-    </div>
-  );
-}
-
-function NavArrow({
-  side,
-  label,
-  onClick,
-}: {
-  side: "left" | "right";
-  label: string;
-  onClick: () => void;
-}) {
-  const Icon = side === "left" ? ChevronLeft : ChevronRight;
-  // The absolute centering (-translate-y-1/2) lives on this wrapper, not the
-  // Button: the shadcn Button toggles `translate-y-px` on :active, which writes
-  // the same transform and would otherwise wipe out the vertical centering on
-  // click. Keeping them on separate elements lets the press-nudge coexist.
-  return (
-    <div className={cn("absolute top-1/2 -translate-y-1/2", side === "left" ? "left-2" : "right-2")}>
-      <Button variant="outline" size="icon" className="backdrop-blur" aria-label={label} onClick={onClick}>
-        <Icon className="size-5" />
-      </Button>
     </div>
   );
 }

@@ -16,6 +16,7 @@ const baseRow = {
   fileMtimeMs: null,
   exif: { cameraMake: "Lumio" },
   colorLabel: null,
+  isFavorite: false,
   createdAt: new Date("2024-02-01T00:00:00.000Z"),
   updatedAt: new Date("2024-02-02T00:00:00.000Z"),
   edits: null,
@@ -23,13 +24,14 @@ const baseRow = {
 
 describe("toPhotoDTO", () => {
   it("maps a Prisma photo row to a PhotoDTO with ISO dates", () => {
-    const dto = toPhotoDTO(baseRow as any);
+    const dto = toPhotoDTO({ ...baseRow, isFavorite: true } as any);
 
     expect(dto.id).toBe("p1");
     expect(dto.source).toBe(PhotoSource.filesystem);
     expect(dto.takenAt).toBe("2024-01-15T12:00:00.000Z");
     expect(dto.createdAt).toBe("2024-02-01T00:00:00.000Z");
     expect(dto.exif).toEqual({ cameraMake: "Lumio" });
+    expect(dto.isFavorite).toBe(true);
   });
 
   it("maps a null takenAt to null", () => {
@@ -43,6 +45,7 @@ describe("toPhotoDTO", () => {
     } as any);
     expect(dto.takenAt).toBeNull();
     expect(dto.hash).toBeNull();
+    expect(dto.isFavorite).toBe(false);
   });
 
   it("maps a valid edits recipe", () => {
@@ -79,6 +82,7 @@ describe("toTrashedPhotoDTO", () => {
     expect(dto.path).toBe("2026/06-19/x.jpg");
     expect(dto.width).toBe(4);
     expect(dto.colorLabel).toBe("blue");
+    expect(dto.isFavorite).toBe(false);
     expect(dto.createdAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
   });

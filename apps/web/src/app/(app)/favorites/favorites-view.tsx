@@ -1,37 +1,56 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { useRef } from "react";
+import { Download, Heart, Loader2, Trash2 } from "lucide-react";
+import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
 import { useGridColumns } from "@/lib/use-grid-columns";
+import { useGridSort } from "@/lib/use-grid-sort";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
-import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
-import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { Lightbox } from "@/components/photo-grid/lightbox";
 import { photoHref } from "@/lib/photo-href";
-import { computeFavoriteTarget } from "@lumio/shared";
-import { SelectionToolbar } from "./selection-toolbar";
-import { FavoriteButton } from "@/components/photo-actions/favorite-button";
+import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { HeaderBar } from "@/components/header-bar";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 
-export function LibraryView() {
+const FAVORITES_EMPTY = (
+  <Empty>
+    <EmptyHeader>
+      <EmptyMedia variant="icon">
+        <Heart />
+      </EmptyMedia>
+      <EmptyTitle>No favorites yet</EmptyTitle>
+      <EmptyDescription>
+        Tap the heart on a photo to add it to your favorites.
+      </EmptyDescription>
+    </EmptyHeader>
+  </Empty>
+);
+
+export function FavoritesView() {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
-  const [month, setMonth] = useState<string | null>(null);
   const gridRef = useRef<PhotoGridHandle>(null);
-  const actions = usePhotoActions({ gridRef });
+  const actions = usePhotoActions({ gridRef, dropOnUnfavorite: true });
 
   return (
     <>
@@ -48,7 +67,7 @@ export function LibraryView() {
                 pending={actions.pending.favorite}
                 onClick={() => {
                   const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
-                  void actions.favorite([...sel.selected], target);
+                  void actions.favorite([...sel.selected], target, { onSuccess: sel.clear });
                 }}
               />
               <ColorLabelMenu
@@ -86,28 +105,23 @@ export function LibraryView() {
         />
       ) : (
         <HeaderBar
-          title="Library"
+          title="Favorites"
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <GridCalendarMenu
-                facetsEndpoint="/api/photos/calendar"
-                value={month}
-                onChange={setMonth}
-              />
             </>
           }
         />
       )}
 
       <PhotoCollectionProvider
-        key={`${sort}:${month ?? ""}`}
+        key={`fav:${sort}`}
         endpoint="/api/photos"
-        params={new URLSearchParams(month ? { sort, month } : { sort })}
+        params={new URLSearchParams({ sort, favorite: "true" })}
         urlForId={(id) => photoHref(id, undefined, sort)}
-        baseUrl="/photos"
+        baseUrl="/favorites"
       >
         <PhotoActionsProvider value={actions}>
           <PhotoGrid
@@ -116,6 +130,7 @@ export function LibraryView() {
             columns={columns}
             selectedIds={sel.selected}
             onSelectionChange={sel.setSelected}
+            empty={FAVORITES_EMPTY}
           />
           <Lightbox />
         </PhotoActionsProvider>

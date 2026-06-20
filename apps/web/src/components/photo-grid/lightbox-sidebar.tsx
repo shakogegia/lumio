@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Download, Search } from "lucide-react";
+import { Download, Heart, Search } from "lucide-react";
 import { hasEdits } from "@lumio/shared";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
@@ -24,7 +24,7 @@ export function LightboxSidebar({
   photo: PhotoDTO;
   onTrashed: () => void;
 }) {
-  const { removePhotos } = usePhotoCollection();
+  const { removePhotos, patchPhotos } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
   const filename = photo.path.split("/").pop() || photo.path;
   const camera =
@@ -71,6 +71,20 @@ export function LightboxSidebar({
     onTrashed();
   }
 
+  async function toggleFavorite() {
+    const next = !photo.isFavorite;
+    const res = await fetch("/api/photos/favorite", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ photoIds: [photo.id], isFavorite: next }),
+    });
+    if (!res.ok) {
+      toast.error("Failed to update favorites.");
+      return;
+    }
+    patchPhotos(new Set([photo.id]), { isFavorite: next });
+  }
+
   return (
     <aside className="w-full shrink-0 border-t bg-background p-4 text-sm lg:h-dvh lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
       {confirmDialog}
@@ -107,6 +121,15 @@ export function LightboxSidebar({
           )}
           <Separator />
           <div className="space-y-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => void toggleFavorite()}
+            >
+              <Heart fill={photo.isFavorite ? "currentColor" : "none"} aria-hidden />
+              {photo.isFavorite ? "Favorited" : "Favorite"}
+            </Button>
             {hasEdits(photo.edits) ? (
               <DownloadSplitButton
                 onDownloadEdited={() => downloadFromUrl(`/api/photos/${photo.id}/edited?download=1`)}

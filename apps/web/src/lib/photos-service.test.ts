@@ -4,6 +4,7 @@ import {
   getPhotoNeighbors,
   listPhotos,
   setPhotoColorLabel,
+  setPhotoFavorite,
 } from "./photos-service.js";
 
 function row(id: string) {
@@ -75,6 +76,18 @@ describe("listPhotos", () => {
   it("uses an empty where when no month is set", async () => {
     const db = fakeDb([row("a")]);
     await listPhotos({ limit: 50, offset: 0 }, db as never);
+    expect(db.calls[0]?.where).toEqual({});
+  });
+
+  it("filters by isFavorite when favorite is true", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 50, offset: 0, favorite: true }, db as never);
+    expect(db.calls[0]?.where).toEqual({ isFavorite: true });
+  });
+
+  it("uses an empty where when favorite is false", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 50, offset: 0, favorite: false }, db as never);
     expect(db.calls[0]?.where).toEqual({});
   });
 });
@@ -227,6 +240,29 @@ describe("setPhotoColorLabel", () => {
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: { in: ["p1"] } },
       data: { colorLabel: null },
+    });
+  });
+});
+
+describe("setPhotoFavorite", () => {
+  it("sets isFavorite on the given photos and returns the count", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 2 });
+    const db = { photo: { updateMany } };
+    const count = await setPhotoFavorite(["p1", "p2"], true, db as never);
+    expect(count).toBe(2);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["p1", "p2"] } },
+      data: { isFavorite: true },
+    });
+  });
+
+  it("clears isFavorite when given false", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const db = { photo: { updateMany } };
+    await setPhotoFavorite(["p1"], false, db as never);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["p1"] } },
+      data: { isFavorite: false },
     });
   });
 });

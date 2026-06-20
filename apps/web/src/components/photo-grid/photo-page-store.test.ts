@@ -6,6 +6,7 @@ import {
   pageIndicesForRange,
   patchPages,
   photoAt,
+  photosByIds,
   removeIds,
   setPage,
 } from "./photo-page-store";
@@ -89,5 +90,20 @@ describe("removeIds", () => {
     s = removeIds(s, new Set(["p999"])); // not loaded
     expect(s.total).toBe(299);
     expect(s.pages.has(0)).toBe(true);
+  });
+});
+
+describe("photosByIds", () => {
+  it("returns loaded photos whose id is in the set, skipping unloaded ids", () => {
+    let store = createPageStore<{ id: string; n: number }>(2, 10);
+    store = setPage(store, 0, [{ id: "a", n: 1 }, { id: "b", n: 2 }], 4);
+    store = setPage(store, 1, [{ id: "c", n: 3 }, { id: "d", n: 4 }], 4);
+    const got = photosByIds(store, new Set(["a", "c", "zzz"]));
+    expect(got.map((p) => p.id).sort()).toEqual(["a", "c"]);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    const store = createPageStore<{ id: string }>(2, 10);
+    expect(photosByIds(store, new Set(["x"]))).toEqual([]);
   });
 });

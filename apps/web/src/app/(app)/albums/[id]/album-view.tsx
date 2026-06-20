@@ -29,6 +29,8 @@ import {
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { computeFavoriteTarget } from "@lumio/shared";
+import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 
 export function AlbumView({
   albumId,
@@ -108,6 +110,14 @@ export function AlbumView({
           onCancel={handleCancel}
           actions={
             <>
+              <FavoriteButton
+                disabled={sel.count === 0 || actions.pending.favorite}
+                pending={actions.pending.favorite}
+                onClick={() => {
+                  const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
+                  void actions.favorite([...sel.selected], target);
+                }}
+              />
               <AddToAlbumMenu
                 disabled={sel.count === 0}
                 excludeAlbumId={actions.excludeAlbumId}

@@ -38,6 +38,7 @@ model Photo {
   exif        Json
   colorLabel  ColorLabel?
   edits       Json? // PhotoEdits recipe; null = unedited
+  isFavorite  Boolean      @default(false)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   albums      AlbumPhoto[]
@@ -45,6 +46,7 @@ model Photo {
   @@index([sortDate, id])
   @@index([createdAt, id])
   @@index([hash])
+  @@index([isFavorite, sortDate])
 }
 
 model Album {

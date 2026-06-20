@@ -6,6 +6,7 @@ import {
   photosQuerySchema,
   searchQuerySchema,
   setColorLabelSchema,
+  setFavoriteSchema,
 } from "./api.js";
 
 describe("photosQuerySchema", () => {
@@ -108,6 +109,42 @@ describe("searchQuerySchema sort", () => {
   it("accepts a known sort and defaults to undefined", () => {
     expect(searchQuerySchema.parse({}).sort).toBeUndefined();
     expect(searchQuerySchema.parse({ sort: "imported-desc" }).sort).toBe("imported-desc");
+  });
+});
+
+describe("photosQuerySchema favorite", () => {
+  it("leaves favorite undefined when absent", () => {
+    expect(photosQuerySchema.parse({}).favorite).toBeUndefined();
+  });
+
+  it("parses favorite=true to boolean true", () => {
+    expect(photosQuerySchema.parse({ favorite: "true" }).favorite).toBe(true);
+  });
+
+  it("parses favorite=false to boolean false", () => {
+    expect(photosQuerySchema.parse({ favorite: "false" }).favorite).toBe(false);
+  });
+
+  it("rejects a non-boolean favorite", () => {
+    expect(photosQuerySchema.safeParse({ favorite: "yes" }).success).toBe(false);
+  });
+});
+
+describe("setFavoriteSchema", () => {
+  it("accepts photoIds with isFavorite true/false", () => {
+    expect(setFavoriteSchema.parse({ photoIds: ["a"], isFavorite: true }).isFavorite).toBe(true);
+    expect(setFavoriteSchema.parse({ photoIds: ["a", "b"], isFavorite: false }).photoIds).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("rejects an empty photoIds array", () => {
+    expect(() => setFavoriteSchema.parse({ photoIds: [], isFavorite: true })).toThrow();
+  });
+
+  it("rejects a missing isFavorite", () => {
+    expect(setFavoriteSchema.safeParse({ photoIds: ["a"] }).success).toBe(false);
   });
 });
 
