@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Images } from "lucide-react";
+import { Download, FolderMinus, FolderPlus, Images, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -144,35 +144,47 @@ export function AlbumView({
           onCancel={handleCancel}
           actions={
             <>
-              <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
-                Add to album
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={sel.count === 0}
+                onClick={() => setDialogOpen(true)}
+                aria-label="Add to album"
+                title="Add to album"
+              >
+                <FolderPlus aria-hidden />
               </Button>
               {!isSmart && (
                 <Button
                   variant="destructive"
-                  size="sm"
+                  size="icon-sm"
                   disabled={sel.count === 0 || removing}
                   onClick={() => void handleRemove()}
+                  aria-label="Remove from album"
+                  title="Remove from album"
                 >
-                  {removing ? "Removing…" : "Remove from album"}
+                  {removing ? <Loader2 className="animate-spin" aria-hidden /> : <FolderMinus aria-hidden />}
                 </Button>
               )}
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || downloading}
                 onClick={() => void handleDownload()}
+                aria-label="Download"
+                title="Download"
               >
-                <Download aria-hidden />
-                {downloading ? "Preparing…" : "Download"}
+                {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
               </Button>
               <Button
                 variant="destructive"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || deleting}
                 onClick={() => void handleDelete()}
+                aria-label="Delete"
+                title="Delete"
               >
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
               </Button>
             </>
           }
@@ -185,13 +197,18 @@ export function AlbumView({
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button variant="outline" size="sm" onClick={sel.enter}>
-                Select
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={sel.enter}
+                aria-label="Select"
+                title="Select"
+              >
+                <SquareCheckBig aria-hidden />
               </Button>
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
                 <a href={`/api/albums/${albumId}/download`}>
                   <Download aria-hidden />
-                  Download
                 </a>
               </Button>
             </>

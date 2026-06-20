@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -99,11 +99,13 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           actions={
             <Button
               variant="destructive"
-              size="sm"
+              size="icon-sm"
               disabled={sel.count === 0 || deleting}
               onClick={() => void handleDelete()}
+              aria-label="Delete"
+              title="Delete"
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
             </Button>
           }
         />
@@ -113,8 +115,14 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
           actions={
             <>
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-              <Button variant="outline" size="sm" onClick={sel.enter}>
-                Select
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={sel.enter}
+                aria-label="Select"
+                title="Select"
+              >
+                <SquareCheckBig aria-hidden />
               </Button>
               <NewAlbumDialog />
             </>

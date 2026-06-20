@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 
@@ -22,8 +23,14 @@ export function SelectionToolbar({
       actions={
         <>
           {actions}
-          <Button variant="outline" size="sm" onClick={onCancel}>
-            Cancel
+          <Button
+            variant="outline"
+            size="icon-sm"
+            onClick={onCancel}
+            aria-label="Cancel"
+            title="Cancel"
+          >
+            <X aria-hidden />
           </Button>
         </>
       }

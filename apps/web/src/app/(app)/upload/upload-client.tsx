@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
@@ -238,25 +238,35 @@ export function UploadClient() {
                 disabled={sel.count === 0 || labelPending}
                 onPick={(l) => void applyLabel(l)}
               />
-              <Button size="sm" disabled={sel.count === 0} onClick={() => setAlbumOpen(true)}>
-                Add to album
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={sel.count === 0}
+                onClick={() => setAlbumOpen(true)}
+                aria-label="Add to album"
+                title="Add to album"
+              >
+                <FolderPlus aria-hidden />
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || downloading}
                 onClick={() => void handleDownload()}
+                aria-label="Download"
+                title="Download"
               >
-                <Download aria-hidden />
-                {downloading ? "Preparing…" : "Download"}
+                {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
               </Button>
               <Button
                 variant="destructive"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || deleting}
                 onClick={() => void handleDelete()}
+                aria-label="Delete"
+                title="Delete"
               >
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
               </Button>
             </>
           }
@@ -270,11 +280,13 @@ export function UploadClient() {
                 <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon-sm"
                   disabled={ids.length === 0}
                   onClick={sel.enter}
+                  aria-label="Select"
+                  title="Select"
                 >
-                  Select
+                  <SquareCheckBig aria-hidden />
                 </Button>
               </>
             ) : null

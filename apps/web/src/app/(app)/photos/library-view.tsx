@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download } from "lucide-react";
+import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2 } from "lucide-react";
 import { downloadSelection } from "@/lib/download-client";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -112,25 +112,35 @@ export function LibraryView() {
                 disabled={sel.count === 0 || labelPending}
                 onPick={(label) => void applyLabel(label)}
               />
-              <Button size="sm" disabled={sel.count === 0} onClick={() => setDialogOpen(true)}>
-                Add to album
+              <Button
+                variant="outline"
+                size="icon-sm"
+                disabled={sel.count === 0}
+                onClick={() => setDialogOpen(true)}
+                aria-label="Add to album"
+                title="Add to album"
+              >
+                <FolderPlus aria-hidden />
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || downloading}
                 onClick={() => void handleDownload()}
+                aria-label="Download"
+                title="Download"
               >
-                <Download aria-hidden />
-                {downloading ? "Preparing…" : "Download"}
+                {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
               </Button>
               <Button
                 variant="destructive"
-                size="sm"
+                size="icon-sm"
                 disabled={sel.count === 0 || deleting}
                 onClick={() => void handleDelete()}
+                aria-label="Delete"
+                title="Delete"
               >
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
               </Button>
             </>
           }
@@ -143,8 +153,14 @@ export function LibraryView() {
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
-              <Button variant="outline" size="sm" onClick={sel.enter}>
-                Select
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={sel.enter}
+                aria-label="Select"
+                title="Select"
+              >
+                <SquareCheckBig aria-hidden />
               </Button>
             </>
           }
