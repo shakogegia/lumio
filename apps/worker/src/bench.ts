@@ -26,16 +26,37 @@ async function listImages(): Promise<string[]> {
     .map((e) => path.join(e.parentPath, e.name));
 }
 
-async function timePool(files: string[], limit: number): Promise<number> {
+interface PoolHooks {
+  /** Called as each task starts (meaningful only when limit=1, i.e. serial). */
+  onStart?: (i: number) => void;
+  /** Called as each task finishes, with its wall time and lowercased extension. */
+  onDone?: (done: number, ms: number, ext: string) => void;
+}
+
+async function timePool(files: string[], limit: number, hooks?: PoolHooks): Promise<number> {
   const t = performance.now();
+  let done = 0;
   await runPool(files.length, limit, async (i) => {
+    hooks?.onStart?.(i);
+    const start = performance.now();
     try {
       await processImage(files[i]!);
     } catch {
       /* ignore decode errors for timing */
     }
+    hooks?.onDone?.(++done, performance.now() - start, path.extname(files[i]!).toLowerCase());
   });
   return performance.now() - t;
+}
+
+/** Overwrite the current stderr line (heartbeat) — padded so shorter lines fully clear. */
+function status(msg: string): void {
+  process.stderr.write(`\r${msg.padEnd(72)}`);
+}
+
+/** Clear the heartbeat line so the next console.log starts clean. */
+function clearStatus(): void {
+  process.stderr.write(`\r${" ".repeat(72)}\r`);
 }
 
 async function main(): Promise<void> {
@@ -58,15 +79,41 @@ async function main(): Promise<void> {
       `UV_THREADPOOL_SIZE=${process.env.UV_THREADPOOL_SIZE}  sharp.concurrency=1\n`,
   );
 
-  await processImage(sample[0]!); // warm up lazy libvips init
+  // Warm up lazy libvips init. On Linux this first decode can take seconds for a
+  // JXL/HEIC (software djxl/heif-convert, no hardware sips) — show it's alive.
+  status("warming up (first decode + lazy libvips init)…");
+  const warmStart = performance.now();
+  await processImage(sample[0]!);
+  clearStatus();
+  console.log(`warmup ${((performance.now() - warmStart) / 1000).toFixed(2)}s\n`);
 
-  const serialMs = await timePool(sample, 1);
+  // Serial pass: limit=1 means per-image wall time is clean, so accumulate cost
+  // by extension — on Linux this is where the software JXL/HEIC tax shows up.
+  const perExt = new Map<string, { n: number; ms: number }>();
+  const serialMs = await timePool(sample, 1, {
+    onStart: (i) => status(`serial ${i + 1}/${sample.length}  decoding ${path.basename(sample[i]!)}…`),
+    onDone: (_done, ms, ext) => {
+      const e = perExt.get(ext) ?? { n: 0, ms: 0 };
+      e.n += 1;
+      e.ms += ms;
+      perExt.set(ext, e);
+    },
+  });
+  clearStatus();
   const serialPer = serialMs / sample.length;
   console.log(`serial (limit=1)   ${(serialMs / 1000).toFixed(2)}s  |  ${serialPer.toFixed(1)} ms/img`);
+  const breakdown = [...perExt.entries()]
+    .sort((a, b) => b[1].ms / b[1].n - a[1].ms / a[1].n)
+    .map(([ext, e]) => `${ext} ×${e.n} ${(e.ms / e.n).toFixed(0)}ms`)
+    .join("   ");
+  console.log(`  by format: ${breakdown}\n`);
 
   const limits = [...new Set([INGEST_CONCURRENCY, 4, 8, cores])].sort((a, b) => a - b);
   for (const limit of limits) {
-    const ms = await timePool(sample, limit);
+    const ms = await timePool(sample, limit, {
+      onDone: (done) => status(`pool (limit=${limit})  ${done}/${sample.length} done…`),
+    });
+    clearStatus();
     const per = ms / sample.length;
     const mark = limit === INGEST_CONCURRENCY ? " ← default" : "";
     console.log(
