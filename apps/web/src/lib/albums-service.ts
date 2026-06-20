@@ -1,5 +1,6 @@
 import { type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
 import {
+  monthRange,
   type AlbumDTO,
   type AlbumSummaryDTO,
   type CreateAlbumInput,
@@ -93,9 +94,10 @@ export async function listAlbumPhotos(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage | null> {
-  const where = await albumPhotoWhere(id, db);
-  if (where === null) return null;
-  const { limit, offset, sort } = params;
+  const scoped = await albumPhotoWhere(id, db);
+  if (scoped === null) return null;
+  const { limit, offset, sort, month } = params;
+  const where = month ? { AND: [scoped, { sortDate: monthRange(month) }] } : scoped;
   const [rows, total] = await Promise.all([
     db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
     db.photo.count({ where }),

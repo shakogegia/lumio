@@ -59,6 +59,22 @@ describe("searchPhotos", () => {
     await searchPhotos({ limit: 2, offset: 0, album: [], sort: "imported-asc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });
+
+  it("ANDs a UTC sortDate range into the search where when month is set", async () => {
+    const db = fakeDb([row("a")]);
+    await searchPhotos({ limit: 50, offset: 0, album: [], month: "2026-06" }, db as never);
+    expect(db.calls[0]?.where).toEqual({
+      AND: [
+        {},
+        {
+          sortDate: {
+            gte: new Date("2026-06-01T00:00:00.000Z"),
+            lt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        },
+      ],
+    });
+  });
 });
 
 function fakeCountDb(total: number) {
@@ -92,5 +108,44 @@ describe("countSearchPhotos", () => {
     const total = await countSearchPhotos({ limit: 50, offset: 0, album: [] }, db as never);
     expect(total).toBe(0);
     expect(db.calls[0]?.where).toEqual({});
+  });
+
+  it("counts with the plain where when no month is set", async () => {
+    const counts: Array<{ where?: unknown }> = [];
+    const db = {
+      photo: {
+        count: async (args: { where?: unknown }) => {
+          counts.push(args);
+          return 7;
+        },
+      },
+    };
+    const total = await countSearchPhotos({ limit: 50, offset: 0, album: [] }, db as never);
+    expect(total).toBe(7);
+    expect(counts[0]?.where).toEqual({});
+  });
+
+  it("ANDs a sortDate range into the count where when month is set", async () => {
+    const counts: Array<{ where?: unknown }> = [];
+    const db = {
+      photo: {
+        count: async (args: { where?: unknown }) => {
+          counts.push(args);
+          return 2;
+        },
+      },
+    };
+    await countSearchPhotos({ limit: 50, offset: 0, album: [], month: "2026-06" }, db as never);
+    expect(counts[0]?.where).toEqual({
+      AND: [
+        {},
+        {
+          sortDate: {
+            gte: new Date("2026-06-01T00:00:00.000Z"),
+            lt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        },
+      ],
+    });
   });
 });
