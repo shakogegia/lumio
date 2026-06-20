@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -37,6 +38,7 @@ export function ColorLabelMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuLabel>Color label</DropdownMenuLabel>
         {COLOR_LABELS.map((c) => (
           <DropdownMenuItem key={c.slug} onSelect={() => onPick(c.slug)}>
             <span

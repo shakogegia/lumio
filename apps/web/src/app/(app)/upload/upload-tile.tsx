@@ -1,9 +1,10 @@
 "use client";
 
 import { memo } from "react";
-import { CheckCircle2, Circle, Loader2, RotateCw } from "lucide-react";
+import { Loader2, RotateCw } from "lucide-react";
 import { colorLabelHex, type ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import { SelectionRing } from "@/components/photo-grid/selection-ring";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
 import type { RowStatus } from "@/lib/upload-rows";
@@ -29,7 +30,6 @@ export const UploadTile = memo(function UploadTile({
   status,
   message,
   colorLabel,
-  selectMode,
   selected,
   onTileClick,
   onRetry,
@@ -45,7 +45,6 @@ export const UploadTile = memo(function UploadTile({
   message?: string;
   /** Applied color label; tints the card mat. */
   colorLabel?: ColorLabel | null;
-  selectMode: boolean;
   selected: boolean;
   onTileClick: (index: number, e: React.MouseEvent) => void;
   onRetry: (id: number) => void;
@@ -55,7 +54,7 @@ export const UploadTile = memo(function UploadTile({
   // are always cards; the mat is tinted with the applied color label's pastel
   // (light/dark handled by the `.label-mat` rule via `--label-tint`).
   const selectable = photoId != null;
-  const interactive = selectMode && selectable;
+  const interactive = selectable;
   const labelHex = colorLabelHex(colorLabel);
   const labelStyle = labelHex ? ({ "--label-tint": labelHex } as React.CSSProperties) : undefined;
 
@@ -64,16 +63,10 @@ export const UploadTile = memo(function UploadTile({
       className={cn(
         "relative aspect-square overflow-hidden rounded-md border border-border bg-muted p-2",
         labelHex && "label-mat",
-        selected && "ring-2 ring-inset ring-primary",
       )}
       style={labelStyle}
     >
-      <div
-        className={cn(
-          "h-full w-full overflow-hidden rounded-xs transition-transform",
-          selected && "scale-[0.92]",
-        )}
-      >
+      <div className="h-full w-full overflow-hidden rounded-xs">
         {photoId ? (
           // eslint-disable-next-line @next/next/no-img-element -- server thumbnail route, no next/image loader
           <img
@@ -126,15 +119,7 @@ export const UploadTile = memo(function UploadTile({
         </div>
       ) : null}
 
-      {selectMode && selectable ? (
-        <span className="absolute left-1.5 top-1.5 rounded-full bg-background">
-          {selected ? (
-            <CheckCircle2 className="size-5 text-primary" aria-hidden />
-          ) : (
-            <Circle className="size-5 text-muted-foreground" aria-hidden />
-          )}
-        </span>
-      ) : null}
+      {selected && <SelectionRing className="rounded-md" />}
     </div>
   );
 
