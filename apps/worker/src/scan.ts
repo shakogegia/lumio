@@ -56,7 +56,9 @@ async function fileExists(p: string): Promise<boolean> {
 }
 
 /** One-shot scan: ingest new/changed images concurrently, skip unchanged, reconcile deletions. */
-export async function scanAndIngest(): Promise<ScanSummary> {
+export async function scanAndIngest(
+  onProgress?: (done: number, total: number) => void,
+): Promise<ScanSummary> {
   const relPaths = await listImages();
   const summary: ScanSummary = { processed: 0, skipped: 0, skippedUnchanged: 0, removed: 0 };
 
@@ -64,6 +66,7 @@ export async function scanAndIngest(): Promise<ScanSummary> {
     select: { id: true, path: true, fileSize: true, fileMtimeMs: true },
   });
   const byPath = new Map(existing.map((p) => [p.path, p]));
+  let done = 0;
 
   await runPool(relPaths.length, INGEST_CONCURRENCY, async (i) => {
     const relPath = relPaths[i]!;
@@ -87,6 +90,8 @@ export async function scanAndIngest(): Promise<ScanSummary> {
     } catch (err) {
       summary.skipped++;
       console.warn(`skip ${relPath}: ${(err as Error).message}`);
+    } finally {
+      onProgress?.(++done, relPaths.length);
     }
   });
 
