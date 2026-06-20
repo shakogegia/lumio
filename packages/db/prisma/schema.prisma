@@ -159,3 +159,25 @@ model Verification {
 
   @@index([identifier])
 }
+
+model Job {
+  id         String    @id @default(cuid())
+  type       String // "rescan" | "purge_all" | "empty_trash"
+  status     String    @default("queued") // queued | running | succeeded | failed | canceled
+  total      Int? // null until the worker knows the count
+  processed  Int       @default(0)
+  message    String?
+  error      String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+model WorkerStatus {
+  id         String   @id // always "singleton"
+  lastSeenAt DateTime
+  activity   String   @default("idle") // "idle" | "watching" | "importing N" | "running: <type>"
+  jobId      String?
+}
