@@ -125,7 +125,9 @@ export function FilmStrip({
                 onClick={() => onPick(item.index)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "block size-14 shrink-0 overflow-hidden rounded-xs bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-primary",
+                  // No transition on the frames: during press-and-hold the active
+                  // ring/opacity would animate and visibly lag a step behind.
+                  "block size-14 shrink-0 overflow-hidden rounded-xs bg-muted outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-primary",
                   active ? "ring-2 ring-primary" : "opacity-80 hover:opacity-100",
                 )}
               >
