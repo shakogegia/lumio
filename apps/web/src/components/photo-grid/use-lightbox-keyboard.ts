@@ -16,6 +16,8 @@ export interface LightboxKeys {
   guard: (go: () => void) => void;
   undo: () => void;
   redo: () => void;
+  /** Toggle the open photo's favorite state. */
+  toggleFavorite: () => void;
 }
 
 /**
@@ -53,6 +55,19 @@ export function useLightboxKeyboard(keys: LightboxKeys): void {
       }
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
+      // Favorite toggle: F (unmodified, single press).
+      if (
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !e.repeat &&
+        (e.key === "f" || e.key === "F")
+      ) {
+        e.preventDefault();
+        k.toggleFavorite();
+        return;
+      }
       // Undo / redo edits: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, or Ctrl+Y.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
         if (e.shiftKey) {

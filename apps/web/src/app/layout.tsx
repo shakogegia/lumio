@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   ALBUM_COLUMNS_STORAGE_KEY,
   ALBUM_DEFAULT_COLUMNS,
@@ -50,7 +51,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
           <Toaster position="bottom-center" richColors />
         </ThemeProvider>
       </body>
