@@ -12,7 +12,14 @@ ARG NODE_VERSION=24
 # decoders the ingest pipeline shells out to for .jxl / .heic / .heif — libvips
 # can't read those. On macOS dev these come from the built-in `sips`; in this
 # Linux image they must be installed, or ingest fails with "no external decoder".
-FROM node:${NODE_VERSION}-slim AS base
+#
+# Pinned to Debian *trixie*: the ingest pipeline calls
+# `djxl <in> - --output_format jpeg`, which needs libjxl >= 0.8 (stdout + format
+# flag). Debian bookworm only packages djxl 0.7.0, which rejects those args
+# ("Unknown argument: --output_format"). Trixie ships 0.11.x. Prisma uses
+# binaryTargets "native" (generated in this image) and both releases use
+# libssl3, so the engine target is unaffected by the base bump.
+FROM node:${NODE_VERSION}-trixie-slim AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
