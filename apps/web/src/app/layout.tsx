@@ -27,7 +27,9 @@ const gridColumnsScript = `try{function s(k,d,p){var v=localStorage.getItem(k);v
 )},${ALBUM_DEFAULT_COLUMNS},'--album-columns');}catch(e){}`;
 
 export const metadata: Metadata = {
-  title: "Lumio",
+  // `default` covers routes without their own title (e.g. the redirect index);
+  // `template` wraps each page's `title` export, so "Photos" → "Photos · Lumio".
+  title: { default: "Lumio", template: "%s · Lumio" },
   description: "Your photo library.",
 };
 

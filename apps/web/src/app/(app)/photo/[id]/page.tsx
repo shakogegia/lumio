@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { parseDetailScope } from "@/lib/photo-detail-loader";
 import { getPhoto } from "@/lib/photos-service";
@@ -8,6 +10,21 @@ import { Lightbox } from "@/components/photo-grid/lightbox";
 
 export const dynamic = "force-dynamic";
 
+// `cache` dedupes the lookup so generateMetadata and the page share one query.
+const loadPhoto = cache((id: string) => getPhoto(id));
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const photo = await loadPhoto(id);
+  // Title the tab with the file's basename (e.g. "IMG_1234.jpg"); fall back to "Photo".
+  const name = photo?.path.split("/").pop();
+  return { title: name || "Photo" };
+}
+
 export default async function PhotoPage({
   params,
   searchParams,
@@ -17,7 +34,7 @@ export default async function PhotoPage({
 }) {
   const { id } = await params;
   const scope = parseDetailScope(await searchParams);
-  const [photo, index] = await Promise.all([getPhoto(id), locatePhoto(id, scope)]);
+  const [photo, index] = await Promise.all([loadPhoto(id), locatePhoto(id, scope)]);
   if (!photo || index === null) notFound();
 
   return (

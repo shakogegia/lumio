@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -16,6 +17,8 @@ import { TwoFactorSection } from "./two-factor-section";
 import { SessionsList, type SessionRow } from "./sessions-list";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
   // (app)/layout.tsx already redirects unauthenticated requests; we still fetch
