@@ -27,6 +27,10 @@ input, auto-orienting via EXIF. Consequences vs. the PAM design below:
 - Sections A1/A2 below are superseded by `decodeToSharpInput` returning a JPEG
   buffer for `.jxl`; the **decode-once** idea and **Part B** (per-photo timing)
   are unchanged.
+- Stored `width`/`height` are now **orientation-aware for every format** (EXIF 5-8
+  swap W/H). This also fixes native (non-JXL) oriented photos, which previously
+  stored pre-rotation dims — so a re-ingest of an oriented JPEG/HEIC may change
+  its recorded dimensions to match the displayed orientation.
 
 Everything below is the original design, kept for context.
 
