@@ -54,6 +54,25 @@ export const photoIdsSchema = z.object({
 
 export type PhotoIdsInput = z.infer<typeof photoIdsSchema>;
 
+/** Edit recipe payload. Used by POST /api/photos/[id]/edit (null = reset). */
+export const photoEditsSchema = z.object({
+  rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
+  flipH: z.boolean(),
+  flipV: z.boolean(),
+});
+export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });
+export type EditPhotoInput = z.infer<typeof editPhotoSchema>;
+
+/** Which bytes a download returns. */
+export const downloadVariantSchema = z.enum(["original", "edited"]);
+export type DownloadVariant = z.infer<typeof downloadVariantSchema>;
+
+/** Body for POST /api/photos/download — bulk zip, original or edited. */
+export const downloadRequestSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+  variant: downloadVariantSchema.default("original"),
+});
+
 /** Query params for GET /api/search. `album` may repeat in the query string. */
 export const searchQuerySchema = z.object({
   q: z

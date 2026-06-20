@@ -1,6 +1,14 @@
 import type { ColorLabel } from "./color-labels.js";
 import type { MatchType, PhotoSource, RuleOp } from "./enums.js";
 
+/** Non-destructive edit recipe applied on top of EXIF auto-orientation.
+ *  Canonical application order: flipH → flipV → rotate (clockwise). */
+export interface PhotoEdits {
+  rotate: 0 | 90 | 180 | 270;
+  flipH: boolean;
+  flipV: boolean;
+}
+
 /** Normalized subset of EXIF we surface to clients. */
 export interface ExifData {
   takenAt?: string; // ISO string
@@ -22,6 +30,7 @@ export interface PhotoDTO {
   thumbhash: string | null;
   exif: ExifData;
   colorLabel: ColorLabel | null;
+  edits: PhotoEdits | null;
   createdAt: string;
   updatedAt: string;
   albumIds?: string[];
