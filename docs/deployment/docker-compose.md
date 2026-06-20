@@ -92,6 +92,27 @@ docker compose logs -f worker
 Then open the app at `http://<host>:3000` (or your `PORT`). On first launch it
 redirects to `/setup` to create the single admin account.
 
+## Ingest performance
+
+The worker scans `PHOTOS_DIR` on startup and whenever files change.
+
+- **Incremental scan:** files already indexed with an unchanged size + mod/time
+  (and an intact cache) are skipped, so restarts are near-instant. Only new or
+  changed files are (re)processed. Wiping `CACHE_DIR` forces regeneration.
+- **Concurrency (polite by default):** new/changed files are processed by a pool
+  sized to `INGEST_CONCURRENCY` (default: **half** the worker's visible cores).
+  The worker pins `sharp.concurrency(1)` and sizes `UV_THREADPOOL_SIZE` to the
+  pool, so total CPU ≈ the pool size — a bulk import uses about half the cores and
+  leaves the rest to serve the app + Postgres. It also runs at low OS priority, so
+  it yields CPU to web + Postgres rather than competing as an equal. Raise
+  `INGEST_CONCURRENCY` on a dedicated box for faster imports; lower it to be gentler.
+- **Shared box (e.g. N100):** the worker, web, and db share one machine, and a
+  large import is CPU-heavy. To guarantee it can never starve the app, cap the
+  worker container's CPUs (uncomment `cpus:` in the compose file) and set
+  `INGEST_CONCURRENCY` to match.
+- **Measure your hardware:** run `pnpm bench` against your library — it mirrors
+  the worker's settings and prints the real per-image cost and speedup curve.
+
 ## 4. Updating
 
 When a new image is published, pull it and recreate the containers:

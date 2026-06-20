@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { getSettings } from "@lumio/db";
-import { getStatus } from "@/lib/status-service";
+import {
+  getCatalogStats,
+  getPhotoFileCount,
+  getStorageSizes,
+} from "@/lib/status-service";
 import { formatBytes } from "@/lib/format";
 import {
   Card,
@@ -11,14 +16,34 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InfoList, InfoRow } from "@/components/ui/info-list";
 import { DeleteAllPhotos } from "./danger-zone";
+import { RefreshStatsButton } from "./refresh-stats-button";
 import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
 
 export const dynamic = "force-dynamic";
 
+/** Count of image files actually on disk; streamed so it never blocks the page. */
+async function FilesOnDisk() {
+  const count = await getPhotoFileCount();
+  return <InfoRow label="Files on disk" value={count.toLocaleString()} />;
+}
+
+/** On-disk byte sizes (filesystem walk); streamed so they never block the page. */
+async function StorageSizes() {
+  const { photosSize, thumbnailsSize, displaysSize, trashSize } = await getStorageSizes();
+  return (
+    <>
+      <InfoRow label="Photo storage" value={formatBytes(photosSize)} />
+      <InfoRow label="Thumbnail cache" value={formatBytes(thumbnailsSize)} />
+      <InfoRow label="Preview cache" value={formatBytes(displaysSize)} />
+      <InfoRow label="Trash" value={formatBytes(trashSize)} />
+    </>
+  );
+}
+
 export default async function SettingsPage() {
-  const status = await getStatus();
+  const stats = await getCatalogStats();
   const settings = await getSettings();
 
   return (
@@ -34,38 +59,50 @@ export default async function SettingsPage() {
 
         <TabsContent value="catalog" className="space-y-8">
           <InfoList>
-            <InfoRow label="Library folder" value={status.photosDir} mono />
-            <InfoRow
-              label="Photos"
-              value={status.photoCount.toLocaleString()}
-            />
-            <InfoRow
-              label="Albums"
-              value={status.albumCount.toLocaleString()}
-            />
-            <InfoRow
-              label="Photo storage"
-              value={formatBytes(status.photosSize)}
-            />
-            <InfoRow
-              label="Thumbnail cache"
-              value={formatBytes(status.thumbnailsSize)}
-            />
-            <InfoRow
-              label="Preview cache"
-              value={formatBytes(status.displaysSize)}
-            />
+            <InfoRow label="Library folder" value={stats.photosDir} mono />
+            <InfoRow label="Photos" value={stats.photoCount.toLocaleString()} />
+            <Suspense
+              fallback={
+                <InfoRow
+                  label="Files on disk"
+                  value={<span className="text-muted-foreground">counting…</span>}
+                />
+              }
+            >
+              <FilesOnDisk />
+            </Suspense>
+            <Suspense
+              fallback={
+                <>
+                  {["Photo storage", "Thumbnail cache", "Preview cache", "Trash"].map((label) => (
+                    <InfoRow
+                      key={label}
+                      label={label}
+                      value={
+                        <span className="text-muted-foreground">calculating…</span>
+                      }
+                    />
+                  ))}
+                </>
+              }
+            >
+              <StorageSizes />
+            </Suspense>
             <InfoRow
               label="Last updated"
               value={
-                status.lastIndexedAt ? (
-                  <RelativeTime iso={status.lastIndexedAt} />
+                stats.lastIndexedAt ? (
+                  <RelativeTime iso={stats.lastIndexedAt} />
                 ) : (
                   "never"
                 )
               }
             />
           </InfoList>
+
+          <div className="-mt-6 flex justify-end">
+            <RefreshStatsButton />
+          </div>
 
           <Card>
             <CardHeader>
@@ -104,7 +141,7 @@ export default async function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DeleteAllPhotos photoCount={status.photoCount} />
+              <DeleteAllPhotos photoCount={stats.photoCount} />
             </CardContent>
           </Card>
         </TabsContent>

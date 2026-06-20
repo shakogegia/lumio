@@ -1,17 +1,14 @@
-import { prisma } from "@lumio/db";
-import { scanAndIngest } from "./scan.js";
+import { bootstrapWorker } from "./runtime.js";
 
-async function main(): Promise<void> {
-  const start = Date.now();
-  const summary = await scanAndIngest();
-  console.log(
-    `Ingestion complete in ${Date.now() - start}ms — processed ${summary.processed}, skipped ${summary.skipped}, removed ${summary.removed}`,
-  );
-  await prisma.$disconnect();
-}
+// Tune the process (threadpool, single-thread Sharp, low priority) before any
+// Sharp/fs module loads, then run the one-shot ingest.
+await bootstrapWorker();
 
-main().catch(async (err) => {
+const { runIngest } = await import("./ingest-run.js");
+
+runIngest().catch(async (err) => {
   console.error(err);
+  const { prisma } = await import("@lumio/db");
   await prisma.$disconnect();
   process.exit(1);
 });

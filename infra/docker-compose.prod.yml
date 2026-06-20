@@ -64,10 +64,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # The worker shares this box with web + db. A bulk import is CPU-heavy, so on
+    # a small machine (e.g. an N100 mini-PC) cap the worker's CPUs to guarantee it
+    # can never starve them — and set INGEST_CONCURRENCY to match. Uncomment and
+    # tune to your hardware (needs `docker compose`, not Swarm):
+    # cpus: "2"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-lumio}:${POSTGRES_PASSWORD:-lumio}@db:5432/${POSTGRES_DB:-lumio}?schema=public
       PHOTOS_DIR: /data/photos
       CACHE_DIR: /data/cache
+      # Images processed in parallel during a scan. Empty → the worker uses HALF
+      # its visible cores (leaving CPU for web + Postgres) and sizes the libuv
+      # threadpool to match. Pin it to the worker's CPU allotment if you cap CPUs.
+      INGEST_CONCURRENCY: ${INGEST_CONCURRENCY:-}
     volumes:
       - ${PHOTOS_DIR}:/data/photos
       - cache:/data/cache

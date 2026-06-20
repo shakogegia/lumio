@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { rm, stat } from "node:fs/promises";
 import path from "node:path";
 import type { PrismaClient } from "@lumio/db";
 import { PhotoSource } from "@lumio/shared";
@@ -18,9 +18,11 @@ export async function ingestPath(
   deps: IngestDeps,
   source: PhotoSource = PhotoSource.filesystem,
 ): Promise<{ id: string }> {
-  const processed = await processImage(path.join(deps.photosDir, relPath));
+  const absPath = path.join(deps.photosDir, relPath);
+  const st = await stat(absPath);
+  const processed = await processImage(absPath);
   return storePhoto(
-    { path: relPath, source, processed },
+    { path: relPath, source, processed, fileSize: st.size, fileMtimeMs: st.mtimeMs },
     { db: deps.db, thumbnailsDir: deps.thumbnailsDir, displaysDir: deps.displaysDir },
   );
 }
