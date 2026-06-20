@@ -100,7 +100,7 @@ describe("streamPhotosZip", () => {
         input: { file: abs },
         cleanup: vi.fn(async () => undefined),
       })),
-      applyEdits: vi.fn((_sharpInst: unknown, _recipe: unknown) => ({
+      applyEdits: vi.fn(() => ({
         jpeg: vi.fn(() => ({
           toBuffer: vi.fn(async () => Buffer.from("EDITED_JPEG")),
         })),
