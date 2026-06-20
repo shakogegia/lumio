@@ -2,7 +2,7 @@
 
 import { Images } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
-import { cn } from "@/lib/utils";
+import { SelectionRing } from "@/components/photo-grid/selection-ring";
 
 /**
  * One album in the listing grid. Selection is always available: a plain left
@@ -62,13 +62,9 @@ export function AlbumCard({
       }}
       className="group block select-none"
     >
-      <div
-        className={cn(
-          "relative rounded-sm",
-          isSelected && "ring-2 ring-inset ring-blue-500",
-        )}
-      >
+      <div className="relative rounded-sm">
         {cover}
+        {isSelected && <SelectionRing className="rounded-sm" />}
       </div>
       {meta}
     </a>

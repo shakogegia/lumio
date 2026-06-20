@@ -6,6 +6,7 @@ import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
 import { cellVariants } from "./cell-variants";
 import { PhotoThumb } from "./photo-thumb";
+import { SelectionRing } from "./selection-ring";
 
 /**
  * One grid cell. Selection is always available: a plain left click toggles the
@@ -69,14 +70,11 @@ export function PhotoGridTile({
         e.preventDefault();
         onOpen(index);
       }}
-      className={cn(
-        cellVariants({ mode, selected: isSelected }),
-        "select-none",
-        labelHex && "label-mat",
-      )}
+      className={cn(cellVariants({ mode }), "select-none", labelHex && "label-mat")}
       style={labelStyle}
     >
       {thumb}
+      {isSelected && <SelectionRing />}
     </a>
   );
 }

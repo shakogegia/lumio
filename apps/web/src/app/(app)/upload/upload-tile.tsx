@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Loader2, RotateCw } from "lucide-react";
 import { colorLabelHex, type ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import { SelectionRing } from "@/components/photo-grid/selection-ring";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
 import type { RowStatus } from "@/lib/upload-rows";
@@ -62,7 +63,6 @@ export const UploadTile = memo(function UploadTile({
       className={cn(
         "relative aspect-square overflow-hidden rounded-md border border-border bg-muted p-2",
         labelHex && "label-mat",
-        selected && "ring-2 ring-inset ring-blue-500",
       )}
       style={labelStyle}
     >
@@ -119,6 +119,7 @@ export const UploadTile = memo(function UploadTile({
         </div>
       ) : null}
 
+      {selected && <SelectionRing className="rounded-md" />}
     </div>
   );
 
