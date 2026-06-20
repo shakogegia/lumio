@@ -1,4 +1,3 @@
-// apps/web/src/components/photo-grid/photo-collection.tsx
 "use client";
 
 import {
