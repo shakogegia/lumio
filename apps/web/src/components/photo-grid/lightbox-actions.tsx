@@ -77,8 +77,9 @@ export function LightboxActions({
       <div className="flex items-center gap-1">
         {edited && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
+            className="size-7"
             aria-label="Reset edits"
             title={dirty ? "Reset edits (unsaved changes)" : "Reset edits"}
             onClick={() => void resetEdits()}
@@ -92,8 +93,9 @@ export function LightboxActions({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="size-7"
               aria-label={
                 photo.isFavorite ? "Remove from favorites" : "Add to favorites"
               }
@@ -115,8 +117,9 @@ export function LightboxActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
+                className="size-7"
                 aria-label="Download"
                 title="Download"
               >
@@ -143,8 +146,9 @@ export function LightboxActions({
         ) : (
           <Button
             asChild
-            variant="outline"
+            variant="ghost"
             size="icon"
+            className="size-7"
             aria-label="Download"
             title="Download"
           >
@@ -155,11 +159,11 @@ export function LightboxActions({
         )}
 
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           aria-label="Move to Trash"
           title="Move to Trash"
-          className="text-muted-foreground hover:text-destructive"
+          className="size-7 text-muted-foreground hover:text-destructive"
           onClick={() => void trash()}
         >
           <Trash2 aria-hidden />

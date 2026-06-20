@@ -1,9 +1,10 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { MAX_ZOOM } from "@/lib/zoom-math";
+import { ZoomSlider } from "./zoom-slider";
 
 export function ZoomControls({
   zoom,
@@ -26,37 +27,68 @@ export function ZoomControls({
   // At the fit minimum we label "Fit" (it may be any sub-100% value); otherwise
   // the rounded percent, where 100% is true 1:1 original pixels.
   const atFit = zoom <= min + 0.5;
+  const valueLabel = atFit ? "Fit" : `${Math.round(zoom)}%`;
+
+  // Reveal the readout above the slider thumb only while the user is actively
+  // changing zoom: a drag streams onValueChange and keeps it lit; a +/- step
+  // flashes it once. Each change resets the hide timer, so it lingers a beat
+  // then fades.
+  const [showValue, setShowValue] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashValue = useCallback(() => {
+    setShowValue(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setShowValue(false), 900);
+  }, []);
+  useEffect(() => {
+    const timer = hideTimer;
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const stepOut = () => {
+    onStepOut();
+    flashValue();
+  };
+  const stepIn = () => {
+    onStepIn();
+    flashValue();
+  };
+
   return (
     <div className="flex items-center gap-2">
-      <span className="w-9 shrink-0 select-none text-center text-[11px] tabular-nums text-muted-foreground">
-        {atFit ? "Fit" : `${Math.round(zoom)}%`}
-      </span>
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         className="size-7"
         aria-label="Zoom out"
         disabled={!canStepOut}
-        onClick={onStepOut}
+        onClick={stepOut}
       >
         <Minus className="size-4" />
       </Button>
-      <Slider
+      <ZoomSlider
         className="hidden w-20 sm:flex"
         min={min}
         max={MAX_ZOOM}
         step={1}
-        value={[zoom]}
-        onValueChange={(v) => onZoom(v[0])}
+        value={zoom}
+        onValueChange={(v) => {
+          onZoom(v);
+          flashValue();
+        }}
+        valueLabel={valueLabel}
+        showValue={showValue}
         aria-label="Zoom"
       />
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         className="size-7"
         aria-label="Zoom in"
         disabled={!canStepIn}
-        onClick={onStepIn}
+        onClick={stepIn}
       >
         <Plus className="size-4" />
       </Button>

@@ -43,24 +43,51 @@ export function ZoomableImage({
   // delta — until the new one has preloaded, then swap. Avoids a flash of the
   // blur placeholder or the pre-edit orientation. (`key={photo.id}` in the
   // lightbox remounts this component per photo, so this only fires on Apply.)
-  const [shown, setShown] = useState<{ src: string; recipe: PhotoEdits }>({
+  //
+  // `shown` carries the displayed rendition's recipe AND its pixel dimensions, so
+  // all on-screen geometry follows the rendition actually painted — not `photo`.
+  // On Apply, `photo` flips to the new (e.g. rotated → portrait) dimensions at
+  // once, while this buffer still shows the old (landscape) rendition; deriving
+  // geometry from `photo` would mis-scale that held image and feed the zoom/pan
+  // engine the wrong orientation until the swap lands.
+  const [shown, setShown] = useState<{
+    src: string;
+    recipe: PhotoEdits;
+    w: number;
+    h: number;
+  }>({
     src: displaySrc,
     recipe: savedRecipe,
+    w: photo.width,
+    h: photo.height,
   });
   useEffect(() => {
     if (shown.src === displaySrc) return;
     let cancelled = false;
     const advance = () => {
-      if (!cancelled) setShown({ src: displaySrc, recipe: savedRecipe });
+      if (!cancelled)
+        setShown({
+          src: displaySrc,
+          recipe: savedRecipe,
+          w: photo.width,
+          h: photo.height,
+        });
     };
+    // Decode (not merely load) the new rendition before swapping. The live <img>
+    // keeps painting the OLD rendition until the new bitmap is decode-ready, and
+    // the same commit that swaps the src also drops the edit-delta transform to
+    // identity. If we advanced on `onload` (loaded, not yet decoded), that commit
+    // could show the old pixels under the new transform for a frame — e.g. the
+    // pre-rotation landscape flashing before the baked portrait appears. Decoding
+    // first makes the swap seamless (same trick as the zoom→original swap below).
     const img = new Image();
-    img.onload = advance;
-    img.onerror = advance;
     img.src = displaySrc;
+    img.decode().then(advance).catch(advance);
     return () => {
       cancelled = true;
     };
-    // savedRecipe is captured intentionally with displaySrc (they change together).
+    // savedRecipe and the dimensions are captured intentionally with displaySrc
+    // (they all change together on Apply).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displaySrc, shown.src]);
 
@@ -70,8 +97,9 @@ export function ZoomableImage({
   const rotated = t.deg === 90 || t.deg === 270;
   // Feed the zoom/pan engine the *previewed* orientation, so a rotated-but-unsaved
   // image still pans and fits correctly (a 90/270 delta swaps width and height).
-  const viewW = rotated ? photo.height : photo.width;
-  const viewH = rotated ? photo.width : photo.height;
+  // Uses the shown rendition's dimensions — see the double-buffer note above.
+  const viewW = rotated ? shown.h : shown.w;
+  const viewH = rotated ? shown.w : shown.h;
 
   const { containerRef, setImgEl, blurBox } = useBlurBox(
     photo.width,
@@ -130,14 +158,14 @@ export function ZoomableImage({
 
   // A 90/270 rotation must be scaled so it fills the same space the re-baked
   // rendition will: ratio of "contain of the swapped image" to "contain now".
-  // Uses photo dimensions (same aspect as the rendition) and the viewport from
-  // useZoomPan, so no second ResizeObserver is needed.
+  // Uses the shown rendition's dimensions (see the double-buffer note above) and
+  // the viewport from useZoomPan, so no second ResizeObserver is needed.
   let fit = 1;
   if (rotated && viewport.width > 0 && viewport.height > 0) {
     const cw = viewport.width;
     const ch = viewport.height;
-    const sNow = Math.min(cw / photo.width, ch / photo.height, 1);
-    const sPost = Math.min(cw / photo.height, ch / photo.width, 1);
+    const sNow = Math.min(cw / shown.w, ch / shown.h, 1);
+    const sPost = Math.min(cw / shown.h, ch / shown.w, 1);
     if (sNow > 0) fit = sPost / sNow;
   }
   const editTransform = `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
@@ -192,6 +220,12 @@ export function ZoomableImage({
                 width: blurBox.width,
                 height: blurBox.height,
                 opacity: everLoaded ? 0 : 1,
+                // The main <img> carries an edit-preview `transform`, which makes
+                // it establish a stacking context and paint above its in-flow
+                // siblings. Without an explicit z-index the blur would sit
+                // *behind* the image and never get to fade away over it — the
+                // blur-up reveal would be lost.
+                zIndex: 1,
               }}
             />
           )}
@@ -199,8 +233,8 @@ export function ZoomableImage({
             ref={setImg}
             src={src}
             alt={photo.path}
-            width={photo.width}
-            height={photo.height}
+            width={shown.w}
+            height={shown.h}
             onLoad={onLoad}
             draggable={false}
             className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
