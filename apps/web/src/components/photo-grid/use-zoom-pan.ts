@@ -35,6 +35,7 @@ export interface ZoomPan {
     onPointerDown: (e: ReactPointerEvent) => void;
     onPointerMove: (e: ReactPointerEvent) => void;
     onPointerUp: (e: ReactPointerEvent) => void;
+    onPointerCancel: (e: ReactPointerEvent) => void;
     onDoubleClick: (e: ReactMouseEvent) => void;
   };
 }
@@ -106,6 +107,15 @@ export function useZoomPan(width: number, height: number): ZoomPan {
     return () => ro.disconnect();
   }, []);
 
+  // Keep the pan in-bounds when the viewport resizes (e.g. window resize while zoomed).
+  useEffect(() => {
+    const reclamp = (vp: Size) => {
+      const s = stateRef.current;
+      setOffset((prev) => clampOffset(prev, scaledSize(s.photo, s.effZoom), vp));
+    };
+    reclamp(viewport);
+  }, [viewport]);
+
   // Native non-passive wheel: ctrl/cmd-wheel (trackpad pinch) zooms toward the
   // cursor; a plain wheel / 2-finger swipe pans when zoomed. React's onWheel is
   // passive, so preventDefault requires a manual listener.
@@ -154,6 +164,13 @@ export function useZoomPan(width: number, height: number): ZoomPan {
     e.currentTarget.releasePointerCapture(e.pointerId);
     setDragging(false);
   }, []);
+  // An OS/browser pointer-cancel (e.g. window loses focus) ends the drag too;
+  // capture is released automatically on cancel, so don't call releasePointerCapture.
+  const onPointerCancel = useCallback(() => {
+    if (!dragStart.current) return;
+    dragStart.current = null;
+    setDragging(false);
+  }, []);
 
   // Double-click toggles fit <-> 100% at the cursor.
   const onDoubleClick = useCallback(
@@ -179,6 +196,6 @@ export function useZoomPan(width: number, height: number): ZoomPan {
     stepIn,
     stepOut,
     reset,
-    handlers: { onPointerDown, onPointerMove, onPointerUp, onDoubleClick },
+    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onDoubleClick },
   };
 }
