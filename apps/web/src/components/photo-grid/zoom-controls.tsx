@@ -27,7 +27,7 @@ export function ZoomControls({
   // the rounded percent, where 100% is true 1:1 original pixels.
   const atFit = zoom <= min + 0.5;
   return (
-    <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border bg-background/70 px-2 py-1 backdrop-blur">
+    <div className="flex items-center gap-2">
       <span className="w-9 shrink-0 select-none text-center text-[11px] tabular-nums text-muted-foreground">
         {atFit ? "Fit" : `${Math.round(zoom)}%`}
       </span>
@@ -42,7 +42,7 @@ export function ZoomControls({
         <Minus className="size-4" />
       </Button>
       <Slider
-        className="w-32"
+        className="hidden w-20 sm:flex"
         min={min}
         max={MAX_ZOOM}
         step={1}

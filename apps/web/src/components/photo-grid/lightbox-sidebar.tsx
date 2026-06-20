@@ -2,33 +2,20 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Download, FilePenLine, Heart, Search } from "lucide-react";
+import { FilePenLine, Search } from "lucide-react";
 import { hasEdits } from "@lumio/shared";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
-import { downloadFromUrl } from "@/lib/download-client";
-import { DownloadSplitButton } from "@/components/photo-actions/download-split-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useConfirm } from "@/components/confirm-dialog";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
 import { useEditSession } from "./use-edit-session";
 
-export function LightboxSidebar({
-  photo,
-  onTrashed,
-}: {
-  photo: PhotoDTO;
-  onTrashed: () => void;
-}) {
-  const { removePhotos, patchPhotos } = usePhotoCollection();
+export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
   const { dirty } = useEditSession();
-  const { confirm, confirmDialog } = useConfirm();
-  const filename = photo.path.split("/").pop() || photo.path;
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
@@ -52,129 +39,67 @@ export function LightboxSidebar({
     };
   }, []);
 
-  async function trash() {
-    const ok = await confirm({
-      title: "Move to Trash?",
-      description: "You can restore it later.",
-      confirmLabel: "Move to Trash",
-      destructive: true,
-    });
-    if (!ok) return;
-    const res = await fetch("/api/photos/trash", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ids: [photo.id] }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to move to Trash.");
-      return;
-    }
-    removePhotos(new Set([photo.id]));
-    onTrashed();
-  }
-
-  async function toggleFavorite() {
-    const next = !photo.isFavorite;
-    const res = await fetch("/api/photos/favorite", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ photoIds: [photo.id], isFavorite: next }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to update favorites.");
-      return;
-    }
-    patchPhotos(new Set([photo.id]), { isFavorite: next });
-  }
-
   return (
-    <aside className="w-full shrink-0 border-t bg-background p-4 text-sm lg:h-dvh lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
-      {confirmDialog}
-      <div className="space-y-1">
-        <h2 className="font-medium break-all">{filename}</h2>
-        <p className="text-muted-foreground">
-          {photo.width}×{photo.height}
-        </p>
-      </div>
+    <aside className="w-full shrink-0 border-t bg-background text-sm lg:flex lg:h-dvh lg:w-80 lg:flex-col lg:overflow-hidden lg:border-t-0 lg:border-l">
+      <Tabs defaultValue="info" className="gap-0 lg:min-h-0 lg:flex-1">
+        <div className="flex shrink-0 items-center border-b px-3 py-2">
+          <TabsList className="w-full">
+            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="exif">EXIF</TabsTrigger>
+            <TabsTrigger
+              value="edit"
+              title={
+                dirty
+                  ? "Unsaved changes"
+                  : hasEdits(photo.edits)
+                    ? "Edited"
+                    : undefined
+              }
+            >
+              {(dirty || hasEdits(photo.edits)) && (
+                <FilePenLine
+                  data-icon="inline-start"
+                  aria-hidden
+                  className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
+                />
+              )}
+              Edit
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      <Tabs defaultValue="info" className="mt-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="info">Info</TabsTrigger>
-          <TabsTrigger value="exif">EXIF</TabsTrigger>
-          <TabsTrigger
-            value="edit"
-            title={dirty ? "Unsaved changes" : hasEdits(photo.edits) ? "Edited" : undefined}
-          >
-            {(dirty || hasEdits(photo.edits)) && (
-              <FilePenLine
-                data-icon="inline-start"
-                aria-hidden
-                className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
-              />
-            )}
-            Edit
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="info" className="space-y-4">
-          <div className="space-y-3">
-            <Row label="Source" value={<Badge>{photo.source}</Badge>} />
-            <Row label="Taken" value={photo.takenAt ?? "—"} />
-            <Row label="Camera" value={camera} />
-            <Row label="Hash" value={photo.hash ?? "—"} />
-          </div>
-          {regularAlbums.length > 0 && (
-            <>
-              <Separator />
-              {/* Keyed on photo.id so membership state re-initializes to null on
+        <div className="p-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
+          <TabsContent value="info" className="space-y-4">
+            <div className="space-y-3">
+              <Row label="Source" value={<Badge>{photo.source}</Badge>} />
+              <Row label="Taken" value={photo.takenAt ?? "—"} />
+              <Row label="Camera" value={camera} />
+              <Row label="Hash" value={photo.hash ?? "—"} />
+            </div>
+            {regularAlbums.length > 0 && (
+              <>
+                <Separator />
+                {/* Keyed on photo.id so membership state re-initializes to null on
                   each photo: a toggle during arrow-nav can't compute nextIds from
                   the previous photo's membership. The album LIST fetch stays in
                   the parent, so it isn't re-fetched per navigation. */}
-              <AlbumMembership key={photo.id} photo={photo} regularAlbums={regularAlbums} />
-            </>
-          )}
-          <Separator />
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => void toggleFavorite()}
-            >
-              <Heart fill={photo.isFavorite ? "currentColor" : "none"} aria-hidden />
-              {photo.isFavorite ? "Favorited" : "Favorite"}
-            </Button>
-            {hasEdits(photo.edits) ? (
-              <DownloadSplitButton
-                onDownloadEdited={() => downloadFromUrl(`/api/photos/${photo.id}/edited?download=1`)}
-                onDownloadOriginal={() => downloadFromUrl(`/api/photos/${photo.id}/original?download=1`)}
-              />
-            ) : (
-              <Button asChild variant="outline" size="sm" className="w-full">
-                <a href={`/api/photos/${photo.id}/original?download=1`}>
-                  <Download aria-hidden />
-                  Download
-                </a>
-              </Button>
+                <AlbumMembership
+                  key={photo.id}
+                  photo={photo}
+                  regularAlbums={regularAlbums}
+                />
+              </>
             )}
-            <Button
-              variant="destructive"
-              size="sm"
-              className="w-full"
-              onClick={() => void trash()}
-            >
-              Move to Trash
-            </Button>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="exif">
-          <ExifPanel entries={metadata} />
-        </TabsContent>
+          <TabsContent value="exif">
+            <ExifPanel entries={metadata} />
+          </TabsContent>
 
-        <TabsContent value="edit">
-          <LightboxEditPanel />
-        </TabsContent>
+          <TabsContent value="edit" className="lg:flex lg:flex-col">
+            <LightboxEditPanel />
+          </TabsContent>
+        </div>
       </Tabs>
     </aside>
   );
@@ -191,7 +116,9 @@ function AlbumMembership({
   const [pending, setPending] = useState<string | null>(null);
   // The grid's photo has albumIds === undefined; fetch the full DTO to learn
   // membership. Null until loaded so the checkboxes only render once known.
-  const [albumIds, setAlbumIds] = useState<string[] | null>(photo.albumIds ?? null);
+  const [albumIds, setAlbumIds] = useState<string[] | null>(
+    photo.albumIds ?? null,
+  );
 
   useEffect(() => {
     let alive = true;
@@ -287,13 +214,17 @@ function ExifPanel({ entries }: { entries: Array<[string, string]> }) {
       {entries.length === 0 ? (
         <p className="text-xs text-muted-foreground">No metadata</p>
       ) : filtered.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No metadata matches &ldquo;{query}&rdquo;.</p>
+        <p className="text-xs text-muted-foreground">
+          No metadata matches &ldquo;{query}&rdquo;.
+        </p>
       ) : (
         <dl className="space-y-1 text-xs">
           {filtered.map(([key, value]) => (
             <div key={key} className="flex justify-between gap-3">
               <dt className="shrink-0 text-muted-foreground">{key}</dt>
-              <dd className="min-w-0 break-all text-right font-mono">{value}</dd>
+              <dd className="min-w-0 break-all text-right font-mono">
+                {value}
+              </dd>
             </div>
           ))}
         </dl>
