@@ -40,7 +40,7 @@ export interface ZoomPan {
   };
 }
 
-export function useZoomPan(width: number, height: number): ZoomPan {
+export function useZoomPan(width: number, height: number, disabled = false): ZoomPan {
   const photo = useMemo<Size>(() => ({ width, height }), [width, height]);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -55,9 +55,9 @@ export function useZoomPan(width: number, height: number): ZoomPan {
 
   // Latest values for native (non-passive) wheel + pointer math, refreshed after
   // each commit (writing refs during render is disallowed by react-hooks/refs).
-  const stateRef = useRef({ photo, viewport, fitZoom, effZoom, offset });
+  const stateRef = useRef({ photo, viewport, fitZoom, effZoom, offset, disabled });
   useEffect(() => {
-    stateRef.current = { photo, viewport, fitZoom, effZoom, offset };
+    stateRef.current = { photo, viewport, fitZoom, effZoom, offset, disabled };
   });
 
   // Cursor position relative to the viewport center, in CSS px.
@@ -124,6 +124,12 @@ export function useZoomPan(width: number, height: number): ZoomPan {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       const s = stateRef.current;
+      if (s.disabled) {
+        // While editing, swallow trackpad pinch (ctrl/cmd-wheel) so it neither
+        // zooms the image nor triggers browser page-zoom.
+        if (e.ctrlKey || e.metaKey) e.preventDefault();
+        return;
+      }
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const factor = Math.exp(-e.deltaY / PINCH_SENSITIVITY);
@@ -142,6 +148,7 @@ export function useZoomPan(width: number, height: number): ZoomPan {
   const dragStart = useRef<{ cursor: Offset; offset: Offset } | null>(null);
   const onPointerDown = useCallback((e: ReactPointerEvent) => {
     const s = stateRef.current;
+    if (s.disabled) return;
     if (s.effZoom <= s.fitZoom + ZOOM_EPSILON) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -176,6 +183,7 @@ export function useZoomPan(width: number, height: number): ZoomPan {
   const onDoubleClick = useCallback(
     (e: ReactMouseEvent) => {
       const s = stateRef.current;
+      if (s.disabled) return;
       if (s.effZoom > s.fitZoom + ZOOM_EPSILON) reset();
       else applyZoom(100, cursorFromCenter(e.clientX, e.clientY));
     },

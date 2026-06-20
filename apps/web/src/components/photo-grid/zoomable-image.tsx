@@ -77,7 +77,7 @@ export function ZoomableImage({
     stepOut,
     reset,
     handlers,
-  } = useZoomPan(photo.width, photo.height);
+  } = useZoomPan(photo.width, photo.height, editing);
 
   // Reset zoom to fit when an edit preview starts (can't pan a rotating image).
   useEffect(() => {
@@ -156,15 +156,16 @@ export function ZoomableImage({
     bump();
   }, [t.deg]);
 
-  // Suppress the transform transition on the frame the rendition swaps and when a
-  // flip toggles (flips snap; rotations animate).
+  // Suppress the rotation transition on the frame the rendition swaps (Apply /
+  // nav) so the buffer swap is instant; edit-rotate clicks animate. Flips never
+  // animate — the mirror lives on the <img> with no transition (below).
   const [animate, setAnimate] = useState(false);
   useEffect(() => {
     const enable = (v: boolean) => setAnimate(v);
     enable(false);
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
-  }, [shown.src, t.mirror]);
+  }, [shown.src]);
 
   const rotated = t.deg === 90 || t.deg === 270;
   let fit = 1;
@@ -175,7 +176,10 @@ export function ZoomableImage({
     const sPost = Math.min(cw / nat.h, ch / nat.w, 1);
     if (sNow > 0) fit = sPost / sNow;
   }
-  const editTransform = `rotate(${contDeg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
+  // Rotation + fit animate (on a wrapper); the mirror is applied to the <img>
+  // with no transition so flips are instant (a CSS scale through 0 would collapse).
+  const rotateTransform = `rotate(${contDeg}deg) scale(${fit})`;
+  const mirrorTransform = `scaleX(${t.mirror ? -1 : 1})`;
 
   // Compose the blur-box and image-loaded callback-refs onto the <img>.
   const setImg = useCallback(
@@ -196,11 +200,11 @@ export function ZoomableImage({
         ref={containerRef}
         className="absolute inset-0 flex items-center justify-center"
         style={{ transform, transformOrigin: "center", cursor: editing ? "default" : cursor }}
-        onPointerDown={editing ? undefined : handlers.onPointerDown}
-        onPointerMove={editing ? undefined : handlers.onPointerMove}
-        onPointerUp={editing ? undefined : handlers.onPointerUp}
-        onPointerCancel={editing ? undefined : handlers.onPointerCancel}
-        onDoubleClick={editing ? undefined : handlers.onDoubleClick}
+        onPointerDown={handlers.onPointerDown}
+        onPointerMove={handlers.onPointerMove}
+        onPointerUp={handlers.onPointerUp}
+        onPointerCancel={handlers.onPointerCancel}
+        onDoubleClick={handlers.onDoubleClick}
       >
         {/* eslint-disable @next/next/no-img-element */}
         {blurUrl && blurBox && (
@@ -218,21 +222,26 @@ export function ZoomableImage({
             }}
           />
         )}
-        <img
-          ref={setImg}
-          src={src}
-          alt={photo.path}
-          width={photo.width}
-          height={photo.height}
-          onLoad={onImgLoad}
-          draggable={false}
-          className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+        <div
+          className="flex h-full w-full items-center justify-center"
           style={{
-            transform: editTransform,
+            transform: rotateTransform,
             transformOrigin: "center center",
             transition: animate ? "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
           }}
-        />
+        >
+          <img
+            ref={setImg}
+            src={src}
+            alt={photo.path}
+            width={photo.width}
+            height={photo.height}
+            onLoad={onImgLoad}
+            draggable={false}
+            className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+            style={{ transform: mirrorTransform, transformOrigin: "center center", transition: "none" }}
+          />
+        </div>
         {/* eslint-enable @next/next/no-img-element */}
       </div>
       {!editing && (

@@ -45,8 +45,6 @@ export function LightboxEditPanel() {
         </Button>
       </div>
 
-      <p className="h-4 text-xs text-muted-foreground">{dirty ? "Unsaved changes" : ""}</p>
-
       <div className="flex gap-2">
         <Button size="sm" className="flex-1" disabled={!dirty || applying} onClick={() => void apply()}>
           {applying ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}

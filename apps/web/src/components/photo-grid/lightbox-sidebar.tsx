@@ -16,6 +16,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
+import { useEditSession } from "./use-edit-session";
 
 export function LightboxSidebar({
   photo,
@@ -25,6 +26,7 @@ export function LightboxSidebar({
   onTrashed: () => void;
 }) {
   const { removePhotos, patchPhotos } = usePhotoCollection();
+  const { dirty } = useEditSession();
   const { confirm, confirmDialog } = useConfirm();
   const filename = photo.path.split("/").pop() || photo.path;
   const camera =
@@ -99,7 +101,22 @@ export function LightboxSidebar({
         <TabsList className="w-full">
           <TabsTrigger value="info">Info</TabsTrigger>
           <TabsTrigger value="exif">EXIF</TabsTrigger>
-          <TabsTrigger value="edit">Edit</TabsTrigger>
+          <TabsTrigger value="edit">
+            Edit
+            {dirty ? (
+              <span
+                className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500"
+                title="Unsaved changes"
+                aria-label="Unsaved changes"
+              />
+            ) : hasEdits(photo.edits) ? (
+              <span
+                className="ml-1.5 inline-block size-1.5 rounded-full bg-primary"
+                title="Edited"
+                aria-label="Edited"
+              />
+            ) : null}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="space-y-4">
