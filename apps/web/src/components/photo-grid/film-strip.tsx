@@ -20,7 +20,7 @@ export function FilmStrip({
   currentId,
   onPick,
 }: {
-  items: { id: string; index: number }[];
+  items: { id: string; index: number; v: number }[];
   currentId: string;
   onPick: (index: number) => void;
 }) {
@@ -132,7 +132,7 @@ export function FilmStrip({
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/thumbnails/${item.id}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+                <img src={`/api/thumbnails/${item.id}?v=${item.v}`} alt="" loading="lazy" className="h-full w-full object-cover" />
               </button>
             );
           })}

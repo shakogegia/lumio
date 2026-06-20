@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
+import { displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
@@ -108,10 +109,10 @@ export function Lightbox() {
     // first paint instead of popping in a moment later and shifting the image up.
     const hi =
       total === null ? openIndex + STRIP_RADIUS : Math.min(total - 1, openIndex + STRIP_RADIUS);
-    const out: { id: string; index: number }[] = [];
+    const out: { id: string; index: number; v: number }[] = [];
     for (let i = lo; i <= hi; i++) {
       const p = photoAt(i);
-      if (p) out.push({ id: p.id, index: i });
+      if (p) out.push({ id: p.id, index: i, v: renditionVersion(p.updatedAt) });
     }
     return out;
   }, [openIndex, total, photoAt]);
@@ -154,7 +155,7 @@ function LightboxImage({
   hasNext: boolean;
   step: (delta: 1 | -1) => void;
 }) {
-  const src = `/api/photos/${photo.id}/display`;
+  const src = displayUrl(photo);
   const { loaded, ref, onLoad } = useImageLoaded(src);
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
   const { containerRef, setImgEl, blurBox } = useBlurBox(photo.width, photo.height, photo.id);

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
+import { thumbUrl } from "@/lib/rendition-url";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an
@@ -42,7 +43,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/api/thumbnails/${photo.id}`}
+        src={thumbUrl(photo)}
         alt={photo.path}
         loading="lazy"
         decoding="async"
