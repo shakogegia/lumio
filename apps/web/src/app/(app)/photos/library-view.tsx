@@ -12,6 +12,7 @@ import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
+import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { Lightbox } from "@/components/photo-grid/lightbox";
@@ -28,6 +29,7 @@ export function LibraryView() {
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
+  const [month, setMonth] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const { confirm, confirmDialog } = useConfirm();
@@ -156,6 +158,11 @@ export function LibraryView() {
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
+              <GridCalendarMenu
+                facetsEndpoint="/api/photos/calendar"
+                value={month}
+                onChange={setMonth}
+              />
               <Button
                 variant="outline"
                 size="icon-sm"
@@ -171,9 +178,9 @@ export function LibraryView() {
       )}
 
       <PhotoCollectionProvider
-        key={sort}
+        key={`${sort}:${month ?? ""}`}
         endpoint="/api/photos"
-        params={new URLSearchParams({ sort })}
+        params={new URLSearchParams(month ? { sort, month } : { sort })}
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl="/photos"
       >

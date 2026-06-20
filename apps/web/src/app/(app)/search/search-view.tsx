@@ -11,6 +11,7 @@ import { downloadSelection } from "@/lib/download-client";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
+import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-dialog";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
@@ -44,6 +45,7 @@ export function SearchView() {
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
   const { mode, setMode } = useGridView();
+  const [month, setMonth] = useState<string | null>(null);
   const sel = useGridSelection();
   const gridRef = useRef<PhotoGridHandle>(null);
   const { confirm, confirmDialog } = useConfirm();
@@ -53,7 +55,7 @@ export function SearchView() {
   const [downloading, setDownloading] = useState(false);
 
   const empty = isEmptyFilters(filters);
-  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
+  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
 
   // The result set changes when the query changes, so any selection would point
   // at photos no longer shown. Drop it and leave select mode whenever the query
@@ -259,6 +261,11 @@ export function SearchView() {
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
+                      <GridCalendarMenu
+                        facetsEndpoint={`/api/search/calendar?${paramsFor(filters).toString()}`}
+                        value={month}
+                        onChange={setMonth}
+                      />
                       <Button
                         variant="outline"
                         size="icon-sm"
@@ -273,9 +280,13 @@ export function SearchView() {
                 </div>
               </div>
               <PhotoCollectionProvider
-                key={`${serialized}:${sort}`}
+                key={`${serialized}:${sort}:${month ?? ""}`}
                 endpoint="/api/search"
-                params={paramsFor(filters, sort)}
+                params={(() => {
+                  const p = paramsFor(filters, sort);
+                  if (month) p.set("month", month);
+                  return p;
+                })()}
                 urlForId={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
                 baseUrl="/search"
               >
