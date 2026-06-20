@@ -13,6 +13,9 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { Lightbox } from "@/components/photo-grid/lightbox";
+import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "./selection-toolbar";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
@@ -152,17 +155,23 @@ export function LibraryView() {
         />
       )}
 
-      <PhotoGrid
+      <PhotoCollectionProvider
         key={sort}
-        apiRef={gridRef}
-        mode={mode}
-        columns={columns}
-        sort={sort}
+        endpoint="/api/photos"
         params={new URLSearchParams({ sort })}
-        selectMode={sel.selectMode}
-        selectedIds={sel.selected}
-        onSelectionChange={sel.setSelected}
-      />
+        urlForId={(id) => photoHref(id, undefined, sort)}
+        baseUrl="/photos"
+      >
+        <PhotoGrid
+          apiRef={gridRef}
+          mode={mode}
+          columns={columns}
+          selectMode={sel.selectMode}
+          selectedIds={sel.selected}
+          onSelectionChange={sel.setSelected}
+        />
+        <Lightbox />
+      </PhotoCollectionProvider>
 
       <AddToAlbumDialog
         open={dialogOpen}

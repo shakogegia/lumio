@@ -13,6 +13,9 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid } from "@/components/photo-grid/photo-grid";
+import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { Lightbox } from "@/components/photo-grid/lightbox";
+import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { HeaderBar } from "@/components/header-bar";
@@ -203,31 +206,35 @@ export function AlbumView({
         <p className="mb-4 text-sm text-destructive">{removeError}</p>
       )}
 
-      <PhotoGrid
+      <PhotoCollectionProvider
         key={`${reloadKey}:${sort}`}
         endpoint={`/api/albums/${albumId}/photos`}
-        albumId={albumId}
-        mode={mode}
-        columns={columns}
-        sort={sort}
         params={new URLSearchParams({ sort })}
-        selectMode={sel.selectMode}
-        selectedIds={sel.selected}
-        onSelectionChange={sel.setSelected}
-        empty={
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Images />
-              </EmptyMedia>
-              <EmptyTitle>This album is empty</EmptyTitle>
-              <EmptyDescription>
-                Photos you add to this album will appear here.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        }
-      />
+        urlForId={(id) => photoHref(id, albumId, sort)}
+        baseUrl={`/albums/${albumId}`}
+      >
+        <PhotoGrid
+          mode={mode}
+          columns={columns}
+          selectMode={sel.selectMode}
+          selectedIds={sel.selected}
+          onSelectionChange={sel.setSelected}
+          empty={
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Images />
+                </EmptyMedia>
+                <EmptyTitle>This album is empty</EmptyTitle>
+                <EmptyDescription>
+                  Photos you add to this album will appear here.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          }
+        />
+        <Lightbox />
+      </PhotoCollectionProvider>
 
       <AddToAlbumDialog
         open={dialogOpen}
