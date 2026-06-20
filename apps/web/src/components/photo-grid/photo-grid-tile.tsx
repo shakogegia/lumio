@@ -5,13 +5,15 @@ import { colorLabelHex, type PhotoDTO, type PhotoSort } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
+import { resolveTargets } from "@/lib/resolve-targets";
 import { cellVariants } from "./cell-variants";
+import { PhotoContextMenu } from "./photo-context-menu";
 import { PhotoThumb } from "./photo-thumb";
 
 /**
  * One grid cell. In select mode it's a toggle button with a checkbox overlay and
  * a shrink-on-select affordance; otherwise it's a Link to the photo. Both wrap
- * the same PhotoThumb.
+ * the same PhotoThumb, and both are wrapped in a right-click PhotoContextMenu.
  */
 export function PhotoGridTile({
   photo,
@@ -24,6 +26,8 @@ export function PhotoGridTile({
   isSelected,
   index,
   onTileClick,
+  selectedIds,
+  onTrash,
 }: {
   photo: PhotoDTO;
   mode: GridViewMode;
@@ -35,6 +39,10 @@ export function PhotoGridTile({
   isSelected: boolean;
   index: number;
   onTileClick: (index: number, e: React.MouseEvent) => void;
+  /** Current selection, for selection-aware context-menu targeting. */
+  selectedIds?: Set<string>;
+  /** Drop these ids from the selection after a menu-driven trash. */
+  onTrash?: (ids: string[]) => void;
 }) {
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
 
@@ -47,34 +55,32 @@ export function PhotoGridTile({
     ? ({ "--label-tint": labelHex } as React.CSSProperties)
     : undefined;
 
-  if (selectMode) {
-    return (
-      <button
-        type="button"
-        aria-pressed={isSelected}
-        onClick={(e) => onTileClick(index, e)}
-        className={cn(
-          cellVariants({ mode, selected: isSelected }),
-          "select-none",
-          labelHex && "label-mat",
-        )}
-        style={labelStyle}
-      >
-        <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
-          {thumb}
-        </div>
-        <span className="absolute left-2 top-2 rounded-full bg-background text-foreground">
-          {isSelected ? (
-            <CheckCircle2 className="size-5 text-primary" />
-          ) : (
-            <Circle className="size-5 text-muted-foreground" />
-          )}
-        </span>
-      </button>
-    );
-  }
+  const targetIds = resolveTargets(selectedIds, photo.id);
 
-  return (
+  const tile = selectMode ? (
+    <button
+      type="button"
+      aria-pressed={isSelected}
+      onClick={(e) => onTileClick(index, e)}
+      className={cn(
+        cellVariants({ mode, selected: isSelected }),
+        "select-none",
+        labelHex && "label-mat",
+      )}
+      style={labelStyle}
+    >
+      <div className={cn("h-full w-full transition-transform", isSelected && "scale-[0.92]")}>
+        {thumb}
+      </div>
+      <span className="absolute left-2 top-2 rounded-full bg-background text-foreground">
+        {isSelected ? (
+          <CheckCircle2 className="size-5 text-primary" />
+        ) : (
+          <Circle className="size-5 text-muted-foreground" />
+        )}
+      </span>
+    </button>
+  ) : (
     <a
       href={urlForId ? urlForId(photo.id) : photoHref(photo.id, albumId, sort)}
       onClick={(e) => {
@@ -88,5 +94,14 @@ export function PhotoGridTile({
     >
       {thumb}
     </a>
+  );
+
+  return (
+    <PhotoContextMenu
+      targetIds={targetIds}
+      onTrashed={onTrash ? () => onTrash(targetIds) : undefined}
+    >
+      {tile}
+    </PhotoContextMenu>
   );
 }
