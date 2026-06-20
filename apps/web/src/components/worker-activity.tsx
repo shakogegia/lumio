@@ -10,11 +10,11 @@ import { cn } from "@/lib/utils";
 const IRIS_CLIP = "polygon(50% 3%, 93% 27%, 93% 73%, 50% 97%, 7% 73%, 7% 27%)";
 
 /**
- * The sidebar brand mark doubling as the worker activity indicator: a pupil in
- * the aperture's centre reflects worker state — amber and pulsing while busy
- * (the same amber the upload UI uses for "Duplicate"), steady green when
- * idle/online, red when offline. The full label is exposed via title/aria for
- * hover + screen readers.
+ * The sidebar brand mark doubling as the worker activity indicator. Only two
+ * states light the aperture's centre pupil: amber and pulsing while busy (the
+ * same amber the upload UI uses for "Duplicate"), and a soft red when offline.
+ * Online-but-idle shows no pupil — just the plain mark. The full label is
+ * exposed via title/aria for hover + screen readers.
  */
 export function WorkerActivity() {
   const snapshot = useActivity();
@@ -23,10 +23,10 @@ export function WorkerActivity() {
   const label = activityLabel(snapshot);
 
   const pupil = !online
-    ? "bg-destructive"
+    ? "bg-red-400"
     : busy
       ? "animate-pulse bg-amber-600 dark:bg-amber-400"
-      : "bg-green-600 dark:bg-green-500";
+      : null;
 
   return (
     <span
@@ -35,14 +35,16 @@ export function WorkerActivity() {
       aria-label={label}
     >
       <Logo className="h-7 w-7" />
-      <span
-        aria-hidden
-        className={cn(
-          "absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-[30deg] transition-colors",
-          pupil,
-        )}
-        style={{ clipPath: IRIS_CLIP }}
-      />
+      {pupil && (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-[30deg] transition-colors",
+            pupil,
+          )}
+          style={{ clipPath: IRIS_CLIP }}
+        />
+      )}
     </span>
   );
 }
