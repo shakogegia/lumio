@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -34,6 +34,18 @@ describe("purgeAllPhotos", () => {
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(false);
     expect(db.photo.deleteMany).toHaveBeenCalledWith({});
   });
+
+  it("tolerates already-missing files", async () => {
+    const { photosDir, cacheDir } = await photoDirs();
+    const db = {
+      photo: {
+        findMany: vi.fn().mockResolvedValue([{ id: "gone", path: "gone.jpg" }]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
+    expect(result).toEqual({ deleted: 1 });
+  });
 });
 
 describe("purgeTrash", () => {
@@ -57,5 +69,21 @@ describe("purgeTrash", () => {
     expect(result).toEqual({ deleted: 1 });
     expect(await readdir(path.join(trashDir, "originals"))).toEqual([]);
     expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: {} });
+  });
+
+  it("purges only the given ids", async () => {
+    const trashDir = await mkdtemp(path.join(tmpdir(), "lumio-trash-"));
+    await mkdir(path.join(trashDir, "originals"), { recursive: true });
+    await mkdir(path.join(trashDir, "thumbnails"), { recursive: true });
+    await mkdir(path.join(trashDir, "displays"), { recursive: true });
+    const db = {
+      trashedPhoto: {
+        findMany: vi.fn().mockResolvedValue([{ id: "a", originalPath: "a.jpg" }]),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const result = await purgeTrash(["a"], { db: db as never, trashDir });
+    expect(result).toEqual({ deleted: 1 });
+    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["a"] } } });
   });
 });
