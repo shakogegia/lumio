@@ -32,7 +32,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
     transform: `translate(-50%, -50%) scale(${cover ? 1 : containScale})`,
   } as const;
   return (
-    <div className="group/tile relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
       {blurUrl && (
         <div
           aria-hidden
@@ -51,7 +51,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         onLoad={() => setLoaded(true)}
         // The element is sized to the cover rectangle (long edge overflows the
         // square and is clipped); contain is the same element scaled down.
-        className="absolute left-1/2 top-1/2 max-w-none object-cover transition-[transform,opacity] duration-300 ease-out group-hover/tile:opacity-90"
+        className="absolute left-1/2 top-1/2 max-w-none object-cover transition-[transform,opacity] duration-300 ease-out"
         style={boxStyle}
       />
     </div>

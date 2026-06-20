@@ -9,7 +9,7 @@ import { cva } from "class-variance-authority";
  * cell), not here.
  */
 export const cellVariants = cva(
-  "relative block h-full outline-none transition-colors focus:outline-none focus-visible:outline-none",
+  "relative block h-full cursor-default outline-none transition-colors focus:outline-none focus-visible:outline-none",
   {
     variants: {
       mode: {
