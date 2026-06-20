@@ -7,6 +7,31 @@
 
 ---
 
+## Revision (2026-06-20): PAM → JPEG intermediate
+
+The PAM raw-pipe described below shipped, then broke on the real library. Nikon
+**NEF→JXL exports are 16-bit *float* (HDR), P3, RGB+Alpha**, and djxl **cannot
+encode float pixels into PAM/PPM** (integer-only): `"Decoded to pixels. Encode
+failed"` → exit 1 → upload `500`. The decode now pipes **`djxl --output_format
+jpeg`** instead, which tonemaps float/high-bit-depth down to 8-bit (and
+losslessly reconstructs JPEG-sourced JXLs). Sharp reads the JPEG like a native
+input, auto-orienting via EXIF. Consequences vs. the PAM design below:
+
+- **Measured win is ~6×** on real 4499×6002 float files (≈1.0 s vs ≈6.1 s), not
+  8×. Output is visually identical to the old temp-PNG path (mean color diff
+  1.94/255); the files' alpha is fully opaque so the JPEG dropping it loses
+  nothing.
+- The PAM parser, `RawImage`, and the raw-buffer branch are **deleted** —
+  `processImage` is now a single path. This also removes a latent bug where
+  16-bit *integer* JXLs were silently corrupted (PAM `MAXVAL` was ignored).
+- Sections A1/A2 below are superseded by `decodeToSharpInput` returning a JPEG
+  buffer for `.jxl`; the **decode-once** idea and **Part B** (per-photo timing)
+  are unchanged.
+
+Everything below is the original design, kept for context.
+
+---
+
 ## Problem
 
 ### Part A — JXL is the worst case for the current decode path
