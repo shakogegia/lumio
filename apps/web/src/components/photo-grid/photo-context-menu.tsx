@@ -42,6 +42,9 @@ export function PhotoContextMenu({
   const count = targetIds.length;
   // "photo" for a single target, "N photos" for many — no "1" on the singular.
   const photos = count === 1 ? "photo" : `${count} photos`;
+  // Only considers photos currently loaded in the store; a selection spanning
+  // unloaded pages could under-report edits and show the single "Download" item.
+  // Harmless — the server zip still bakes edits per-photo by the variant.
   const anyEdited = (collection?.photosByIds(targetIds) ?? []).some((p) => hasEdits(p.edits));
 
   return (

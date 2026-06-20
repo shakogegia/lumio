@@ -9,6 +9,30 @@ import {
   streamPhotosZip,
 } from "./download-service.js";
 
+// vi.mock is hoisted to the top of the file by vitest, so these apply to EVERY
+// test here — the original-variant tests just never exercise the mocked symbols
+// (they archive original bytes via archive.file). Declared at module scope to
+// make that file-wide effect explicit rather than hidden inside one test.
+vi.mock("@lumio/ingest", () => ({
+  decodeToSharpInput: vi.fn(async (abs: string) => ({
+    input: { file: abs },
+    cleanup: vi.fn(async () => undefined),
+  })),
+  applyEdits: vi.fn(() => ({
+    jpeg: vi.fn(() => ({
+      toBuffer: vi.fn(async () => Buffer.from("EDITED_JPEG")),
+    })),
+  })),
+}));
+vi.mock("sharp", () => {
+  const sharpMock = vi.fn(() => ({
+    rotate: vi.fn(() => ({
+      toBuffer: vi.fn(async () => Buffer.from("ORIENTED")),
+    })),
+  }));
+  return { default: sharpMock };
+});
+
 describe("dedupeEntryName", () => {
   it("returns the basename unchanged the first time", () => {
     const used = new Set<string>();
@@ -94,29 +118,7 @@ describe("streamPhotosZip", () => {
   });
 
   it("edited variant: edited photo gets a .jpg entry, unedited photo keeps its original basename", async () => {
-    // Mock @lumio/ingest so tests don't need real sharp JPEG pipeline.
-    vi.mock("@lumio/ingest", () => ({
-      decodeToSharpInput: vi.fn(async (abs: string) => ({
-        input: { file: abs },
-        cleanup: vi.fn(async () => undefined),
-      })),
-      applyEdits: vi.fn(() => ({
-        jpeg: vi.fn(() => ({
-          toBuffer: vi.fn(async () => Buffer.from("EDITED_JPEG")),
-        })),
-      })),
-    }));
-
-    // Mock sharp so the rotate().toBuffer() chain works.
-    vi.mock("sharp", () => {
-      const sharpMock = vi.fn(() => ({
-        rotate: vi.fn(() => ({
-          toBuffer: vi.fn(async () => Buffer.from("ORIENTED")),
-        })),
-      }));
-      return { default: sharpMock };
-    });
-
+    // @lumio/ingest and sharp are mocked at module scope (top of file).
     const dir = await mkdtemp(path.join(tmpdir(), "lumio-dl-edited-"));
     await writeFile(path.join(dir, "photo.cr2"), "RAW_BYTES");
     await writeFile(path.join(dir, "plain.jpg"), "PLAIN_BYTES");

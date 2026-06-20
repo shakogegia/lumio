@@ -84,33 +84,47 @@ export function streamPhotosZip(
   archive.pipe(pass);
 
   const used = new Set<string>();
+  // The loop is wrapped so `finalize()` ALWAYS runs: an unfinalized archive would
+  // leave `pass` open and stall the client download forever. A per-photo failure
+  // (corrupt original / missing decoder during edited encode) falls back to the
+  // original bytes so the photo still appears in the zip.
   void (async () => {
-    for (const photo of photos) {
-      const abs = resolve(photo.path);
-      if (!existsSync(abs)) {
-        console.warn("[download] skipping missing original:", photo.path);
-        continue;
-      }
-      const base = photo.path.split("/").pop() || photo.path;
-      const recipe = coercePhotoEdits(photo.edits);
-      if (variant === "edited" && hasEdits(recipe)) {
-        const decoded = await decodeToSharpInput(abs);
-        try {
-          const oriented = await sharp(decoded.input).rotate().toBuffer();
-          const jpeg = await applyEdits(sharp(oriented), recipe)
-            .jpeg({ quality: 92 })
-            .toBuffer();
-          const dot = base.lastIndexOf(".");
-          const name = `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
-          archive.append(jpeg, { name: dedupeEntryName(name, used) });
-        } finally {
-          await decoded.cleanup();
+    try {
+      for (const photo of photos) {
+        const abs = resolve(photo.path);
+        if (!existsSync(abs)) {
+          console.warn("[download] skipping missing original:", photo.path);
+          continue;
         }
-      } else {
-        archive.file(abs, { name: dedupeEntryName(base, used) });
+        const base = photo.path.split("/").pop() || photo.path;
+        const recipe = coercePhotoEdits(photo.edits);
+        if (variant === "edited" && hasEdits(recipe)) {
+          try {
+            const decoded = await decodeToSharpInput(abs);
+            try {
+              const oriented = await sharp(decoded.input).rotate().toBuffer();
+              const jpeg = await applyEdits(sharp(oriented), recipe)
+                .jpeg({ quality: 92 })
+                .toBuffer();
+              const dot = base.lastIndexOf(".");
+              const name = `${dot > 0 ? base.slice(0, dot) : base}.jpg`;
+              archive.append(jpeg, { name: dedupeEntryName(name, used) });
+            } finally {
+              await decoded.cleanup();
+            }
+          } catch (err) {
+            console.warn("[download] edited encode failed, using original:", photo.path, err);
+            archive.file(abs, { name: dedupeEntryName(base, used) });
+          }
+        } else {
+          archive.file(abs, { name: dedupeEntryName(base, used) });
+        }
       }
+    } catch (err) {
+      console.error("[download] zip build error:", err);
+    } finally {
+      void archive.finalize();
     }
-    void archive.finalize();
   })();
 
   return new Response(Readable.toWeb(pass) as unknown as ReadableStream<Uint8Array>, {

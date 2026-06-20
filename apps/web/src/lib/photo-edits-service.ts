@@ -24,6 +24,11 @@ export async function applyPhotoEdits(
       decoded.input,
       recipe,
     );
+    // Renditions are written before the DB update. If the update fails, the
+    // on-disk renditions reflect the new edit but Photo.edits/updatedAt stay old,
+    // so the cache-bust token is unchanged and clients keep serving the cached
+    // (old) URL — the new renditions are effectively ignored until a later
+    // successful apply overwrites them. Acceptable: rare, self-heals on retry.
     await mkdir(path.dirname(displayPath(id)), { recursive: true });
     await mkdir(path.dirname(thumbnailPath(id)), { recursive: true });
     await writeFile(displayPath(id), display);

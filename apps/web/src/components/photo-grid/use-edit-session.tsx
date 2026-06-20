@@ -73,10 +73,11 @@ export function EditSessionProvider({
 
   const apply = useCallback(async () => {
     if (applying || sameEdits(working, photo.edits ?? NO_EDITS)) return;
+    const startedId = photo.id; // the edit targets this photo, even if we navigate
     setApplying(true);
     try {
       const body = hasEdits(working) ? working : null;
-      const res = await fetch(`/api/photos/${photo.id}/edit`, {
+      const res = await fetch(`/api/photos/${startedId}/edit`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ edits: body }),
@@ -85,14 +86,17 @@ export function EditSessionProvider({
       const dto = (await res.json()) as PhotoDTO;
       // Patch the shared store so the grid tile + lightbox pick up the new
       // renditions (updatedAt busts the cached rendition URLs) and dimensions.
-      patchPhotos(new Set([photo.id]), {
+      // Always safe to patch the edited photo's store entry, even after nav.
+      patchPhotos(new Set([startedId]), {
         edits: dto.edits,
         width: dto.width,
         height: dto.height,
         thumbhash: dto.thumbhash,
         updatedAt: dto.updatedAt,
       });
-      setWorking(dto.edits ?? NO_EDITS);
+      // Only sync the working recipe if we're still on the photo we edited —
+      // otherwise we'd clobber the (already reseeded) recipe of the new photo.
+      if (photoIdRef.current === startedId) setWorking(dto.edits ?? NO_EDITS);
     } catch {
       toast.error("Failed to save edits.");
     } finally {
