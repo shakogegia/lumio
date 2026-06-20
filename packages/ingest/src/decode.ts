@@ -6,6 +6,38 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+export interface PamHeader {
+  width: number;
+  height: number;
+  /** Channel count from PAM DEPTH: 1 gray, 3 RGB, 4 RGBA. */
+  channels: number;
+  /** Byte offset where the raw pixel body begins (just past `ENDHDR\n`). */
+  offset: number;
+}
+
+/**
+ * Parse a binary PAM (`P7`) header — the format `djxl --output_format pam`
+ * emits. The header is ASCII `KEY VALUE` lines terminated by `ENDHDR\n`;
+ * raw pixels follow immediately.
+ */
+export function parsePAM(buf: Buffer): PamHeader {
+  const marker = "ENDHDR\n";
+  const end = buf.indexOf(marker);
+  if (end === -1) throw new Error("invalid PAM: no ENDHDR marker");
+  const header = buf.toString("ascii", 0, end).split("\n");
+  const field = (key: string): number => {
+    const line = header.find((l) => l.startsWith(key));
+    if (!line) throw new Error(`invalid PAM: missing ${key}`);
+    return Number(line.split(/\s+/)[1]);
+  };
+  return {
+    width: field("WIDTH"),
+    height: field("HEIGHT"),
+    channels: field("DEPTH"),
+    offset: end + marker.length,
+  };
+}
+
 /** Extensions sharp/libvips reads directly (no external decode needed). */
 export const NATIVE_EXTENSIONS = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".avif", ".tiff", ".tif", ".gif",
