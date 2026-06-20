@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Download, Heart, Search } from "lucide-react";
+import { Download, FilePenLine, Heart, Search } from "lucide-react";
 import { hasEdits } from "@lumio/shared";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
@@ -103,10 +103,16 @@ export function LightboxSidebar({
           <TabsTrigger value="exif">EXIF</TabsTrigger>
           <TabsTrigger
             value="edit"
-            className={dirty ? "text-amber-500" : hasEdits(photo.edits) ? "text-primary" : undefined}
             title={dirty ? "Unsaved changes" : hasEdits(photo.edits) ? "Edited" : undefined}
           >
             Edit
+            {(dirty || hasEdits(photo.edits)) && (
+              <FilePenLine
+                data-icon="inline-end"
+                aria-hidden
+                className={`size-3.5 ${dirty ? "text-amber-500" : "text-primary"}`}
+              />
+            )}
           </TabsTrigger>
         </TabsList>
 
