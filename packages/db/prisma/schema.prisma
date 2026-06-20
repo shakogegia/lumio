@@ -37,6 +37,7 @@ model Photo {
   fileMtimeMs Float? // mtimeMs from fs.stat (fractional ms) — change-detection signal
   exif        Json
   colorLabel  ColorLabel?
+  isFavorite  Boolean      @default(false)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   albums      AlbumPhoto[]
@@ -44,6 +45,7 @@ model Photo {
   @@index([sortDate, id])
   @@index([createdAt, id])
   @@index([hash])
+  @@index([isFavorite, sortDate])
 }
 
 model Album {
