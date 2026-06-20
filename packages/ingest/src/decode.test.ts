@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { decodeToReadable, CONVERTERS, NATIVE_EXTENSIONS, parsePAM } from "./decode.js";
+import { decodeToReadable, decodeJxlToRaw, CONVERTERS, NATIVE_EXTENSIONS, parsePAM } from "./decode.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -85,5 +85,35 @@ describe("parsePAM", () => {
 
   it("throws on a buffer with no PAM header", () => {
     expect(() => parsePAM(Buffer.from("not a pam"))).toThrow("invalid PAM");
+  });
+});
+
+describe.skipIf(!JXL_TOOLS)("decodeJxlToRaw", () => {
+  it("returns a raw RGB buffer sized width*height*channels", async () => {
+    const src = path.join(dir, "raw-src.png");
+    const jxl = path.join(dir, "raw.jxl");
+    await makeJxl(src, jxl, 40, 24);
+
+    const raw = await decodeJxlToRaw(jxl);
+    expect(raw.width).toBe(40);
+    expect(raw.height).toBe(24);
+    expect(raw.channels).toBe(3);
+    expect(raw.buffer.length).toBe(40 * 24 * 3);
+
+    // The raw buffer is sharp-readable and re-encodes to the expected size.
+    const meta = await sharp(raw.buffer, { raw: { width: 40, height: 24, channels: 3 } })
+      .webp()
+      .toBuffer()
+      .then((b) => sharp(b).metadata());
+    expect(meta.width).toBe(40);
+    expect(meta.height).toBe(24);
+  });
+
+  it("rejects when djxl cannot decode the input", async () => {
+    const bad = path.join(dir, "bad.jxl");
+    await sharp({ create: { width: 4, height: 4, channels: 3, background: "#000" } })
+      .png()
+      .toFile(bad); // a PNG with a .jxl name — djxl should fail
+    await expect(decodeJxlToRaw(bad)).rejects.toThrow();
   });
 });

@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,6 +36,38 @@ export function parsePAM(buf: Buffer): PamHeader {
     channels: field("DEPTH"),
     offset: end + marker.length,
   };
+}
+
+export interface RawImage {
+  buffer: Buffer;
+  width: number;
+  height: number;
+  channels: number;
+}
+
+/** Run `djxl <path> - --output_format pam` and collect stdout. */
+function runDjxlPam(absPath: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("djxl", [absPath, "-", "--output_format", "pam"]);
+    const chunks: Buffer[] = [];
+    child.stdout.on("data", (c: Buffer) => chunks.push(c));
+    child.stderr.on("data", () => {}); // djxl logs progress to stderr; ignore
+    child.on("error", reject);
+    child.on("close", (code) =>
+      code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`djxl exited ${code}`)),
+    );
+  });
+}
+
+/**
+ * Decode a JXL to raw pixels in memory by piping `djxl` PAM output to stdout —
+ * no temp file, no PNG re-encode. djxl bakes EXIF orientation into the pixels,
+ * so the result is already upright (no Sharp `.rotate()` needed downstream).
+ */
+export async function decodeJxlToRaw(absPath: string): Promise<RawImage> {
+  const pam = await runDjxlPam(absPath);
+  const { width, height, channels, offset } = parsePAM(pam);
+  return { buffer: pam.subarray(offset), width, height, channels };
 }
 
 /** Extensions sharp/libvips reads directly (no external decode needed). */
