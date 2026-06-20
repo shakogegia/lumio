@@ -11,6 +11,7 @@ import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { GridSortMenu } from "@/components/grid-sort-menu";
+import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { Lightbox } from "@/components/photo-grid/lightbox";
@@ -43,6 +44,7 @@ export function AlbumView({
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
+  const [month, setMonth] = useState<string | null>(null);
   const { confirm, confirmDialog } = useConfirm();
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
@@ -155,6 +157,11 @@ export function AlbumView({
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
+              <GridCalendarMenu
+                facetsEndpoint={`/api/albums/${albumId}/calendar`}
+                value={month}
+                onChange={setMonth}
+              />
               <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
                 <a href={`/api/albums/${albumId}/download`}>
                   <Download aria-hidden />
@@ -170,9 +177,9 @@ export function AlbumView({
       )}
 
       <PhotoCollectionProvider
-        key={`${reloadKey}:${sort}`}
+        key={`${reloadKey}:${sort}:${month ?? ""}`}
         endpoint={`/api/albums/${albumId}/photos`}
-        params={new URLSearchParams({ sort })}
+        params={new URLSearchParams(month ? { sort, month } : { sort })}
         urlForId={(id) => photoHref(id, albumId, sort)}
         baseUrl={`/albums/${albumId}`}
       >

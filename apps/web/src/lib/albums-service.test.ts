@@ -153,6 +153,34 @@ describe("listAlbumPhotos", () => {
     await listAlbumPhotos("alb1", { limit: 2, offset: 0, sort: "imported-asc" }, fakeDb as never);
     expect(calls[0]?.orderBy).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });
+
+  it("ANDs a UTC sortDate range into the album where when month is set", async () => {
+    const calls: Array<{ where?: unknown }> = [];
+    const fakeDb = {
+      album: { findUnique: async () => albumRow() },
+      albumPhoto: {},
+      photo: {
+        findMany: async (args: { where?: unknown }) => {
+          calls.push(args);
+          return [];
+        },
+        count: async () => 0,
+        findFirst: async () => null,
+      },
+    };
+    await listAlbumPhotos("alb1", { limit: 2, offset: 0, month: "2026-06" }, fakeDb as never);
+    expect(calls[0]?.where).toEqual({
+      AND: [
+        { albums: { some: { albumId: "alb1" } } },
+        {
+          sortDate: {
+            gte: new Date("2026-06-01T00:00:00.000Z"),
+            lt: new Date("2026-07-01T00:00:00.000Z"),
+          },
+        },
+      ],
+    });
+  });
 });
 
 describe("addPhotosToAlbum", () => {

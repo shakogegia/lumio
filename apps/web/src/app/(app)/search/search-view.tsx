@@ -9,6 +9,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
+import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { Button } from "@/components/ui/button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
@@ -42,11 +43,12 @@ export function SearchView() {
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
   const { mode, setMode } = useGridView();
+  const [month, setMonth] = useState<string | null>(null);
   const sel = useGridSelection();
   const gridRef = useRef<PhotoGridHandle>(null);
 
   const empty = isEmptyFilters(filters);
-  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
+  const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
   const actions = usePhotoActions({
     gridRef,
     // Keep the result count in step with menu- or toolbar-driven trashes.
@@ -54,12 +56,12 @@ export function SearchView() {
       setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.length))),
   });
 
-  // The result set changes when the query changes, so any selection would point
-  // at photos no longer shown. Clear it whenever the query changes. Keyed on the
-  // serialized filters — the same value that remounts the grid below — so the
-  // toolbar resets in lockstep with the grid. `sel.clear` is stable (useCallback),
-  // so this only fires on an actual query change; the first run (initial filters)
-  // is a harmless no-op.
+  // The result set changes when the query OR the month filter changes, so any
+  // selection would point at photos no longer shown. Clear it whenever either
+  // changes. Keyed on the serialized filters + month — the same values that
+  // remount the grid below — so the toolbar resets in lockstep with the grid.
+  // `sel.clear` is stable (useCallback), so this only fires on an actual
+  // query/month change; the first run (initial filters) is a harmless no-op.
   // Destructured so the dep is a plain stable identifier — eslint resolves the
   // member access `sel.clear` to the whole `sel` object (recreated each render)
   // and would otherwise demand it as a dep, causing a re-run loop.
@@ -67,7 +69,7 @@ export function SearchView() {
   const serialized = serialize(filters);
   useEffect(() => {
     resetSelection();
-  }, [serialized, resetSelection]);
+  }, [serialized, month, resetSelection]);
 
   function handleCommit(f: SearchFilters) {
     if (!isEmptyFilters(f)) setRecent(recordRecentSearch(f));
@@ -184,14 +186,23 @@ export function SearchView() {
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
+                      <GridCalendarMenu
+                        facetsEndpoint={`/api/search/calendar?${paramsFor(filters).toString()}`}
+                        value={month}
+                        onChange={setMonth}
+                      />
                     </>
                   )}
                 </div>
               </div>
               <PhotoCollectionProvider
-                key={`${serialized}:${sort}`}
+                key={`${serialized}:${sort}:${month ?? ""}`}
                 endpoint="/api/search"
-                params={paramsFor(filters, sort)}
+                params={(() => {
+                  const p = paramsFor(filters, sort);
+                  if (month) p.set("month", month);
+                  return p;
+                })()}
                 urlForId={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
                 baseUrl="/search"
               >

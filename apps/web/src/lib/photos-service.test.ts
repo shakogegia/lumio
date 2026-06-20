@@ -23,11 +23,11 @@ function row(id: string) {
 }
 
 function fakeDb(rows: ReturnType<typeof row>[]) {
-  const calls: Array<{ skip?: number; take: number; orderBy?: unknown }> = [];
+  const calls: Array<{ skip?: number; take: number; where?: unknown; orderBy?: unknown }> = [];
   return {
     calls,
     photo: {
-      findMany: async (args: { skip?: number; take: number; orderBy?: unknown }) => {
+      findMany: async (args: { skip?: number; take: number; where?: unknown; orderBy?: unknown }) => {
         calls.push(args);
         const skip = args.skip ?? 0;
         return rows.slice(skip, skip + args.take);
@@ -59,6 +59,23 @@ describe("listPhotos", () => {
     const db = fakeDb([row("a")]);
     await listPhotos({ limit: 2, offset: 0, sort: "imported-desc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
+  });
+
+  it("filters by a UTC sortDate range when month is set", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 50, offset: 0, month: "2026-06" }, db as never);
+    expect(db.calls[0]?.where).toEqual({
+      sortDate: {
+        gte: new Date("2026-06-01T00:00:00.000Z"),
+        lt: new Date("2026-07-01T00:00:00.000Z"),
+      },
+    });
+  });
+
+  it("uses an empty where when no month is set", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos({ limit: 50, offset: 0 }, db as never);
+    expect(db.calls[0]?.where).toEqual({});
   });
 });
 

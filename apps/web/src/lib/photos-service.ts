@@ -7,6 +7,7 @@ import type {
   PhotosQuery,
   PhotoStripItem,
 } from "@lumio/shared";
+import { monthRange } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
@@ -18,10 +19,11 @@ export async function listPhotos(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const { limit, offset, sort } = params;
+  const { limit, offset, sort, month } = params;
+  const where = month ? { sortDate: monthRange(month) } : {};
   const [rows, total] = await Promise.all([
-    db.photo.findMany({ skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
-    db.photo.count(),
+    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
+    db.photo.count({ where }),
   ]);
   return { items: rows.map(toPhotoDTO), total };
 }

@@ -121,3 +121,25 @@ describe("coercePhotoSort", () => {
     expect(coercePhotoSort(null)).toBe("taken-desc");
   });
 });
+
+describe("photosQuerySchema month", () => {
+  it("accepts a valid YYYY-MM month", () => {
+    expect(photosQuerySchema.parse({ month: "2026-06" }).month).toBe("2026-06");
+  });
+
+  it("leaves month undefined when absent", () => {
+    expect(photosQuerySchema.parse({}).month).toBeUndefined();
+  });
+
+  it("rejects an out-of-range month", () => {
+    expect(photosQuerySchema.safeParse({ month: "2026-13" }).success).toBe(false);
+  });
+
+  it("rejects a non-zero-padded month", () => {
+    expect(photosQuerySchema.safeParse({ month: "2026-6" }).success).toBe(false);
+  });
+
+  it("accepts a valid month on searchQuerySchema too", () => {
+    expect(searchQuerySchema.parse({ month: "2026-06" }).month).toBe("2026-06");
+  });
+});
