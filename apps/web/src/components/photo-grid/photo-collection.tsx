@@ -136,12 +136,21 @@ export function PhotoCollectionProvider({
   const open = useCallback(
     (index: number) => {
       if (!enableLightbox) return;
-      const p = photoForIndex(index);
-      setOpenIndex(index);
-      if (p && typeof window !== "undefined") {
-        window.history.pushState(null, "", url(p.id));
-        pushed.current = true;
-      }
+      setOpenIndex((cur) => {
+        // First open this session pushes ONE history entry; navigating within the
+        // already-open lightbox (film-strip jumps, arrows) only replaces — the
+        // URL-sync effect handles that. Keeps `pushed` meaning exactly "one back()
+        // returns to the grid", so close() stays correct no matter how many strip
+        // jumps happen.
+        if (cur === null && typeof window !== "undefined") {
+          const p = photoForIndex(index);
+          if (p) {
+            window.history.pushState(null, "", url(p.id));
+            pushed.current = true;
+          }
+        }
+        return index;
+      });
     },
     [enableLightbox, photoForIndex, url],
   );
@@ -171,7 +180,17 @@ export function PhotoCollectionProvider({
     setOpenIndex(null);
   }, [baseUrl]);
 
-  // Reconcile browser back/forward with open state.
+  // Reconcile browser back/forward with open state. Read getLoadedIds through a
+  // ref so the listener binds once instead of re-subscribing on every page fetch
+  // (getLoadedIds' identity changes whenever a page loads). popEpoch guards the
+  // async locate path so a newer popstate/close can't be clobbered by an older
+  // in-flight resolve.
+  const getLoadedIdsRef = useRef(getLoadedIds);
+  useEffect(() => {
+    getLoadedIdsRef.current = getLoadedIds;
+  }, [getLoadedIds]);
+  const popEpoch = useRef(0);
+
   useEffect(() => {
     if (!enableLightbox || typeof window === "undefined") return;
     const onPop = () => {
@@ -181,18 +200,19 @@ export function PhotoCollectionProvider({
         setOpenIndex(null);
         return;
       }
-      // Find the id among loaded pages; if absent (deep history jump), fall back
-      // to a locate fetch so we land on the right index.
-      const loaded = indexOfLoadedId(getLoadedIds, id);
-      if (loaded !== null) {
+      const loaded = getLoadedIdsRef.current().indexOf(id); // sparse array; -1 if not loaded
+      if (loaded !== -1) {
         setOpenIndex(loaded);
-      } else {
-        void fetchLocateIndex(url, id).then((idx) => idx !== null && setOpenIndex(idx));
+        return;
       }
+      const epoch = ++popEpoch.current;
+      void fetchLocateIndex(url, id).then((idx) => {
+        if (idx !== null && popEpoch.current === epoch) setOpenIndex(idx);
+      });
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [enableLightbox, getLoadedIds, url]);
+  }, [enableLightbox, url]);
 
   const value = useMemo<PhotoCollectionValue>(
     () => ({
@@ -230,13 +250,6 @@ export function PhotoCollectionProvider({
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-/** Scan loaded pages (sparse array, index → id) for an id; null if not currently loaded. */
-function indexOfLoadedId(getLoadedIds: () => string[], id: string): number | null {
-  const ids = getLoadedIds(); // sparse array, index → id
-  const idx = ids.indexOf(id);
-  return idx === -1 ? null : idx;
 }
 
 /** Resolve an unloaded photo's index via the locate endpoint. `url(id)` gives the
