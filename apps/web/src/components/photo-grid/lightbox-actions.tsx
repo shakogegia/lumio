@@ -14,6 +14,7 @@ import {
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection } from "./photo-collection";
 import { useEditSession } from "./use-edit-session";
+import { useToggleFavorite } from "./use-favorite";
 
 /** Icon-button row for the lightbox header: reset edits (when edited),
  *  favorite, download, move to trash. */
@@ -24,9 +25,10 @@ export function LightboxActions({
   photo: PhotoDTO;
   onTrashed: () => void;
 }) {
-  const { removePhotos, patchPhotos } = usePhotoCollection();
+  const { removePhotos } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
   const { dirty, reset } = useEditSession();
+  const toggleFavorite = useToggleFavorite(photo);
   // Edited = unsaved working changes, or persisted edits baked into the photo.
   const edited = dirty || hasEdits(photo.edits);
 
@@ -49,20 +51,6 @@ export function LightboxActions({
     }
     removePhotos(new Set([photo.id]));
     onTrashed();
-  }
-
-  async function toggleFavorite() {
-    const next = !photo.isFavorite;
-    const res = await fetch("/api/photos/favorite", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ photoIds: [photo.id], isFavorite: next }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to update favorites.");
-      return;
-    }
-    patchPhotos(new Set([photo.id]), { isFavorite: next });
   }
 
   async function resetEdits() {
@@ -101,7 +89,7 @@ export function LightboxActions({
           aria-label={
             photo.isFavorite ? "Remove from favorites" : "Add to favorites"
           }
-          title={photo.isFavorite ? "Favorited" : "Favorite"}
+          title={photo.isFavorite ? "Favorited (F)" : "Favorite (F)"}
           onClick={() => void toggleFavorite()}
         >
           <Heart

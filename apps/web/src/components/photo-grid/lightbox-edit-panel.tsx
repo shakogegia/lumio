@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import { hasEdits } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { useEditSession } from "./use-edit-session";
+import { useEditKeyboard } from "./use-edit-keyboard";
 
 /** Edit-tab body: rotate/flip controls with undo/redo that drive the lightbox
  *  edit session, plus Apply (persist) and Reset (back to original, on Apply). */
@@ -32,6 +34,7 @@ export function LightboxEditPanel() {
     redo,
     apply,
   } = useEditSession();
+  useEditKeyboard({ rotateLeft, rotateRight, apply: () => void apply() });
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex gap-2">
@@ -47,6 +50,9 @@ export function LightboxEditPanel() {
             <Check aria-hidden />
           )}
           {applying ? "Applying…" : "Apply"}
+          <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">
+            ⌘S
+          </Kbd>
         </Button>
         <Button
           variant="outline"
@@ -63,16 +69,18 @@ export function LightboxEditPanel() {
         <p className="font-medium">Transform</p>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="sm" onClick={rotateLeft}>
-            <RotateCcw aria-hidden /> Rotate left
+            <RotateCcw aria-hidden /> Left
+            <Kbd className="ml-auto">[</Kbd>
           </Button>
           <Button variant="outline" size="sm" onClick={rotateRight}>
-            <RotateCw aria-hidden /> Rotate right
+            <RotateCw aria-hidden /> Right
+            <Kbd className="ml-auto">]</Kbd>
           </Button>
           <Button variant="outline" size="sm" onClick={flipH}>
-            <FlipHorizontal aria-hidden /> Flip H
+            <FlipHorizontal aria-hidden /> Horizontal
           </Button>
           <Button variant="outline" size="sm" onClick={flipV}>
-            <FlipVertical aria-hidden /> Flip V
+            <FlipVertical aria-hidden /> Vertical
           </Button>
         </div>
       </div>
