@@ -16,8 +16,8 @@ export function SelectionRing({ className }: { className?: string }) {
     <span
       aria-hidden
       className={cn("pointer-events-none absolute inset-0 z-10", className)}
-      // 2px blue band, then a 1px white line on its inner edge.
-      style={{ boxShadow: "inset 0 0 0 2px #3b82f6, inset 0 0 0 3px #ffffff" }}
+      // 4px blue band, then a 1px white line on its inner edge.
+      style={{ boxShadow: "inset 0 0 0 4px #3b82f6, inset 0 0 0 5px #ffffff" }}
     />
   );
 }
