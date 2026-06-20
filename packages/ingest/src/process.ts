@@ -4,7 +4,7 @@ import { extractMetadata } from "./metadata.js";
 import sharp from "sharp";
 import type { ExifData } from "@lumio/shared";
 import { DISPLAY_MAX, THUMBNAIL_MAX } from "./constants.js";
-import { decodeToReadable } from "./decode.js";
+import { decodeToSharpInput } from "./decode.js";
 import { computeThumbhash } from "./thumbhash.js";
 
 export interface ProcessedPhoto {
@@ -18,34 +18,46 @@ export interface ProcessedPhoto {
   display: Buffer;
 }
 
+const FIT = { fit: "inside", withoutEnlargement: true } as const;
+
 /** Read an image and derive everything the store layer needs. No DB or FS writes. */
 export async function processImage(absPath: string): Promise<ProcessedPhoto> {
   const original = await readFile(absPath); // for hash + EXIF (original format)
-  const decoded = await decodeToReadable(absPath);
+  const decoded = await decodeToSharpInput(absPath);
   try {
-    const meta = await sharp(decoded.path).metadata();
-
     const { exif, takenAt } = await extractMetadata(original);
 
-    const thumbnail = await sharp(decoded.path)
-      .rotate()
-      .resize(THUMBNAIL_MAX, THUMBNAIL_MAX, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
+    let width: number;
+    let height: number;
+    let display: Buffer;
+    let thumbnail: Buffer;
+
+    if (decoded.raw) {
+      // JXL: pixels are already decoded in memory, so re-wrapping the buffer
+      // costs no decode — derive BOTH renditions from full-quality raw.
+      const { width: w, height: h, channels } = decoded.raw;
+      const buf = decoded.input as Buffer;
+      const src = () => sharp(buf, { raw: { width: w, height: h, channels: channels as 1 | 2 | 3 | 4 } });
+      width = w;
+      height = h;
+      display = await src().resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
+      thumbnail = await src().resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
+    } else {
+      // native / HEIC temp PNG: decode once for the display, then derive the
+      // thumbnail from that buffer (one full decode instead of two).
+      const meta = await sharp(decoded.input).metadata();
+      width = meta.width ?? 0;
+      height = meta.height ?? 0;
+      const pipe = sharp(decoded.input);
+      if (decoded.rotate) pipe.rotate();
+      display = await pipe.resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
+      thumbnail = await sharp(display).resize(THUMBNAIL_MAX, THUMBNAIL_MAX, FIT).webp({ quality: 80 }).toBuffer();
+    }
 
     const thumbhash = await computeThumbhash(thumbnail);
-
-    // Browser-renderable rendition for the detail view: non-native formats
-    // (JXL/HEIC) decode to webp here, and large originals stay a sane size.
-    const display = await sharp(decoded.path)
-      .rotate()
-      .resize(DISPLAY_MAX, DISPLAY_MAX, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
-
     const hash = createHash("sha256").update(original).digest("hex");
 
-    return { width: meta.width ?? 0, height: meta.height ?? 0, takenAt, hash, thumbhash, exif, thumbnail, display };
+    return { width, height, takenAt, hash, thumbhash, exif, thumbnail, display };
   } finally {
     await decoded.cleanup();
   }
