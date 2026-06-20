@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InfoList, InfoRow } from "@/components/ui/info-list";
 import { DeleteAllPhotos } from "./danger-zone";
+import { RefreshStatsButton } from "./refresh-stats-button";
 import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
@@ -28,11 +29,12 @@ async function FilesOnDisk() {
   return <InfoRow label="Files on disk" value={count.toLocaleString()} />;
 }
 
-/** Storage figures that require a filesystem walk; streamed so they never block the page. */
+/** On-disk byte sizes (filesystem walk); streamed so they never block the page. */
 async function StorageSizes() {
-  const { thumbnailsSize, displaysSize, trashSize } = await getStorageSizes();
+  const { photosSize, thumbnailsSize, displaysSize, trashSize } = await getStorageSizes();
   return (
     <>
+      <InfoRow label="Photo storage" value={formatBytes(photosSize)} />
       <InfoRow label="Thumbnail cache" value={formatBytes(thumbnailsSize)} />
       <InfoRow label="Preview cache" value={formatBytes(displaysSize)} />
       <InfoRow label="Trash" value={formatBytes(trashSize)} />
@@ -69,15 +71,10 @@ export default async function SettingsPage() {
             >
               <FilesOnDisk />
             </Suspense>
-            <InfoRow label="Albums" value={stats.albumCount.toLocaleString()} />
-            <InfoRow
-              label="Photo storage"
-              value={formatBytes(stats.photosSize)}
-            />
             <Suspense
               fallback={
                 <>
-                  {["Thumbnail cache", "Preview cache", "Trash"].map((label) => (
+                  {["Photo storage", "Thumbnail cache", "Preview cache", "Trash"].map((label) => (
                     <InfoRow
                       key={label}
                       label={label}
@@ -102,6 +99,10 @@ export default async function SettingsPage() {
               }
             />
           </InfoList>
+
+          <div className="-mt-6 flex justify-end">
+            <RefreshStatsButton />
+          </div>
 
           <Card>
             <CardHeader>

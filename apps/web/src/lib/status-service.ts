@@ -57,59 +57,52 @@ export async function countImageFiles(dir: string): Promise<number> {
   ).length;
 }
 
-/**
- * Catalog counts + photo storage. All cheap, indexed DB queries — no filesystem
- * walk. Photo storage is `SUM(fileSize)` (recorded per photo at ingest), which
- * is instant and stays consistent with the photo count (also from the DB).
- */
+/** Catalog facts that are cheap to read from the DB (indexed count + latest row). */
 export async function getCatalogStats() {
-  const [photoCount, albumCount, latest, sizeAgg] = await Promise.all([
+  const [photoCount, latest] = await Promise.all([
     prisma.photo.count(),
-    prisma.album.count(),
     prisma.photo.findFirst({
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
-    prisma.photo.aggregate({ _sum: { fileSize: true } }),
   ]);
 
   return {
     photosDir: PHOTOS_DIR,
     photoCount,
-    albumCount,
-    photosSize: sizeAgg._sum.fileSize ?? 0,
     lastIndexedAt: latest ? latest.updatedAt.toISOString() : null,
   };
 }
 
-// These are the figures that must hit the filesystem: the cache is regenerable
-// and the trash holds deleted files — both can change out-of-band, so the FS
-// (not the DB) is the source of truth. Memoize briefly so navigating to Settings
-// doesn't re-walk tens of thousands of files every visit; an informational size
-// tolerates a little staleness. The Settings page streams these in via
-// <Suspense> so the walk never blocks the page render.
+// On-disk byte sizes — measured from the filesystem, the true source of truth for
+// actual disk usage (photos can be added/removed and the cache/trash wiped
+// out-of-band, so the DB can drift from reality). Each is an O(files) walk, so we
+// memoize briefly — navigating to Settings shouldn't re-walk every visit, and an
+// informational size tolerates a little staleness — and the page streams them in
+// via <Suspense> so the walk never blocks the render.
 const STORAGE_SIZE_TTL_MS = 60_000;
-let storageSizeMemo:
-  | { at: number; thumbnailsSize: number; displaysSize: number; trashSize: number }
-  | null = null;
-
-export async function getStorageSizes(): Promise<{
+type StorageSizes = {
+  photosSize: number;
   thumbnailsSize: number;
   displaysSize: number;
   trashSize: number;
-}> {
+};
+let storageSizeMemo: { at: number; sizes: StorageSizes } | null = null;
+
+export async function getStorageSizes(): Promise<StorageSizes> {
   const now = Date.now();
   if (storageSizeMemo && now - storageSizeMemo.at < STORAGE_SIZE_TTL_MS) {
-    const { thumbnailsSize, displaysSize, trashSize } = storageSizeMemo;
-    return { thumbnailsSize, displaysSize, trashSize };
+    return storageSizeMemo.sizes;
   }
-  const [thumbnailsSize, displaysSize, trashSize] = await Promise.all([
+  const [photosSize, thumbnailsSize, displaysSize, trashSize] = await Promise.all([
+    dirSize(PHOTOS_DIR),
     dirSize(path.join(CACHE_DIR, "thumbnails")),
     dirSize(path.join(CACHE_DIR, "displays")),
     dirSize(TRASH_DIR),
   ]);
-  storageSizeMemo = { at: now, thumbnailsSize, displaysSize, trashSize };
-  return { thumbnailsSize, displaysSize, trashSize };
+  const sizes = { photosSize, thumbnailsSize, displaysSize, trashSize };
+  storageSizeMemo = { at: now, sizes };
+  return sizes;
 }
 
 // Image files actually on disk under PHOTOS_DIR. Compared against the DB photo
@@ -127,4 +120,10 @@ export async function getPhotoFileCount(): Promise<number> {
   const count = await countImageFiles(PHOTOS_DIR);
   fileCountMemo = { at: now, count };
   return count;
+}
+
+/** Drop the memoized filesystem figures so the next read re-walks (manual recalc). */
+export function invalidateStorageStats(): void {
+  storageSizeMemo = null;
+  fileCountMemo = null;
 }
