@@ -161,36 +161,52 @@ export function GridCalendarMenu({
                 </li>
               ))}
             </ul>
-            {/* Month cover tiles for the active year — drives the pane height and
-                never scrolls (a year has at most 12 = 4 rows). `ml-24` clears the
-                absolutely-positioned years column. */}
-            <div className="ml-24 grid auto-rows-min grid-cols-3 gap-2 p-2">
-              {year?.months.map((m) => {
-                const active = selected?.year === year.year && selected.month === m.month;
-                return (
-                  <button
-                    key={m.month}
-                    type="button"
-                    onClick={() => pick(year.year, m.month)}
-                    title={`${MONTH_ABBR[m.month - 1]} ${year.year} · ${m.count}`}
-                    className={cn(
-                      "group relative aspect-square overflow-hidden rounded-md ring-offset-background",
-                      active && "ring-2 ring-ring ring-offset-2",
-                    )}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/photos/${m.coverId}/display`}
-                      alt=""
-                      className="size-full object-cover transition group-hover:scale-105"
-                    />
-                    <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1 text-left text-xs font-medium text-white">
-                      {MONTH_ABBR[m.month - 1]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* All 12 months (Jan–Dec) are always rendered, so the grid is a fixed
+                four rows: this drives a stable pane height with symmetric padding
+                and the months never scroll. Months with no photos in this scope are
+                non-interactive placeholders. `ml-24` clears the absolutely-
+                positioned years column. */}
+            {year && (
+              <div className="ml-24 grid auto-rows-min grid-cols-3 gap-2 p-2">
+                {MONTH_ABBR.map((label, i) => {
+                  const monthNum = i + 1;
+                  const m = year.months.find((mm) => mm.month === monthNum);
+                  if (!m) {
+                    return (
+                      <div
+                        key={monthNum}
+                        className="flex aspect-square items-end rounded-md bg-muted/40 p-1.5 text-xs font-medium text-muted-foreground/50"
+                      >
+                        {label}
+                      </div>
+                    );
+                  }
+                  const active = selected?.year === year.year && selected.month === monthNum;
+                  return (
+                    <button
+                      key={monthNum}
+                      type="button"
+                      onClick={() => pick(year.year, monthNum)}
+                      title={`${label} ${year.year} · ${m.count}`}
+                      className={cn(
+                        "group relative aspect-square overflow-hidden rounded-md ring-offset-background",
+                        active && "ring-2 ring-ring ring-offset-2",
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/photos/${m.coverId}/display`}
+                        alt=""
+                        className="size-full object-cover transition group-hover:scale-105"
+                      />
+                      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1 text-left text-xs font-medium text-white">
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </PopoverContent>
