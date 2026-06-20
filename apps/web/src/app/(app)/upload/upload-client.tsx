@@ -162,13 +162,12 @@ export function UploadClient() {
           body: JSON.stringify({ photoIds: [...selectedIds], label }),
         });
         if (!res.ok) throw new Error("label failed");
-        // Optimistically tint the affected tiles, then clear the selection while
-        // staying in select mode (mirrors the library view).
+        // Optimistically tint the affected tiles, keeping the selection intact
+        // so the user can keep acting on the same photos (mirrors the library view).
         setRows((prev) =>
           prev.map((r) => (r.photoId && selectedIds.has(r.photoId) ? { ...r, colorLabel: label } : r)),
         );
         toast.success("Label applied.");
-        sel.clear();
       } catch {
         toast.error("Failed to apply label.");
       } finally {
