@@ -3,7 +3,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Download, Search } from "lucide-react";
+import { hasEdits } from "@lumio/shared";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
+import { downloadFromUrl } from "@/lib/download-client";
+import { DownloadSplitButton } from "@/components/photo-actions/download-split-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,12 +107,19 @@ export function LightboxSidebar({
           )}
           <Separator />
           <div className="space-y-2">
-            <Button asChild variant="outline" size="sm" className="w-full">
-              <a href={`/api/photos/${photo.id}/original?download=1`}>
-                <Download aria-hidden />
-                Download
-              </a>
-            </Button>
+            {hasEdits(photo.edits) ? (
+              <DownloadSplitButton
+                onDownloadEdited={() => downloadFromUrl(`/api/photos/${photo.id}/edited?download=1`)}
+                onDownloadOriginal={() => downloadFromUrl(`/api/photos/${photo.id}/original?download=1`)}
+              />
+            ) : (
+              <Button asChild variant="outline" size="sm" className="w-full">
+                <a href={`/api/photos/${photo.id}/original?download=1`}>
+                  <Download aria-hidden />
+                  Download
+                </a>
+              </Button>
+            )}
             <Button
               variant="destructive"
               size="sm"
