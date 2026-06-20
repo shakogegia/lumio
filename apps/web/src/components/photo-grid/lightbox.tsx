@@ -65,7 +65,7 @@ export function Lightbox() {
 
 function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
   const { openIndex, total, step, close, open } = usePhotoCollection();
-  const { guard, dirty } = useEditSession();
+  const { guard, dirty, undo, redo, canUndo, canRedo } = useEditSession();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useBodyScrollLock(true, overlayRef);
@@ -78,6 +78,10 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
   const totalRef = useRef(total);
   const guardRef = useRef(guard);
   const dirtyRef = useRef(dirty);
+  const undoRef = useRef(undo);
+  const redoRef = useRef(redo);
+  const canUndoRef = useRef(canUndo);
+  const canRedoRef = useRef(canRedo);
   useEffect(() => {
     stepRef.current = step;
     closeRef.current = close;
@@ -85,6 +89,10 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     totalRef.current = total;
     guardRef.current = guard;
     dirtyRef.current = dirty;
+    undoRef.current = undo;
+    redoRef.current = redo;
+    canUndoRef.current = canUndo;
+    canRedoRef.current = canRedo;
   });
 
   useEffect(() => {
@@ -111,6 +119,26 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
       }
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
+      // Undo / redo edits: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, or Ctrl+Y.
+      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
+        if (e.shiftKey) {
+          if (canRedoRef.current) {
+            e.preventDefault();
+            redoRef.current();
+          }
+        } else if (canUndoRef.current) {
+          e.preventDefault();
+          undoRef.current();
+        }
+        return;
+      }
+      if (e.ctrlKey && !e.metaKey && (e.key === "y" || e.key === "Y")) {
+        if (canRedoRef.current) {
+          e.preventDefault();
+          redoRef.current();
+        }
+        return;
+      }
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       const delta: 1 | -1 = e.key === "ArrowRight" ? 1 : -1;
@@ -233,15 +261,31 @@ function LightboxImage({
     }
   }, [target, disp.photoId, disp.src]);
 
+  // Preview = delta from the DISPLAYED rendition's recipe to `working`.
+  const t = previewTransform(disp.recipe, working);
+
+  // Continuous rotation angle so repeated rotations keep spinning forward through
+  // a full circle instead of unwinding (CSS would take the short path 270°→0°).
+  const [contDeg, setContDeg] = useState(t.deg);
+  useEffect(() => {
+    const bump = () =>
+      setContDeg((prev) => {
+        const diff = (((t.deg - prev) % 360) + 360) % 360;
+        return prev + (diff > 180 ? diff - 360 : diff); // shortest signed step
+      });
+    bump();
+  }, [t.deg]);
+
   // Suppress the transform transition on the frame the rendition swaps (Apply /
-  // nav) so the buffer swap is instant; edit clicks (disp unchanged) animate.
+  // nav) AND whenever a flip toggles: flips snap (a CSS scale through 0 looks like
+  // a collapse along the long edge), while rotations animate.
   const [animate, setAnimate] = useState(false);
   useEffect(() => {
     const enable = (v: boolean) => setAnimate(v);
     enable(false);
     const id = requestAnimationFrame(() => setAnimate(true));
     return () => cancelAnimationFrame(id);
-  }, [disp.src, disp.photoId]);
+  }, [disp.src, disp.photoId, t.mirror]);
 
   const { loaded, ref, onLoad } = useImageLoaded(disp.src);
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
@@ -279,9 +323,6 @@ function LightboxImage({
     [setImgEl, ref],
   );
 
-  // Preview = delta from the DISPLAYED rendition's recipe to `working`.
-  const t = previewTransform(disp.recipe, working);
-  const identity = t.deg === 0 && !t.mirror;
   const rotated = t.deg === 90 || t.deg === 270;
   // A 90/270 rotation must be scaled so it fills the same space the re-baked
   // rendition will: ratio of "contain of the swapped image" to "contain now".
@@ -293,9 +334,7 @@ function LightboxImage({
     const sPost = Math.min(cw / nat.h, ch / nat.w, 1);
     if (sNow > 0) fit = sPost / sNow;
   }
-  const transform = identity
-    ? undefined
-    : `rotate(${t.deg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
+  const transform = `rotate(${contDeg}deg) scaleX(${t.mirror ? -1 : 1}) scale(${fit})`;
 
   return (
     <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">

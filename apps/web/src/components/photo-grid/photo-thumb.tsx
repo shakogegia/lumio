@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import type { PhotoDTO } from "@lumio/shared";
+import { Pencil } from "lucide-react";
+import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { thumbUrl } from "@/lib/rendition-url";
@@ -55,6 +56,15 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         className="absolute left-1/2 top-1/2 max-w-none object-cover transition-[transform,opacity] duration-300 ease-out group-hover/tile:opacity-90"
         style={boxStyle}
       />
+      {hasEdits(photo.edits) && (
+        <span
+          className="pointer-events-none absolute bottom-1 right-1 flex items-center justify-center rounded-full bg-black/55 p-1 text-white shadow-sm backdrop-blur-sm"
+          title="Edited"
+          aria-label="Edited"
+        >
+          <Pencil className="size-3" aria-hidden />
+        </span>
+      )}
     </div>
   );
 }
