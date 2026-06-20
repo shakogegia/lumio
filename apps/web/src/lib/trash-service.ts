@@ -183,26 +183,3 @@ export async function restorePhotos(
   }
   return { restored };
 }
-
-export async function purgeTrash(
-  ids: string[] | undefined,
-  deps: TrashDeps = defaultDeps,
-): Promise<{ deleted: number }> {
-  const where = ids ? { id: { in: ids } } : {};
-  const rows = await deps.db.trashedPhoto.findMany({
-    where,
-    select: { id: true, originalPath: true },
-  });
-  await Promise.all(
-    rows.flatMap((r) => {
-      const ext = path.extname(r.originalPath);
-      return [
-        rm(path.join(deps.trashDir, "originals", `${r.id}${ext}`), { force: true }),
-        rm(path.join(deps.trashDir, "thumbnails", `${r.id}.webp`), { force: true }),
-        rm(path.join(deps.trashDir, "displays", `${r.id}.webp`), { force: true }),
-      ];
-    }),
-  );
-  const { count } = await deps.db.trashedPhoto.deleteMany({ where });
-  return { deleted: count };
-}

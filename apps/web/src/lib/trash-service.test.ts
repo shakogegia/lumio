@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { listTrash, purgeTrash, restorePhotos, trashPhotos } from "./trash-service.js";
+import { listTrash, restorePhotos, trashPhotos } from "./trash-service.js";
 
 async function dirs() {
   const photosDir = await mkdtemp(path.join(tmpdir(), "lumio-photos-"));
@@ -184,39 +184,5 @@ describe("restorePhotos", () => {
     await restorePhotos(["a"], { db: db as never, photosDir, cacheDir, trashDir });
     expect(restoredPath).toBe("a (restored).jpg");
     expect(existsSync(path.join(photosDir, "a (restored).jpg"))).toBe(true);
-  });
-});
-
-describe("purgeTrash", () => {
-  it("removes trash files and rows for the given ids", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    await mkdir(path.join(trashDir, "originals"), { recursive: true });
-    await mkdir(path.join(trashDir, "thumbnails"), { recursive: true });
-    await writeFile(path.join(trashDir, "originals", "a.jpg"), "orig");
-    await writeFile(path.join(trashDir, "thumbnails", "a.webp"), "thumb");
-
-    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
-    const db = {
-      trashedPhoto: {
-        findMany: async () => [{ id: "a", originalPath: "a.jpg" }],
-        deleteMany,
-      },
-    };
-
-    const result = await purgeTrash(["a"], { db: db as never, photosDir, cacheDir, trashDir });
-
-    expect(result).toEqual({ deleted: 1 });
-    expect(existsSync(path.join(trashDir, "originals", "a.jpg"))).toBe(false);
-    expect(existsSync(path.join(trashDir, "thumbnails", "a.webp"))).toBe(false);
-    expect(deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["a"] } } });
-  });
-
-  it("empties everything when ids is undefined", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    const deleteMany = vi.fn().mockResolvedValue({ count: 3 });
-    const db = { trashedPhoto: { findMany: async () => [], deleteMany } };
-    const result = await purgeTrash(undefined, { db: db as never, photosDir, cacheDir, trashDir });
-    expect(result).toEqual({ deleted: 3 });
-    expect(deleteMany).toHaveBeenCalledWith({ where: {} });
   });
 });

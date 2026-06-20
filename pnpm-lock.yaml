@@ -29,6 +29,9 @@ importers:
       '@lumio/ingest':
         specifier: workspace:*
         version: link:../../packages/ingest
+      '@lumio/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
       '@lumio/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -132,6 +135,9 @@ importers:
       '@lumio/ingest':
         specifier: workspace:*
         version: link:../../packages/ingest
+      '@lumio/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
       '@lumio/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -195,6 +201,22 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.19.21
+
+  packages/jobs:
+    dependencies:
+      '@lumio/db':
+        specifier: workspace:*
+        version: link:../db
+      '@lumio/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^22
+        version: 22.19.21
+      vitest:
+        specifier: ^2
+        version: 2.1.9(@types/node@22.19.21)(lightningcss@1.32.0)
 
   packages/shared:
     dependencies:

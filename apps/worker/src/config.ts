@@ -24,6 +24,9 @@ export const THUMBNAILS_DIR = path.join(CACHE_DIR, "thumbnails");
 
 export const DISPLAYS_DIR = path.join(CACHE_DIR, "displays");
 
+/** Absolute path to the trash root (mirrors the cache layout). */
+export const TRASH_DIR = resolveFromRoot(process.env.TRASH_DIR, "./trash");
+
 /**
  * Resolve how many images to process in parallel. An explicit positive
  * `INGEST_CONCURRENCY` wins; otherwise default to HALF the logical cores so a

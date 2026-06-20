@@ -36,6 +36,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/db/package.json      packages/db/package.json
 COPY packages/shared/package.json  packages/shared/package.json
 COPY packages/ingest/package.json  packages/ingest/package.json
+COPY packages/jobs/package.json    packages/jobs/package.json
 COPY apps/web/package.json         apps/web/package.json
 COPY apps/worker/package.json      apps/worker/package.json
 RUN --mount=type=cache,target=/pnpm/store \
