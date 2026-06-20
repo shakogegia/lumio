@@ -8,9 +8,11 @@ function activeJob(snapshot: ActivitySnapshot): JobDTO | undefined {
 /** Busy = a job is running/queued, or the watcher is importing new files. */
 export function isBusy(snapshot: ActivitySnapshot): boolean {
   if (snapshot.jobs.length > 0) return true;
+  // "importing <n>" is emitted by formatActivity() in @lumio/jobs for steady-state watcher imports (not a Job).
   return snapshot.worker.activity.startsWith("importing");
 }
 
+// rescan is formatted inline with progress counts in activityLabel; its entry here only satisfies Record<JobType,…> completeness.
 const JOB_VERB: Record<JobType, string> = {
   [JobType.rescan]: "Rescanning",
   [JobType.purge_all]: "Deleting all photos…",
@@ -28,6 +30,7 @@ export function activityLabel(snapshot: ActivitySnapshot): string {
     }
     return JOB_VERB[job.type];
   }
+  // Parse the "importing <n>" string that formatActivity() in @lumio/jobs emits.
   const importing = snapshot.worker.activity.match(/^importing (\d+)$/);
   if (importing) return `Importing ${importing[1]} photos`;
   return snapshot.worker.online ? "Worker online" : "Worker offline";
