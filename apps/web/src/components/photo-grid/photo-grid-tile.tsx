@@ -4,7 +4,9 @@ import { colorLabelHex, type PhotoDTO, type PhotoSort } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
+import { resolveTargets } from "@/lib/resolve-targets";
 import { cellVariants } from "./cell-variants";
+import { PhotoContextMenu } from "./photo-context-menu";
 import { PhotoThumb } from "./photo-thumb";
 import { SelectionRing } from "./selection-ring";
 
@@ -14,6 +16,9 @@ import { SelectionRing } from "./selection-ring";
  * middle click falls through to the native link, so the photo opens in a new tab.
  * When the collection has no detail view (e.g. Trash, where `onOpen` is absent)
  * there is no href and double click is a no-op — the tile is select-only.
+ *
+ * The tile is wrapped in a right-click PhotoContextMenu, which renders the tile
+ * unwrapped when no actions provider is present (e.g. the Trash grid).
  */
 export function PhotoGridTile({
   photo,
@@ -25,6 +30,8 @@ export function PhotoGridTile({
   isSelected,
   index,
   onTileClick,
+  selectedIds,
+  onTrash,
 }: {
   photo: PhotoDTO;
   mode: GridViewMode;
@@ -35,6 +42,10 @@ export function PhotoGridTile({
   isSelected: boolean;
   index: number;
   onTileClick: (index: number, e: React.MouseEvent) => void;
+  /** Current selection, for selection-aware context-menu targeting. */
+  selectedIds?: Set<string>;
+  /** Drop these ids from the selection after a menu-driven trash. */
+  onTrash?: (ids: string[]) => void;
 }) {
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
 
@@ -54,27 +65,34 @@ export function PhotoGridTile({
       : photoHref(photo.id, albumId, sort)
     : undefined;
 
+  const targetIds = resolveTargets(selectedIds, photo.id);
+
   return (
-    <a
-      href={href}
-      onClick={(e) => {
-        // ⌘/Ctrl/middle click on a real link opens the detail in a new tab;
-        // every other click selects (plain = toggle, shift = range).
-        if (href && (e.metaKey || e.ctrlKey || e.button !== 0)) return;
-        e.preventDefault();
-        onTileClick(index, e);
-      }}
-      onDoubleClick={(e) => {
-        if (!onOpen) return;
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        onOpen(index);
-      }}
-      className={cn(cellVariants({ mode }), "select-none", labelHex && "label-mat")}
-      style={labelStyle}
+    <PhotoContextMenu
+      targetIds={targetIds}
+      onTrashed={onTrash ? () => onTrash(targetIds) : undefined}
     >
-      {thumb}
-      {isSelected && <SelectionRing />}
-    </a>
+      <a
+        href={href}
+        onClick={(e) => {
+          // ⌘/Ctrl/middle click on a real link opens the detail in a new tab;
+          // every other click selects (plain = toggle, shift = range).
+          if (href && (e.metaKey || e.ctrlKey || e.button !== 0)) return;
+          e.preventDefault();
+          onTileClick(index, e);
+        }}
+        onDoubleClick={(e) => {
+          if (!onOpen) return;
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+          e.preventDefault();
+          onOpen(index);
+        }}
+        className={cn(cellVariants({ mode }), "select-none", labelHex && "label-mat")}
+        style={labelStyle}
+      >
+        {thumb}
+        {isSelected && <SelectionRing />}
+      </a>
+    </PhotoContextMenu>
   );
 }

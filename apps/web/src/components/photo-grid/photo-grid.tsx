@@ -83,6 +83,22 @@ export function PhotoGrid({
     onSelectionChange(next);
   }
 
+  // After a menu-driven trash, drop the trashed ids from the selection so the
+  // toolbar count can't go stale. (Toolbar trash clears the whole selection
+  // itself; this covers the per-photo menu path.)
+  const handleTilesTrashed = useCallback(
+    (ids: string[]) => {
+      if (!onSelectionChange || !selectedIds || selectedIds.size === 0) return;
+      const next = new Set(selectedIds);
+      let changed = false;
+      for (const id of ids) {
+        if (next.delete(id)) changed = true;
+      }
+      if (changed) onSelectionChange(next);
+    },
+    [onSelectionChange, selectedIds],
+  );
+
   // Reset the shift-range anchor whenever the selection empties (Escape, the
   // toolbar's clear, or a bulk action) so the next shift-click ranges from a
   // fresh plain click instead of a stale index.
@@ -199,6 +215,8 @@ export function PhotoGrid({
                     urlForId={urlForId}
                     isSelected={selectedIds?.has(photo.id) ?? false}
                     onTileClick={handleTileClick}
+                    selectedIds={selectedIds}
+                    onTrash={handleTilesTrashed}
                   />
                 );
               })}
