@@ -135,10 +135,9 @@ export function SearchView() {
         body: JSON.stringify({ photoIds: [...ids], label }),
       });
       if (!res.ok) throw new Error("label failed");
-      // Optimistically repaint the client-fetched grid, then clear the
-      // selection while staying in select mode so the user can keep labeling.
+      // Optimistically repaint the client-fetched grid, keeping the selection
+      // intact so the user can keep acting on the same photos.
       gridRef.current?.patchPhotos(ids, { colorLabel: label });
-      sel.clear();
     } catch {
       toast.error("Failed to apply label.");
     } finally {
@@ -275,8 +274,9 @@ export function SearchView() {
         onOpenChange={setDialogOpen}
         photoIds={[...sel.selected]}
         onAdded={() => {
+          // Keep the selection and select mode so the user can keep acting on
+          // the same photos after adding them to an album.
           setDialogOpen(false);
-          sel.cancel();
         }}
       />
     </>

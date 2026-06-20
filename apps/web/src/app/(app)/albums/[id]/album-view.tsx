@@ -235,8 +235,9 @@ export function AlbumView({
         photoIds={[...sel.selected]}
         excludeAlbumId={albumId}
         onAdded={() => {
+          // Keep the selection and select mode so the user can keep acting on
+          // the same photos after adding them to an album.
           setDialogOpen(false);
-          sel.cancel();
         }}
       />
     </>
