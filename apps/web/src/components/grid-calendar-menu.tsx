@@ -60,8 +60,14 @@ export function GridCalendarMenu({
       .then((data) => {
         if (cancelled) return;
         setFacets(data);
-        // Default the visible year to the active month's year, else the newest.
-        setActiveYear(selected?.year ?? data.years[0]?.year ?? null);
+        // Default the visible year to the active month's year when that year
+        // exists in this scope, else the newest — so the month pane is never empty.
+        const fallbackYear = data.years[0]?.year ?? null;
+        setActiveYear(
+          selected && data.years.some((y) => y.year === selected.year)
+            ? selected.year
+            : fallbackYear,
+        );
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -103,7 +109,7 @@ export function GridCalendarMenu({
           {value && <span>{formatMonth(value)}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[22rem] p-0">
+      <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0">
         {loading ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
@@ -120,9 +126,14 @@ export function GridCalendarMenu({
             No photos to filter.
           </div>
         ) : (
-          <div className="flex h-80">
-            {/* Years (+ an All-photos reset) */}
-            <ul className="w-24 shrink-0 overflow-y-auto border-r py-1">
+          <div className="relative">
+            {/* The popover height follows the month grid, so its padding stays
+                symmetric regardless of how many months a year has and the months
+                never scroll (a year is at most 12 = 4 rows). The years list is
+                taken out of flow (absolute) so it fills that same height and
+                scrolls on its own when there are more years than fit. */}
+            {/* Years (+ an All-photos reset) — scrolls when there are many years */}
+            <ul className="absolute inset-y-0 left-0 w-24 overflow-y-auto border-r py-1">
               <li>
                 <button
                   type="button"
@@ -150,8 +161,10 @@ export function GridCalendarMenu({
                 </li>
               ))}
             </ul>
-            {/* Month cover tiles for the active year */}
-            <div className="grid flex-1 auto-rows-min grid-cols-3 gap-2 overflow-y-auto p-2">
+            {/* Month cover tiles for the active year — drives the pane height and
+                never scrolls (a year has at most 12 = 4 rows). `ml-24` clears the
+                absolutely-positioned years column. */}
+            <div className="ml-24 grid auto-rows-min grid-cols-3 gap-2 p-2">
               {year?.months.map((m) => {
                 const active = selected?.year === year.year && selected.month === m.month;
                 return (
