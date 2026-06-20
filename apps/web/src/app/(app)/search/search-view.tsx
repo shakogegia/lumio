@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { Download, FolderPlus, Loader2, SquareCheckBig, Trash2, X } from "lucide-react";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { useGridSort } from "@/lib/use-grid-sort";
 import { useGridView } from "@/lib/use-grid-view";
 import { useGridSelection } from "@/lib/use-grid-selection";
-import { downloadSelection } from "@/lib/download-client";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/components/confirm-dialog";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
-import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
-import type { ColorLabel } from "@lumio/shared";
+import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
+import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
@@ -46,14 +43,15 @@ export function SearchView() {
   const { mode, setMode } = useGridView();
   const sel = useGridSelection();
   const gridRef = useRef<PhotoGridHandle>(null);
-  const { confirm, confirmDialog } = useConfirm();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [labelPending, setLabelPending] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   const empty = isEmptyFilters(filters);
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty);
+  const actions = usePhotoActions({
+    gridRef,
+    // Keep the result count in step with menu- or toolbar-driven trashes.
+    onTrashed: (ids) =>
+      setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.length))),
+  });
 
   // The result set changes when the query changes, so any selection would point
   // at photos no longer shown. Drop it and leave select mode whenever the query
@@ -79,77 +77,9 @@ export function SearchView() {
     inputRef.current?.applyFilters(f);
   }
 
-  async function handleDelete() {
-    const ids = sel.selected;
-    if (ids.size === 0 || deleting) return;
-    const label = `${ids.size} ${ids.size === 1 ? "photo" : "photos"}`;
-    const ok = await confirm({
-      title: `Move ${label} to Trash?`,
-      description: "They'll be moved to Trash. You can restore them later.",
-      confirmLabel: "Move to Trash",
-      destructive: true,
-    });
-    if (!ok) return;
-    setDeleting(true);
-    try {
-      const res = await fetch("/api/photos/trash", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: [...ids] }),
-      });
-      if (!res.ok) throw new Error("trash failed");
-      // Drop the tiles in place (no remount) and leave select mode.
-      gridRef.current?.removePhotos(ids);
-      // Keep the toolbar count consistent with the tiles we just removed.
-      setSearchCount((c) => (c === null ? c : Math.max(0, c - ids.size)));
-      sel.cancel();
-    } catch {
-      toast.error("Failed to move photos to Trash.");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function handleDownload() {
-    const ids = [...sel.selected];
-    if (ids.length === 0 || downloading) return;
-    setDownloading(true);
-    try {
-      await downloadSelection(ids);
-      // Clear the selection on success while staying in select mode, mirroring
-      // the color-label flow — the batch is done, but you may pick another set.
-      sel.clear();
-    } catch {
-      toast.error("Failed to download photos.");
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  async function applyLabel(label: ColorLabel | null) {
-    if (labelPending) return;
-    const ids = sel.selected;
-    setLabelPending(true);
-    try {
-      const res = await fetch("/api/photos/color-label", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ photoIds: [...ids], label }),
-      });
-      if (!res.ok) throw new Error("label failed");
-      // Optimistically repaint the client-fetched grid, keeping the selection
-      // intact so the user can keep acting on the same photos.
-      gridRef.current?.patchPhotos(ids, { colorLabel: label });
-    } catch {
-      toast.error("Failed to apply label.");
-    } finally {
-      setLabelPending(false);
-    }
-  }
-
   return (
     <>
-      {confirmDialog}
+      {actions.element}
       <div
         className={cn(
           // Center the box on entry by padding the top; collapse the padding when
@@ -211,14 +141,14 @@ export function SearchView() {
                   {sel.selectMode ? (
                     <>
                       <ColorLabelMenu
-                        disabled={sel.count === 0 || labelPending}
-                        onPick={(label) => void applyLabel(label)}
+                        disabled={sel.count === 0 || actions.pending.label}
+                        onPick={(label) => void actions.applyLabel([...sel.selected], label)}
                       />
                       <Button
                         variant="outline"
                         size="icon-sm"
                         disabled={sel.count === 0}
-                        onClick={() => setDialogOpen(true)}
+                        onClick={() => actions.addToAlbum([...sel.selected])}
                         aria-label="Add to album"
                         title="Add to album"
                       >
@@ -227,22 +157,22 @@ export function SearchView() {
                       <Button
                         variant="outline"
                         size="icon-sm"
-                        disabled={sel.count === 0 || downloading}
-                        onClick={() => void handleDownload()}
+                        disabled={sel.count === 0 || actions.pending.download}
+                        onClick={() => void actions.download([...sel.selected], { onSuccess: sel.clear })}
                         aria-label="Download"
                         title="Download"
                       >
-                        {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
+                        {actions.pending.download ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
                       </Button>
                       <Button
                         variant="destructive"
                         size="icon-sm"
-                        disabled={sel.count === 0 || deleting}
-                        onClick={() => void handleDelete()}
+                        disabled={sel.count === 0 || actions.pending.trash}
+                        onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.cancel })}
                         aria-label="Delete"
                         title="Delete"
                       >
-                        {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                        {actions.pending.trash ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
                       </Button>
                       <Button
                         variant="outline"
@@ -279,31 +209,23 @@ export function SearchView() {
                 urlForId={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
                 baseUrl="/search"
               >
-                <PhotoGrid
-                  apiRef={gridRef}
-                  mode={mode}
-                  columns={columns}
-                  selectMode={sel.selectMode}
-                  selectedIds={sel.selected}
-                  onSelectionChange={sel.setSelected}
-                  empty={<SearchEmpty />}
-                />
-                <Lightbox />
+                <PhotoActionsProvider value={actions}>
+                  <PhotoGrid
+                    apiRef={gridRef}
+                    mode={mode}
+                    columns={columns}
+                    selectMode={sel.selectMode}
+                    selectedIds={sel.selected}
+                    onSelectionChange={sel.setSelected}
+                    empty={<SearchEmpty />}
+                  />
+                  <Lightbox />
+                </PhotoActionsProvider>
               </PhotoCollectionProvider>
             </div>
           ))}
       </div>
 
-      <AddToAlbumDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        photoIds={[...sel.selected]}
-        onAdded={() => {
-          // Keep the selection and select mode so the user can keep acting on
-          // the same photos after adding them to an album.
-          setDialogOpen(false);
-        }}
-      />
     </>
   );
 }
