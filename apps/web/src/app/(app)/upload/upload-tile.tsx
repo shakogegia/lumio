@@ -62,7 +62,7 @@ export const UploadTile = memo(function UploadTile({
       className={cn(
         "relative aspect-square overflow-hidden rounded-md border border-border bg-muted p-2",
         labelHex && "label-mat",
-        selected && "ring-2 ring-offset-2 ring-offset-background ring-blue-500",
+        selected && "ring-2 ring-inset ring-blue-500",
       )}
       style={labelStyle}
     >

@@ -32,7 +32,7 @@ export function PhotoGridSkeleton({
         }}
       >
         {Array.from({ length: SKELETON_TILES }).map((_, i) => (
-          <div key={i} className="aspect-square rounded-sm bg-muted" />
+          <div key={i} className="aspect-square bg-muted" />
         ))}
       </div>
     </div>

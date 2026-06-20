@@ -65,7 +65,7 @@ export function AlbumCard({
       <div
         className={cn(
           "relative rounded-sm",
-          isSelected && "ring-2 ring-offset-2 ring-offset-background ring-blue-500",
+          isSelected && "ring-2 ring-inset ring-blue-500",
         )}
       >
         {cover}

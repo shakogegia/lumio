@@ -122,6 +122,12 @@ export function UploadClient() {
   // Last plain-clicked row index; the anchor for shift-click range selection.
   const anchorRef = useRef<number | null>(null);
 
+  // Reset the anchor when the selection empties so a later shift-click ranges
+  // from a fresh plain click instead of a stale index (mirrors the photo grid).
+  useEffect(() => {
+    if (sel.count === 0) anchorRef.current = null;
+  }, [sel.count]);
+
   // Stable per-tile callbacks (identity preserved across renders) so React.memo
   // on UploadTile actually skips unchanged tiles when one selection toggles.
   // `setSelected` is a useState setter, so its identity is stable. Reuses the
