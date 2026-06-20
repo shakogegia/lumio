@@ -28,7 +28,7 @@
 ## File Structure
 
 **New package `packages/jobs/`** (`@lumio/jobs`) — framework-agnostic, depends on `@lumio/db` + `@lumio/shared`:
-- `src/predicates.ts` — pure helpers: `isWorkerOnline`, `formatActivity`, `shouldWrite`, `pollInterval`, `toJobDTO`, `buildActivitySnapshot`.
+- `src/predicates.ts` — pure helpers: `isWorkerOnline`, `formatActivity`, `shouldWrite`, `toJobDTO`, `buildActivitySnapshot`. (Client-side poll cadence lives in `apps/web/src/lib/poll-interval.ts` — `@lumio/jobs` is server-only.)
 - `src/queue.ts` — `enqueueJob`, `findActiveJob`, `getActiveJobs`, `recoverOrphanedJobs`, `claimNextJob`, `markJobSucceeded`, `markJobFailed`.
 - `src/heartbeat.ts` — `writeHeartbeat`, `readWorkerStatus`.
 - `src/progress.ts` — `createProgressReporter`.
@@ -123,11 +123,11 @@ Create `packages/shared/src/jobs.test.ts`:
 
 ```typescript
 import { describe, expect, it } from "vitest";
-import { JOB_TYPES, isJobType, jobTypeSchema } from "./jobs.js";
+import { JobType, isJobType, jobTypeSchema } from "./jobs.js";
 
 describe("jobTypeSchema", () => {
   it("accepts the known job types", () => {
-    for (const t of JOB_TYPES) expect(jobTypeSchema.parse(t)).toBe(t);
+    for (const t of Object.values(JobType)) expect(jobTypeSchema.parse(t)).toBe(t);
   });
 
   it("rejects unknown types", () => {
@@ -136,10 +136,11 @@ describe("jobTypeSchema", () => {
 });
 
 describe("isJobType", () => {
-  it("is a type guard over the known literals", () => {
+  it("is a type guard over the enum values", () => {
     expect(isJobType("rescan")).toBe(true);
     expect(isJobType("purge_all")).toBe(true);
     expect(isJobType("nope")).toBe(false);
+    expect(isJobType(null)).toBe(false);
   });
 });
 ```
@@ -151,32 +152,35 @@ Expected: FAIL — cannot find module `./jobs.js`.
 
 - [ ] **Step 3: Implement**
 
-Create `packages/shared/src/jobs.ts`:
+Create `packages/shared/src/jobs.ts` (TS `enum`s, matching the `enums.ts` style — see `PhotoSource`):
 
 ```typescript
 import { z } from "zod";
 
-/** Discrete, user-initiated background operations. Single source of truth. */
-export const JOB_TYPES = ["rescan", "purge_all", "empty_trash"] as const;
-export type JobType = (typeof JOB_TYPES)[number];
+/** Discrete, user-initiated background operations. Mirrors the Job.type column 1:1. */
+export enum JobType {
+  rescan = "rescan",
+  purge_all = "purge_all",
+  empty_trash = "empty_trash",
+}
 
-/** Job lifecycle states. */
-export const JOB_STATUSES = [
-  "queued",
-  "running",
-  "succeeded",
-  "failed",
-  "canceled",
-] as const;
-export type JobStatus = (typeof JOB_STATUSES)[number];
+/** Job lifecycle states. Mirrors the Job.status column 1:1. */
+export enum JobStatus {
+  queued = "queued",
+  running = "running",
+  succeeded = "succeeded",
+  failed = "failed",
+  canceled = "canceled",
+}
 
 /** Statuses that count as "in flight" (occupies the queue, shows in the UI). */
-export const ACTIVE_JOB_STATUSES = ["queued", "running"] as const;
+export const ACTIVE_JOB_STATUSES = [JobStatus.queued, JobStatus.running] as const;
 
-export const jobTypeSchema = z.enum(JOB_TYPES);
+/** Zod schema for a job type (strict — used in API validation). */
+export const jobTypeSchema = z.nativeEnum(JobType);
 
 export function isJobType(value: unknown): value is JobType {
-  return (JOB_TYPES as readonly unknown[]).includes(value);
+  return Object.values(JobType).includes(value as JobType);
 }
 
 /** Serialized job for the web (dates as ISO strings). */
@@ -342,7 +346,6 @@ import {
   buildActivitySnapshot,
   formatActivity,
   isWorkerOnline,
-  pollInterval,
   shouldWrite,
   toJobDTO,
 } from "./predicates.js";
@@ -384,18 +387,6 @@ describe("shouldWrite", () => {
   });
   it("writes once the interval elapses", () => {
     expect(shouldWrite(1000, 1300, 250)).toBe(true);
-  });
-});
-
-describe("pollInterval", () => {
-  it("pauses on a hidden tab", () => {
-    expect(pollInterval(true, true)).toBeNull();
-  });
-  it("polls fast when a job is active", () => {
-    expect(pollInterval(true, false)).toBe(1500);
-  });
-  it("polls slow when idle", () => {
-    expect(pollInterval(false, false)).toBe(5000);
   });
 });
 
@@ -486,12 +477,6 @@ export function shouldWrite(lastAt: number | null, now: number, minIntervalMs: n
   return lastAt === null || now - lastAt >= minIntervalMs;
 }
 
-/** Poll cadence (ms): null = paused (hidden tab); fast when active, slow when idle. */
-export function pollInterval(hasActive: boolean, hidden: boolean): number | null {
-  if (hidden) return null;
-  return hasActive ? 1500 : 5000;
-}
-
 /** Serialize a Job row to the wire DTO (drops dates the UI doesn't need). */
 export function toJobDTO(job: Job): JobDTO {
   return {
@@ -550,6 +535,7 @@ Create `packages/jobs/src/queue.test.ts`:
 
 ```typescript
 import { describe, expect, it, vi } from "vitest";
+import { JobType } from "@lumio/shared";
 import {
   enqueueJob,
   findActiveJob,
@@ -575,7 +561,7 @@ function fakeDb(overrides: Record<string, unknown> = {}) {
 describe("enqueueJob", () => {
   it("creates a new job when none is active", async () => {
     const db = fakeDb();
-    const job = await enqueueJob(db as never, "rescan");
+    const job = await enqueueJob(db as never, JobType.rescan);
     expect(db.job.create).toHaveBeenCalledWith({ data: { type: "rescan" } });
     expect(job.id).toBe("new");
   });
@@ -583,7 +569,7 @@ describe("enqueueJob", () => {
   it("returns the existing active job instead of double-queueing", async () => {
     const existing = { id: "x", type: "rescan", status: "running" };
     const db = fakeDb({ findFirst: vi.fn().mockResolvedValue(existing) });
-    const job = await enqueueJob(db as never, "rescan");
+    const job = await enqueueJob(db as never, JobType.rescan);
     expect(job).toBe(existing);
     expect(db.job.create).not.toHaveBeenCalled();
   });
@@ -592,7 +578,7 @@ describe("enqueueJob", () => {
 describe("findActiveJob", () => {
   it("queries for queued/running of the given type", async () => {
     const db = fakeDb();
-    await findActiveJob(db as never, "purge_all");
+    await findActiveJob(db as never, JobType.purge_all);
     expect(db.job.findFirst).toHaveBeenCalledWith({
       where: { type: "purge_all", status: { in: ["queued", "running"] } },
       orderBy: { createdAt: "asc" },
@@ -655,7 +641,7 @@ Create `packages/jobs/src/queue.ts`:
 
 ```typescript
 import type { Job, PrismaClient } from "@lumio/db";
-import { ACTIVE_JOB_STATUSES, type JobType } from "@lumio/shared";
+import { ACTIVE_JOB_STATUSES, JobStatus, type JobType } from "@lumio/shared";
 
 /** The slice of Prisma the queue helpers need (so tests can pass a mock). */
 export type JobDb = Pick<PrismaClient, "job">;
@@ -689,8 +675,8 @@ export function getActiveJobs(db: JobDb): Promise<Job[]> {
  */
 export async function recoverOrphanedJobs(db: JobDb): Promise<number> {
   const { count } = await db.job.updateMany({
-    where: { status: "running" },
-    data: { status: "queued", startedAt: null },
+    where: { status: JobStatus.running },
+    data: { status: JobStatus.queued, startedAt: null },
   });
   return count;
 }
@@ -698,17 +684,19 @@ export async function recoverOrphanedJobs(db: JobDb): Promise<number> {
 export async function markJobSucceeded(db: JobDb, id: string): Promise<void> {
   await db.job.update({
     where: { id },
-    data: { status: "succeeded", finishedAt: new Date() },
+    data: { status: JobStatus.succeeded, finishedAt: new Date() },
   });
 }
 
 export async function markJobFailed(db: JobDb, id: string, error: string): Promise<void> {
   await db.job.update({
     where: { id },
-    data: { status: "failed", error, finishedAt: new Date() },
+    data: { status: JobStatus.failed, error, finishedAt: new Date() },
   });
 }
 ```
+
+Note: `JobType`/`JobStatus` enum values ARE the matching strings (`JobStatus.running === "running"`), so the `Job.type`/`Job.status` columns being Prisma `String` accept them with no cast, and the test assertions below (which use string literals like `"running"`) still match by value.
 
 - [ ] **Step 4: Run the test to confirm it passes**
 
@@ -1217,6 +1205,7 @@ Create `packages/jobs/src/consumer.test.ts`:
 
 ```typescript
 import { describe, expect, it, vi } from "vitest";
+import { JobType } from "@lumio/shared";
 import { processNextJob } from "./consumer.js";
 
 function dbWithClaim(row: unknown) {
@@ -1230,7 +1219,7 @@ describe("processNextJob", () => {
   it("returns 'empty' and runs nothing when the queue is empty", async () => {
     const db = dbWithClaim(null);
     const handler = vi.fn();
-    const result = await processNextJob(db as never, { rescan: handler }, {});
+    const result = await processNextJob(db as never, { [JobType.rescan]: handler }, {});
     expect(result).toBe("empty");
     expect(handler).not.toHaveBeenCalled();
   });
@@ -1241,7 +1230,7 @@ describe("processNextJob", () => {
     const onClaim = vi.fn();
     const onSettle = vi.fn();
 
-    const result = await processNextJob(db as never, { rescan: handler }, { onClaim, onSettle });
+    const result = await processNextJob(db as never, { [JobType.rescan]: handler }, { onClaim, onSettle });
 
     expect(result).toBe("ran");
     expect(handler).toHaveBeenCalledOnce();
@@ -1258,7 +1247,7 @@ describe("processNextJob", () => {
     const handler = vi.fn().mockRejectedValue(new Error("kaboom"));
     const onSettle = vi.fn();
 
-    const result = await processNextJob(db as never, { purge_all: handler }, { onSettle });
+    const result = await processNextJob(db as never, { [JobType.purge_all]: handler }, { onSettle });
 
     expect(result).toBe("ran");
     expect(db.job.update).toHaveBeenCalledWith({
@@ -1478,6 +1467,7 @@ Create `apps/worker/src/handlers.test.ts`:
 
 ```typescript
 import { describe, expect, it, vi } from "vitest";
+import { JobType } from "@lumio/shared";
 import { buildHandlers } from "./handlers.js";
 
 describe("buildHandlers", () => {
@@ -1493,7 +1483,7 @@ describe("buildHandlers", () => {
     });
     const report = vi.fn().mockResolvedValue(undefined);
 
-    await handlers.rescan(report);
+    await handlers[JobType.rescan](report);
 
     expect(scan).toHaveBeenCalledOnce();
     expect(report).toHaveBeenCalledWith(1, 2, "Scanning…");
@@ -1505,7 +1495,7 @@ describe("buildHandlers", () => {
     const handlers = buildHandlers({ scan: vi.fn(), purgeAll, emptyTrash: vi.fn() });
     const report = vi.fn().mockResolvedValue(undefined);
 
-    await handlers.purge_all(report);
+    await handlers[JobType.purge_all](report);
 
     expect(purgeAll).toHaveBeenCalledOnce();
     expect(report).toHaveBeenLastCalledWith(7, 7, null);
@@ -1516,7 +1506,7 @@ describe("buildHandlers", () => {
     const handlers = buildHandlers({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash });
     const report = vi.fn().mockResolvedValue(undefined);
 
-    await handlers.empty_trash(report);
+    await handlers[JobType.empty_trash](report);
 
     expect(emptyTrash).toHaveBeenCalledOnce();
     expect(report).toHaveBeenLastCalledWith(3, 3, null);
@@ -1531,11 +1521,12 @@ Expected: FAIL — cannot find module `./handlers.js`.
 
 - [ ] **Step 6: Implement the handler registry**
 
-Create `apps/worker/src/handlers.ts`:
+Create `apps/worker/src/handlers.ts` (uses computed enum keys — a `Record<JobType, …>` from a string enum is satisfied with `[JobType.x]:` keys):
 
 ```typescript
 import { prisma } from "@lumio/db";
 import { type JobHandlers, purgeAllPhotos, purgeTrash } from "@lumio/jobs";
+import { JobType } from "@lumio/shared";
 import { CACHE_DIR, PHOTOS_DIR, TRASH_DIR } from "./config.js";
 import { scanAndIngest } from "./scan.js";
 
@@ -1555,17 +1546,17 @@ const defaultDeps: HandlerDeps = {
 /** The worker's job handlers, keyed by job type. */
 export function buildHandlers(deps: HandlerDeps = defaultDeps): Required<JobHandlers> {
   return {
-    rescan: async (report) => {
+    [JobType.rescan]: async (report) => {
       await deps.scan((done, total) => {
         void report(done, total, "Scanning…");
       });
     },
-    purge_all: async (report) => {
+    [JobType.purge_all]: async (report) => {
       await report(0, null, "Deleting all photos…");
       const { deleted } = await deps.purgeAll();
       await report(deleted, deleted, null);
     },
-    empty_trash: async (report) => {
+    [JobType.empty_trash]: async (report) => {
       await report(0, null, "Emptying trash…");
       const { deleted } = await deps.emptyTrash();
       await report(deleted, deleted, null);
@@ -1797,13 +1788,14 @@ Replace `apps/web/src/app/api/rescan/route.ts` with:
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { enqueueJob } from "@lumio/jobs";
+import { JobType } from "@lumio/shared";
 import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async () => {
-  const job = await enqueueJob(prisma, "rescan");
+  const job = await enqueueJob(prisma, JobType.rescan);
   return NextResponse.json({ jobId: job.id }, { status: 202 });
 });
 ```
@@ -1816,13 +1808,14 @@ Replace `apps/web/src/app/api/photos/purge/route.ts` with:
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { enqueueJob } from "@lumio/jobs";
+import { JobType } from "@lumio/shared";
 import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async () => {
-  const job = await enqueueJob(prisma, "purge_all");
+  const job = await enqueueJob(prisma, JobType.purge_all);
   return NextResponse.json({ jobId: job.id }, { status: 202 });
 });
 ```
@@ -1835,13 +1828,14 @@ Replace `apps/web/src/app/api/trash/empty/route.ts` with:
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { enqueueJob } from "@lumio/jobs";
+import { JobType } from "@lumio/shared";
 import { withAuth } from "@/lib/with-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = withAuth(async () => {
-  const job = await enqueueJob(prisma, "empty_trash");
+  const job = await enqueueJob(prisma, JobType.empty_trash);
   return NextResponse.json({ jobId: job.id }, { status: 202 });
 });
 ```
@@ -1916,11 +1910,56 @@ git commit -m "feat(web): GET /api/activity returns worker + active-jobs snapsho
 ## Task 14: Web — `useActivity()` polling hook
 
 **Files:**
+- Create: `apps/web/src/lib/poll-interval.ts`
+- Create: `apps/web/src/lib/poll-interval.test.ts`
 - Create: `apps/web/src/lib/use-activity.ts`
 
-(The cadence logic `pollInterval` is already tested in `@lumio/jobs`; the hook is a thin effect around it. No new unit test — it's verified in the browser in Task 15.)
+The polling cadence is a client/UI concern, so it lives in the web app (not `@lumio/jobs`, which is server-only — it pulls in Prisma + `node:fs` and must never reach a client bundle). The hook imports only the `ActivitySnapshot` **type** from `@lumio/shared` (client-safe).
 
-- [ ] **Step 1: Implement the hook**
+- [ ] **Step 1: Write the failing cadence test**
+
+Create `apps/web/src/lib/poll-interval.test.ts`:
+
+```typescript
+import { describe, expect, it } from "vitest";
+import { pollInterval } from "./poll-interval.js";
+
+describe("pollInterval", () => {
+  it("pauses on a hidden tab", () => {
+    expect(pollInterval(true, true)).toBeNull();
+  });
+  it("polls fast when a job is active", () => {
+    expect(pollInterval(true, false)).toBe(1500);
+  });
+  it("polls slow when idle", () => {
+    expect(pollInterval(false, false)).toBe(5000);
+  });
+});
+```
+
+- [ ] **Step 2: Run it to confirm it fails**
+
+Run: `pnpm --filter @lumio/web exec vitest run src/lib/poll-interval.test.ts`
+Expected: FAIL — cannot find module `./poll-interval.js`.
+
+- [ ] **Step 3: Implement the cadence helper**
+
+Create `apps/web/src/lib/poll-interval.ts`:
+
+```typescript
+/** Poll cadence (ms): null = paused (hidden tab); fast when active, slow when idle. */
+export function pollInterval(hasActive: boolean, hidden: boolean): number | null {
+  if (hidden) return null;
+  return hasActive ? 1500 : 5000;
+}
+```
+
+- [ ] **Step 4: Run the test to confirm it passes**
+
+Run: `pnpm --filter @lumio/web exec vitest run src/lib/poll-interval.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Implement the hook**
 
 Create `apps/web/src/lib/use-activity.ts`:
 
@@ -1928,7 +1967,8 @@ Create `apps/web/src/lib/use-activity.ts`:
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type ActivitySnapshot, pollInterval } from "@lumio/jobs";
+import type { ActivitySnapshot } from "@lumio/shared";
+import { pollInterval } from "@/lib/poll-interval";
 
 const EMPTY: ActivitySnapshot = { worker: { online: false, activity: "offline" }, jobs: [] };
 
@@ -1986,15 +2026,15 @@ export function useActivity(): ActivitySnapshot {
 }
 ```
 
-- [ ] **Step 2: Typecheck web**
+- [ ] **Step 6: Typecheck web**
 
 Run: `pnpm --filter @lumio/web exec tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/web/src/lib/use-activity.ts
+git add apps/web/src/lib/poll-interval.ts apps/web/src/lib/poll-interval.test.ts apps/web/src/lib/use-activity.ts
 git commit -m "feat(web): useActivity() adaptive polling hook"
 ```
 
@@ -2016,8 +2056,8 @@ Create `apps/web/src/lib/activity-display.test.ts`:
 
 ```typescript
 import { describe, expect, it } from "vitest";
+import { type ActivitySnapshot, JobStatus, JobType } from "@lumio/shared";
 import { activityLabel, isBusy } from "./activity-display.js";
-import type { ActivitySnapshot } from "@lumio/jobs";
 
 const snap = (over: Partial<ActivitySnapshot>): ActivitySnapshot => ({
   worker: { online: true, activity: "watching" },
@@ -2027,7 +2067,7 @@ const snap = (over: Partial<ActivitySnapshot>): ActivitySnapshot => ({
 
 describe("isBusy", () => {
   it("is busy when a job is active", () => {
-    expect(isBusy(snap({ jobs: [{ id: "j", type: "rescan", status: "running", total: 10, processed: 3, message: null, error: null }] }))).toBe(true);
+    expect(isBusy(snap({ jobs: [{ id: "j", type: JobType.rescan, status: JobStatus.running, total: 10, processed: 3, message: null, error: null }] }))).toBe(true);
   });
   it("is busy when the watcher is importing", () => {
     expect(isBusy(snap({ worker: { online: true, activity: "importing 5" } }))).toBe(true);
@@ -2040,12 +2080,12 @@ describe("isBusy", () => {
 describe("activityLabel", () => {
   it("shows job progress with a count when total is known", () => {
     expect(
-      activityLabel(snap({ jobs: [{ id: "j", type: "rescan", status: "running", total: 1200, processed: 340, message: null, error: null }] })),
+      activityLabel(snap({ jobs: [{ id: "j", type: JobType.rescan, status: JobStatus.running, total: 1200, processed: 340, message: null, error: null }] })),
     ).toBe("Rescanning 340/1,200");
   });
   it("labels purge + empty jobs", () => {
-    expect(activityLabel(snap({ jobs: [{ id: "j", type: "purge_all", status: "running", total: null, processed: 0, message: null, error: null }] }))).toBe("Deleting all photos…");
-    expect(activityLabel(snap({ jobs: [{ id: "j", type: "empty_trash", status: "running", total: null, processed: 0, message: null, error: null }] }))).toBe("Emptying trash…");
+    expect(activityLabel(snap({ jobs: [{ id: "j", type: JobType.purge_all, status: JobStatus.running, total: null, processed: 0, message: null, error: null }] }))).toBe("Deleting all photos…");
+    expect(activityLabel(snap({ jobs: [{ id: "j", type: JobType.empty_trash, status: JobStatus.running, total: null, processed: 0, message: null, error: null }] }))).toBe("Emptying trash…");
   });
   it("falls back to the worker activity when no job is active", () => {
     expect(activityLabel(snap({ worker: { online: true, activity: "importing 5" } }))).toBe("Importing 5 photos");
@@ -2065,7 +2105,7 @@ Expected: FAIL — cannot find module `./activity-display.js`.
 Create `apps/web/src/lib/activity-display.ts`:
 
 ```typescript
-import type { ActivitySnapshot, JobDTO } from "@lumio/jobs";
+import { type ActivitySnapshot, type JobDTO, JobType } from "@lumio/shared";
 
 /** The job the indicator should foreground (the first active one), if any. */
 function activeJob(snapshot: ActivitySnapshot): JobDTO | undefined {
@@ -2078,17 +2118,17 @@ export function isBusy(snapshot: ActivitySnapshot): boolean {
   return snapshot.worker.activity.startsWith("importing");
 }
 
-const JOB_VERB: Record<JobDTO["type"], string> = {
-  rescan: "Rescanning",
-  purge_all: "Deleting all photos…",
-  empty_trash: "Emptying trash…",
+const JOB_VERB: Record<JobType, string> = {
+  [JobType.rescan]: "Rescanning",
+  [JobType.purge_all]: "Deleting all photos…",
+  [JobType.empty_trash]: "Emptying trash…",
 };
 
 /** Human label for the sidebar tooltip / aria-label. */
 export function activityLabel(snapshot: ActivitySnapshot): string {
   const job = activeJob(snapshot);
   if (job) {
-    if (job.type === "rescan") {
+    if (job.type === JobType.rescan) {
       return job.total != null
         ? `Rescanning ${job.processed.toLocaleString("en-US")}/${job.total.toLocaleString("en-US")}`
         : "Rescanning…";
