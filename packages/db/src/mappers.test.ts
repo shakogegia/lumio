@@ -18,6 +18,7 @@ describe("toPhotoDTO", () => {
       fileMtimeMs: null,
       exif: { cameraMake: "Lumio" },
       colorLabel: null,
+      isFavorite: true,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-02T00:00:00.000Z"),
     };
@@ -29,6 +30,7 @@ describe("toPhotoDTO", () => {
     expect(dto.takenAt).toBe("2024-01-15T12:00:00.000Z");
     expect(dto.createdAt).toBe("2024-02-01T00:00:00.000Z");
     expect(dto.exif).toEqual({ cameraMake: "Lumio" });
+    expect(dto.isFavorite).toBe(true);
   });
 
   it("maps a null takenAt to null", () => {
@@ -46,11 +48,13 @@ describe("toPhotoDTO", () => {
       fileMtimeMs: null,
       exif: {},
       colorLabel: null,
+      isFavorite: false,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-01T00:00:00.000Z"),
     });
     expect(dto.takenAt).toBeNull();
     expect(dto.hash).toBeNull();
+    expect(dto.isFavorite).toBe(false);
   });
 });
 
@@ -74,6 +78,7 @@ describe("toTrashedPhotoDTO", () => {
     expect(dto.path).toBe("2026/06-19/x.jpg");
     expect(dto.width).toBe(4);
     expect(dto.colorLabel).toBe("blue");
+    expect(dto.isFavorite).toBe(false);
     expect(dto.createdAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
   });

@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
+import { computeFavoriteTarget } from "@lumio/shared";
+import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
@@ -141,6 +143,14 @@ export function SearchView() {
                 <div className="flex items-center gap-2">
                   {sel.count > 0 ? (
                     <>
+                      <FavoriteButton
+                        disabled={sel.count === 0 || actions.pending.favorite}
+                        pending={actions.pending.favorite}
+                        onClick={() => {
+                          const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
+                          void actions.favorite([...sel.selected], target);
+                        }}
+                      />
                       <ColorLabelMenu
                         disabled={sel.count === 0 || actions.pending.label}
                         onPick={(label) => void actions.applyLabel([...sel.selected], label)}

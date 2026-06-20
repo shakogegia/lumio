@@ -60,6 +60,20 @@ export function setPage<T>(
   return { ...store, pages, lru, total };
 }
 
+/** Loaded photos whose id is in `ids` (arbitrary order). For bulk actions that
+ *  need the current state of a selection, e.g. the favorite smart-toggle. Skips
+ *  ids on pages that aren't loaded. */
+export function photosByIds<T extends { id: string }>(
+  store: PageStore<T>,
+  ids: Set<string>,
+): T[] {
+  const out: T[] = [];
+  for (const items of store.pages.values()) {
+    for (const it of items) if (ids.has(it.id)) out.push(it);
+  }
+  return out;
+}
+
 /** Sparse array (holes for unloaded indices) of ids, for selection-range math. */
 export function loadedIds<T extends { id: string }>(store: PageStore<T>): string[] {
   const ids: string[] = [];

@@ -16,13 +16,15 @@ export interface PhotoActions {
   download: (ids: string[], opts?: ActionOpts) => Promise<void>;
   applyLabel: (ids: string[], label: ColorLabel | null, opts?: ActionOpts) => Promise<void>;
   trash: (ids: string[], opts?: ActionOpts) => Promise<void>;
+  /** Set the favorite flag on the given photos (optimistic). */
+  favorite: (ids: string[], isFavorite: boolean, opts?: ActionOpts) => Promise<void>;
   /** Open the "create / pick album" dialog (the "New album…" path). */
   addToAlbum: (ids: string[], opts?: ActionOpts) => void;
   /** Add straight to an existing album, no dialog (the nested-menu path). */
   addToAlbumDirect: (ids: string[], albumId: string, opts?: ActionOpts) => Promise<void>;
   /** The album currently being viewed, so album pickers can exclude it. */
   excludeAlbumId?: string;
-  pending: { download: boolean; label: boolean; trash: boolean };
+  pending: { download: boolean; label: boolean; trash: boolean; favorite: boolean };
   /** Dialogs (add-to-album + trash confirm). Render once per view. */
   element: React.ReactNode;
 }
@@ -42,6 +44,7 @@ export function usePhotoActions({
   excludeAlbumId,
   trashDescription = DEFAULT_TRASH_DESCRIPTION,
   onTrashed,
+  dropOnUnfavorite = false,
 }: {
   gridRef: React.RefObject<PhotoGridHandle | null>;
   /** Hide this album from the add-to-album list (the album being viewed). */
@@ -51,12 +54,16 @@ export function usePhotoActions({
   /** Fires after any successful trash, for view-level side effects (e.g. a
    *  search result count or an album `router.refresh()`). */
   onTrashed?: (ids: string[]) => void;
+  /** In a favorites-only view, removing a favorite drops the tile from the grid
+   *  instead of just clearing its heart. */
+  dropOnUnfavorite?: boolean;
 }): PhotoActions {
   const router = useRouter();
   const { confirm, confirmDialog } = useConfirm();
   const [downloading, setDownloading] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [favoritePending, setFavoritePending] = useState(false);
   // Open the add-to-album dialog for a captured id set; `onSuccess` runs on add.
   const [albumTarget, setAlbumTarget] = useState<{ ids: string[]; onSuccess?: () => void } | null>(null);
 
@@ -96,6 +103,32 @@ export function usePhotoActions({
       }
     },
     [labelPending, gridRef],
+  );
+
+  const favorite = useCallback(
+    async (ids: string[], isFavorite: boolean, opts?: ActionOpts) => {
+      if (ids.length === 0 || favoritePending) return;
+      setFavoritePending(true);
+      try {
+        const res = await fetch("/api/photos/favorite", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoIds: ids, isFavorite }),
+        });
+        if (!res.ok) throw new Error("favorite failed");
+        if (!isFavorite && dropOnUnfavorite) {
+          gridRef.current?.removePhotos(new Set(ids));
+        } else {
+          gridRef.current?.patchPhotos(new Set(ids), { isFavorite });
+        }
+        opts?.onSuccess?.();
+      } catch {
+        toast.error("Failed to update favorites.");
+      } finally {
+        setFavoritePending(false);
+      }
+    },
+    [favoritePending, gridRef, dropOnUnfavorite],
   );
 
   const trash = useCallback(
@@ -176,10 +209,11 @@ export function usePhotoActions({
     download,
     applyLabel,
     trash,
+    favorite,
     addToAlbum,
     addToAlbumDirect,
     excludeAlbumId,
-    pending: { download: downloading, label: labelPending, trash: deleting },
+    pending: { download: downloading, label: labelPending, trash: deleting, favorite: favoritePending },
     element,
   };
 }

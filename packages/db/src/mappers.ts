@@ -20,6 +20,7 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,
     colorLabel: row.colorLabel as ColorLabel | null,
+    isFavorite: row.isFavorite,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -37,6 +38,7 @@ export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,
     colorLabel: row.colorLabel as ColorLabel | null,
+    isFavorite: false,
     createdAt: row.deletedAt.toISOString(),
     updatedAt: row.deletedAt.toISOString(),
   };

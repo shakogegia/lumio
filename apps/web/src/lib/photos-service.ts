@@ -19,8 +19,10 @@ export async function listPhotos(
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const { limit, offset, sort, month } = params;
-  const where = month ? { sortDate: monthRange(month) } : {};
+  const { limit, offset, sort, month, favorite } = params;
+  const where: Prisma.PhotoWhereInput = {};
+  if (month) where.sortDate = monthRange(month);
+  if (favorite) where.isFavorite = true;
   const [rows, total] = await Promise.all([
     db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
     db.photo.count({ where }),
@@ -52,6 +54,21 @@ export async function setPhotoColorLabel(
   const { count } = await db.photo.updateMany({
     where: { id: { in: photoIds } },
     data: { colorLabel: label },
+  });
+  return count;
+}
+
+/**
+ * Set the favorite flag on a batch of photos. Returns the number of rows updated.
+ */
+export async function setPhotoFavorite(
+  photoIds: string[],
+  isFavorite: boolean,
+  db: Db = prisma,
+): Promise<number> {
+  const { count } = await db.photo.updateMany({
+    where: { id: { in: photoIds } },
+    data: { isFavorite },
   });
   return count;
 }
