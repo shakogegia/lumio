@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { JobType } from "@lumio/shared";
 import {
+  claimNextJob,
   enqueueJob,
   findActiveJob,
   getActiveJobs,
@@ -90,5 +91,20 @@ describe("markJobSucceeded / markJobFailed", () => {
       where: { id: "j1" },
       data: expect.objectContaining({ status: "failed", error: "boom" }),
     });
+  });
+});
+
+describe("claimNextJob", () => {
+  it("returns the claimed row when one was queued", async () => {
+    const row = { id: "j1", type: "rescan", status: "running" };
+    const db = { $queryRaw: vi.fn().mockResolvedValue([row]) };
+    const job = await claimNextJob(db as never);
+    expect(job).toBe(row);
+    expect(db.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null when nothing was queued", async () => {
+    const db = { $queryRaw: vi.fn().mockResolvedValue([]) };
+    expect(await claimNextJob(db as never)).toBeNull();
   });
 });
