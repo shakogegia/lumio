@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSettings } from "@lumio/db";
 import {
@@ -22,6 +23,8 @@ import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Settings" };
 
 /** Count of image files actually on disk; streamed so it never blocks the page. */
 async function FilesOnDisk() {
