@@ -34,6 +34,7 @@ export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () =
   const [phase, setPhase] = useState<AsyncJobPhase>("idle");
   const sawActive = useRef(false);
   const pendingRef = useRef(false);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Keep the latest onComplete without re-running the effect on every poll.
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -55,7 +56,15 @@ export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () =
     if (sawActive.current) finish();
   }, [isActive, phase, finish]);
 
+  // Cancel an in-flight fallback timer if the component unmounts mid-job.
+  useEffect(() => {
+    return () => {
+      if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    };
+  }, []);
+
   const run = useCallback(async () => {
+    if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
     pendingRef.current = true;
     sawActive.current = false;
     setPhase("pending");
@@ -64,7 +73,7 @@ export function useAsyncJob(jobType: JobType, endpoint: string, onComplete: () =
       if (!res.ok) throw new Error(`${endpoint} failed: ${res.status}`);
       // Jobs that finish before any poll observes them active won't trip the
       // effect's saw-active path; complete on a short fallback in that case.
-      window.setTimeout(() => {
+      fallbackTimer.current = setTimeout(() => {
         if (!sawActive.current) finish();
       }, FALLBACK_MS);
     } catch {
