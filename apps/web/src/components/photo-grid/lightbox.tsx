@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PhotoDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
+import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
 
 export function Lightbox() {
@@ -17,6 +19,69 @@ export function Lightbox() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const photo = openIndex === null ? undefined : photoAt(openIndex);
   useBodyScrollLock(openIndex !== null, overlayRef);
+
+  // Latest values for the persistent keyboard stepper, refreshed after each commit
+  // (writing refs during render is disallowed by react-hooks/refs).
+  const stepRef = useRef(step);
+  const openRef = useRef(openIndex);
+  const totalRef = useRef(total);
+  useEffect(() => {
+    stepRef.current = step;
+    openRef.current = openIndex;
+    totalRef.current = total;
+  });
+
+  const isOpen = openIndex !== null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const stepper = createHoldStepper({
+      getTarget: () => ({
+        canStep: (dir) => {
+          const i = openRef.current;
+          if (i === null) return false;
+          return dir === "next"
+            ? totalRef.current !== null && i < totalRef.current - 1
+            : i > 0;
+        },
+        step: (dir) => stepRef.current(dir === "next" ? 1 : -1),
+      }),
+      schedule: (fn) => {
+        const id = setInterval(fn, HOLD_STEP_MS);
+        return () => clearInterval(id);
+      },
+    });
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      const el = document.activeElement;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat) return;
+      if (e.key === "ArrowLeft") stepper.press("prev");
+      else if (e.key === "ArrowRight") stepper.press("next");
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") stepper.release("prev");
+      else if (e.key === "ArrowRight") stepper.release("next");
+    };
+    const onBlur = () => stepper.stop();
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      stepper.stop();
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [isOpen, close]);
+
+  const onTrashed = () => {
+    // Were we on the last photo? close. Otherwise the store shifts the next photo
+    // into this index and the provider's URL-sync effect updates the address bar.
+    if (openIndex === null || total === null || openIndex >= total - 1) close();
+  };
 
   const STRIP_RADIUS = 25;
   const strip = useMemo(() => {
@@ -52,7 +117,7 @@ export function Lightbox() {
             <FilmStrip items={strip} currentId={photo.id} onPick={(i) => open(i)} />
           )}
         </div>
-        {/* sidebar (Task 12) added later */}
+        <LightboxSidebar photo={photo} onTrashed={onTrashed} />
       </div>
     </div>
   );
