@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { PhotoStripItem } from "@lumio/shared";
 import { cn } from "@/lib/utils";
 
 // Width of the soft fade applied at a scrollable edge, in px.
@@ -15,24 +13,19 @@ const FADE = 28;
  * clicks all land here. A fade mask appears on whichever edge still has photos
  * to scroll into view. The native scrollbar is hidden; a slim custom scrollbar
  * sits *below* the bordered strip (only when the strip overflows) and can be
- * dragged. Thumbnails are links; prefetch is off so we don't prefetch ~50 routes
- * at once (the prev/next arrows keep prefetch).
+ * dragged. Thumbnails are buttons that open the photo by index.
  */
 export function FilmStrip({
   items,
   currentId,
-  hrefFor,
-  replace = false,
+  onPick,
 }: {
-  items: PhotoStripItem[];
+  items: { id: string; index: number }[];
   currentId: string;
-  hrefFor: (id: string) => string;
-  /** Replace history instead of pushing — used inside the modal so Escape/back
-   *  closes the overlay rather than stepping back through visited photos. */
-  replace?: boolean;
+  onPick: (index: number) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const currentRef = useRef<HTMLAnchorElement>(null);
+  const currentRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   // Which edges still have off-screen photos — drives the fade mask.
@@ -125,29 +118,20 @@ export function FilmStrip({
           {items.map((item) => {
             const active = item.id === currentId;
             return (
-              <Link
+              <button
                 key={item.id}
                 ref={active ? currentRef : undefined}
-                href={hrefFor(item.id)}
-                replace={replace}
-                prefetch={false}
+                type="button"
+                onClick={() => onPick(item.index)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  // bg-muted fills the fixed-size box while the lazy thumbnail
-                  // loads (off-screen ones load on scroll); the opaque image covers
-                  // it on load, so the box never appears blank and never shifts.
                   "block size-14 shrink-0 overflow-hidden rounded-xs bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-primary",
                   active ? "ring-2 ring-primary" : "opacity-80 hover:opacity-100",
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/thumbnails/${item.id}`}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover"
-                />
-              </Link>
+                <img src={`/api/thumbnails/${item.id}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </button>
             );
           })}
         </div>

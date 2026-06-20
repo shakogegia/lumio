@@ -10,12 +10,26 @@ import { useImageLoaded } from "@/lib/use-image-loaded";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { useBlurBox } from "./use-blur-box";
 import { usePhotoCollection } from "./photo-collection";
+import { FilmStrip } from "./film-strip";
 
 export function Lightbox() {
-  const { openIndex, photoAt, total, step, close } = usePhotoCollection();
+  const { openIndex, photoAt, total, step, close, open } = usePhotoCollection();
   const overlayRef = useRef<HTMLDivElement>(null);
   const photo = openIndex === null ? undefined : photoAt(openIndex);
   useBodyScrollLock(openIndex !== null, overlayRef);
+
+  const STRIP_RADIUS = 25;
+  const strip = useMemo(() => {
+    if (openIndex === null || total === null) return [];
+    const lo = Math.max(0, openIndex - STRIP_RADIUS);
+    const hi = Math.min(total - 1, openIndex + STRIP_RADIUS);
+    const out: { id: string; index: number }[] = [];
+    for (let i = lo; i <= hi; i++) {
+      const p = photoAt(i);
+      if (p) out.push({ id: p.id, index: i });
+    }
+    return out;
+  }, [openIndex, total, photoAt]);
 
   if (openIndex === null || !photo) return null;
 
@@ -32,8 +46,13 @@ export function Lightbox() {
       }}
     >
       <div className="flex flex-col lg:h-dvh lg:flex-row">
-        <LightboxImage photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
-        {/* Film strip (Task 11) + sidebar (Task 12) added later */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <LightboxImage photo={photo} hasPrev={hasPrev} hasNext={hasNext} step={step} />
+          {strip.length > 0 && (
+            <FilmStrip items={strip} currentId={photo.id} onPick={(i) => open(i)} />
+          )}
+        </div>
+        {/* sidebar (Task 12) added later */}
       </div>
     </div>
   );
@@ -67,37 +86,35 @@ function LightboxImage({
   );
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
-      <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-        {/* eslint-disable @next/next/no-img-element */}
-        {blurUrl && blurBox && (
-          <img
-            src={blurUrl}
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
-            style={{
-              left: blurBox.left,
-              top: blurBox.top,
-              width: blurBox.width,
-              height: blurBox.height,
-              opacity: loaded ? 0 : 1,
-            }}
-          />
-        )}
+    <div ref={containerRef} className="relative flex min-h-0 flex-1 items-center justify-center p-4">
+      {/* eslint-disable @next/next/no-img-element */}
+      {blurUrl && blurBox && (
         <img
-          ref={setImg}
-          src={src}
-          alt={photo.path}
-          width={photo.width}
-          height={photo.height}
-          onLoad={onLoad}
-          className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+          src={blurUrl}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute rounded-sm object-cover transition-opacity duration-500"
+          style={{
+            left: blurBox.left,
+            top: blurBox.top,
+            width: blurBox.width,
+            height: blurBox.height,
+            opacity: loaded ? 0 : 1,
+          }}
         />
-        {/* eslint-enable @next/next/no-img-element */}
-        {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
-        {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
-      </div>
+      )}
+      <img
+        ref={setImg}
+        src={src}
+        alt={photo.path}
+        width={photo.width}
+        height={photo.height}
+        onLoad={onLoad}
+        className="max-h-[80vh] w-full object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+      />
+      {/* eslint-enable @next/next/no-img-element */}
+      {hasPrev && <NavArrow side="left" label="Previous photo" onClick={() => step(-1)} />}
+      {hasNext && <NavArrow side="right" label="Next photo" onClick={() => step(1)} />}
     </div>
   );
 }
