@@ -14,8 +14,12 @@ interface EditSessionValue {
   /** working differs from saved. */
   dirty: boolean;
   applying: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
   set: (next: PhotoEdits) => void;
   reset: () => void;
+  undo: () => void;
+  redo: () => void;
   apply: () => Promise<void>;
   /** Run `go` unless there are unsaved edits and the user declines to discard. */
   guard: (go: () => void) => void;
@@ -33,11 +37,22 @@ function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
   return a.rotate === b.rotate && a.flipH === b.flipH && a.flipV === b.flipV;
 }
 
+/** Undo/redo history of working recipes; `stack[index]` is the live recipe. */
+interface History {
+  stack: PhotoEdits[];
+  index: number;
+}
+
+function freshHistory(base: PhotoEdits): History {
+  return { stack: [base], index: 0 };
+}
+
 /**
- * Holds the in-progress edit recipe for the open photo. `saved` is derived from
- * the photo's persisted edits, so applying an edit (which patches the store) or
- * navigating to another photo keeps the session in sync automatically. Lives
- * inside the lightbox so both the Edit tab (controls) and the centre image
+ * Holds the in-progress edit recipe for the open photo, with undo/redo. `saved`
+ * is derived from the photo's persisted edits, so applying an edit (which patches
+ * the store) or navigating to another photo keeps the session in sync. The
+ * history resets to a single entry on navigation and after a successful apply.
+ * Lives inside the lightbox so the Edit tab (controls) and the centre image
  * (preview) share one source of truth, and so navigation can be guarded.
  */
 export function EditSessionProvider({
@@ -51,15 +66,19 @@ export function EditSessionProvider({
   const { confirm, confirmDialog } = useConfirm();
 
   const saved = photo.edits ?? NO_EDITS;
-  const [working, setWorking] = useState<PhotoEdits>(saved);
+  const [history, setHistory] = useState<History>(() => freshHistory(saved));
   const [applying, setApplying] = useState(false);
   const photoIdRef = useRef(photo.id);
 
-  // Re-seed the working recipe when the photo changes (arrow-nav / film strip).
-  // Assign through a local fn so it isn't a direct setState-in-effect call (the
+  const working = history.stack[history.index];
+  const canUndo = history.index > 0;
+  const canRedo = history.index < history.stack.length - 1;
+
+  // Re-seed history when the photo changes (arrow-nav / film strip). Assign
+  // through a local fn so it isn't a direct setState-in-effect call (the
   // react-compiler rule only flags synchronous direct calls in the effect body).
   useEffect(() => {
-    const reseed = (e: PhotoEdits) => setWorking(e);
+    const reseed = (e: PhotoEdits) => setHistory(freshHistory(e));
     if (photoIdRef.current !== photo.id) {
       photoIdRef.current = photo.id;
       reseed(photo.edits ?? NO_EDITS);
@@ -68,8 +87,21 @@ export function EditSessionProvider({
 
   const dirty = !sameEdits(working, saved);
 
-  const set = useCallback((next: PhotoEdits) => setWorking(next), []);
-  const reset = useCallback(() => setWorking(NO_EDITS), []);
+  // Push a new recipe, dropping any redo branch. No-op if it equals the current.
+  const set = useCallback((next: PhotoEdits) => {
+    setHistory((h) => {
+      if (sameEdits(next, h.stack[h.index])) return h;
+      const stack = [...h.stack.slice(0, h.index + 1), next];
+      return { stack, index: stack.length - 1 };
+    });
+  }, []);
+  const reset = useCallback(() => set(NO_EDITS), [set]);
+  const undo = useCallback(() => {
+    setHistory((h) => (h.index > 0 ? { ...h, index: h.index - 1 } : h));
+  }, []);
+  const redo = useCallback(() => {
+    setHistory((h) => (h.index < h.stack.length - 1 ? { ...h, index: h.index + 1 } : h));
+  }, []);
 
   const apply = useCallback(async () => {
     if (applying || sameEdits(working, photo.edits ?? NO_EDITS)) return;
@@ -94,9 +126,9 @@ export function EditSessionProvider({
         thumbhash: dto.thumbhash,
         updatedAt: dto.updatedAt,
       });
-      // Only sync the working recipe if we're still on the photo we edited —
-      // otherwise we'd clobber the (already reseeded) recipe of the new photo.
-      if (photoIdRef.current === startedId) setWorking(dto.edits ?? NO_EDITS);
+      // Only reset history if we're still on the photo we edited — otherwise we'd
+      // clobber the (already reseeded) history of the new photo.
+      if (photoIdRef.current === startedId) setHistory(freshHistory(dto.edits ?? NO_EDITS));
     } catch {
       toast.error("Failed to save edits.");
     } finally {
@@ -117,7 +149,7 @@ export function EditSessionProvider({
         destructive: true,
       }).then((ok) => {
         if (ok) {
-          setWorking(photo.edits ?? NO_EDITS);
+          setHistory(freshHistory(photo.edits ?? NO_EDITS));
           go();
         }
       });
@@ -125,7 +157,20 @@ export function EditSessionProvider({
     [dirty, confirm, photo.edits],
   );
 
-  const value: EditSessionValue = { working, saved, dirty, applying, set, reset, apply, guard };
+  const value: EditSessionValue = {
+    working,
+    saved,
+    dirty,
+    applying,
+    canUndo,
+    canRedo,
+    set,
+    reset,
+    undo,
+    redo,
+    apply,
+    guard,
+  };
 
   return (
     <Ctx.Provider value={value}>

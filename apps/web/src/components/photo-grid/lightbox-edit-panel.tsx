@@ -1,16 +1,35 @@
 "use client";
 
-import { RotateCcw, RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
+import {
+  Check,
+  FlipHorizontal,
+  FlipVertical,
+  Loader2,
+  RotateCcw,
+  RotateCw,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { hasEdits, rotateLeft, rotateRight, toggleFlipH, toggleFlipV } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { useEditSession } from "./use-edit-session";
 
-/** Edit-tab body: rotate/flip controls that drive the lightbox edit session,
- *  plus Apply (persist) and Reset (back to original, persisted on Apply). */
+/** Edit-tab body: rotate/flip controls with undo/redo that drive the lightbox
+ *  edit session, plus Apply (persist) and Reset (back to original, on Apply). */
 export function LightboxEditPanel() {
-  const { working, dirty, applying, set, reset, apply } = useEditSession();
+  const { working, dirty, applying, canUndo, canRedo, set, reset, undo, redo, apply } =
+    useEditSession();
   return (
     <div className="space-y-4">
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
+          <Undo2 aria-hidden /> Undo
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
+          <Redo2 aria-hidden /> Redo
+        </Button>
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" size="sm" onClick={() => set(rotateLeft(working))}>
           <RotateCcw aria-hidden /> Rotate left
@@ -25,12 +44,15 @@ export function LightboxEditPanel() {
           <FlipVertical aria-hidden /> Flip V
         </Button>
       </div>
+
       <p className="h-4 text-xs text-muted-foreground">{dirty ? "Unsaved changes" : ""}</p>
+
       <div className="flex gap-2">
         <Button size="sm" className="flex-1" disabled={!dirty || applying} onClick={() => void apply()}>
+          {applying ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
           {applying ? "Applying…" : "Apply"}
         </Button>
-        <Button variant="ghost" size="sm" disabled={!hasEdits(working)} onClick={reset}>
+        <Button variant="ghost" size="sm" disabled={!hasEdits(working) || applying} onClick={reset}>
           Reset
         </Button>
       </div>
