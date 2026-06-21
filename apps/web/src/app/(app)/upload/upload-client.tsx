@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2 } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
-import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
@@ -34,10 +35,10 @@ export function UploadClient() {
   const sel = useGridSelection();
   const { columns, setColumns } = useGridColumns();
   const { confirm, confirmDialog } = useConfirm();
+  const album = useAddToAlbum();
 
   const [rows, setRows] = useState<Row[]>([]);
   const [unsupportedCount, setUnsupportedCount] = useState(0);
-  const [albumOpen, setAlbumOpen] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -246,16 +247,11 @@ export function UploadClient() {
                 disabled={sel.count === 0 || labelPending}
                 onPick={(l) => void applyLabel(l)}
               />
-              <Button
-                variant="outline"
-                size="icon-sm"
+              <AddToAlbumMenu
                 disabled={sel.count === 0}
-                onClick={() => setAlbumOpen(true)}
-                aria-label="Add to album"
-                title="Add to album"
-              >
-                <FolderPlus aria-hidden />
-              </Button>
+                onPick={(albumId) => void album.addToAlbumDirect([...sel.selected], albumId)}
+                onCreateNew={() => album.addToAlbum([...sel.selected])}
+              />
               <Button
                 variant="outline"
                 size="icon-sm"
@@ -327,15 +323,7 @@ export function UploadClient() {
         ) : null}
       </div>
 
-      <AddToAlbumDialog
-        open={albumOpen}
-        onOpenChange={setAlbumOpen}
-        photoIds={[...sel.selected]}
-        onAdded={() => {
-          setAlbumOpen(false);
-          sel.clear();
-        }}
-      />
+      {album.element}
     </>
   );
 }
