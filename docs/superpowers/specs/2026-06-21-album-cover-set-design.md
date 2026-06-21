@@ -144,7 +144,7 @@ Rendered only when `actions.albumCover` is present:
 
 - `count === 1` and target ≠ pinned cover → **"Set as album cover"** (active),
   `onSelect` → `setAlbumCover(targetIds[0])`.
-- `count === 1` and target **is** the pinned cover → disabled **"✓ Album cover"**.
+- `count === 1` and target **is** the pinned cover → disabled **"Current album cover"**.
 - `count > 1` → disabled **"Set as album cover"**.
 
 Placed in the primary action group near "Add to album".
@@ -160,7 +160,7 @@ Placed in the primary action group near "Add to album".
 - API route: thin; covered via service tests + a basic 400/404 mapping check if a
   route test file exists for albums.
 - Browser-verify: in a regular album, set a cover from the toolbar (1 selected) and
-  from the context menu; confirm the menu shows "✓ Album cover" on that photo, the
+  from the context menu; confirm the menu shows "Current album cover" on that photo, the
   card/sidebar thumbnail updates, the toolbar button disables at 0/2+ selected, and
   removing the cover photo reverts to the derived default.
 

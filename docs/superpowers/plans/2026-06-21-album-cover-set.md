@@ -845,7 +845,7 @@ In the `ContextMenuGroup` (after the Favorite `ContextMenuItem` at lines 118-121
             count === 1 && targetIds[0] === actions.albumCover.coverPhotoId ? (
               <ContextMenuItem disabled>
                 <ImageUp aria-hidden />
-                ✓ Album cover
+                Current album cover
               </ContextMenuItem>
             ) : (
               <ContextMenuItem
@@ -859,7 +859,7 @@ In the `ContextMenuGroup` (after the Favorite `ContextMenuItem` at lines 118-121
           )}
 ```
 
-This yields the three spec'd states: active "Set as album cover" (single non-cover target), disabled "✓ Album cover" (single target that is the pin), and disabled "Set as album cover" (multi-select). `actions.setAlbumCover` no-ops if `albumCover` is somehow absent, so the call is safe.
+This yields the three spec'd states: active "Set as album cover" (single non-cover target), disabled "Current album cover" (single target that is the pin), and disabled "Set as album cover" (multi-select). `actions.setAlbumCover` no-ops if `albumCover` is somehow absent, so the call is safe.
 
 - [ ] **Step 3: Lint + typecheck**
 
@@ -894,7 +894,7 @@ Expected: PASS, no warnings introduced.
 Confirm each:
 - Open a regular album with ≥3 photos. Select exactly one → toolbar "Set as album cover" enables; click it → toast "Album cover updated".
 - The album card (on `/albums`) and the sidebar album thumbnail now show that photo.
-- Right-click that same photo → menu shows a disabled **"✓ Album cover"**. Right-click a different single photo → **"Set as album cover"** is active; clicking it moves the cover.
+- Right-click that same photo → menu shows a disabled **"Current album cover"**. Right-click a different single photo → **"Set as album cover"** is active; clicking it moves the cover.
 - Select two photos → toolbar button is **visible but disabled**; right-click within a 2+ selection → menu item is **disabled "Set as album cover"**.
 - Remove the cover photo from the album (toolbar Remove). The album card/sidebar cover **falls back** to the derived most-recent photo (no broken thumbnail).
 - Open a **smart** album → no "Set as album cover" in the toolbar or the context menu.
