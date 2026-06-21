@@ -8,6 +8,8 @@ import { downloadSelection } from "@/lib/download-client";
 import { useConfirm } from "@/components/confirm-dialog";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 
 /** Per-call hook into a successful action (e.g. clear/cancel the selection). */
 export type ActionOpts = { onSuccess?: () => void; variant?: DownloadVariant };
@@ -159,6 +161,7 @@ export function usePhotoActions({
         });
         if (!res.ok) throw new Error("trash failed");
         gridRef.current?.removePhotos(new Set(ids));
+        playSound(SoundEffect.MoveToTrash);
         onTrashed?.(ids);
         opts?.onSuccess?.();
       } catch {

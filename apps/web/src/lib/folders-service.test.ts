@@ -265,6 +265,7 @@ describe("listFolderPhotos", () => {
   it("aggregates descendant albums and returns a page", async () => {
     const findMany = vi.fn().mockResolvedValue([
       { id: "p1", path: "p1.jpg", source: "filesystem", takenAt: new Date("2024-01-01T00:00:00.000Z"),
+        fileModifiedAt: new Date("2024-01-01T00:00:00.000Z"), fileCreatedAt: new Date("2024-01-01T00:00:00.000Z"),
         width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null, edits: null,
         isFavorite: false, createdAt: new Date("2024-01-01T00:00:00.000Z"), updatedAt: new Date("2024-01-01T00:00:00.000Z") },
     ]);

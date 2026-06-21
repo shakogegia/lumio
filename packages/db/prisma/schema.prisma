@@ -108,9 +108,10 @@ model TrashedPhoto {
 }
 
 model AppSettings {
-  id             Int      @id @default(1)
-  uploadTemplate String   @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
-  updatedAt      DateTime @updatedAt
+  id                  Int      @id @default(1)
+  uploadTemplate      String   @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
+  soundEffectsEnabled Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
 }
 
 model User {
