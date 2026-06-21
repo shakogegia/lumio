@@ -80,3 +80,28 @@ describe("nextGridIndex", () => {
     expect(nextGridIndex(4, "ArrowDown", 3, 5)).toBe(4); // no row below (index 7 absent)
   });
 });
+
+describe("arrowSelection", () => {
+  const idAt = (i: number) => IDS[i]; // IDS = ["a","b","c","d","e"]
+
+  it("selects only the cursor item on a plain arrow move", () => {
+    expect([...arrowSelection(idAt, 2, false, 0)]).toEqual(["c"]);
+  });
+
+  it("selects the inclusive range from anchor to cursor on shift+arrow", () => {
+    expect([...arrowSelection(idAt, 3, true, 1)].sort()).toEqual(["b", "c", "d"]);
+  });
+
+  it("shrinks the range as the cursor moves back toward the anchor", () => {
+    expect([...arrowSelection(idAt, 2, true, 1)].sort()).toEqual(["b", "c"]);
+  });
+
+  it("treats shift with no anchor as a single select", () => {
+    expect([...arrowSelection(idAt, 2, true, null)]).toEqual(["c"]);
+  });
+
+  it("returns an empty set when the cursor id is not loaded", () => {
+    const sparse = (i: number) => (i === 2 ? undefined : IDS[i]);
+    expect([...arrowSelection(sparse, 2, false, null)]).toEqual([]);
+  });
+});

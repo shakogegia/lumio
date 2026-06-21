@@ -68,3 +68,30 @@ export function computeSelection(
   // Plain click (and shift-without-anchor): replace the selection with this one.
   return new Set([id]);
 }
+
+/**
+ * Selection after an arrow move to `leadIndex`. Shift extends the inclusive
+ * range from the anchor (replace-with-range, so it grows and shrinks as the
+ * cursor moves); a plain move selects only the cursor. Holes (unloaded indices,
+ * via a sparse `idAt`) are skipped. `idAt` lets the virtualized photo grid avoid
+ * materializing a full id array on every keystroke.
+ */
+export function arrowSelection(
+  idAt: (index: number) => string | undefined,
+  leadIndex: number,
+  shift: boolean,
+  anchorIndex: number | null,
+): Set<string> {
+  if (shift && anchorIndex !== null) {
+    const lo = Math.min(anchorIndex, leadIndex);
+    const hi = Math.max(anchorIndex, leadIndex);
+    const next = new Set<string>();
+    for (let i = lo; i <= hi; i++) {
+      const id = idAt(i);
+      if (id) next.add(id);
+    }
+    return next;
+  }
+  const id = idAt(leadIndex);
+  return id ? new Set([id]) : new Set();
+}
