@@ -13,7 +13,10 @@ import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { countLabel } from "@/lib/count-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { SelectionToolbar } from "./selection-toolbar";
@@ -30,16 +33,21 @@ export function LibraryView() {
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
   const [month, setMonth] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef });
+  const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
+  // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
+  const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
 
   return (
     <>
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title="Select photos"
+          title="Library"
           count={sel.count}
+          totalLabel={totalLabel}
           onCancel={sel.clear}
           actions={
             <>
@@ -87,6 +95,7 @@ export function LibraryView() {
       ) : (
         <HeaderBar
           title="Library"
+          subtitle={countSubtitle}
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
@@ -109,6 +118,7 @@ export function LibraryView() {
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl="/photos"
       >
+        <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
           <PhotoGrid
             apiRef={gridRef}

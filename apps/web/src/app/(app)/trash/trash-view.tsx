@@ -9,7 +9,10 @@ import { useAsyncJob } from "@/lib/use-async-job";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { HeaderBar } from "@/components/header-bar";
+import { countLabel } from "@/lib/count-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm, type ConfirmOptions } from "@/components/confirm-dialog";
 import {
   Empty,
@@ -46,6 +49,7 @@ export function TrashView() {
   // pages); selective actions drop tiles in place via the grid handle instead.
   const [reloadKey, setReloadKey] = useState(0);
   const [pending, setPending] = useState(false);
+  const [total, setTotal] = useState<number | null>(null);
   // "Empty trash" is an async job (worker-driven); restore/purge stay synchronous.
   const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", {
     onComplete: () => {
@@ -91,12 +95,18 @@ export function TrashView() {
   const ids = [...sel.selected];
   const count = sel.count;
   const label = `${count} ${count === 1 ? "photo" : "photos"}`;
+  const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
+  // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
+  const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
+  const subtitle =
+    count > 0 ? `${totalLabel ? `${totalLabel} · ` : ""}${count} selected` : countSubtitle;
 
   return (
     <>
       {confirmDialog}
       <HeaderBar
-        title={count > 0 ? `${count} selected` : "Trash"}
+        title="Trash"
+        subtitle={subtitle}
         actions={
           <>
             {count > 0 && (
@@ -163,6 +173,7 @@ export function TrashView() {
       />
 
       <PhotoCollectionProvider key={reloadKey} endpoint="/api/trash" enableLightbox={false}>
+        <CollectionTotalReporter onTotal={setTotal} />
         <PhotoGrid
           apiRef={gridRef}
           selectedIds={sel.selected}

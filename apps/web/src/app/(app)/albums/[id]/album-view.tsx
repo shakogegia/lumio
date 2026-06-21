@@ -14,7 +14,10 @@ import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { countLabel } from "@/lib/count-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { HeaderBar } from "@/components/header-bar";
@@ -51,6 +54,10 @@ export function AlbumView({
   const [reloadKey, setReloadKey] = useState(0);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
+  const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
+  // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
+  const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({
     gridRef,
@@ -107,6 +114,7 @@ export function AlbumView({
         <SelectionToolbar
           title={albumName}
           count={sel.count}
+          totalLabel={totalLabel}
           onCancel={handleCancel}
           actions={
             <>
@@ -162,6 +170,7 @@ export function AlbumView({
       ) : (
         <HeaderBar
           title={albumName}
+          subtitle={countSubtitle}
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
@@ -193,6 +202,7 @@ export function AlbumView({
         urlForId={(id) => photoHref(id, albumId, sort)}
         baseUrl={`/albums/${albumId}`}
       >
+        <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
           <PhotoGrid
             apiRef={gridRef}

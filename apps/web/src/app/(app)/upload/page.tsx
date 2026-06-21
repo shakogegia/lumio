@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Upload" };
 
 export default function UploadPage() {
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       <UploadClient />
     </main>
   );

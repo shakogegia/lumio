@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Download, Heart, Loader2, Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,10 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { countLabel } from "@/lib/count-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
@@ -49,16 +52,21 @@ export function FavoritesView() {
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
+  const [total, setTotal] = useState<number | null>(null);
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, dropOnUnfavorite: true });
+  const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
+  // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
+  const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
 
   return (
     <>
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title="Select photos"
+          title="Favorites"
           count={sel.count}
+          totalLabel={totalLabel}
           onCancel={sel.clear}
           actions={
             <>
@@ -106,6 +114,7 @@ export function FavoritesView() {
       ) : (
         <HeaderBar
           title="Favorites"
+          subtitle={countSubtitle}
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
@@ -123,6 +132,7 @@ export function FavoritesView() {
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl="/favorites"
       >
+        <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
           <PhotoGrid
             apiRef={gridRef}
