@@ -101,7 +101,10 @@ async function cachePresent(id: string): Promise<boolean> {
   return (await fileExists(thumbnailPath(id))) && (await fileExists(displayPath(id)));
 }
 
-/** Rebuild a missing cache from the stored recipe — no DB write. */
+/** Rebuild a missing cache from the stored recipe — no DB write. The recomputed
+ *  thumbhash/width/height are intentionally discarded: same source + recipe +
+ *  pipeline make them deterministically equal to the values already stored, so
+ *  there is nothing to persist (and persisting would needlessly bump updatedAt). */
 async function heal(row: ScanRow, absPath: string): Promise<void> {
   await regenerateRenditions(absPath, coercePhotoEdits(row.edits), row.id, ingestDeps);
 }
