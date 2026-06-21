@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
@@ -31,7 +31,7 @@ let nextRowId = 1;
 type UploadResponse = { status: RowStatus | "unsupported"; id?: string; message?: string };
 
 export function UploadClient({
-  targetAlbum,
+  targetAlbum: initialTargetAlbum,
 }: {
   targetAlbum?: { id: string; name: string };
 }) {
@@ -40,6 +40,15 @@ export function UploadClient({
   const { columns, setColumns } = useGridColumns();
   const { confirm, confirmDialog } = useConfirm();
   const album = useAddToAlbum();
+
+  // Seeded from the URL-derived prop, but clearable in-session. Clearing stops
+  // further auto-adds and strips ?albumId from the URL — via history.replaceState
+  // (no navigation) so the already-uploaded tiles below aren't lost.
+  const [targetAlbum, setTargetAlbum] = useState(initialTargetAlbum);
+  const clearTargetAlbum = useCallback(() => {
+    setTargetAlbum(undefined);
+    window.history.replaceState(null, "", "/upload");
+  }, []);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [unsupportedCount, setUnsupportedCount] = useState(0);
@@ -300,6 +309,25 @@ export function UploadClient({
       ) : (
         <HeaderBar
           title="Upload"
+          subtitle={
+            targetAlbum ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span>
+                  Uploading to{" "}
+                  <span className="font-medium text-foreground">{targetAlbum.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearTargetAlbum}
+                  aria-label="Stop uploading to this album"
+                  title="Stop uploading to this album"
+                  className="inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              </span>
+            ) : undefined
+          }
           actions={
             hasRows ? <GridSizeMenu columns={columns} onColumnsChange={setColumns} /> : null
           }
@@ -307,14 +335,6 @@ export function UploadClient({
       )}
 
       <div className="space-y-6 pt-2">
-        {targetAlbum ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <FolderPlus className="size-4" aria-hidden />
-            <span>
-              Uploading to <span className="font-medium text-foreground">{targetAlbum.name}</span>
-            </span>
-          </div>
-        ) : null}
         <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
