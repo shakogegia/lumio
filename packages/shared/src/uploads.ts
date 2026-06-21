@@ -47,7 +47,9 @@ export function validateTemplate(template: string): TemplateValidation {
 export const updateSettingsSchema = z.object({
   uploadTemplate: z
     .string()
-    .refine((t) => validateTemplate(t).ok, { message: "Invalid upload template" }),
+    .refine((t) => validateTemplate(t).ok, { message: "Invalid upload template" })
+    .optional(),
+  soundEffectsEnabled: z.boolean().optional(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
