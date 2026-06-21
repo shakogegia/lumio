@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { buildRenditions, buildEditBase } from "./renditions.js";
+import { buildRenditions, buildEditBase, buildEditBaseFull } from "./renditions.js";
 
 // A 4x2 PNG (landscape). No EXIF orientation.
 async function landscape(): Promise<Buffer> {
@@ -78,5 +78,18 @@ describe("buildEditBase", () => {
     const meta = await sharp(out).metadata();
     expect(meta.format).toBe("webp");
     expect((meta.width ?? 0) / (meta.height ?? 1)).toBeCloseTo(2, 2);
+  });
+});
+
+describe("buildEditBaseFull", () => {
+  it("returns a full-resolution EXIF-oriented WebP (no DISPLAY_MAX downscale)", async () => {
+    const img = await sharp({
+      create: { width: 3000, height: 2000, channels: 3, background: { r: 4, g: 5, b: 6 } },
+    }).png().toBuffer();
+    const out = await buildEditBaseFull(img);
+    const meta = await sharp(out).metadata();
+    expect(meta.format).toBe("webp");
+    expect(meta.width).toBe(3000);
+    expect(meta.height).toBe(2000);
   });
 });

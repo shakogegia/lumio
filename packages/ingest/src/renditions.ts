@@ -150,3 +150,10 @@ export async function buildRenditions(
 export async function buildEditBase(input: RenditionInput): Promise<Buffer> {
   return sharp(input).rotate().resize(DISPLAY_MAX, DISPLAY_MAX, FIT).webp({ quality: 80 }).toBuffer();
 }
+
+/** Full-resolution, EXIF-oriented, EDIT-FREE WebP — the hi-res source the editor
+ *  swaps to on zoom (the working recipe is applied via CSS). Like buildEditBase
+ *  but without the DISPLAY_MAX downscale. */
+export async function buildEditBaseFull(input: RenditionInput): Promise<Buffer> {
+  return sharp(input).rotate().webp({ quality: 82 }).toBuffer();
+}
