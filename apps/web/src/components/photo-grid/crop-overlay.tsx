@@ -61,7 +61,15 @@ export function CropOverlay({
     if (!d || sw === 0) return;
     const dx = (e.clientX - d.startX) / sw;
     const dy = (e.clientY - d.startY) / sh;
-    setLive(clampCropToImage(applyDrag(d.handle, d.start, dx, dy, ra), w, h, dg));
+    let next = applyDrag(d.handle, d.start, dx, dy);
+    if (d.handle !== "move") {
+      // Shift locks to the rect's current aspect; the `ratio` prop locks to a preset.
+      // Both are w/h in O′-fraction space (stage scale is constant during a drag, so
+      // preserving that ratio preserves the on-screen aspect too).
+      const A = e.shiftKey ? d.start.w / d.start.h : ra;
+      if (A) next = lockAspect(next, d.start, d.handle, A);
+    }
+    setLive(clampCropToImage(next, w, h, dg));
   }, []);
 
   const onPointerUp = useCallback(() => {
@@ -129,9 +137,9 @@ function handleStyle(h: Handle): React.CSSProperties {
   return { left: x, top: y, cursor: `${h}-resize` };
 }
 
-/** Next crop for a drag of (dx,dy) in O′ fractions. `ratio` locks the aspect when
- *  set; keeps a minimum size. */
-function applyDrag(h: Handle, s: CropRect, dx: number, dy: number, ratio: number | null): CropRect {
+/** Next crop for an UNCONSTRAINED drag of (dx,dy) in O′ fractions; keeps a minimum
+ *  size. Aspect locking (Shift / preset ratio) is applied afterwards by lockAspect. */
+function applyDrag(h: Handle, s: CropRect, dx: number, dy: number): CropRect {
   if (h === "move") {
     return {
       x: Math.min(Math.max(0, s.x + dx), 1 - s.w),
@@ -147,7 +155,30 @@ function applyDrag(h: Handle, s: CropRect, dx: number, dy: number, ratio: number
   if (h.includes("w")) { x = Math.min(right - MIN, s.x + dx); w = right - x; }
   if (h.includes("s")) hh = Math.max(MIN, s.h + dy);
   if (h.includes("n")) { y = Math.min(bottom - MIN, s.y + dy); hh = bottom - y; }
-  // ratio-locked dragging (future): every caller passes null today, so this is inert.
-  if (ratio) hh = w / ratio; // keep width authoritative
+  return { x, y, w, h: hh };
+}
+
+/** Adjust a resized rect to aspect `A` (= w/h in O′ fractions), anchored at the
+ *  corner/edge opposite the dragged handle. Corners & e/w drive from width; n/s
+ *  drive from height; the unconstrained perpendicular axis is centered. */
+function lockAspect(r: CropRect, s: CropRect, h: Handle, A: number): CropRect {
+  const horiz = h.includes("e") || h.includes("w");
+  let w: number;
+  let hh: number;
+  if (horiz) {
+    w = r.w;
+    hh = w / A;
+  } else {
+    hh = r.h;
+    w = hh * A;
+  }
+  let x: number;
+  if (h.includes("w")) x = s.x + s.w - w;
+  else if (h.includes("e")) x = s.x;
+  else x = s.x + s.w / 2 - w / 2;
+  let y: number;
+  if (h.includes("n")) y = s.y + s.h - hh;
+  else if (h.includes("s")) y = s.y;
+  else y = s.y + s.h / 2 - hh / 2;
   return { x, y, w, h: hh };
 }
