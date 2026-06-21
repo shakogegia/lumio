@@ -110,19 +110,23 @@ async function heal(row: ScanRow, absPath: string): Promise<void> {
 }
 
 /**
- * Record the current size+mtime so an unchanged file isn't re-hashed next scan.
+ * Record the current size + file dates so an unchanged file isn't re-hashed next scan.
  * Uses a raw UPDATE so it does NOT bump `updatedAt` — restamping a file whose
  * pixels never changed must stay invisible to the rendition cache-bust URL,
  * which keys off `updatedAt`. It updates the file-date columns to track the
  * touched file but deliberately leaves `sortDate` untouched — a touch that
  * doesn't change pixels must not reorder the photo.
  */
-async function refreshStamp(id: string, st: { size: number; mtimeMs: number }): Promise<void> {
+async function refreshStamp(
+  id: string,
+  st: { size: number; mtimeMs: number; birthtimeMs: number },
+): Promise<void> {
   await prisma.$executeRaw`
     UPDATE "Photo"
     SET "fileSize" = ${st.size},
         "fileMtimeMs" = ${st.mtimeMs},
-        "fileModifiedAt" = ${new Date(st.mtimeMs)}
+        "fileModifiedAt" = ${new Date(st.mtimeMs)},
+        "fileCreatedAt" = ${new Date(st.birthtimeMs)}
     WHERE "id" = ${id}
   `;
 }
