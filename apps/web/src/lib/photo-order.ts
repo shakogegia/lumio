@@ -16,6 +16,10 @@ export function photoOrderBy(sort?: PhotoSort) {
       return [{ createdAt: "desc" as const }, { id: "desc" as const }];
     case "imported-asc":
       return [{ createdAt: "asc" as const }, { id: "asc" as const }];
+    case "file-created-desc":
+      return [{ fileCreatedAt: "desc" as const }, { id: "desc" as const }];
+    case "file-created-asc":
+      return [{ fileCreatedAt: "asc" as const }, { id: "asc" as const }];
     default: // "taken-desc"
       return [{ sortDate: "desc" as const }, { id: "desc" as const }];
   }

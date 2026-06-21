@@ -19,6 +19,14 @@ describe("photoOrderBy", () => {
     expect(photoOrderBy("imported-asc")).toEqual([{ createdAt: "asc" }, { id: "asc" }]);
   });
 
+  it("orders by fileCreatedAt descending for file-created-desc", () => {
+    expect(photoOrderBy("file-created-desc")).toEqual([{ fileCreatedAt: "desc" }, { id: "desc" }]);
+  });
+
+  it("orders by fileCreatedAt ascending for file-created-asc", () => {
+    expect(photoOrderBy("file-created-asc")).toEqual([{ fileCreatedAt: "asc" }, { id: "asc" }]);
+  });
+
   it("PHOTO_ORDER equals the default order", () => {
     expect(PHOTO_ORDER).toEqual([{ sortDate: "desc" }, { id: "desc" }]);
   });
