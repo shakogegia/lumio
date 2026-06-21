@@ -66,6 +66,26 @@ describe("toPhotoDTO", () => {
     const dto = toPhotoDTO({ ...baseRow, edits: { rotate: 45 } } as any);
     expect(dto.edits).toBeNull();
   });
+
+  it("round-trips color fields and omits neutral ones", () => {
+    const dto = toPhotoDTO({
+      ...baseRow,
+      edits: { rotate: 0, flipH: false, flipV: false, brightness: 40, vignette: 0 },
+    } as any);
+    expect(dto.edits).toEqual({
+      rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, brightness: 40,
+    });
+  });
+
+  it("clamps malformed color to neutral (drops it)", () => {
+    const dto = toPhotoDTO({
+      ...baseRow,
+      edits: { rotate: 0, flipH: false, flipV: false, contrast: 9999 },
+    } as any);
+    expect(dto.edits).toEqual({
+      rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 100,
+    });
+  });
 });
 
 describe("toTrashedPhotoDTO", () => {
