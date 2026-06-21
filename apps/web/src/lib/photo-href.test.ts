@@ -14,7 +14,7 @@ describe("photoHref", () => {
 
 describe("photoHref sort", () => {
   it("omits the default sort", () => {
-    expect(photoHref("abc", null, "taken-desc")).toBe("/photo/abc");
+    expect(photoHref("abc", null, "imported-desc")).toBe("/photo/abc");
   });
 
   it("appends a non-default sort", () => {

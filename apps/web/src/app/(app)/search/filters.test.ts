@@ -36,7 +36,7 @@ describe("serialize", () => {
 
 describe("paramsFor sort", () => {
   it("omits the default sort", () => {
-    expect(paramsFor({ albums: [], q: "" }, "taken-desc").has("sort")).toBe(false);
+    expect(paramsFor({ albums: [], q: "" }, "imported-desc").has("sort")).toBe(false);
   });
 
   it("sets a non-default sort", () => {
@@ -46,16 +46,16 @@ describe("paramsFor sort", () => {
 
 describe("scopeQuery sort", () => {
   it("marks the search scope and appends a non-default sort", () => {
-    const q = scopeQuery({ albums: ["a1"], q: "beach" }, "imported-desc");
+    const q = scopeQuery({ albums: ["a1"], q: "beach" }, "taken-desc");
     const params = new URLSearchParams(q);
     expect(params.get("s")).toBe("1");
     expect(params.getAll("album")).toEqual(["a1"]);
     expect(params.get("q")).toBe("beach");
-    expect(params.get("sort")).toBe("imported-desc");
+    expect(params.get("sort")).toBe("taken-desc");
   });
 
   it("omits a default sort", () => {
-    expect(new URLSearchParams(scopeQuery({ albums: [], q: "" }, "taken-desc")).has("sort")).toBe(
+    expect(new URLSearchParams(scopeQuery({ albums: [], q: "" }, "imported-desc")).has("sort")).toBe(
       false,
     );
   });
