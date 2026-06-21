@@ -15,6 +15,10 @@ export function displayPath(id: string): string {
   return path.join(CACHE_DIR, "displays", `${id}.webp`);
 }
 
+export function editedDisplayPath(id: string): string {
+  return path.join(CACHE_DIR, "displays-edited", `${id}.webp`);
+}
+
 // The trash mirrors the cache layout under TRASH_DIR. trash-service.ts builds
 // its move targets from the injected `trashDir` (for testability, like
 // purgeAllPhotos), so the only helper needed here is the one the thumbnail

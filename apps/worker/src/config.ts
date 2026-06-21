@@ -24,6 +24,8 @@ export const THUMBNAILS_DIR = path.join(CACHE_DIR, "thumbnails");
 
 export const DISPLAYS_DIR = path.join(CACHE_DIR, "displays");
 
+export const EDITED_DISPLAYS_DIR = path.join(CACHE_DIR, "displays-edited");
+
 /** Absolute path to the trash root (mirrors the cache layout). */
 export const TRASH_DIR = resolveFromRoot(process.env.TRASH_DIR, "./trash");
 
@@ -60,4 +62,9 @@ export function thumbnailPath(id: string): string {
 /** Absolute path of a photo's display rendition. */
 export function displayPath(id: string): string {
   return path.join(DISPLAYS_DIR, `${id}.webp`);
+}
+
+/** Absolute path of a photo's edited display rendition. */
+export function editedDisplayPath(id: string): string {
+  return path.join(EDITED_DISPLAYS_DIR, `${id}.webp`);
 }

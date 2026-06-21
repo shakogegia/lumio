@@ -3,6 +3,7 @@ import {
   coercePhotoSort,
   downloadRequestSchema,
   editPhotoSchema,
+  photoEditsSchema,
   photosQuerySchema,
   searchQuerySchema,
   setColorLabelSchema,
@@ -197,5 +198,31 @@ describe("downloadRequestSchema", () => {
   it("defaults variant to original", () => {
     const parsed = downloadRequestSchema.parse({ ids: ["a"] });
     expect(parsed.variant).toBe("original");
+  });
+});
+
+describe("photoEditsSchema (crop & straighten)", () => {
+  const base = { rotate: 0, flipH: false, flipV: false } as const;
+
+  it("accepts a recipe without the new fields (backward compatible)", () => {
+    expect(photoEditsSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("accepts straighten in range and crop in [0,1]", () => {
+    expect(
+      photoEditsSchema.safeParse({ ...base, straighten: 12, crop: { x: 0.1, y: 0.1, w: 0.8, h: 0.7 } }).success,
+    ).toBe(true);
+    expect(photoEditsSchema.safeParse({ ...base, crop: null }).success).toBe(true);
+  });
+
+  it("rejects out-of-range straighten and out-of-[0,1] crop", () => {
+    expect(photoEditsSchema.safeParse({ ...base, straighten: 60 }).success).toBe(false);
+    expect(photoEditsSchema.safeParse({ ...base, crop: { x: -0.1, y: 0, w: 1, h: 1 } }).success).toBe(false);
+  });
+
+  it("rejects a crop that extends past the image", () => {
+    expect(
+      photoEditsSchema.safeParse({ rotate: 0, flipH: false, flipV: false, crop: { x: 0.9, y: 0, w: 0.9, h: 0.5 } }).success,
+    ).toBe(false);
   });
 });

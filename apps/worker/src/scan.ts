@@ -9,8 +9,8 @@ import {
   regenerateRenditions,
   removePath,
 } from "@lumio/ingest";
-import { coercePhotoEdits } from "@lumio/shared";
-import { INGEST_CONCURRENCY, PHOTOS_DIR, displayPath, thumbnailPath } from "./config.js";
+import { coercePhotoEdits, hasEdits } from "@lumio/shared";
+import { INGEST_CONCURRENCY, PHOTOS_DIR, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
 import { ingestDeps, removeDeps } from "./deps.js";
 import { timedLine } from "./format.js";
 import { runPool } from "./pool.js";
@@ -97,8 +97,10 @@ export interface ScanRow {
   edits: unknown;
 }
 
-async function cachePresent(id: string): Promise<boolean> {
-  return (await fileExists(thumbnailPath(id))) && (await fileExists(displayPath(id)));
+async function cachePresent(id: string, edited: boolean): Promise<boolean> {
+  if (!(await fileExists(thumbnailPath(id))) || !(await fileExists(displayPath(id)))) return false;
+  if (edited && !(await fileExists(editedDisplayPath(id)))) return false;
+  return true;
 }
 
 /** Rebuild a missing cache from the stored recipe — no DB write. The recomputed
@@ -143,7 +145,8 @@ export async function reconcileFile(
 ): Promise<void> {
   const absPath = path.join(PHOTOS_DIR, relPath);
   const st = await stat(absPath);
-  const cacheExists = row ? await cachePresent(row.id) : false;
+  const recipe = row ? coercePhotoEdits(row.edits) : null;
+  const cacheExists = row ? await cachePresent(row.id, hasEdits(recipe)) : false;
 
   let plan = planScan(row, st, cacheExists);
   if (plan === "check-hash") {
