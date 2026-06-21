@@ -5,7 +5,7 @@ export async function runIngest(): Promise<void> {
   const start = Date.now();
   const summary = await scanAndIngest();
   console.log(
-    `Ingestion complete in ${Date.now() - start}ms — processed ${summary.processed}, unchanged ${summary.skippedUnchanged}, skipped ${summary.skipped}, removed ${summary.removed}`,
+    `Ingestion complete in ${Date.now() - start}ms — processed ${summary.processed}, unchanged ${summary.skippedUnchanged}, healed ${summary.healed}, restamped ${summary.restamped}, skipped ${summary.skipped}, removed ${summary.removed}`,
   );
   await prisma.$disconnect();
 }
