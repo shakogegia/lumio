@@ -169,9 +169,9 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
     <div>
       <p className="mb-2 font-medium">Appears in</p>
       {loading ? (
-        <div className="space-y-2">
+        <div>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2.5 px-3 py-2">
               <Skeleton className="size-6 rounded-md" />
               <Skeleton className="h-4 w-32 rounded" />
             </div>
@@ -180,11 +180,14 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
       ) : memberAlbums.length === 0 ? (
         <p className="text-muted-foreground">Not in any album yet</p>
       ) : (
-        <div className="space-y-0.5">
+        <div>
           {memberAlbums.map((album) => (
+            // Match the album-picker DropdownMenuItem 1:1 (gap-2.5, rounded-xl,
+            // px-3 py-2, text-sm, accent hover) so the lightbox list and the
+            // "Add more" menu read as the same control.
             <div
               key={album.id}
-              className="group/row flex items-center gap-2 rounded-md"
+              className="group/row relative flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors select-none hover:bg-accent hover:text-accent-foreground"
             >
               <AlbumThumb coverPhotoId={album.coverPhotoId} />
               <span className="truncate">{album.name}</span>
@@ -193,7 +196,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
                 disabled={pending}
                 onClick={() => void remove(album.id)}
                 aria-label={`Remove from ${album.name}`}
-                className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100"
+                className="-mr-1 ml-auto rounded-md p-1 text-muted-foreground opacity-0 transition hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100"
               >
                 <X className="size-4" aria-hidden />
               </button>
