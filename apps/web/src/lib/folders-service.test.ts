@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createFolder,
+  deleteFolder,
   FolderNotFoundError,
   getFolder,
   listFolderContents,
@@ -113,5 +114,76 @@ describe("listFolderContents", () => {
     expect(contents!.breadcrumbs.map((b) => b.id)).toEqual(["europe"]);
     expect(contents!.subfolders.map((f) => f.id)).toEqual(["italy"]);
     expect(contents!.albums.map((a) => a.id)).toEqual(["rome"]);
+  });
+});
+
+describe("deleteFolder reparent", () => {
+  it("reparents direct children to the deleted folder's parent, then deletes it", async () => {
+    const folderUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const albumUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const folderDelete = vi.fn().mockResolvedValue({});
+    const db = {
+      folder: {
+        findUnique: async () => ({ parentId: "grandparent" }),
+        updateMany: folderUpdateMany,
+        delete: folderDelete,
+      },
+      album: { updateMany: albumUpdateMany },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await deleteFolder("italy", "reparent", db as never);
+    expect(folderUpdateMany).toHaveBeenCalledWith({
+      where: { parentId: "italy" }, data: { parentId: "grandparent" },
+    });
+    expect(albumUpdateMany).toHaveBeenCalledWith({
+      where: { folderId: "italy" }, data: { folderId: "grandparent" },
+    });
+    expect(folderDelete).toHaveBeenCalledWith({ where: { id: "italy" } });
+  });
+
+  it("throws when the folder is missing", async () => {
+    const db = {
+      folder: { findUnique: async () => null }, album: {}, albumPhoto: {}, photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await expect(deleteFolder("x", "reparent", db as never)).rejects.toBeInstanceOf(
+      FolderNotFoundError,
+    );
+  });
+});
+
+describe("deleteFolder cascade", () => {
+  it("deletes all descendant albums then all descendant folders, leaving photos", async () => {
+    const allFolders = [
+      { id: "europe", parentId: null },
+      { id: "italy", parentId: "europe" },
+    ];
+    const albumDeleteMany = vi.fn().mockResolvedValue({ count: 3 });
+    const folderDeleteMany = vi.fn().mockResolvedValue({ count: 2 });
+    const db = {
+      folder: { findMany: async () => allFolders, deleteMany: folderDeleteMany },
+      album: { deleteMany: albumDeleteMany },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await deleteFolder("europe", "cascade", db as never);
+    const albumArg = albumDeleteMany.mock.calls[0][0].where.folderId.in.sort();
+    const folderArg = folderDeleteMany.mock.calls[0][0].where.id.in.sort();
+    expect(albumArg).toEqual(["europe", "italy"]);
+    expect(folderArg).toEqual(["europe", "italy"]);
+  });
+
+  it("throws when the folder is missing", async () => {
+    const db = {
+      folder: { findMany: async () => [{ id: "other", parentId: null }] },
+      album: {}, albumPhoto: {}, photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await expect(deleteFolder("ghost", "cascade", db as never)).rejects.toBeInstanceOf(
+      FolderNotFoundError,
+    );
   });
 });

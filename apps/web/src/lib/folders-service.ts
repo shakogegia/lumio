@@ -113,3 +113,28 @@ export async function listFolderContents(
 
   return { folder, breadcrumbs, subfolders, albums };
 }
+
+export async function deleteFolder(
+  id: string,
+  mode: "reparent" | "cascade",
+  db: Db = prisma,
+): Promise<void> {
+  if (mode === "reparent") {
+    const folder = await db.folder.findUnique({ where: { id }, select: { parentId: true } });
+    if (!folder) throw new FolderNotFoundError();
+    await db.$transaction([
+      db.folder.updateMany({ where: { parentId: id }, data: { parentId: folder.parentId } }),
+      db.album.updateMany({ where: { folderId: id }, data: { folderId: folder.parentId } }),
+      db.folder.delete({ where: { id } }),
+    ]);
+    return;
+  }
+  // cascade: delete the whole subtree (albums first so the FK allows the folder deletes).
+  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  if (!allFolders.some((f) => f.id === id)) throw new FolderNotFoundError();
+  const ids = collectDescendantFolderIds(allFolders, id);
+  await db.$transaction([
+    db.album.deleteMany({ where: { folderId: { in: ids } } }),
+    db.folder.deleteMany({ where: { id: { in: ids } } }),
+  ]);
+}
