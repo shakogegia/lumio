@@ -32,11 +32,12 @@ export function ZoomableImage({
   step: (delta: 1 | -1) => void;
   onTrashed: () => void;
 }) {
-  const { working } = useEditSession();
+  const { working, editing, setBaseSize } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
   const displaySrc = displayUrl(photo);
   const originalSrc = `/api/photos/${photo.id}/original`;
+  const editBaseSrc = `/api/photos/${photo.id}/edit-base`;
 
   // Double-buffer the display rendition: when an Apply changes the rendition
   // (same photo, new ?v=), keep showing the current one — transformed by the
@@ -197,55 +198,59 @@ export function ZoomableImage({
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
         style={{ touchAction: "none" }}
       >
-        <div
-          ref={containerRef}
-          className="absolute inset-4 flex items-center justify-center"
-          style={{ transform, transformOrigin: "center", cursor }}
-          onPointerDown={handlers.onPointerDown}
-          onPointerMove={handlers.onPointerMove}
-          onPointerUp={handlers.onPointerUp}
-          onPointerCancel={handlers.onPointerCancel}
-          onDoubleClick={handlers.onDoubleClick}
-        >
-          {/* eslint-disable @next/next/no-img-element */}
-          {blurUrl && blurBox && (
+        {editing ? (
+          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} />
+        ) : (
+          <div
+            ref={containerRef}
+            className="absolute inset-4 flex items-center justify-center"
+            style={{ transform, transformOrigin: "center", cursor }}
+            onPointerDown={handlers.onPointerDown}
+            onPointerMove={handlers.onPointerMove}
+            onPointerUp={handlers.onPointerUp}
+            onPointerCancel={handlers.onPointerCancel}
+            onDoubleClick={handlers.onDoubleClick}
+          >
+            {/* eslint-disable @next/next/no-img-element */}
+            {blurUrl && blurBox && (
+              <img
+                src={blurUrl}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute object-cover transition-opacity duration-500"
+                style={{
+                  left: blurBox.left,
+                  top: blurBox.top,
+                  width: blurBox.width,
+                  height: blurBox.height,
+                  opacity: everLoaded ? 0 : 1,
+                  // The main <img> carries an edit-preview `transform`, which makes
+                  // it establish a stacking context and paint above its in-flow
+                  // siblings. Without an explicit z-index the blur would sit
+                  // *behind* the image and never get to fade away over it — the
+                  // blur-up reveal would be lost.
+                  zIndex: 1,
+                }}
+              />
+            )}
             <img
-              src={blurUrl}
-              alt=""
-              aria-hidden
-              className="pointer-events-none absolute object-cover transition-opacity duration-500"
+              ref={setImg}
+              src={src}
+              alt={photo.path}
+              width={shown.w}
+              height={shown.h}
+              onLoad={onLoad}
+              draggable={false}
+              className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
               style={{
-                left: blurBox.left,
-                top: blurBox.top,
-                width: blurBox.width,
-                height: blurBox.height,
-                opacity: everLoaded ? 0 : 1,
-                // The main <img> carries an edit-preview `transform`, which makes
-                // it establish a stacking context and paint above its in-flow
-                // siblings. Without an explicit z-index the blur would sit
-                // *behind* the image and never get to fade away over it — the
-                // blur-up reveal would be lost.
-                zIndex: 1,
+                transform: editTransform,
+                transformOrigin: "center center",
+                transition: "none",
               }}
             />
-          )}
-          <img
-            ref={setImg}
-            src={src}
-            alt={photo.path}
-            width={shown.w}
-            height={shown.h}
-            onLoad={onLoad}
-            draggable={false}
-            className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-            style={{
-              transform: editTransform,
-              transformOrigin: "center center",
-              transition: "none",
-            }}
-          />
-          {/* eslint-enable @next/next/no-img-element */}
-        </div>
+            {/* eslint-enable @next/next/no-img-element */}
+          </div>
+        )}
         {hasPrev && (
           <NavArrow
             side="left"
@@ -291,6 +296,40 @@ function NavArrow({
       >
         <Icon className="size-5" />
       </Button>
+    </div>
+  );
+}
+
+function EditorCanvas({
+  src,
+  onBaseSize,
+}: {
+  src: string;
+  onBaseSize: (s: { w: number; h: number }) => void;
+}) {
+  const { working } = useEditSession();
+  const deg = working.rotate + (working.straighten ?? 0);
+  const sx = working.flipH ? -1 : 1;
+  const sy = working.flipV ? -1 : 1;
+  return (
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        onLoad={(e) =>
+          onBaseSize({
+            w: e.currentTarget.naturalWidth,
+            h: e.currentTarget.naturalHeight,
+          })
+        }
+        className="max-h-full max-w-full select-none object-contain"
+        style={{
+          transform: `rotate(${deg}deg) scaleX(${sx}) scaleY(${sy})`,
+          transformOrigin: "center center",
+        }}
+      />
     </div>
   );
 }
