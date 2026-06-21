@@ -1,9 +1,9 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Prisma, prisma, toPhotoDTO } from "@lumio/db";
 import { hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
 import { buildRenditions, decodeToSharpInput } from "@lumio/ingest";
-import { displayPath, originalPath, thumbnailPath } from "@/lib/paths";
+import { editedDisplayPath, originalPath, thumbnailPath } from "@/lib/paths";
 
 /**
  * Regenerate a photo's renditions for the given edit recipe and persist it.
@@ -25,14 +25,22 @@ export async function applyPhotoEdits(
       recipe,
     );
     // Renditions are written before the DB update. If the update fails, the
-    // on-disk renditions reflect the new edit but Photo.edits/updatedAt stay old,
-    // so the cache-bust token is unchanged and clients keep serving the cached
-    // (old) URL — the new renditions are effectively ignored until a later
-    // successful apply overwrites them. Acceptable: rare, self-heals on retry.
-    await mkdir(path.dirname(displayPath(id)), { recursive: true });
+    // on-disk renditions (thumb + edited file) reflect the new edit but
+    // Photo.edits/updatedAt stay old, so the cache-bust token is unchanged and
+    // clients keep serving the cached (old) URL — the new renditions are
+    // effectively ignored until a later successful apply overwrites them.
+    // Acceptable: rare, self-heals on retry.
+    //
+    // The base display (displayPath) is written once at ingest and stays edit-free
+    // — never rewritten here. The thumbnail is always the current state.
     await mkdir(path.dirname(thumbnailPath(id)), { recursive: true });
-    await writeFile(displayPath(id), display);
     await writeFile(thumbnailPath(id), thumbnail);
+    if (recipe) {
+      await mkdir(path.dirname(editedDisplayPath(id)), { recursive: true });
+      await writeFile(editedDisplayPath(id), display); // baked, separate from the base
+    } else {
+      await rm(editedDisplayPath(id), { force: true }); // reset → drop the edited variant
+    }
 
     const updated = await prisma.photo.update({
       where: { id },
