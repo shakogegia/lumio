@@ -28,22 +28,36 @@ async function listImages(): Promise<string[]> {
     .map((e) => path.relative(PHOTOS_DIR, path.join(e.parentPath, e.name)));
 }
 
+export type ScanPlan = "new" | "skip" | "heal" | "check-hash";
+
 /**
- * Pure decision: is the on-disk file already ingested and unchanged? True only
- * when a row exists, its recorded size+mtime match the current stat, and the
- * rendered cache is present (so a wiped cache forces regeneration).
+ * First decision, from stat + cache presence alone (no file read):
+ *  - no row            → "new" (ingest a brand-new file)
+ *  - stamp matches      → "skip" (cache present) or "heal" (cache missing)
+ *  - stamp differs      → "check-hash" (read the bytes to tell a real change
+ *    from a backup/sync that only touched the timestamp)
  */
-export function isUnchanged(
+export function planScan(
   row: { fileSize: number | null; fileMtimeMs: number | null } | undefined,
   st: { size: number; mtimeMs: number },
   cacheExists: boolean,
-): boolean {
-  return (
-    !!row &&
-    row.fileSize === st.size &&
-    row.fileMtimeMs === st.mtimeMs &&
-    cacheExists
-  );
+): ScanPlan {
+  if (!row) return "new";
+  const stampMatches = row.fileSize === st.size && row.fileMtimeMs === st.mtimeMs;
+  if (stampMatches) return cacheExists ? "skip" : "heal";
+  return "check-hash";
+}
+
+export type HashPlan = "stamp-only" | "heal" | "reimport";
+
+/**
+ * Second decision, once the content hash is known. A changed hash is a genuine
+ * pixel replacement → re-import. An unchanged hash means only the timestamp
+ * moved → refresh the stamp (and heal the cache if it is missing).
+ */
+export function planAfterHash(hashMatches: boolean, cacheExists: boolean): HashPlan {
+  if (!hashMatches) return "reimport";
+  return cacheExists ? "stamp-only" : "heal";
 }
 
 async function fileExists(p: string): Promise<boolean> {

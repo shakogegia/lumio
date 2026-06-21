@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isUnchanged, reconcileDeletions } from "./scan.js";
+import { planAfterHash, planScan, reconcileDeletions } from "./scan.js";
 
 describe("reconcileDeletions", () => {
   it("returns DB paths that are no longer present on disk", () => {
@@ -13,30 +13,45 @@ describe("reconcileDeletions", () => {
   });
 });
 
-describe("isUnchanged", () => {
+describe("planScan", () => {
   const st = { size: 100, mtimeMs: 5000.5 };
 
-  it("is true when row size+mtime match and the cache exists", () => {
-    expect(isUnchanged({ fileSize: 100, fileMtimeMs: 5000.5 }, st, true)).toBe(true);
+  it("is 'new' when there is no row", () => {
+    expect(planScan(undefined, st, false)).toBe("new");
   });
 
-  it("is false when the row is unknown (new file)", () => {
-    expect(isUnchanged(undefined, st, true)).toBe(false);
+  it("is 'skip' when size+mtime match and the cache exists", () => {
+    expect(planScan({ fileSize: 100, fileMtimeMs: 5000.5 }, st, true)).toBe("skip");
   });
 
-  it("is false when size differs", () => {
-    expect(isUnchanged({ fileSize: 99, fileMtimeMs: 5000.5 }, st, true)).toBe(false);
+  it("is 'heal' when size+mtime match but the cache is missing", () => {
+    expect(planScan({ fileSize: 100, fileMtimeMs: 5000.5 }, st, false)).toBe("heal");
   });
 
-  it("is false when mtime differs", () => {
-    expect(isUnchanged({ fileSize: 100, fileMtimeMs: 1 }, st, true)).toBe(false);
+  it("is 'check-hash' when size differs", () => {
+    expect(planScan({ fileSize: 99, fileMtimeMs: 5000.5 }, st, true)).toBe("check-hash");
   });
 
-  it("is false when the cache is missing (forces regeneration)", () => {
-    expect(isUnchanged({ fileSize: 100, fileMtimeMs: 5000.5 }, st, false)).toBe(false);
+  it("is 'check-hash' when mtime differs", () => {
+    expect(planScan({ fileSize: 100, fileMtimeMs: 1 }, st, true)).toBe("check-hash");
   });
 
-  it("is false when the row has null stats (un-backfilled legacy row)", () => {
-    expect(isUnchanged({ fileSize: null, fileMtimeMs: null }, st, true)).toBe(false);
+  it("is 'check-hash' for a legacy row with null stats", () => {
+    expect(planScan({ fileSize: null, fileMtimeMs: null }, st, true)).toBe("check-hash");
+  });
+});
+
+describe("planAfterHash", () => {
+  it("re-imports when the content hash changed", () => {
+    expect(planAfterHash(false, true)).toBe("reimport");
+    expect(planAfterHash(false, false)).toBe("reimport");
+  });
+
+  it("refreshes the stamp only when the hash matches and the cache exists", () => {
+    expect(planAfterHash(true, true)).toBe("stamp-only");
+  });
+
+  it("heals when the hash matches but the cache is missing", () => {
+    expect(planAfterHash(true, false)).toBe("heal");
   });
 });
