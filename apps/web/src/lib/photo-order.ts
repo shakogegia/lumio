@@ -3,8 +3,8 @@ import type { PhotoSort } from "@lumio/shared";
 /**
  * Map a sort choice to a Prisma `orderBy`: the chosen date field plus an `id`
  * tiebreaker in the SAME direction, so keyset/cursor pagination stays monotonic.
- * `sortDate` is `takenAt ?? importTime` (set at ingest), so the taken-date sorts
- * keep EXIF-less photos chronological by their import time. Shared by the
+ * `sortDate` is `takenAt ?? fileModifiedAt` (set at ingest), so the taken-date
+ * sorts keep EXIF-less photos chronological by their file's modified date. Shared by the
  * library/album/search listings and the detail-view neighbor query so they
  * paginate over the same sequence.
  */
