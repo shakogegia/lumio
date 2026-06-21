@@ -38,6 +38,8 @@ interface PhotoCollectionValue {
   openIndex: number | null;
   /** The tab the lightbox should show on this open (defaults to Info). */
   openTab: LightboxTab;
+  /** Switch the lightbox sidebar tab (drives the controlled Tabs + i/e keys). */
+  setOpenTab: (tab: LightboxTab) => void;
   open: (index: number, opts?: { tab?: LightboxTab }) => void;
   close: () => void;
   step: (delta: 1 | -1) => void;
@@ -258,6 +260,7 @@ export function PhotoCollectionProvider({
       enableLightbox,
       openIndex,
       openTab,
+      setOpenTab,
       open,
       close,
       step,

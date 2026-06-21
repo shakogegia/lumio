@@ -47,6 +47,85 @@ export function clampCropToImage(crop: CropRect, wo: number, ho: number, deg: nu
   return { x: cx - (crop.w * lo) / 2, y: cy - (crop.h * lo) / 2, w: crop.w * lo, h: crop.h * lo };
 }
 
+/** True when all four corners of `crop` land on real pixels. */
+export function cropOnImage(crop: CropRect, wo: number, ho: number, deg: number): boolean {
+  return (
+    pointOnImage(crop.x, crop.y, wo, ho, deg) &&
+    pointOnImage(crop.x + crop.w, crop.y, wo, ho, deg) &&
+    pointOnImage(crop.x, crop.y + crop.h, wo, ho, deg) &&
+    pointOnImage(crop.x + crop.w, crop.y + crop.h, wo, ho, deg)
+  );
+}
+
+function lerpCrop(a: CropRect, b: CropRect, t: number): CropRect {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+    w: a.w + (b.w - a.w) * t,
+    h: a.h + (b.h - a.h) * t,
+  };
+}
+
+/** The furthest point along the segment from a valid `from` toward `to` whose
+ *  crop is still fully on real pixels. Used to advance an interactive drag up to
+ *  the image edge (pinning) instead of shrinking it about its center. Assumes
+ *  `from` is on-image; returns `to` when `to` is already valid. */
+export function maxValidAdvance(
+  from: CropRect,
+  to: CropRect,
+  wo: number,
+  ho: number,
+  deg: number,
+): CropRect {
+  if (cropOnImage(to, wo, ho, deg)) return to;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (cropOnImage(lerpCrop(from, to, mid), wo, ho, deg)) lo = mid;
+    else hi = mid;
+  }
+  return lerpCrop(from, to, lo);
+}
+
+/** Constrain an interactive crop gesture to the image, anchored at the gesture's
+ *  fixed side so it pins at the edge rather than shrinking about its center.
+ *  `start` is the (valid) crop at gesture start, `next` the unconstrained
+ *  proposal (post aspect-lock). Move and ratio-locked resizes advance the whole
+ *  rect along the gesture; a free corner resize advances each edge independently
+ *  so it slides along the image edges. Falls back to the center-shrink clamp only
+ *  when `start` is itself off-image (e.g. a full crop while straightened). */
+export function constrainCropDrag(
+  start: CropRect,
+  next: CropRect,
+  wo: number,
+  ho: number,
+  deg: number,
+  opts: { move?: boolean; aspectLocked?: boolean } = {},
+): CropRect {
+  if (!cropOnImage(start, wo, ho, deg)) return clampCropToImage(next, wo, ho, deg);
+  if (opts.move || opts.aspectLocked) return maxValidAdvance(start, next, wo, ho, deg);
+  const movedH = next.x !== start.x || next.w !== start.w;
+  const movedV = next.y !== start.y || next.h !== start.h;
+  if (movedH && movedV) {
+    const horiz = maxValidAdvance(
+      start,
+      { x: next.x, y: start.y, w: next.w, h: start.h },
+      wo,
+      ho,
+      deg,
+    );
+    return maxValidAdvance(
+      horiz,
+      { x: horiz.x, y: next.y, w: horiz.w, h: next.h },
+      wo,
+      ho,
+      deg,
+    );
+  }
+  return maxValidAdvance(start, next, wo, ho, deg);
+}
+
 /** A centered, max-fit crop of aspect `ratio` (w/h) within the oriented image,
  *  normalized to O′ and clamped to real pixels. */
 export function centeredAspectCrop(ratio: number, wo: number, ho: number, deg: number): CropRect {

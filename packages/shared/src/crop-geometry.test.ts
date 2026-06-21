@@ -5,6 +5,9 @@ import {
   clampCropToImage,
   centeredAspectCrop,
   cropToExtract,
+  cropOnImage,
+  maxValidAdvance,
+  constrainCropDrag,
 } from "./crop-geometry.js";
 
 describe("crop-geometry", () => {
@@ -76,5 +79,91 @@ describe("crop-geometry", () => {
     expect(e.top + e.height).toBeLessThanOrEqual(100);
     expect(e.width).toBeGreaterThanOrEqual(1);
     expect(e.height).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("interactive crop drag constraints", () => {
+  it("cropOnImage: full frame on at 0°, off when tilted, small centered crop on", () => {
+    expect(cropOnImage({ x: 0, y: 0, w: 1, h: 1 }, 400, 200, 0)).toBe(true);
+    expect(cropOnImage({ x: 0, y: 0, w: 1, h: 1 }, 400, 200, 20)).toBe(false);
+    expect(cropOnImage({ x: 0.4, y: 0.4, w: 0.2, h: 0.2 }, 400, 200, 20)).toBe(true);
+  });
+
+  it("maxValidAdvance returns the target unchanged when it is already on-image", () => {
+    const from = { x: 0.1, y: 0.1, w: 0.2, h: 0.2 };
+    const to = { x: 0.2, y: 0.2, w: 0.3, h: 0.3 };
+    expect(maxValidAdvance(from, to, 400, 200, 0)).toEqual(to);
+  });
+
+  it("maxValidAdvance pins an overshooting east edge at the boundary (anchor + height kept)", () => {
+    const from = { x: 0.1, y: 0.1, w: 0.3, h: 0.3 };
+    const to = { x: 0.1, y: 0.1, w: 1.2, h: 0.3 }; // east edge way off the image
+    const out = maxValidAdvance(from, to, 400, 200, 0);
+    expect(out.x).toBeCloseTo(0.1, 4); // west anchor fixed
+    expect(out.y).toBeCloseTo(0.1, 4);
+    expect(out.h).toBeCloseTo(0.3, 4); // height unchanged — no center shrink
+    expect(out.x + out.w).toBeCloseTo(1, 3); // east pinned to the image edge
+  });
+
+  it("maxValidAdvance pins a move at the corner without changing size", () => {
+    const from = { x: 0.6, y: 0.6, w: 0.3, h: 0.3 };
+    const to = { x: 1.0, y: 1.0, w: 0.3, h: 0.3 }; // translated past the corner
+    const out = maxValidAdvance(from, to, 400, 200, 0);
+    expect(out.w).toBeCloseTo(0.3, 4);
+    expect(out.h).toBeCloseTo(0.3, 4);
+    expect(out.x + out.w).toBeCloseTo(1, 3);
+    expect(out.y + out.h).toBeCloseTo(1, 3);
+  });
+});
+
+describe("constrainCropDrag", () => {
+  it("move: pins at the image edge and never shrinks", () => {
+    const start = { x: 0.6, y: 0.1, w: 0.3, h: 0.3 };
+    const next = { x: 1.0, y: 0.1, w: 0.3, h: 0.3 }; // dragged right, overshoots
+    const out = constrainCropDrag(start, next, 400, 200, 0, { move: true });
+    expect(out.w).toBeCloseTo(0.3, 4); // size unchanged
+    expect(out.h).toBeCloseTo(0.3, 4);
+    expect(out.x + out.w).toBeCloseTo(1, 3); // pinned at the right edge
+  });
+
+  it("free edge resize: east edge stops at the boundary, west anchor fixed", () => {
+    const start = { x: 0.1, y: 0.1, w: 0.3, h: 0.3 };
+    const next = { x: 0.1, y: 0.1, w: 1.0, h: 0.3 };
+    const out = constrainCropDrag(start, next, 400, 200, 0, {});
+    expect(out.x).toBeCloseTo(0.1, 4);
+    expect(out.x + out.w).toBeCloseTo(1, 3);
+    expect(out.h).toBeCloseTo(0.3, 4);
+  });
+
+  it("free corner resize: each edge slides to its own boundary (decoupled, no center shrink)", () => {
+    const start = { x: 0.2, y: 0.5, w: 0.2, h: 0.2 }; // anchor nw = (0.2, 0.5)
+    const next = { x: 0.2, y: 0.5, w: 1.0, h: 1.0 }; // both edges overshoot
+    const out = constrainCropDrag(start, next, 400, 200, 0, {});
+    expect(out.x).toBeCloseTo(0.2, 4); // nw anchor fixed
+    expect(out.y).toBeCloseTo(0.5, 4);
+    expect(out.x + out.w).toBeCloseTo(1, 3); // east pinned
+    expect(out.y + out.h).toBeCloseTo(1, 3); // south pinned
+    // Width reaches the right edge even though height was capped sooner — a
+    // center-shrink would have shrunk the width too.
+    expect(out.w).toBeCloseTo(0.8, 3);
+    expect(out.h).toBeCloseTo(0.5, 3);
+  });
+
+  it("aspect-locked resize: scales uniformly to fit (ratio preserved, not decoupled)", () => {
+    const start = { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }; // 1:1
+    const next = { x: 0.1, y: 0.1, w: 1.2, h: 1.2 }; // still 1:1, overshoots
+    const out = constrainCropDrag(start, next, 400, 200, 0, { aspectLocked: true });
+    expect(out.w / out.h).toBeCloseTo(1, 3); // ratio preserved
+    expect(out.x).toBeCloseTo(0.1, 4);
+    expect(out.x + out.w).toBeCloseTo(1, 3);
+    expect(out.y + out.h).toBeCloseTo(1, 3);
+  });
+
+  it("degenerate start (off-image while tilted) falls back to the center-shrink clamp", () => {
+    const start = { x: 0, y: 0, w: 1, h: 1 }; // full frame, off-image at 20°
+    const next = { x: 0, y: 0, w: 1, h: 1 };
+    const out = constrainCropDrag(start, next, 400, 200, 20, { move: true });
+    expect(out.w).toBeLessThan(1); // shrunk about center (fallback path)
+    expect(out.x + out.w / 2).toBeCloseTo(0.5, 3);
   });
 });

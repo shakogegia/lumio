@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -31,13 +32,10 @@ import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
 import { LightboxTab } from "@/lib/lightbox-tab";
 
-export function LightboxSidebar({
-  photo,
-  initialTab = LightboxTab.Info,
-}: {
-  photo: PhotoDTO;
-  initialTab?: LightboxTab;
-}) {
+export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
+  // Controlled by the shared collection state so the i/e keyboard shortcuts can
+  // drive the tab from the lightbox-level keyboard handler.
+  const { openTab, setOpenTab } = usePhotoCollection();
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
@@ -45,11 +43,21 @@ export function LightboxSidebar({
 
   return (
     <aside className="w-full shrink-0 border-t bg-background text-sm lg:flex lg:h-dvh lg:w-80 lg:flex-col lg:overflow-hidden lg:border-t-0 lg:border-l">
-      <Tabs defaultValue={initialTab} className="gap-0 lg:min-h-0 lg:flex-1">
+      <Tabs
+        value={openTab}
+        onValueChange={(v) => setOpenTab(v as LightboxTab)}
+        className="gap-0 lg:min-h-0 lg:flex-1"
+      >
         <div className="flex shrink-0 items-center border-b px-3 py-2">
           <TabsList className="w-full">
-            <TabsTrigger value={LightboxTab.Info}>Info</TabsTrigger>
-            <TabsTrigger value={LightboxTab.Edit}>Edit</TabsTrigger>
+            <TabsTrigger value={LightboxTab.Info}>
+              Info
+              <Kbd className="h-4 min-w-4 px-1 text-[10px]">i</Kbd>
+            </TabsTrigger>
+            <TabsTrigger value={LightboxTab.Edit}>
+              Edit
+              <Kbd className="h-4 min-w-4 px-1 text-[10px]">e</Kbd>
+            </TabsTrigger>
             <TabsTrigger value={LightboxTab.Exif}>EXIF</TabsTrigger>
           </TabsList>
         </div>

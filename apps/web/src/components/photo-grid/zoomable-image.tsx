@@ -144,7 +144,7 @@ export function ZoomableImage({
     stepOut,
     handlers,
     reset: resetZoom,
-  } = useZoomPan(viewW, viewH);
+  } = useZoomPan(viewW, viewH, !cropMode);
 
   // Toggling edit/crop mode swaps the content (baked → edited-result, or in/out of
   // crop), changing its dimensions. A persisted zoom would be stale/mis-scaled
@@ -232,6 +232,7 @@ export function ZoomableImage({
         onStepOut={stepOut}
         canStepIn={zoom < MAX_ZOOM - 0.5}
         canStepOut={isZoomed}
+        showZoom={!cropMode}
       />
       <div
         ref={viewportRef}
