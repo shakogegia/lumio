@@ -61,11 +61,14 @@ Next.js note: `searchParams` is a `Promise` in this app's Next version (matches 
 ### 3. Auto-add in `UploadClient`
 
 `apps/web/src/app/(app)/upload/upload-client.tsx` takes an optional
-`targetAlbum?: { id: string; name: string }`.
+`targetAlbum?: { id: string; name: string }`. It seeds clearable local state
+(`useState(initialTargetAlbum)`) so the destination can be dropped in-session.
 
-- **Banner:** when `targetAlbum` is set, render a small banner beneath the header —
-  e.g. *"Uploading to ‹Album name›"* — so the destination is obvious. Placed in the
-  `space-y-6` content block above the dropzone.
+- **Header indicator + clear:** when `targetAlbum` is set, the page `HeaderBar`
+  shows *"Uploading to ‹Album name›"* as the subtitle beneath the "Upload" title,
+  with a small ✕ button to clear it. Clearing stops further auto-adds and strips
+  `?albumId` from the URL via `history.replaceState` (no navigation, so the
+  already-uploaded tiles are preserved); a reload then stays consistent.
 - **Auto-add:** in `runPool`, after the batch's worker pool resolves, collect the
   `photoId` of every row in the batch that finished with one (status `added` **or**
   `duplicate`). If `targetAlbum` is set and the list is non-empty, POST them in a
