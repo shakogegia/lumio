@@ -58,6 +58,14 @@ describe("buildAlbumTree", () => {
     expect(italy.folders).toEqual([]);
   });
 
+  it("excludes a set of albumIds, pruning a folder whose albums are all excluded", () => {
+    const tree = buildAlbumTree(FOLDERS, ALBUMS, {
+      excludeAlbumIds: new Set(["rome", "milan"]),
+    });
+    expect(tree.albums.map((a) => a.id)).toEqual(["top"]);
+    expect(tree.folders).toEqual([]); // Italy emptied -> Europe pruned
+  });
+
   it("keeps empty folders + smart albums when requested", () => {
     const tree = buildAlbumTree(FOLDERS, ALBUMS, { includeSmart: true, includeEmptyFolders: true });
     expect(tree.albums.map((a) => a.id).sort()).toEqual(["smart", "top"]);
