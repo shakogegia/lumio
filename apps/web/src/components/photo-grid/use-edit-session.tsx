@@ -10,8 +10,14 @@ import {
   sameEdits,
   toggleFlipH as recipeFlipH,
   toggleFlipV as recipeFlipV,
+  setStraighten as recipeSetStraighten,
+  setCrop as recipeSetCrop,
+  aspectCrop as recipeAspectCrop,
+  clampCropToImage,
   type PhotoDTO,
   type PhotoEdits,
+  type AspectPreset,
+  type CropRect,
 } from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection } from "./photo-collection";
@@ -36,6 +42,17 @@ interface EditSessionValue {
   apply: () => Promise<void>;
   /** Run `go` unless there are unsaved edits and the user declines to discard. */
   guard: (go: () => void) => void;
+  /** True while the Edit tab is mounted/active (drives the editor canvas). */
+  editing: boolean;
+  setEditing: (on: boolean) => void;
+  /** Natural size of the loaded edit-base image (EXIF-oriented), or null. */
+  baseSize: { w: number; h: number } | null;
+  setBaseSize: (size: { w: number; h: number }) => void;
+  /** Oriented dims (base size with the working coarse-rotate applied). */
+  orientedBase: { w: number; h: number } | null;
+  setStraighten: (deg: number) => void;
+  setCrop: (crop: CropRect | null) => void;
+  setAspect: (preset: AspectPreset) => void;
 }
 
 const Ctx = createContext<EditSessionValue | null>(null);
@@ -84,9 +101,17 @@ export function EditSessionProvider({
   const saved = photo.edits ?? NO_EDITS;
   const [history, setHistory] = useState<History>(() => freshHistory(saved));
   const [applying, setApplying] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [baseSize, setBaseSize] = useState<{ w: number; h: number } | null>(null);
   const photoIdRef = useRef(photo.id);
 
   const working = history.stack[history.index];
+  const orientedBase =
+    baseSize === null
+      ? null
+      : working.rotate === 90 || working.rotate === 270
+        ? { w: baseSize.h, h: baseSize.w }
+        : { w: baseSize.w, h: baseSize.h };
   const canUndo = history.index > 0;
   const canRedo = history.index < history.stack.length - 1;
 
@@ -94,7 +119,10 @@ export function EditSessionProvider({
   // through a local fn so it isn't a direct setState-in-effect call (the
   // react-compiler rule only flags synchronous direct calls in the effect body).
   useEffect(() => {
-    const reseed = (e: PhotoEdits) => setHistory(freshHistory(e));
+    const reseed = (e: PhotoEdits) => {
+      setHistory(freshHistory(e));
+      setBaseSize(null);
+    };
     if (photoIdRef.current !== photo.id) {
       photoIdRef.current = photo.id;
       reseed(photo.edits ?? NO_EDITS);
@@ -115,6 +143,42 @@ export function EditSessionProvider({
   const flipV = useCallback(() => {
     setHistory((h) => pushHistory(h, recipeFlipV(h.stack[h.index])));
   }, []);
+  const setStraighten = useCallback(
+    (deg: number) => {
+      setHistory((h) => {
+        const cur = h.stack[h.index];
+        let next = recipeSetStraighten(cur, deg);
+        // Re-clamp an EXPLICIT crop so the new angle can't expose empty corners.
+        // (A null crop is auto-filled by the bake/preview, so leave it null.)
+        if (next.crop && baseSize) {
+          const ob =
+            cur.rotate === 90 || cur.rotate === 270
+              ? { w: baseSize.h, h: baseSize.w }
+              : { w: baseSize.w, h: baseSize.h };
+          next = recipeSetCrop(next, clampCropToImage(next.crop, ob.w, ob.h, deg));
+        }
+        return pushHistory(h, next);
+      });
+    },
+    [baseSize],
+  );
+  const setCrop = useCallback((crop: CropRect | null) => {
+    setHistory((h) => pushHistory(h, recipeSetCrop(h.stack[h.index], crop)));
+  }, []);
+  const setAspect = useCallback(
+    (preset: AspectPreset) => {
+      setHistory((h) => {
+        const cur = h.stack[h.index];
+        const ob =
+          cur.rotate === 90 || cur.rotate === 270
+            ? { w: baseSize?.h ?? 0, h: baseSize?.w ?? 0 }
+            : { w: baseSize?.w ?? 0, h: baseSize?.h ?? 0 };
+        if (preset !== "free" && (ob.w === 0 || ob.h === 0)) return h; // base not loaded yet
+        return pushHistory(h, recipeAspectCrop(cur, preset, ob.w, ob.h));
+      });
+    },
+    [baseSize],
+  );
   const reset = useCallback(() => {
     setHistory((h) => pushHistory(h, NO_EDITS));
   }, []);
@@ -195,6 +259,14 @@ export function EditSessionProvider({
     redo,
     apply,
     guard,
+    editing,
+    setEditing,
+    baseSize,
+    setBaseSize,
+    orientedBase,
+    setStraighten,
+    setCrop,
+    setAspect,
   };
 
   return (
