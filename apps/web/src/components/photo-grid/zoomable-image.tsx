@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
-import { displayUrl, renditionVersion } from "@/lib/rendition-url";
+import { baseDisplayUrl, displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
@@ -43,8 +43,7 @@ export function ZoomableImage({
 
   const displaySrc = displayUrl(photo);
   const originalSrc = `/api/photos/${photo.id}/original`;
-  const editBaseSrc = `/api/photos/${photo.id}/edit-base`;
-  const editBaseFullSrc = `/api/photos/${photo.id}/edit-base?full=1`;
+  const baseSrc = baseDisplayUrl(photo);
   const hiResSrc = hasEdits(photo.edits)
     ? `/api/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`
     : originalSrc;
@@ -240,7 +239,7 @@ export function ZoomableImage({
         style={{ touchAction: "none" }}
       >
         {cropMode ? (
-          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} interactive />
+          <EditorCanvas src={baseSrc} onBaseSize={setBaseSize} interactive />
         ) : (
           <div
             ref={containerRef}
@@ -254,8 +253,8 @@ export function ZoomableImage({
           >
             {editing ? (
               <EditedResult
-                src={editBaseSrc}
-                fullSrc={editBaseFullSrc}
+                src={baseSrc}
+                fullSrc={originalSrc}
                 zoomed={isZoomed}
                 working={working}
                 orientedBase={orientedBase}

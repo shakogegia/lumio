@@ -45,7 +45,7 @@ interface EditSessionValue {
   /** True while the Edit tab is mounted/active (drives the editor canvas). */
   editing: boolean;
   setEditing: (on: boolean) => void;
-  /** Natural size of the loaded edit-base image (EXIF-oriented), or null. */
+  /** Natural size of the loaded base display image (EXIF-oriented), or null. */
   baseSize: { w: number; h: number } | null;
   setBaseSize: (size: { w: number; h: number }) => void;
   /** Oriented dims (base size with the working coarse-rotate applied). */
