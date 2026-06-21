@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Check,
   FlipHorizontal,
@@ -10,11 +11,22 @@ import {
   Undo2,
   Redo2,
 } from "lucide-react";
-import { hasEdits } from "@lumio/shared";
+import { hasEdits, type AspectPreset } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Slider } from "@/components/ui/slider";
 import { useEditSession } from "./use-edit-session";
 import { useEditKeyboard } from "./use-edit-keyboard";
+
+const ASPECTS: { preset: AspectPreset; label: string }[] = [
+  { preset: "free", label: "Free" },
+  { preset: "original", label: "Original" },
+  { preset: "square", label: "Square" },
+  { preset: "5:4", label: "5:4" }, { preset: "4:5", label: "4:5" },
+  { preset: "4:3", label: "4:3" }, { preset: "3:4", label: "3:4" },
+  { preset: "3:2", label: "3:2" }, { preset: "2:3", label: "2:3" },
+  { preset: "16:9", label: "16:9" }, { preset: "9:16", label: "9:16" },
+];
 
 /** Edit-tab body: rotate/flip controls with undo/redo that drive the lightbox
  *  edit session, plus Apply (persist) and Reset (back to original, on Apply). */
@@ -33,8 +45,17 @@ export function LightboxEditPanel() {
     undo,
     redo,
     apply,
+    setEditing,
+    setStraighten,
+    setAspect,
   } = useEditSession();
   useEditKeyboard({ rotateLeft, rotateRight, apply: () => void apply() });
+
+  useEffect(() => {
+    setEditing(true);
+    return () => setEditing(false);
+  }, [setEditing]);
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex gap-2">
@@ -82,6 +103,46 @@ export function LightboxEditPanel() {
           <Button variant="outline" size="sm" onClick={flipV}>
             <FlipVertical aria-hidden /> Vertical
           </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Straighten</p>
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setStraighten(0)}
+          >
+            {(working.straighten ?? 0).toFixed(0)}°
+          </button>
+        </div>
+        <Slider
+          min={-45}
+          max={45}
+          step={1}
+          value={[working.straighten ?? 0]}
+          onValueChange={(v) => setStraighten(v[0])}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <p className="font-medium">Crop</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ASPECTS.map(({ preset, label }) => {
+            const active = preset === "free" ? working.crop == null : false;
+            return (
+              <Button
+                key={preset}
+                variant={active ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setAspect(preset)}
+              >
+                {label}
+              </Button>
+            );
+          })}
         </div>
       </div>
 
