@@ -74,6 +74,15 @@ export function LightboxEditPanel() {
   if (cropMode) {
     return (
       <div className="flex flex-1 flex-col gap-4">
+        <div className="flex gap-2">
+          <Button size="sm" className="flex-1" onClick={doneCropMode}>
+            <Check aria-hidden /> Done
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={cancelCropMode}>
+            <X aria-hidden /> Cancel
+          </Button>
+        </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-medium">Straighten</p>
@@ -112,24 +121,6 @@ export function LightboxEditPanel() {
               );
             })}
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
-            <Undo2 aria-hidden /> Undo
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
-            <Redo2 aria-hidden /> Redo
-          </Button>
-        </div>
-
-        <div className="mt-auto flex gap-2">
-          <Button size="sm" className="flex-1" onClick={doneCropMode}>
-            <Check aria-hidden /> Done
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={cancelCropMode}>
-            <X aria-hidden /> Cancel
-          </Button>
         </div>
       </div>
     );
