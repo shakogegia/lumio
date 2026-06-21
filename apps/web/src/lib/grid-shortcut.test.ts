@@ -48,6 +48,14 @@ describe("resolveGridShortcut", () => {
     expect(resolveGridShortcut(base({ key: "e", selectionSize: 3 }))).toBeNull();
   });
 
+  it("e is case-insensitive (Caps Lock) but ignores Shift+E", () => {
+    expect(resolveGridShortcut(base({ key: "E", hasModifier: false }))).toEqual({
+      kind: "open",
+      tab: LightboxTab.Edit,
+    });
+    expect(resolveGridShortcut(base({ key: "E", hasModifier: true }))).toBeNull();
+  });
+
   it("is suppressed by every guard", () => {
     expect(resolveGridShortcut(base({ lightboxOpen: true }))).toBeNull();
     expect(resolveGridShortcut(base({ hasModifier: true }))).toBeNull();
