@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, FolderInput, FolderOpen, Images, Loader2, Pencil, Trash2 } from "lucide-react";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
+import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
 import { useAlbumColumns } from "@/lib/use-album-columns";
 import { ALBUM_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { countLabel } from "@/lib/count-label";
@@ -61,14 +62,17 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const selectedFolderIds = [...sel.selected].filter((id) => folderIdSet.has(id));
   const selectedAlbumIds = [...sel.selected].filter((id) => !folderIdSet.has(id));
 
-  function toggle(id: string) {
-    sel.setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  // Reading order across the three sections — the flat list the selection
+  // reducer and arrow-key navigation index against.
+  const orderedIds = [
+    ...subfolders.map((f) => f.id),
+    ...regular.map((a) => a.id),
+    ...smart.map((a) => a.id),
+  ];
+  const indexOf = new Map(orderedIds.map((id, i) => [id, i]));
+
+  const gridRef = useRef<HTMLDivElement>(null);
+
   function openFolder(id: string) {
     router.push(`/albums/folder/${id}`);
   }
@@ -77,6 +81,30 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   }
   function viewFolderPhotos(id: string) {
     router.push(`/albums/folder/${id}/photos`);
+  }
+
+  function openItem(id: string) {
+    if (folderIdSet.has(id)) openFolder(id);
+    else openAlbum(id);
+  }
+
+  const { handleItemClick } = useGridSelectionNav({
+    count: orderedIds.length,
+    columns,
+    idAt: (i) => orderedIds[i],
+    getClickIds: () => orderedIds,
+    selectedIds: sel.selected,
+    onSelectionChange: sel.setSelected,
+    onOpen: (i) => orderedIds[i] && openItem(orderedIds[i]),
+    scrollToIndex: (i) => {
+      const id = orderedIds[i];
+      if (id) gridRef.current?.querySelector(`[data-card-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
+    },
+  });
+
+  function onCardSelect(id: string, e: React.MouseEvent) {
+    const i = indexOf.get(id);
+    if (i !== undefined) handleItemClick(i, e);
   }
 
   /** Selection-aware: act on the whole selection when the item is selected, else just it. */
@@ -327,7 +355,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="space-y-8">
+        <div ref={gridRef} className="space-y-8">
           {subfolders.length > 0 && (
             <Section title="Folders">
               {subfolders.map((f) => (
@@ -335,7 +363,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   key={f.id}
                   folder={f}
                   isSelected={sel.selected.has(f.id)}
-                  onToggle={toggle}
+                  onSelect={onCardSelect}
                   onOpen={openFolder}
                   onViewPhotos={viewFolderPhotos}
                   onRename={startRename}
@@ -352,7 +380,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   key={a.id}
                   album={a}
                   isSelected={sel.selected.has(a.id)}
-                  onToggle={toggle}
+                  onSelect={onCardSelect}
                   onOpen={openAlbum}
                   onRename={startRename}
                   onMove={(id, target) => void doMove(resolveTargets(id), target)}
@@ -368,7 +396,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   key={a.id}
                   album={a}
                   isSelected={sel.selected.has(a.id)}
-                  onToggle={toggle}
+                  onSelect={onCardSelect}
                   onOpen={openAlbum}
                   onRename={startRename}
                   onMove={(id, target) => void doMove(resolveTargets(id), target)}

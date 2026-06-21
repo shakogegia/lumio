@@ -16,15 +16,16 @@ import {
 import { MovePickerItems } from "./move-picker-items";
 
 /**
- * One album in the listing grid. Plain left click toggles selection; double click
- * opens it; ⌘/Ctrl/middle click falls through to the native link (new tab).
+ * One album in the listing grid. Plain left click selects only it; ⌘ (Mac) /
+ * Ctrl (Windows) click toggles it into a multi-selection; shift click extends a
+ * range; double click opens it; middle click opens the native link (new tab).
  * Right click opens a context menu (open / rename / move / delete); move + delete
  * are selection-aware (resolved by the caller's handlers).
  */
 export function AlbumCard({
   album,
   isSelected,
-  onToggle,
+  onSelect,
   onOpen,
   onRename,
   onMove,
@@ -32,7 +33,7 @@ export function AlbumCard({
 }: {
   album: AlbumSummaryDTO;
   isSelected: boolean;
-  onToggle: (id: string) => void;
+  onSelect: (id: string, e: React.MouseEvent) => void;
   onOpen: (id: string) => void;
   onRename: (id: string) => void;
   onMove: (id: string, targetFolderId: string | null) => void;
@@ -68,10 +69,13 @@ export function AlbumCard({
       <ContextMenuTrigger asChild>
         <a
           href={`/albums/${album.id}`}
+          data-card-id={album.id}
           onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.button !== 0) return;
+            // Middle/aux click opens the native link (new tab); every left click
+            // selects: plain = only this, ⌘/Ctrl = toggle, shift = range.
+            if (e.button !== 0) return;
             e.preventDefault();
-            onToggle(album.id);
+            onSelect(album.id, e);
           }}
           onDoubleClick={(e) => {
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

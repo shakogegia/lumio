@@ -16,15 +16,16 @@ import {
 import { MovePickerItems } from "./move-picker-items";
 
 /**
- * One folder in the listing grid. Plain left click toggles selection; double click
- * opens it; ⌘/Ctrl/middle click falls through to the native link (new tab).
+ * One folder in the listing grid. Plain left click selects only it; ⌘ (Mac) /
+ * Ctrl (Windows) click toggles it into a multi-selection; shift click extends a
+ * range; double click opens it; middle click opens the native link (new tab).
  * Right click opens a context menu (open / view photos / rename / move / delete);
  * move + delete are selection-aware (resolved by the caller's handlers).
  */
 export function FolderCard({
   folder,
   isSelected,
-  onToggle,
+  onSelect,
   onOpen,
   onViewPhotos,
   onRename,
@@ -33,7 +34,7 @@ export function FolderCard({
 }: {
   folder: FolderSummaryDTO;
   isSelected: boolean;
-  onToggle: (id: string) => void;
+  onSelect: (id: string, e: React.MouseEvent) => void;
   onOpen: (id: string) => void;
   onViewPhotos: (id: string) => void;
   onRename: (id: string) => void;
@@ -76,10 +77,11 @@ export function FolderCard({
       <ContextMenuTrigger asChild>
         <a
           href={`/albums/folder/${folder.id}`}
+          data-card-id={folder.id}
           onClick={(e) => {
-            if (e.metaKey || e.ctrlKey || e.button !== 0) return;
+            if (e.button !== 0) return;
             e.preventDefault();
-            onToggle(folder.id);
+            onSelect(folder.id, e);
           }}
           onDoubleClick={(e) => {
             if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
