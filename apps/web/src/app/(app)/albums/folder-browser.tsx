@@ -31,6 +31,8 @@ import { countLabel } from "@/lib/count-label";
 import { useConfirm } from "@/components/confirm-dialog";
 import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { partitionAlbums } from "@/lib/partition-albums";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
 import { FolderCard } from "./folder-card";
@@ -108,6 +110,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
         }),
       });
       if (!res.ok) throw new Error();
+      playSound(SoundEffect.ActionComplete);
       sel.clear();
       invalidateLibraryTree();
       router.refresh();

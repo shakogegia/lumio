@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 
 /** Per-call hook into a successful add (e.g. clear/cancel the selection). */
 export type AddToAlbumOpts = { onSuccess?: () => void };
@@ -46,6 +48,7 @@ export function useAddToAlbum(): AddToAlbumControls {
         if (!res.ok) throw new Error("add failed");
         // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
         router.refresh();
+        playSound(SoundEffect.ActionComplete);
         opts?.onSuccess?.();
       } catch {
         toast.error("Failed to add photos to the album.");

@@ -86,7 +86,7 @@ export function UploadClient() {
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queued.length) }, worker));
       // Chime once per batch when at least one genuinely new photo landed
       // (not for all-duplicate/all-failed batches). Respects the sound setting.
-      if (added > 0) playSound(SoundEffect.UploadComplete);
+      if (added > 0) playSound(SoundEffect.ActionComplete);
       router.refresh();
     },
     [router, uploadOne],
