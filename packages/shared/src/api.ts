@@ -60,11 +60,21 @@ export const photoIdsSchema = z.object({
 
 export type PhotoIdsInput = z.infer<typeof photoIdsSchema>;
 
+export const cropRectSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  w: z.number().min(0).max(1),
+  h: z.number().min(0).max(1),
+});
+export type CropRectInput = z.infer<typeof cropRectSchema>;
+
 /** Edit recipe payload. Used by POST /api/photos/[id]/edit (null = reset). */
 export const photoEditsSchema = z.object({
   rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
   flipH: z.boolean(),
   flipV: z.boolean(),
+  straighten: z.number().min(-45).max(45).optional(),
+  crop: cropRectSchema.nullable().optional(),
 });
 export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });
 export type EditPhotoInput = z.infer<typeof editPhotoSchema>;

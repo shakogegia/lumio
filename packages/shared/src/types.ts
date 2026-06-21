@@ -1,12 +1,26 @@
 import type { ColorLabel } from "./color-labels.js";
 import type { MatchType, PhotoSource, RuleOp } from "./enums.js";
 
+/** A crop rectangle, normalized 0..1 against the straightened bounding box O′
+ *  (see the crop-geometry module). When straighten is 0, O′ === the oriented
+ *  image, so this is simply a fraction of the oriented image. */
+export interface CropRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 /** Non-destructive edit recipe applied on top of EXIF auto-orientation.
- *  Canonical application order: flipH → flipV → rotate (clockwise). */
+ *  Canonical order: flipH → flipV → coarse rotate → straighten(θ) → crop. */
 export interface PhotoEdits {
   rotate: 0 | 90 | 180 | 270;
   flipH: boolean;
   flipV: boolean;
+  /** Fine tilt in degrees, clamped to [-45, 45]. Absent/0 = no straighten. */
+  straighten?: number;
+  /** Crop rectangle normalized to O′. Absent/null = full frame. */
+  crop?: CropRect | null;
 }
 
 /** Normalized subset of EXIF we surface to clients. */
