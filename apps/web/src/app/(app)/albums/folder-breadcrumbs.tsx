@@ -2,15 +2,32 @@
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useDroppable } from "@dnd-kit/core";
 import type { FolderDTO } from "@lumio/shared";
+import { cn } from "@/lib/utils";
 
-/** "Albums › Europe › Italy" trail. The last crumb is the current (non-link) folder. */
+function Crumb({ id, children, href }: { id: string | null; children: React.ReactNode; href: string }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id === null ? "drop:root" : `drop:${id}`,
+    data: { type: "folder", id },
+  });
+  return (
+    <Link
+      ref={setNodeRef}
+      href={href}
+      className={cn("rounded px-1 hover:text-foreground", isOver && "bg-primary/15 text-foreground")}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function FolderBreadcrumbs({ breadcrumbs }: { breadcrumbs: FolderDTO[] }) {
   return (
     <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
-      <Link href="/albums" className="rounded px-1 hover:text-foreground">
+      <Crumb id={null} href="/albums">
         Albums
-      </Link>
+      </Crumb>
       {breadcrumbs.map((crumb, i) => {
         const isLast = i === breadcrumbs.length - 1;
         return (
@@ -19,9 +36,9 @@ export function FolderBreadcrumbs({ breadcrumbs }: { breadcrumbs: FolderDTO[] })
             {isLast ? (
               <span className="px-1 font-medium text-foreground">{crumb.name}</span>
             ) : (
-              <Link href={`/albums/folder/${crumb.id}`} className="rounded px-1 hover:text-foreground">
+              <Crumb id={crumb.id} href={`/albums/folder/${crumb.id}`}>
                 {crumb.name}
-              </Link>
+              </Crumb>
             )}
           </span>
         );

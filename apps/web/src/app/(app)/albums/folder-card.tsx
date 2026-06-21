@@ -1,14 +1,11 @@
 "use client";
 
 import { Folder as FolderIcon } from "lucide-react";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { FolderSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { cn } from "@/lib/utils";
 
-/**
- * One folder in the listing grid. Mirrors AlbumCard interaction: plain click
- * toggles selection, double-click opens. The cover is a 2×2 mosaic of preview
- * thumbnails, falling back to a folder glyph when empty.
- */
 export function FolderCard({
   folder,
   isSelected,
@@ -20,6 +17,13 @@ export function FolderCard({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const draggable = useDraggable({ id: `album-or-folder:${folder.id}`, data: { type: "folder", id: folder.id } });
+  const droppable = useDroppable({ id: `drop:${folder.id}`, data: { type: "folder", id: folder.id } });
+  const setRefs = (el: HTMLElement | null) => {
+    draggable.setNodeRef(el);
+    droppable.setNodeRef(el);
+  };
+
   const previews = folder.previewPhotoIds;
   const cover = (
     <div className="relative grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-sm bg-muted">
@@ -53,6 +57,10 @@ export function FolderCard({
 
   return (
     <a
+      ref={setRefs}
+      {...draggable.listeners}
+      {...draggable.attributes}
+      draggable={false}
       href={`/albums/folder/${folder.id}`}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.button !== 0) return;
@@ -64,7 +72,11 @@ export function FolderCard({
         e.preventDefault();
         onOpen(folder.id);
       }}
-      className="group block select-none"
+      className={cn(
+        "group block select-none rounded-sm",
+        droppable.isOver && "outline outline-2 outline-primary outline-offset-2",
+        draggable.isDragging && "opacity-40",
+      )}
     >
       <div className="relative rounded-sm">
         {cover}

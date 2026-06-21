@@ -1,14 +1,15 @@
 "use client";
 
 import { Images } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { cn } from "@/lib/utils";
 
 /**
- * One album in the listing grid. Selection is always available: a plain left
- * click toggles the album in the shared selection set (blue ring, no
- * navigation); a double click opens it. ⌘/Ctrl/middle click falls through to the
- * native link, so the album opens in a new tab.
+ * One album in the listing grid. Plain left click toggles selection; double click
+ * opens it; ⌘/Ctrl/middle click falls through to the native link (new tab).
+ * Draggable (dnd-kit) so it can be moved into folders; native link-drag is disabled.
  */
 export function AlbumCard({
   album,
@@ -21,6 +22,8 @@ export function AlbumCard({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
+  const draggable = useDraggable({ id: `album-or-folder:${album.id}`, data: { type: "album", id: album.id } });
+
   const cover = (
     <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-sm bg-muted">
       {album.coverPhotoId ? (
@@ -48,9 +51,12 @@ export function AlbumCard({
 
   return (
     <a
+      ref={draggable.setNodeRef}
+      {...draggable.listeners}
+      {...draggable.attributes}
+      draggable={false}
       href={`/albums/${album.id}`}
       onClick={(e) => {
-        // ⌘/Ctrl/middle click opens the album in a new tab; a plain click toggles.
         if (e.metaKey || e.ctrlKey || e.button !== 0) return;
         e.preventDefault();
         onToggle(album.id);
@@ -60,7 +66,7 @@ export function AlbumCard({
         e.preventDefault();
         onOpen(album.id);
       }}
-      className="group block select-none"
+      className={cn("group block select-none", draggable.isDragging && "opacity-40")}
     >
       <div className="relative rounded-sm">
         {cover}
