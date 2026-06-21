@@ -175,6 +175,11 @@ export async function deleteFolder(
   ]);
 }
 
+export async function listAllFolders(db: Db = prisma): Promise<FolderDTO[]> {
+  const rows = await db.folder.findMany({ orderBy: { name: "asc" } });
+  return rows.map(toFolderDTO);
+}
+
 export async function listFolderPhotos(
   id: string,
   params: PhotosQuery,
