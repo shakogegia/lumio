@@ -114,6 +114,39 @@ export async function listFolderContents(
   return { folder, breadcrumbs, subfolders, albums };
 }
 
+export async function moveItems(
+  input: { folderIds?: string[]; albumIds?: string[]; targetFolderId: string | null },
+  db: Db = prisma,
+): Promise<number> {
+  const folderIds = input.folderIds ?? [];
+  const albumIds = input.albumIds ?? [];
+  const target = input.targetFolderId;
+
+  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  const known = new Set(allFolders.map((f) => f.id));
+
+  if (target !== null && !known.has(target)) throw new FolderNotFoundError();
+
+  for (const fid of folderIds) {
+    if (!known.has(fid)) throw new FolderNotFoundError();
+    if (target !== null) {
+      const descendants = new Set(collectDescendantFolderIds(allFolders, fid)); // includes fid itself
+      if (descendants.has(target)) throw new FolderCycleError();
+    }
+  }
+
+  const ops: Prisma.PrismaPromise<{ count: number }>[] = [];
+  if (folderIds.length > 0) {
+    ops.push(db.folder.updateMany({ where: { id: { in: folderIds } }, data: { parentId: target } }));
+  }
+  if (albumIds.length > 0) {
+    ops.push(db.album.updateMany({ where: { id: { in: albumIds } }, data: { folderId: target } }));
+  }
+  if (ops.length === 0) return 0;
+  const results = await db.$transaction(ops);
+  return results.reduce((sum, r) => sum + r.count, 0);
+}
+
 export async function deleteFolder(
   id: string,
   mode: "reparent" | "cascade",

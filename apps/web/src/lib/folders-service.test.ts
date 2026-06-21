@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createFolder,
   deleteFolder,
+  FolderCycleError,
   FolderNotFoundError,
   getFolder,
   listFolderContents,
+  moveItems,
   renameFolder,
 } from "./folders-service.js";
 
@@ -185,5 +187,54 @@ describe("deleteFolder cascade", () => {
     await expect(deleteFolder("ghost", "cascade", db as never)).rejects.toBeInstanceOf(
       FolderNotFoundError,
     );
+  });
+});
+
+describe("moveItems", () => {
+  const allFolders = [
+    { id: "europe", parentId: null },
+    { id: "italy", parentId: "europe" },
+    { id: "asia", parentId: null },
+  ];
+
+  function db(folderUpdate = vi.fn().mockResolvedValue({ count: 1 }), albumUpdate = vi.fn().mockResolvedValue({ count: 1 })) {
+    return {
+      folder: { findMany: async () => allFolders, updateMany: folderUpdate },
+      album: { updateMany: albumUpdate },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+  }
+
+  it("moves an album into a folder", async () => {
+    const albumUpdate = vi.fn().mockResolvedValue({ count: 1 });
+    const count = await moveItems({ albumIds: ["a1"], targetFolderId: "italy" }, db(undefined, albumUpdate) as never);
+    expect(albumUpdate).toHaveBeenCalledWith({ where: { id: { in: ["a1"] } }, data: { folderId: "italy" } });
+    expect(count).toBe(1);
+  });
+
+  it("moves a folder to top level (null target)", async () => {
+    const folderUpdate = vi.fn().mockResolvedValue({ count: 1 });
+    await moveItems({ folderIds: ["italy"], targetFolderId: null }, db(folderUpdate) as never);
+    expect(folderUpdate).toHaveBeenCalledWith({ where: { id: { in: ["italy"] } }, data: { parentId: null } });
+  });
+
+  it("rejects moving a folder into its own descendant", async () => {
+    await expect(
+      moveItems({ folderIds: ["europe"], targetFolderId: "italy" }, db() as never),
+    ).rejects.toBeInstanceOf(FolderCycleError);
+  });
+
+  it("rejects moving a folder into itself", async () => {
+    await expect(
+      moveItems({ folderIds: ["europe"], targetFolderId: "europe" }, db() as never),
+    ).rejects.toBeInstanceOf(FolderCycleError);
+  });
+
+  it("throws when the target folder does not exist", async () => {
+    await expect(
+      moveItems({ albumIds: ["a1"], targetFolderId: "ghost" }, db() as never),
+    ).rejects.toBeInstanceOf(FolderNotFoundError);
   });
 });
