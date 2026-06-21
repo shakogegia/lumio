@@ -49,6 +49,13 @@ describe("photo-edits", () => {
     expect(orientedSize(400, 200, { rotate: 270, flipH: true, flipV: false })).toEqual([200, 400]);
   });
 
+  it("orientedSize shrinks for a straighten-only recipe (auto-fill)", () => {
+    const [w, h] = orientedSize(100, 100, { rotate: 0, flipH: false, flipV: false, straighten: 45, crop: null });
+    expect(w).toBeLessThan(100);
+    expect(w).toBeGreaterThan(55);
+    expect(Math.abs(w - h)).toBeLessThanOrEqual(2);
+  });
+
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
     expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();

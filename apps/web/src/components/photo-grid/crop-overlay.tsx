@@ -72,6 +72,7 @@ export function CropOverlay({
   // automatically on cancel, so no need to call releasePointerCapture.
   const onPointerCancel = useCallback(() => {
     drag.current = null;
+    setLive(null);
   }, []);
 
   const px = (v: number) => `${v * 100}%`;
@@ -141,6 +142,7 @@ function applyDrag(h: Handle, s: CropRect, dx: number, dy: number, ratio: number
   if (h.includes("w")) { x = Math.min(right - MIN, s.x + dx); w = right - x; }
   if (h.includes("s")) hh = Math.max(MIN, s.h + dy);
   if (h.includes("n")) { y = Math.min(bottom - MIN, s.y + dy); hh = bottom - y; }
+  // ratio-locked dragging (future): every caller passes null today, so this is inert.
   if (ratio) hh = w / ratio; // keep width authoritative
   return { x, y, w, h: hh };
 }

@@ -110,20 +110,17 @@ export function aspectCrop(e: PhotoEdits, preset: AspectPreset, wo: number, ho: 
   return { ...e, crop: centeredAspectCrop(ratio, wo, ho, deg) };
 }
 
-/** Predicted [width, height] after the recipe, for optimistic store patching. */
+/** Predicted [width, height] after the recipe, for optimistic store patching.
+ *  Mirrors the bake: straighten with no explicit crop auto-fills an inscribed crop. */
 export function orientedSize(w: number, h: number, e: PhotoEdits | null): [number, number] {
   if (!e) return [w, h];
-  let [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [h, w] : [w, h];
-  if ((e.straighten ?? 0) !== 0) {
-    const s = straightenedSize(ow, oh, e.straighten ?? 0);
-    ow = s.w;
-    oh = s.h;
-  }
-  if (e.crop) {
-    ow = Math.max(1, Math.round(ow * e.crop.w));
-    oh = Math.max(1, Math.round(oh * e.crop.h));
-  }
-  return [Math.round(ow), Math.round(oh)];
+  const [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [h, w] : [w, h];
+  const deg = e.straighten ?? 0;
+  const op = straightenedSize(ow, oh, deg);
+  const crop = e.crop ?? (deg !== 0 ? centeredAspectCrop(ow / oh, ow, oh, deg) : null);
+  const W = crop ? Math.round(crop.w * op.w) : Math.round(op.w);
+  const H = crop ? Math.round(crop.h * op.h) : Math.round(op.h);
+  return [Math.max(1, W), Math.max(1, H)];
 }
 
 function coerceCrop(value: unknown): CropRect | null {

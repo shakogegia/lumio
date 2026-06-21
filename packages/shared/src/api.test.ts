@@ -219,4 +219,10 @@ describe("photoEditsSchema (crop & straighten)", () => {
     expect(photoEditsSchema.safeParse({ ...base, straighten: 60 }).success).toBe(false);
     expect(photoEditsSchema.safeParse({ ...base, crop: { x: -0.1, y: 0, w: 1, h: 1 } }).success).toBe(false);
   });
+
+  it("rejects a crop that extends past the image", () => {
+    expect(
+      photoEditsSchema.safeParse({ rotate: 0, flipH: false, flipV: false, crop: { x: 0.9, y: 0, w: 0.9, h: 0.5 } }).success,
+    ).toBe(false);
+  });
 });
