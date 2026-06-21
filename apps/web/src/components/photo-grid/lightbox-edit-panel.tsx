@@ -55,7 +55,16 @@ export function LightboxEditPanel() {
     doneCropMode,
     cancelCropMode,
   } = useEditSession();
-  useEditKeyboard({ rotateLeft, rotateRight, apply: () => void apply() });
+  // ⌘S is a no-op in crop mode: applying mid-crop would bake while cropMode stays
+  // true and reset history, leaving Done/Cancel acting on a stale snapshot. Exit
+  // crop mode (Done) first, then Apply.
+  useEditKeyboard({
+    rotateLeft,
+    rotateRight,
+    apply: () => {
+      if (!cropMode) void apply();
+    },
+  });
 
   useEffect(() => {
     setEditing(true);

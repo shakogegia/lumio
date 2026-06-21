@@ -133,6 +133,7 @@ export function EditSessionProvider({
       setHistory(freshHistory(e));
       setBaseSize(null);
       setCropMode(false);
+      cropSnapshot.current = null;
     };
     if (photoIdRef.current !== photo.id) {
       photoIdRef.current = photo.id;
