@@ -38,6 +38,7 @@ export interface RemoveDeps {
   db: Pick<PrismaClient, "photo">;
   thumbnailsDir: string;
   displaysDir: string;
+  editedDisplaysDir: string;
 }
 
 export async function removePath(relPath: string, deps: RemoveDeps): Promise<void> {
@@ -46,4 +47,5 @@ export async function removePath(relPath: string, deps: RemoveDeps): Promise<voi
   await deps.db.photo.delete({ where: { id: found.id } });
   await rm(path.join(deps.thumbnailsDir, `${found.id}.webp`), { force: true });
   await rm(path.join(deps.displaysDir, `${found.id}.webp`), { force: true });
+  await rm(path.join(deps.editedDisplaysDir, `${found.id}.webp`), { force: true });
 }

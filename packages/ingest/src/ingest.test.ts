@@ -10,9 +10,11 @@ const tmpBase = await mkdtemp(path.join(tmpdir(), "lumio-ingest-"));
 const tmpPhotos = path.join(tmpBase, "photos");
 const tmpThumbs = path.join(tmpBase, "thumbs");
 const tmpDisplays = path.join(tmpBase, "displays");
+const tmpEditedDisplays = path.join(tmpBase, "displays-edited");
 await mkdir(tmpPhotos, { recursive: true });
 await mkdir(tmpThumbs, { recursive: true });
 await mkdir(tmpDisplays, { recursive: true });
+await mkdir(tmpEditedDisplays, { recursive: true });
 
 // Create a fixture image: sub/img.jpg with EXIF
 const subDir = path.join(tmpPhotos, "sub");
@@ -94,6 +96,7 @@ describe("removePath", () => {
       db: fakeDb as never,
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
+      editedDisplaysDir: tmpEditedDisplays,
     });
 
     expect(deleteCalls).toHaveLength(1);
@@ -121,6 +124,7 @@ describe("removePath", () => {
       db: fakeDb as never,
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
+      editedDisplaysDir: tmpEditedDisplays,
     });
 
     expect(deleteCalls).toHaveLength(0);

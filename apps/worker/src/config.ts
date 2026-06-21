@@ -24,6 +24,8 @@ export const THUMBNAILS_DIR = path.join(CACHE_DIR, "thumbnails");
 
 export const DISPLAYS_DIR = path.join(CACHE_DIR, "displays");
 
+export const EDITED_DISPLAYS_DIR = path.join(CACHE_DIR, "displays-edited");
+
 /** Absolute path to the trash root (mirrors the cache layout). */
 export const TRASH_DIR = resolveFromRoot(process.env.TRASH_DIR, "./trash");
 
