@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, FolderPlus, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2 } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
@@ -228,6 +229,28 @@ export function UploadClient() {
     }
   }, [sel, deleting, confirm, router]);
 
+  // Quick-pick path of the add-to-album dropdown: add straight to an existing
+  // album, no dialog. Mirrors usePhotoActions.addToAlbumDirect on /photos.
+  const addToAlbumDirect = useCallback(
+    async (albumId: string) => {
+      const ids = [...sel.selected];
+      if (ids.length === 0) return;
+      try {
+        const res = await fetch(`/api/albums/${albumId}/photos`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ photoIds: ids }),
+        });
+        if (!res.ok) throw new Error("add failed");
+        // Refresh so album counts/covers stay current (matches AddToAlbumDialog).
+        router.refresh();
+      } catch {
+        toast.error("Failed to add photos to the album.");
+      }
+    },
+    [sel, router],
+  );
+
   const summary = summarizeRows(rows);
   const hasRows = rows.length > 0;
 
@@ -246,16 +269,11 @@ export function UploadClient() {
                 disabled={sel.count === 0 || labelPending}
                 onPick={(l) => void applyLabel(l)}
               />
-              <Button
-                variant="outline"
-                size="icon-sm"
+              <AddToAlbumMenu
                 disabled={sel.count === 0}
-                onClick={() => setAlbumOpen(true)}
-                aria-label="Add to album"
-                title="Add to album"
-              >
-                <FolderPlus aria-hidden />
-              </Button>
+                onPick={(albumId) => void addToAlbumDirect(albumId)}
+                onCreateNew={() => setAlbumOpen(true)}
+              />
               <Button
                 variant="outline"
                 size="icon-sm"
@@ -331,10 +349,7 @@ export function UploadClient() {
         open={albumOpen}
         onOpenChange={setAlbumOpen}
         photoIds={[...sel.selected]}
-        onAdded={() => {
-          setAlbumOpen(false);
-          sel.clear();
-        }}
+        onAdded={() => setAlbumOpen(false)}
       />
     </>
   );
