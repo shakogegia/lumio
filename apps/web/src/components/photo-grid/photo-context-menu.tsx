@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FolderPlus, Heart, Palette, Trash2 } from "lucide-react";
+import { Download, FolderPlus, Heart, ImageUp, Palette, Trash2 } from "lucide-react";
 import { COLOR_LABELS, computeFavoriteTarget, hasEdits } from "@lumio/shared";
 import {
   ContextMenu,
@@ -119,6 +119,22 @@ export function PhotoContextMenu({
             <Heart aria-hidden />
             {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
           </ContextMenuItem>
+          {actions.albumCover && (
+            count === 1 && targetIds[0] === actions.albumCover.coverPhotoId ? (
+              <ContextMenuItem disabled>
+                <ImageUp aria-hidden />
+                Current album cover
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem
+                disabled={count !== 1}
+                onSelect={() => void actions.setAlbumCover(targetIds[0])}
+              >
+                <ImageUp aria-hidden />
+                Set as album cover
+              </ContextMenuItem>
+            )
+          )}
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuItem
