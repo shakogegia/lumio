@@ -30,7 +30,12 @@ export default async function AlbumDetailPage({
 
   return (
     <main className="w-full px-4 pb-6">
-      <AlbumView albumId={album.id} albumName={album.name} isSmart={album.isSmart} />
+      <AlbumView
+        albumId={album.id}
+        albumName={album.name}
+        isSmart={album.isSmart}
+        coverPhotoId={album.coverPhotoId}
+      />
     </main>
   );
 }

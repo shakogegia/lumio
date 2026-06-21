@@ -53,6 +53,7 @@ export function toAlbumDTO(row: Album): AlbumDTO {
     name: row.name,
     isSmart: row.isSmart,
     rules: (row.rules as SmartAlbumRules | null) ?? null,
+    coverPhotoId: row.coverPhotoId ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

@@ -3,7 +3,7 @@ import { detailScopeQuery, parseDetailScope } from "./photo-detail-loader";
 
 describe("parseDetailScope", () => {
   it("defaults to a library scope with the default sort", () => {
-    expect(parseDetailScope({})).toEqual({ kind: "library", sort: "taken-desc" });
+    expect(parseDetailScope({})).toEqual({ kind: "library", sort: "imported-desc" });
   });
 
   it("reads a valid sort", () => {
@@ -14,7 +14,7 @@ describe("parseDetailScope", () => {
   });
 
   it("falls back to the default for an invalid sort", () => {
-    expect(parseDetailScope({ sort: "bogus" })).toEqual({ kind: "library", sort: "taken-desc" });
+    expect(parseDetailScope({ sort: "bogus" })).toEqual({ kind: "library", sort: "imported-desc" });
   });
 
   it("carries the sort on an album scope", () => {
@@ -37,7 +37,7 @@ describe("parseDetailScope", () => {
 
 describe("detailScopeQuery", () => {
   it("emits an empty string for a default-sort library scope", () => {
-    expect(detailScopeQuery({ kind: "library", sort: "taken-desc" })).toBe("");
+    expect(detailScopeQuery({ kind: "library", sort: "imported-desc" })).toBe("");
   });
 
   it("emits only sort for a non-default library scope", () => {
@@ -45,7 +45,7 @@ describe("detailScopeQuery", () => {
   });
 
   it("keeps the album and omits a default sort", () => {
-    expect(detailScopeQuery({ kind: "album", albumId: "alb1", sort: "taken-desc" })).toBe(
+    expect(detailScopeQuery({ kind: "album", albumId: "alb1", sort: "imported-desc" })).toBe(
       "album=alb1",
     );
   });
@@ -57,7 +57,7 @@ describe("detailScopeQuery", () => {
   });
 
   it("round-trips a search scope with a sort", () => {
-    const scope = parseDetailScope({ s: "1", album: ["a"], q: "x", sort: "imported-desc" });
-    expect(detailScopeQuery(scope)).toBe("s=1&album=a&q=x&sort=imported-desc");
+    const scope = parseDetailScope({ s: "1", album: ["a"], q: "x", sort: "imported-asc" });
+    expect(detailScopeQuery(scope)).toBe("s=1&album=a&q=x&sort=imported-asc");
   });
 });

@@ -155,9 +155,9 @@ describe("coercePhotoSort", () => {
   });
 
   it("falls back to the default for unknown/empty input", () => {
-    expect(coercePhotoSort("bogus")).toBe("taken-desc");
-    expect(coercePhotoSort(undefined)).toBe("taken-desc");
-    expect(coercePhotoSort(null)).toBe("taken-desc");
+    expect(coercePhotoSort("bogus")).toBe("imported-desc");
+    expect(coercePhotoSort(undefined)).toBe("imported-desc");
+    expect(coercePhotoSort(null)).toBe("imported-desc");
   });
 });
 

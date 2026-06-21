@@ -33,6 +33,11 @@ export const albumPhotosSchema = z.object({
 });
 export type AlbumPhotosInput = z.infer<typeof albumPhotosSchema>;
 
+export const setAlbumCoverSchema = z.object({
+  coverPhotoId: z.string().min(1),
+});
+export type SetAlbumCoverInput = z.infer<typeof setAlbumCoverSchema>;
+
 export const deleteAlbumsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1),
 });

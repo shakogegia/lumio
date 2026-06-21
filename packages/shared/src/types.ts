@@ -53,12 +53,18 @@ export interface AlbumDTO {
   name: string;
   isSmart: boolean;
   rules: SmartAlbumRules | null;
+  /** The explicitly pinned cover, raw from the row. null = no pin (use derived).
+   *  This is the value the album-detail view uses for the "current cover" hint. */
+  coverPhotoId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AlbumSummaryDTO extends AlbumDTO {
   photoCount: number;
+  /** The EFFECTIVE cover: the pinned photo if it is still a member, otherwise
+   *  the derived most-recent member. Same field name as AlbumDTO, resolved value —
+   *  this is what the album grid card and sidebar render as the thumbnail. */
   coverPhotoId: string | null;
 }
 

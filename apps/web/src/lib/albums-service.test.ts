@@ -6,7 +6,10 @@ import {
   deleteAlbums,
   listAlbumPhotos,
   listAlbumSummaries,
+  PhotoNotInAlbumError,
+  removePhotoFromAlbum,
   removePhotosFromAlbum,
+  setAlbumCover,
   SmartAlbumMutationError,
 } from "./albums-service.js";
 
@@ -16,6 +19,7 @@ function albumRow(overrides: Partial<{
   name: string;
   isSmart: boolean;
   rules: object | null;
+  coverPhotoId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }> = {}) {
@@ -24,6 +28,7 @@ function albumRow(overrides: Partial<{
     name: "Test Album",
     isSmart: false,
     rules: null,
+    coverPhotoId: null,
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
     updatedAt: new Date("2024-01-01T00:00:00.000Z"),
     ...overrides,
@@ -99,6 +104,36 @@ describe("listAlbumSummaries", () => {
     expect(summaries[0]?.isSmart).toBe(true);
     expect(summaries[0]?.photoCount).toBe(2);
     expect(summaries[0]?.coverPhotoId).toBe("pX");
+  });
+});
+
+describe("listAlbumSummaries pinned cover", () => {
+  it("uses the pinned coverPhotoId when it is still a member", async () => {
+    const fakeDb = {
+      album: { findMany: async () => [albumRow({ coverPhotoId: "pinned1" })] },
+      albumPhoto: {
+        count: async () => 5,
+        findUnique: async () => ({ photoId: "pinned1" }),
+        findFirst: async () => ({ photoId: "p9" }),
+      },
+      photo: { count: async () => 0, findFirst: async () => null },
+    };
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries[0]?.coverPhotoId).toBe("pinned1");
+  });
+
+  it("falls back to the derived cover when the pinned photo is no longer a member", async () => {
+    const fakeDb = {
+      album: { findMany: async () => [albumRow({ coverPhotoId: "gone" })] },
+      albumPhoto: {
+        count: async () => 5,
+        findUnique: async () => null,
+        findFirst: async () => ({ photoId: "p9" }),
+      },
+      photo: { count: async () => 0, findFirst: async () => null },
+    };
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries[0]?.coverPhotoId).toBe("p9");
   });
 });
 
@@ -225,6 +260,55 @@ describe("addPhotosToAlbum", () => {
   });
 });
 
+describe("setAlbumCover", () => {
+  it("updates the album's coverPhotoId when the photo is a member", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), update },
+      albumPhoto: { findUnique: async () => ({ photoId: "p1" }) },
+      photo: {},
+    };
+    await setAlbumCover("alb1", "p1", fakeDb as never);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "alb1" },
+      data: { coverPhotoId: "p1" },
+    });
+  });
+
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null, update: vi.fn() },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("missing", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: true }), update: vi.fn() },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("alb1", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
+  });
+
+  it("throws PhotoNotInAlbumError when the photo is not a member", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), update: vi.fn() },
+      albumPhoto: { findUnique: async () => null },
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("alb1", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(PhotoNotInAlbumError);
+  });
+});
+
 describe("removePhotosFromAlbum", () => {
   it("throws SmartAlbumMutationError for smart albums", async () => {
     const fakeDb = {
@@ -240,7 +324,7 @@ describe("removePhotosFromAlbum", () => {
   it("deleteMany on the given ids and returns the removed count", async () => {
     const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
     const fakeDb = {
-      album: { findUnique: async () => ({ isSmart: false }) },
+      album: { findUnique: async () => ({ isSmart: false }), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       albumPhoto: { deleteMany },
       photo: {},
     };
@@ -260,6 +344,38 @@ describe("removePhotosFromAlbum", () => {
     await expect(
       removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
     ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+
+  it("clears the album cover pin if a removed photo was the cover", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), updateMany },
+      albumPhoto: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+      photo: {},
+    };
+    await removePhotosFromAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "alb1", coverPhotoId: { in: ["p1", "p2"] } },
+      data: { coverPhotoId: null },
+    });
+  });
+});
+
+describe("removePhotoFromAlbum", () => {
+  it("deletes the membership row and clears a matching cover pin", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const fakeDb = {
+      album: { updateMany },
+      albumPhoto: { deleteMany },
+      photo: {},
+    };
+    await removePhotoFromAlbum("alb1", "p1", fakeDb as never);
+    expect(deleteMany).toHaveBeenCalledWith({ where: { albumId: "alb1", photoId: "p1" } });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "alb1", coverPhotoId: "p1" },
+      data: { coverPhotoId: null },
+    });
   });
 });
 

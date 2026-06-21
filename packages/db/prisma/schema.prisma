@@ -50,13 +50,14 @@ model Photo {
 }
 
 model Album {
-  id        String       @id @default(cuid())
-  name      String
-  isSmart   Boolean      @default(false)
-  rules     Json?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  photos    AlbumPhoto[]
+  id           String       @id @default(cuid())
+  name         String
+  isSmart      Boolean      @default(false)
+  rules        Json?
+  coverPhotoId String? // explicitly pinned cover; null = use derived default
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  photos       AlbumPhoto[]
 }
 
 model AlbumPhoto {

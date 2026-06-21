@@ -26,15 +26,24 @@ export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryD
         ]);
         return { ...base, photoCount, coverPhotoId: cover?.id ?? null };
       }
-      const [photoCount, cover] = await Promise.all([
-        db.albumPhoto.count({ where: { albumId: a.id } }),
-        db.albumPhoto.findFirst({
+      const photoCount = await db.albumPhoto.count({ where: { albumId: a.id } });
+      let coverPhotoId: string | null = null;
+      if (a.coverPhotoId) {
+        const pinned = await db.albumPhoto.findUnique({
+          where: { albumId_photoId: { albumId: a.id, photoId: a.coverPhotoId } },
+          select: { photoId: true },
+        });
+        if (pinned) coverPhotoId = pinned.photoId;
+      }
+      if (!coverPhotoId) {
+        const cover = await db.albumPhoto.findFirst({
           where: { albumId: a.id },
           orderBy: { photo: { sortDate: "desc" } },
           select: { photoId: true },
-        }),
-      ]);
-      return { ...base, photoCount, coverPhotoId: cover?.photoId ?? null };
+        });
+        coverPhotoId = cover?.photoId ?? null;
+      }
+      return { ...base, photoCount, coverPhotoId };
     }),
   );
 }
@@ -124,8 +133,16 @@ export class SmartAlbumMutationError extends Error {}
 
 export class AlbumNotFoundError extends Error {}
 
+export class PhotoNotInAlbumError extends Error {}
+
 export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
   await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
+  // If the removed photo was the pinned cover, drop the pin so the cover defaults
+  // back to the derived most-recent member.
+  await db.album.updateMany({
+    where: { id: albumId, coverPhotoId: photoId },
+    data: { coverPhotoId: null },
+  });
 }
 
 export async function addPhotosToAlbum(
@@ -143,6 +160,23 @@ export async function addPhotosToAlbum(
   return result.count;
 }
 
+/**
+ * Pin `photoId` as the album's cover. Regular albums only; the photo must already
+ * be a member. The pin is honored by `listAlbumSummaries` only while the photo
+ * stays a member (see the membership check there) and is eager-cleared on removal.
+ */
+export async function setAlbumCover(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+  if (!album) throw new AlbumNotFoundError();
+  if (album.isSmart) throw new SmartAlbumMutationError("cannot set a cover on a smart album");
+  const member = await db.albumPhoto.findUnique({
+    where: { albumId_photoId: { albumId, photoId } },
+    select: { photoId: true },
+  });
+  if (!member) throw new PhotoNotInAlbumError();
+  await db.album.update({ where: { id: albumId }, data: { coverPhotoId: photoId } });
+}
+
 export async function removePhotosFromAlbum(
   albumId: string,
   photoIds: string[],
@@ -153,6 +187,10 @@ export async function removePhotosFromAlbum(
   if (album.isSmart) throw new SmartAlbumMutationError("cannot remove photos from a smart album");
   const result = await db.albumPhoto.deleteMany({
     where: { albumId, photoId: { in: photoIds } },
+  });
+  await db.album.updateMany({
+    where: { id: albumId, coverPhotoId: { in: photoIds } },
+    data: { coverPhotoId: null },
   });
   return result.count;
 }

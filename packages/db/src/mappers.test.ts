@@ -95,6 +95,7 @@ describe("toAlbumDTO", () => {
       name: "Vacation",
       isSmart: false,
       rules: null,
+      coverPhotoId: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-02T00:00:00.000Z"),
     });
@@ -115,6 +116,7 @@ describe("toAlbumDTO", () => {
       name: "iPhone shots",
       isSmart: true,
       rules: rules as never,
+      coverPhotoId: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-01T00:00:00.000Z"),
     });
