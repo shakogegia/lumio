@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { PrismaClient } from "@lumio/db";
+import { Prisma, type PrismaClient } from "@lumio/db";
 import type { PhotoSource } from "@lumio/shared";
 import type { ProcessedPhoto } from "./process.js";
 
@@ -47,7 +47,10 @@ export async function storePhoto(
   const row = await deps.db.photo.upsert({
     where: { path: relPath },
     create: { path: relPath, source, ...data },
-    update: data,
+    // A re-import means the file's bytes changed (the scan/watch only calls this
+    // on a genuine hash change); the old edit recipe no longer applies to the
+    // new pixels, so clear it. `create` leaves edits at its column default.
+    update: { ...data, edits: Prisma.JsonNull },
     select: { id: true },
   });
 
