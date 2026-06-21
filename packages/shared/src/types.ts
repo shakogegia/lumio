@@ -68,6 +68,34 @@ export interface AlbumSummaryDTO extends AlbumDTO {
   coverPhotoId: string | null;
 }
 
+export interface FolderDTO {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolderSummaryDTO extends FolderDTO {
+  /** Number of DIRECT child folders. */
+  childFolderCount: number;
+  /** Number of albums anywhere in the subtree (recursive). */
+  albumCount: number;
+  /** Deduplicated count of photos across every album in the subtree. */
+  totalPhotoCount: number;
+  /** Up to 4 cover photo ids (canonical order) for the folder-card mosaic. */
+  previewPhotoIds: string[];
+}
+
+export interface FolderContentsDTO {
+  /** The folder being viewed; null at the top level. */
+  folder: FolderDTO | null;
+  /** Ancestor chain from the top-level folder down to (and including) the viewed folder. Empty at top level. */
+  breadcrumbs: FolderDTO[];
+  subfolders: FolderSummaryDTO[];
+  albums: AlbumSummaryDTO[];
+}
+
 /** Minimal photo shape for the film strip — just enough to render a thumbnail. */
 export interface PhotoStripItem {
   id: string;
