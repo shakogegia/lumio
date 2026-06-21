@@ -46,11 +46,12 @@ export function FolderBrowserShortcuts({
       });
       if (!open) return;
 
-      const [id] = c.selectedIds;
-      if (!id) return;
       // We're handling Enter — suppress the focused card `<a>` default (it would
       // otherwise fire its click and toggle selection).
       e.preventDefault();
+
+      const [id] = c.selectedIds;
+      if (!id) return;
       c.onEnter(id);
     };
 
