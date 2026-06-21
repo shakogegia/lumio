@@ -52,6 +52,7 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
             <div className="space-y-3">
               <Row label="Source" value={<Badge>{photo.source}</Badge>} />
               <Row label="Taken" value={photo.takenAt ?? "—"} />
+              <Row label="File modified" value={photo.fileModifiedAt ?? "—"} />
               <Row label="Camera" value={camera} />
               <Row label="Hash" value={photo.hash ?? "—"} />
             </div>
