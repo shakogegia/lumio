@@ -120,6 +120,9 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
   // Add to an existing album via the shared quick-pick (POST + sound + refresh),
   // then optimistically reflect it locally and in the grid store.
   function add(albumId: string) {
+    // `next` is captured from this render's albumIds. Safe: the dropdown closes
+    // after every pick, so the next "Add more" open re-renders with fresh state
+    // before another add can be issued.
     const next = [...(albumIds ?? []), albumId];
     void addToAlbumDirect([photo.id], albumId, {
       onSuccess: () => {
@@ -155,8 +158,12 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
     .map((id) => byId.get(id))
     .filter((a): a is AlbumSummaryDTO => a !== undefined && !a.isSmart)
     .sort((a, b) => a.name.localeCompare(b.name));
-  // Skeleton until we know membership AND have the album list to resolve names.
-  const loading = albumIds === null || (treeLoading && albums.length === 0);
+  // Skeleton while membership is unknown, or while a photo known to be in some
+  // albums waits for the tree to resolve their names. An empty membership needs
+  // no tree, so it shows the empty state immediately.
+  const loading =
+    albumIds === null ||
+    (albumIds.length > 0 && treeLoading && albums.length === 0);
 
   return (
     <div>
@@ -183,6 +190,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
               <span className="truncate">{album.name}</span>
               <button
                 type="button"
+                disabled={pending}
                 onClick={() => void remove(album.id)}
                 aria-label={`Remove from ${album.name}`}
                 className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100"
