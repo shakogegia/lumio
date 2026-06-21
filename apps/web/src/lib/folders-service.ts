@@ -1,13 +1,16 @@
-import { type Prisma, type PrismaClient, type Folder, prisma, folderPhotoWhere, toFolderDTO } from "@lumio/db";
+import { type Prisma, type PrismaClient, type Folder, prisma, folderPhotoWhere, toFolderDTO, toPhotoDTO } from "@lumio/db";
 import {
+  monthRange,
   type AlbumSummaryDTO,
   type CreateFolderInput,
   type FolderContentsDTO,
   type FolderDTO,
   type FolderSummaryDTO,
+  type PhotosPage,
+  type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
-import { PHOTO_ORDER } from "@/lib/photo-order";
+import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 import { albumSummary } from "@/lib/albums-service";
 import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree";
 
@@ -170,4 +173,27 @@ export async function deleteFolder(
     db.album.deleteMany({ where: { folderId: { in: ids } } }),
     db.folder.deleteMany({ where: { id: { in: ids } } }),
   ]);
+}
+
+export async function listFolderPhotos(
+  id: string,
+  params: PhotosQuery,
+  db: Db = prisma,
+): Promise<PhotosPage | null> {
+  const now = new Date();
+  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  if (!allFolders.some((f) => f.id === id)) return null;
+  const descendantIds = new Set(collectDescendantFolderIds(allFolders, id));
+  const allAlbums = await db.album.findMany({
+    select: { id: true, isSmart: true, rules: true, folderId: true },
+  });
+  const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
+  const scoped = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const { limit, offset, sort, month } = params;
+  const where = month ? { AND: [scoped, { sortDate: monthRange(month) }] } : scoped;
+  const [rows, total] = await Promise.all([
+    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
+    db.photo.count({ where }),
+  ]);
+  return { items: rows.map(toPhotoDTO), total };
 }

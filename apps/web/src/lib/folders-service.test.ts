@@ -6,6 +6,7 @@ import {
   FolderNotFoundError,
   getFolder,
   listFolderContents,
+  listFolderPhotos,
   moveItems,
   renameFolder,
 } from "./folders-service.js";
@@ -236,5 +237,47 @@ describe("moveItems", () => {
     await expect(
       moveItems({ albumIds: ["a1"], targetFolderId: "ghost" }, db() as never),
     ).rejects.toBeInstanceOf(FolderNotFoundError);
+  });
+});
+
+describe("listFolderPhotos", () => {
+  const allFolders = [
+    { id: "europe", parentId: null },
+    { id: "italy", parentId: "europe" },
+  ];
+  const allAlbums = [
+    { id: "rome", isSmart: false, rules: null, folderId: "italy" },
+  ];
+
+  it("returns null when the folder is missing", async () => {
+    const db = {
+      folder: { findMany: async () => allFolders },
+      album: { findMany: async () => allAlbums },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    expect(await listFolderPhotos("ghost", { limit: 10, offset: 0 }, db as never)).toBeNull();
+  });
+
+  it("aggregates descendant albums and returns a page", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      { id: "p1", path: "p1.jpg", source: "filesystem", takenAt: new Date("2024-01-01T00:00:00.000Z"),
+        width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null, edits: null,
+        isFavorite: false, createdAt: new Date("2024-01-01T00:00:00.000Z"), updatedAt: new Date("2024-01-01T00:00:00.000Z") },
+    ]);
+    const db = {
+      folder: { findMany: async () => allFolders },
+      album: { findMany: async () => allAlbums },
+      albumPhoto: {},
+      photo: { findMany, count: async () => 1 },
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    const page = await listFolderPhotos("europe", { limit: 10, offset: 0 }, db as never);
+    expect(page!.total).toBe(1);
+    expect(page!.items.map((p) => p.id)).toEqual(["p1"]);
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      OR: [{ albums: { some: { albumId: { in: ["rome"] } } } }],
+    });
   });
 });
