@@ -201,6 +201,26 @@ describe("downloadRequestSchema", () => {
   });
 });
 
+describe("photoEditsSchema color fields", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+
+  it("accepts in-range color fields", () => {
+    const r = photoEditsSchema.safeParse({ ...base, brightness: 50, hue: 90, vignette: 100 });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects out-of-range color fields", () => {
+    expect(photoEditsSchema.safeParse({ ...base, brightness: 999 }).success).toBe(false);
+    expect(photoEditsSchema.safeParse({ ...base, hue: 360 }).success).toBe(false);
+    expect(photoEditsSchema.safeParse({ ...base, vignette: -1 }).success).toBe(false);
+  });
+
+  it("preserves color fields through parse (does not strip them)", () => {
+    const r = photoEditsSchema.parse({ ...base, contrast: -20 });
+    expect(r.contrast).toBe(-20);
+  });
+});
+
 describe("photoEditsSchema (crop & straighten)", () => {
   const base = { rotate: 0, flipH: false, flipV: false } as const;
 

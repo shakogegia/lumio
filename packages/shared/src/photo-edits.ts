@@ -1,14 +1,22 @@
 import type { CropRect, PhotoEdits } from "./types.js";
 import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
+import { COLOR_FIELDS, hasColor } from "./photo-color.js";
 
 export const NO_EDITS: PhotoEdits = { rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null };
 
-/** True when the recipe changes the image (non-null and not the identity). */
-export function hasEdits(e: PhotoEdits | null): boolean {
+/** True when the recipe applies any geometry change (flip/rotate/straighten/crop). */
+export function hasGeometry(e: PhotoEdits | null): boolean {
   return (
     e !== null &&
     (e.rotate !== 0 || e.flipH || e.flipV || (e.straighten ?? 0) !== 0 || e.crop != null)
   );
+}
+
+export { hasColor } from "./photo-color.js";
+
+/** True when the recipe changes the image at all (geometry or color). */
+export function hasEdits(e: PhotoEdits | null): boolean {
+  return hasGeometry(e) || hasColor(e);
 }
 
 function sameCrop(a: CropRect | null | undefined, b: CropRect | null | undefined): boolean {
@@ -23,7 +31,8 @@ export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
     a.flipH === b.flipH &&
     a.flipV === b.flipV &&
     (a.straighten ?? 0) === (b.straighten ?? 0) &&
-    sameCrop(a.crop, b.crop)
+    sameCrop(a.crop, b.crop) &&
+    COLOR_FIELDS.every((f) => (a[f.key] ?? 0) === (b[f.key] ?? 0))
   );
 }
 
@@ -145,7 +154,15 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
       ? e.straighten
       : 0;
   const crop = coerceCrop(e.crop);
-  return { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV, straighten, crop };
+  const out: PhotoEdits = { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV, straighten, crop };
+  for (const f of COLOR_FIELDS) {
+    const v = e[f.key];
+    if (typeof v === "number" && Number.isFinite(v)) {
+      const clamped = Math.max(f.min, Math.min(f.max, v));
+      if (clamped !== f.neutral) (out as unknown as Record<string, unknown>)[f.key] = clamped;
+    }
+  }
+  return out;
 }
 
 /**

@@ -7,13 +7,14 @@ import {
   FlipHorizontal,
   FlipVertical,
   Loader2,
+  RefreshCcw,
   RotateCcw,
   RotateCw,
   Undo2,
   Redo2,
   X,
 } from "lucide-react";
-import { hasEdits, type AspectPreset } from "@lumio/shared";
+import { hasEdits, hasColor, COLOR_FIELDS, type AspectPreset } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
@@ -50,6 +51,9 @@ export function LightboxEditPanel() {
     setEditing,
     setStraighten,
     setAspect,
+    setColor,
+    resetTransform,
+    resetColor,
     cropMode,
     enterCropMode,
     doneCropMode,
@@ -87,7 +91,7 @@ export function LightboxEditPanel() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="font-medium">Straighten</p>
+            <p className="font-medium text-muted-foreground">Straighten</p>
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground"
@@ -106,7 +110,7 @@ export function LightboxEditPanel() {
         </div>
 
         <div className="space-y-2">
-          <p className="font-medium">Crop</p>
+          <p className="font-medium text-muted-foreground">Crop</p>
           <div className="flex flex-wrap gap-1.5">
             {ASPECTS.map(({ preset, label }) => {
               const active = preset === "free" ? working.crop == null : false;
@@ -148,7 +152,19 @@ export function LightboxEditPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-medium">Transform</p>
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-muted-foreground">Transform</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset transform"
+            disabled={working.rotate === 0 && !working.flipH && !working.flipV}
+            onClick={resetTransform}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="sm" onClick={rotateLeft}>
             <RotateCcw aria-hidden /> Left
@@ -167,10 +183,54 @@ export function LightboxEditPanel() {
         </div>
       </div>
 
-      <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
-        <Crop aria-hidden /> Crop &amp; Straighten
-        <Kbd className="ml-auto">R</Kbd>
-      </Button>
+      <div className="space-y-2">
+        <p className="font-medium text-muted-foreground">Crop</p>
+        <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
+          <Crop aria-hidden /> Crop &amp; Straighten
+          <Kbd className="ml-auto">R</Kbd>
+        </Button>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-muted-foreground">Adjust</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset adjustments"
+            disabled={!hasColor(working)}
+            onClick={resetColor}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
+        {COLOR_FIELDS.map((f) => {
+          const value = working[f.key] ?? 0;
+          return (
+            <div key={f.key} className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{f.label}</span>
+                <button
+                  type="button"
+                  aria-label={`Reset ${f.label}`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setColor(f.key, f.neutral)}
+                >
+                  {value}
+                </button>
+              </div>
+              <Slider
+                min={f.min}
+                max={f.max}
+                step={f.step}
+                value={[value]}
+                onValueChange={(v) => setColor(f.key, v[0])}
+              />
+            </div>
+          );
+        })}
+      </div>
 
       <div className="mt-auto flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>

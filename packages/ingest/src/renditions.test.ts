@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { buildRenditions } from "./renditions.js";
+import { buildRenditions, encodeEditedJpeg } from "./renditions.js";
 
 // A 4x2 PNG (landscape). No EXIF orientation.
 async function landscape(): Promise<Buffer> {
@@ -66,6 +66,59 @@ describe("buildRenditions crop & straighten", () => {
     }).png().toBuffer();
     const r = await buildRenditions(img, null);
     expect([r.width, r.height]).toEqual([4, 2]);
+  });
+});
+
+describe("buildRenditions color", () => {
+  const grey = () =>
+    sharp({ create: { width: 16, height: 16, channels: 3, background: { r: 100, g: 100, b: 100 } } })
+      .png()
+      .toBuffer();
+
+  it("brightens with a color-only recipe and keeps dimensions", async () => {
+    const base = await buildRenditions(await grey(), null);
+    const bright = await buildRenditions(await grey(), {
+      rotate: 0, flipH: false, flipV: false, brightness: 80,
+    });
+    const m0 = (await sharp(base.display).stats()).channels[0]!.mean;
+    const m1 = (await sharp(bright.display).stats()).channels[0]!.mean;
+    expect(m1).toBeGreaterThan(m0);
+    expect([bright.width, bright.height]).toEqual([16, 16]);
+  });
+
+  it("vignette darkens the corner more than the center", async () => {
+    const white = await sharp({
+      create: { width: 48, height: 48, channels: 3, background: { r: 255, g: 255, b: 255 } },
+    }).png().toBuffer();
+    const r = await buildRenditions(white, { rotate: 0, flipH: false, flipV: false, vignette: 100 });
+    const { data, info } = await sharp(r.display).raw().toBuffer({ resolveWithObject: true });
+    const lum = (x: number, y: number) => data[(y * info.width + x) * info.channels];
+    const corner = lum(0, 0)!;
+    const center = lum(Math.floor(info.width / 2), Math.floor(info.height / 2))!;
+    expect(center).toBeGreaterThan(corner + 20);
+  });
+
+  it("composes geometry and color (crop dims + brighter pixels)", async () => {
+    const img = await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 100, b: 100 } },
+    }).png().toBuffer();
+    const r = await buildRenditions(img, {
+      rotate: 0, flipH: false, flipV: false,
+      crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }, brightness: 80,
+    });
+    expect([r.width, r.height]).toEqual([50, 50]);
+    const mean = (await sharp(r.display).stats()).channels[0]!.mean;
+    expect(mean).toBeGreaterThan(150);
+  });
+
+  it("encodeEditedJpeg applies a color-only recipe", async () => {
+    const plain = await encodeEditedJpeg(await grey(), null);
+    const bright = await encodeEditedJpeg(await grey(), {
+      rotate: 0, flipH: false, flipV: false, brightness: 80,
+    });
+    const m0 = (await sharp(plain).stats()).channels[0]!.mean;
+    const m1 = (await sharp(bright).stats()).channels[0]!.mean;
+    expect(m1).toBeGreaterThan(m0);
   });
 });
 

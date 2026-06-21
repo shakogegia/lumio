@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { centeredAspectCrop, straightenedSize, type CropRect, type PhotoEdits } from "@lumio/shared";
+import {
+  centeredAspectCrop,
+  straightenedSize,
+  colorCssFilter,
+  colorOverlays,
+  type CropRect,
+  type PhotoEdits,
+} from "@lumio/shared";
 import { BaseImageStage } from "./base-image-stage";
 
 /** WYSIWYG render of the working recipe: the edit-free base with flip/rotate/
@@ -75,6 +82,8 @@ export function EditedResult({
     }
     const stageW = bw / effectiveCrop.w;
     const stageH = bh / effectiveCrop.h;
+    const filter = colorCssFilter(working);
+    const overlays = colorOverlays(working);
     inner = (
       <div className="relative overflow-hidden" style={{ width: bw, height: bh }}>
         <div
@@ -84,6 +93,7 @@ export function EditedResult({
             height: stageH,
             left: -effectiveCrop.x * stageW,
             top: -effectiveCrop.y * stageH,
+            filter: filter || undefined,
           }}
         >
           <BaseImageStage
@@ -96,6 +106,14 @@ export function EditedResult({
             }
           />
         </div>
+        {overlays.map((o) => (
+          <div
+            key={o.kind}
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{ background: o.background, mixBlendMode: o.blendMode, opacity: o.opacity }}
+          />
+        ))}
       </div>
     );
   }
