@@ -133,7 +133,7 @@ export function LightboxEditPanel() {
       <div className="flex gap-2">
         <Button size="sm" className="flex-1" disabled={!dirty || applying} onClick={() => void apply()}>
           {applying ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
-          {applying ? "Applying…" : "Apply"}
+          {applying ? "Applying" : "Apply"}
           <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">⌘S</Kbd>
         </Button>
         <Button
