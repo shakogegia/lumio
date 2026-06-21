@@ -21,6 +21,7 @@ import { RefreshStatsButton } from "./refresh-stats-button";
 import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
+import { SoundEffectsForm } from "./sound-effects-form";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export default async function SettingsPage() {
         <TabsList>
           <TabsTrigger value="catalog">Catalog</TabsTrigger>
           <TabsTrigger value="uploads">Uploads</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="danger">Danger zone</TabsTrigger>
         </TabsList>
 
@@ -131,6 +133,20 @@ export default async function SettingsPage() {
             </CardHeader>
             <CardContent>
               <UploadTemplateForm initial={settings.uploadTemplate} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <Card>
+            <CardHeader>
+              <CardTitle>Preferences</CardTitle>
+              <CardDescription>
+                Interface preferences for this Lumio install.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SoundEffectsForm initial={settings.soundEffectsEnabled} />
             </CardContent>
           </Card>
         </TabsContent>
