@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Folder as FolderIcon, Images, Loader2, Trash2 } from "lucide-react";
+import { Download, Images, Loader2, Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -14,7 +14,10 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
+import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { countLabel } from "@/lib/count-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { HeaderBar } from "@/components/header-bar";
@@ -36,23 +39,21 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
+  const [total, setTotal] = useState<number | null>(null);
+  const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
+  // Skeleton holds the subtitle line while the count loads.
+  const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, onTrashed: () => router.refresh() });
-
-  const titleNode = (
-    <span className="flex items-center gap-1.5">
-      <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      {folderName}
-    </span>
-  );
 
   return (
     <>
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title={titleNode}
+          title={folderName}
           count={sel.count}
+          totalLabel={totalLabel}
           onCancel={sel.clear}
           actions={
             <>
@@ -94,7 +95,8 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
         />
       ) : (
         <HeaderBar
-          title={titleNode}
+          title={folderName}
+          subtitle={countSubtitle}
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />
@@ -112,6 +114,7 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl={`/albums/folder/${folderId}/photos`}
       >
+        <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
           <PhotoGrid
             apiRef={gridRef}

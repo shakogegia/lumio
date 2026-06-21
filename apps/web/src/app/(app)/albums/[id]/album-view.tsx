@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, Images, ImageUp, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Download, FolderMinus, Images, ImageUp, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -71,17 +71,6 @@ export function AlbumView({
     onTrashed: () => router.refresh(),
   });
 
-  const titleNode = (
-    <span className="flex items-center gap-1.5">
-      {isSmart ? (
-        <Sparkles className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      ) : (
-        <Images className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      )}
-      {albumName}
-    </span>
-  );
-
   function handleCancel() {
     setRemoveError(null);
     sel.clear();
@@ -126,7 +115,7 @@ export function AlbumView({
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title={titleNode}
+          title={albumName}
           count={sel.count}
           totalLabel={totalLabel}
           onCancel={handleCancel}
@@ -195,7 +184,7 @@ export function AlbumView({
         />
       ) : (
         <HeaderBar
-          title={titleNode}
+          title={albumName}
           subtitle={countSubtitle}
           actions={
             <>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AlbumSummaryDTO, FolderDTO } from "@lumio/shared";
-import { buildAlbumPickerRows, buildFolderPickerRows } from "./library-tree-rows.js";
+import { buildAlbumPickerRows, buildAlbumTree, buildFolderPickerRows } from "./library-tree-rows.js";
 
 function folder(id: string, name: string, parentId: string | null = null): FolderDTO {
   return { id, name, parentId, createdAt: "", updatedAt: "" };
@@ -73,6 +73,26 @@ describe("buildAlbumPickerRows", () => {
     expect(rows.some((r) => r.kind === "album" && r.album.id === "rome")).toBe(false);
     // Italy still shows because Milan remains.
     expect(rows.some((r) => r.kind === "folder" && r.id === "italy")).toBe(true);
+  });
+});
+
+describe("buildAlbumTree", () => {
+  it("nests albums under their folders, pruning empty branches and smart albums", () => {
+    const tree = buildAlbumTree(FOLDERS, ALBUMS);
+    expect(tree.albums.map((a) => a.id)).toEqual(["top"]); // top-level album only
+    expect(tree.folders.map((f) => f.id)).toEqual(["europe"]); // France/Empty pruned
+    const europe = tree.folders[0];
+    expect(europe.albums).toEqual([]); // Europe has no direct albums
+    expect(europe.folders.map((f) => f.id)).toEqual(["italy"]); // France pruned (no albums)
+    const italy = europe.folders[0];
+    expect(italy.albums.map((a) => a.id)).toEqual(["milan", "rome"]); // sorted by name
+    expect(italy.folders).toEqual([]);
+  });
+
+  it("keeps empty folders + smart albums when requested", () => {
+    const tree = buildAlbumTree(FOLDERS, ALBUMS, { includeSmart: true, includeEmptyFolders: true });
+    expect(tree.albums.map((a) => a.id).sort()).toEqual(["smart", "top"]);
+    expect(tree.folders.map((f) => f.id)).toEqual(["empty", "europe"]);
   });
 });
 
