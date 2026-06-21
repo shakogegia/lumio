@@ -15,6 +15,7 @@ const baseRow = {
   fileSize: 12345,
   fileMtimeMs: 1710408413000.5,
   fileModifiedAt: new Date("2024-01-20T08:00:00.000Z"),
+  fileCreatedAt: new Date("2024-01-18T08:00:00.000Z"),
   exif: { cameraMake: "Lumio" },
   colorLabel: null,
   isFavorite: false,
@@ -31,6 +32,7 @@ describe("toPhotoDTO", () => {
     expect(dto.source).toBe(PhotoSource.filesystem);
     expect(dto.takenAt).toBe("2024-01-15T12:00:00.000Z");
     expect(dto.fileModifiedAt).toBe("2024-01-20T08:00:00.000Z");
+    expect(dto.fileCreatedAt).toBe("2024-01-18T08:00:00.000Z");
     expect(dto.createdAt).toBe("2024-02-01T00:00:00.000Z");
     expect(dto.exif).toEqual({ cameraMake: "Lumio" });
     expect(dto.isFavorite).toBe(true);
@@ -88,6 +90,7 @@ describe("toTrashedPhotoDTO", () => {
     expect(dto.createdAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.fileModifiedAt).toBeNull();
+    expect(dto.fileCreatedAt).toBeNull();
   });
 });
 
