@@ -190,6 +190,7 @@ export function usePhotoActions({
         if (!res.ok) throw new Error("add failed");
         // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
         router.refresh();
+        playSound(SoundEffect.ActionComplete);
         opts?.onSuccess?.();
       } catch {
         toast.error("Failed to add photos to the album.");
