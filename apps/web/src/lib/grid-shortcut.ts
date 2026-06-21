@@ -28,17 +28,23 @@ export interface GridShortcutInput {
  * in, so it is fully unit-testable. The thin `GridShortcuts` component supplies
  * these facts and dispatches the returned action.
  */
-export function resolveGridShortcut(i: GridShortcutInput): GridShortcutAction {
-  if (i.lightboxOpen || i.hasModifier || i.repeat || i.inEditable || i.overlayOpen) {
+export function resolveGridShortcut(input: GridShortcutInput): GridShortcutAction {
+  if (
+    input.lightboxOpen ||
+    input.hasModifier ||
+    input.repeat ||
+    input.inEditable ||
+    input.overlayOpen
+  ) {
     return null;
   }
-  switch (i.key.toLowerCase()) {
+  switch (input.key.toLowerCase()) {
     case "f":
-      return i.selectionSize >= 1 ? { kind: "favorite" } : null;
+      return input.selectionSize >= 1 ? { kind: "favorite" } : null;
     case "enter":
-      return i.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Info } : null;
+      return input.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Info } : null;
     case "e":
-      return i.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Edit } : null;
+      return input.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Edit } : null;
     default:
       return null;
   }
