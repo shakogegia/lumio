@@ -1,25 +1,42 @@
 "use client";
 
-import { Images } from "lucide-react";
+import { FolderInput, Images, Pencil, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { MovePickerItems } from "./move-picker-items";
 
 /**
- * One album in the listing grid. Selection is always available: a plain left
- * click toggles the album in the shared selection set (blue ring, no
- * navigation); a double click opens it. ⌘/Ctrl/middle click falls through to the
- * native link, so the album opens in a new tab.
+ * One album in the listing grid. Plain left click toggles selection; double click
+ * opens it; ⌘/Ctrl/middle click falls through to the native link (new tab).
+ * Right click opens a context menu (open / rename / move / delete); move + delete
+ * are selection-aware (resolved by the caller's handlers).
  */
 export function AlbumCard({
   album,
   isSelected,
   onToggle,
   onOpen,
+  onRename,
+  onMove,
+  onDelete,
 }: {
   album: AlbumSummaryDTO;
   isSelected: boolean;
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
+  onRename: (id: string) => void;
+  onMove: (id: string, targetFolderId: string | null) => void;
+  onDelete: (id: string) => void;
 }) {
   const cover = (
     <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-sm bg-muted">
@@ -47,26 +64,53 @@ export function AlbumCard({
   );
 
   return (
-    <a
-      href={`/albums/${album.id}`}
-      onClick={(e) => {
-        // ⌘/Ctrl/middle click opens the album in a new tab; a plain click toggles.
-        if (e.metaKey || e.ctrlKey || e.button !== 0) return;
-        e.preventDefault();
-        onToggle(album.id);
-      }}
-      onDoubleClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        onOpen(album.id);
-      }}
-      className="group block select-none"
-    >
-      <div className="relative rounded-sm">
-        {cover}
-        {isSelected && <SelectionRing className="rounded-sm" />}
-      </div>
-      {meta}
-    </a>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <a
+          href={`/albums/${album.id}`}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.button !== 0) return;
+            e.preventDefault();
+            onToggle(album.id);
+          }}
+          onDoubleClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            onOpen(album.id);
+          }}
+          className="group block select-none"
+        >
+          <div className="relative rounded-sm">
+            {cover}
+            {isSelected && <SelectionRing className="rounded-sm" />}
+          </div>
+          {meta}
+        </a>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onSelect={() => onOpen(album.id)}>
+          <SquareArrowOutUpRight aria-hidden />
+          Open
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onRename(album.id)}>
+          <Pencil aria-hidden />
+          Rename
+        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="gap-2.5">
+            <FolderInput aria-hidden />
+            Move to…
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="max-h-72 w-56 overflow-y-auto">
+            <MovePickerItems Item={ContextMenuItem} onPick={(target) => onMove(album.id, target)} />
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSeparator />
+        <ContextMenuItem variant="destructive" onSelect={() => onDelete(album.id)}>
+          <Trash2 aria-hidden />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

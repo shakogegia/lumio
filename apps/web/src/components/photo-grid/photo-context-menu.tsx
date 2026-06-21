@@ -82,8 +82,13 @@ export function PhotoContextMenu({
             </ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-56">
               <AlbumPickerItems
-                Item={ContextMenuItem}
-                Separator={ContextMenuSeparator}
+                menu={{
+                  Item: ContextMenuItem,
+                  Separator: ContextMenuSeparator,
+                  Sub: ContextMenuSub,
+                  SubTrigger: ContextMenuSubTrigger,
+                  SubContent: ContextMenuSubContent,
+                }}
                 excludeAlbumId={actions.excludeAlbumId}
                 onPick={(albumId) => void actions.addToAlbumDirect(targetIds, albumId)}
                 onCreateNew={() => actions.addToAlbum(targetIds)}

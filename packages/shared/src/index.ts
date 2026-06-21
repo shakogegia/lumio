@@ -6,6 +6,7 @@ export * from "./api.js";
 export * from "./calendar.js";
 export * from "./jobs.js";
 export * from "./albums.js";
+export * from "./folders.js";
 export * from "./uploads.js";
 export * from "./formats.js";
 export * from "./photo-edits.js";

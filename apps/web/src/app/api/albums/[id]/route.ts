@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { setAlbumCoverSchema } from "@lumio/shared";
+import { renameAlbumSchema, setAlbumCoverSchema } from "@lumio/shared";
 import {
   AlbumNotFoundError,
   deleteAlbum,
   getAlbum,
   PhotoNotInAlbumError,
+  renameAlbum,
   setAlbumCover,
   SmartAlbumMutationError,
 } from "@/lib/albums-service";
@@ -28,12 +29,27 @@ export const PATCH = withAuth(
   async (request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const body: unknown = await request.json();
-    const parsed = setAlbumCoverSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+
+    // Rename takes precedence when a `name` is present; otherwise set the cover.
+    const rename = renameAlbumSchema.safeParse(body);
+    if (rename.success) {
+      try {
+        const album = await renameAlbum(id, rename.data.name);
+        return NextResponse.json(album);
+      } catch (err) {
+        if (err instanceof AlbumNotFoundError) {
+          return NextResponse.json({ error: "Album not found" }, { status: 404 });
+        }
+        throw err;
+      }
+    }
+
+    const cover = setAlbumCoverSchema.safeParse(body);
+    if (!cover.success) {
+      return NextResponse.json({ error: cover.error.flatten() }, { status: 400 });
     }
     try {
-      await setAlbumCover(id, parsed.data.coverPhotoId);
+      await setAlbumCover(id, cover.data.coverPhotoId);
       return NextResponse.json({ status: "ok" });
     } catch (err) {
       if (err instanceof AlbumNotFoundError) {

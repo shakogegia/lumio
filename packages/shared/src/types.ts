@@ -58,6 +58,8 @@ export interface AlbumDTO {
   /** The explicitly pinned cover, raw from the row. null = no pin (use derived).
    *  This is the value the album-detail view uses for the "current cover" hint. */
   coverPhotoId: string | null;
+  /** The folder this album lives in (null = top level). Drives folder-nested album pickers. */
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +70,36 @@ export interface AlbumSummaryDTO extends AlbumDTO {
    *  the derived most-recent member. Same field name as AlbumDTO, resolved value —
    *  this is what the album grid card and sidebar render as the thumbnail. */
   coverPhotoId: string | null;
+}
+
+export interface FolderDTO {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FolderSummaryDTO extends FolderDTO {
+  /** Number of DIRECT child folders. */
+  childFolderCount: number;
+  /** Number of albums anywhere in the subtree (recursive). */
+  albumCount: number;
+  /** Deduplicated count of photos across every album in the subtree. */
+  totalPhotoCount: number;
+  /** Up to 4 cover photo ids (canonical order) for the folder-card mosaic. */
+  previewPhotoIds: string[];
+}
+
+export interface FolderContentsDTO {
+  /** The folder being viewed; null at the top level. */
+  folder: FolderDTO | null;
+  /** Ancestor chain from the top-level folder down to (and including) the viewed folder. Empty at top level. */
+  breadcrumbs: FolderDTO[];
+  subfolders: FolderSummaryDTO[];
+  albums: AlbumSummaryDTO[];
+  /** Deduplicated recursive photo count of the viewed folder (for the header subtitle); null at the top level. */
+  currentPhotoCount: number | null;
 }
 
 /** Minimal photo shape for the film strip — just enough to render a thumbnail. */

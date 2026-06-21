@@ -9,6 +9,7 @@ import {
   PhotoNotInAlbumError,
   removePhotoFromAlbum,
   removePhotosFromAlbum,
+  renameAlbum,
   setAlbumCover,
   SmartAlbumMutationError,
 } from "./albums-service.js";
@@ -420,5 +421,26 @@ describe("albumPhotoWhere", () => {
     // Smart albums filter on photo fields, never on album membership.
     expect(where).not.toBeNull();
     expect((where as Record<string, unknown>).albums).toBeUndefined();
+  });
+});
+
+describe("renameAlbum", () => {
+  it("updates the name and returns the DTO", async () => {
+    const update = vi.fn().mockResolvedValue(albumRow({ name: "Renamed" }));
+    const fakeDb = {
+      album: { findUnique: async () => ({ id: "alb1" }), update },
+      albumPhoto: {},
+      photo: {},
+    };
+    const dto = await renameAlbum("alb1", "Renamed", fakeDb as never);
+    expect(dto.name).toBe("Renamed");
+    expect(update).toHaveBeenCalledWith({ where: { id: "alb1" }, data: { name: "Renamed" } });
+  });
+
+  it("throws AlbumNotFoundError when missing", async () => {
+    const fakeDb = { album: { findUnique: async () => null }, albumPhoto: {}, photo: {} };
+    await expect(renameAlbum("missing", "x", fakeDb as never)).rejects.toBeInstanceOf(
+      AlbumNotFoundError,
+    );
   });
 });

@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { listAlbumSummaries } from "@/lib/albums-service";
-import { AlbumsView } from "./albums-view";
+import { listFolderContents } from "@/lib/folders-service";
+import { FolderBrowser } from "./folder-browser";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Albums" };
 
 export default async function AlbumsPage() {
-  const albums = await listAlbumSummaries();
+  const contents = await listFolderContents(null);
 
   return (
     <main className="w-full px-4 pb-6">
-      <AlbumsView albums={albums} />
+      {/* contents is never null for the top level */}
+      <FolderBrowser contents={contents!} />
     </main>
   );
 }

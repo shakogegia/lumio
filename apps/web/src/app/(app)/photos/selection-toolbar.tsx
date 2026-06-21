@@ -12,7 +12,7 @@ export function SelectionToolbar({
   actions,
 }: {
   /** The page title, kept visible while selecting. */
-  title: string;
+  title: React.ReactNode;
   count: number;
   /** Formatted total (e.g. "1,234 photos") shown before the selected tally. */
   totalLabel?: string;
