@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const GET = withAuth(
   async (request, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
-    const wantEdited = new URL(request.url).searchParams.get("edited");
+    const base = new URL(request.url).searchParams.get("base");
     const webp = (file: Buffer) =>
       new NextResponse(new Uint8Array(file), {
         headers: {
@@ -17,11 +17,12 @@ export const GET = withAuth(
         },
       });
     try {
-      if (wantEdited) {
+      if (!base) {
+        // Default: the current image — edited variant if present, else the base.
         try {
           return webp(await readFile(editedDisplayPath(id)));
         } catch {
-          // edited variant missing → fall back to the base
+          // no edited variant → fall through to the base
         }
       }
       return webp(await readFile(displayPath(id)));
