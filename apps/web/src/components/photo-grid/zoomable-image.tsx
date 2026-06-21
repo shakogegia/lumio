@@ -35,7 +35,7 @@ export function ZoomableImage({
   step: (delta: 1 | -1) => void;
   onTrashed: () => void;
 }) {
-  const { working, editing, setBaseSize } = useEditSession();
+  const { working, editing, cropMode, setBaseSize } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
   const displaySrc = displayUrl(photo);
@@ -99,6 +99,15 @@ export function ZoomableImage({
   // Edits snap into place — no transition (no animation in the editor).
   const t = previewTransform(shown.recipe, working);
   const rotated = t.deg === 90 || t.deg === 270;
+
+  // Crop/straighten differ from the displayed (baked) rendition — the rotate/flip
+  // CSS delta can't represent that, so render the edit-base instead.
+  const wc = working.crop ?? null;
+  const sc = shown.recipe.crop ?? null;
+  const cropSame =
+    (!wc && !sc) || (!!wc && !!sc && wc.x === sc.x && wc.y === sc.y && wc.w === sc.w && wc.h === sc.h);
+  const pendingGeom =
+    (working.straighten ?? 0) !== (shown.recipe.straighten ?? 0) || !cropSame;
   // Feed the zoom/pan engine the *previewed* orientation, so a rotated-but-unsaved
   // image still pans and fits correctly (a 90/270 delta swaps width and height).
   // Uses the shown rendition's dimensions — see the double-buffer note above.
@@ -201,8 +210,10 @@ export function ZoomableImage({
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
         style={{ touchAction: "none" }}
       >
-        {editing ? (
-          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} />
+        {cropMode ? (
+          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} interactive />
+        ) : editing && pendingGeom ? (
+          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} interactive={false} />
         ) : (
           <div
             ref={containerRef}
@@ -306,9 +317,11 @@ function NavArrow({
 function EditorCanvas({
   src,
   onBaseSize,
+  interactive,
 }: {
   src: string;
   onBaseSize: (s: { w: number; h: number }) => void;
+  interactive: boolean;
 }) {
   const { working, orientedBase, setCrop } = useEditSession();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -381,6 +394,7 @@ function EditorCanvas({
             deg={theta}
             crop={effectiveCrop}
             ratio={null}
+            interactive={interactive}
             onCommit={(c) => setCrop(c)}
           />
         </div>
