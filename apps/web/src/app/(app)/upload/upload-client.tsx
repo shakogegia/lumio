@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
-import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
@@ -35,10 +35,10 @@ export function UploadClient() {
   const sel = useGridSelection();
   const { columns, setColumns } = useGridColumns();
   const { confirm, confirmDialog } = useConfirm();
+  const album = useAddToAlbum();
 
   const [rows, setRows] = useState<Row[]>([]);
   const [unsupportedCount, setUnsupportedCount] = useState(0);
-  const [albumOpen, setAlbumOpen] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -229,28 +229,6 @@ export function UploadClient() {
     }
   }, [sel, deleting, confirm, router]);
 
-  // Quick-pick path of the add-to-album dropdown: add straight to an existing
-  // album, no dialog. Mirrors usePhotoActions.addToAlbumDirect on /photos.
-  const addToAlbumDirect = useCallback(
-    async (albumId: string) => {
-      const ids = [...sel.selected];
-      if (ids.length === 0) return;
-      try {
-        const res = await fetch(`/api/albums/${albumId}/photos`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: ids }),
-        });
-        if (!res.ok) throw new Error("add failed");
-        // Refresh so album counts/covers stay current (matches AddToAlbumDialog).
-        router.refresh();
-      } catch {
-        toast.error("Failed to add photos to the album.");
-      }
-    },
-    [sel, router],
-  );
-
   const summary = summarizeRows(rows);
   const hasRows = rows.length > 0;
 
@@ -271,8 +249,8 @@ export function UploadClient() {
               />
               <AddToAlbumMenu
                 disabled={sel.count === 0}
-                onPick={(albumId) => void addToAlbumDirect(albumId)}
-                onCreateNew={() => setAlbumOpen(true)}
+                onPick={(albumId) => void album.addToAlbumDirect([...sel.selected], albumId)}
+                onCreateNew={() => album.addToAlbum([...sel.selected])}
               />
               <Button
                 variant="outline"
@@ -345,12 +323,7 @@ export function UploadClient() {
         ) : null}
       </div>
 
-      <AddToAlbumDialog
-        open={albumOpen}
-        onOpenChange={setAlbumOpen}
-        photoIds={[...sel.selected]}
-        onAdded={() => setAlbumOpen(false)}
-      />
+      {album.element}
     </>
   );
 }

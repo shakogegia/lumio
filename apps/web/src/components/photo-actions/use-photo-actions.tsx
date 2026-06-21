@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { useConfirm } from "@/components/confirm-dialog";
-import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
@@ -74,8 +74,9 @@ export function usePhotoActions({
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [favoritePending, setFavoritePending] = useState(false);
-  // Open the add-to-album dialog for a captured id set; `onSuccess` runs on add.
-  const [albumTarget, setAlbumTarget] = useState<{ ids: string[]; onSuccess?: () => void } | null>(null);
+  // Add-to-album (quick-pick + "New album…" dialog) is grid-independent, so it
+  // lives in its own hook shared with the upload page.
+  const album = useAddToAlbum();
 
   const download = useCallback(
     async (ids: string[], opts?: ActionOpts) => {
@@ -173,31 +174,6 @@ export function usePhotoActions({
     [deleting, confirm, trashDescription, gridRef, onTrashed],
   );
 
-  const addToAlbum = useCallback((ids: string[], opts?: ActionOpts) => {
-    if (ids.length === 0) return;
-    setAlbumTarget({ ids, onSuccess: opts?.onSuccess });
-  }, []);
-
-  const addToAlbumDirect = useCallback(
-    async (ids: string[], albumId: string, opts?: ActionOpts) => {
-      if (ids.length === 0) return;
-      try {
-        const res = await fetch(`/api/albums/${albumId}/photos`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: ids }),
-        });
-        if (!res.ok) throw new Error("add failed");
-        // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
-        router.refresh();
-        opts?.onSuccess?.();
-      } catch {
-        toast.error("Failed to add photos to the album.");
-      }
-    },
-    [router],
-  );
-
   const setAlbumCover = useCallback(
     async (photoId: string, opts?: ActionOpts) => {
       if (!albumCover) return;
@@ -223,17 +199,7 @@ export function usePhotoActions({
   const element = (
     <>
       {confirmDialog}
-      <AddToAlbumDialog
-        open={albumTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setAlbumTarget(null);
-        }}
-        photoIds={albumTarget?.ids ?? []}
-        onAdded={() => {
-          albumTarget?.onSuccess?.();
-          setAlbumTarget(null);
-        }}
-      />
+      {album.element}
     </>
   );
 
@@ -242,8 +208,8 @@ export function usePhotoActions({
     applyLabel,
     trash,
     favorite,
-    addToAlbum,
-    addToAlbumDirect,
+    addToAlbum: album.addToAlbum,
+    addToAlbumDirect: album.addToAlbumDirect,
     setAlbumCover,
     excludeAlbumId,
     albumCover,
