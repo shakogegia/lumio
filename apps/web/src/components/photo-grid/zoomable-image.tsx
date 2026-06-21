@@ -21,6 +21,7 @@ import { useZoomPan } from "./use-zoom-pan";
 import { useEditSession } from "./use-edit-session";
 import { LightboxHeader } from "./lightbox-header";
 import { CropOverlay } from "./crop-overlay";
+import { BaseImageStage } from "./base-image-stage";
 
 export function ZoomableImage({
   photo,
@@ -337,20 +338,16 @@ function EditorCanvas({
   }, []);
 
   const theta = working.straighten ?? 0;
-  const sx = working.flipH ? -1 : 1;
-  const sy = working.flipV ? -1 : 1;
 
   // Geometry, once the base natural size and viewport are both known.
-  let layout: null | { stageW: number; stageH: number; oW: number; oH: number; imgW: number; imgH: number } = null;
+  let layout: null | { stageW: number; stageH: number } = null;
   if (orientedBase && vp.w > 0 && vp.h > 0) {
     const pad = 32;
     const k0 = Math.min((vp.w - pad) / orientedBase.w, (vp.h - pad) / orientedBase.h);
     const oW = orientedBase.w * k0;
     const oH = orientedBase.h * k0;
     const s = straightenedSize(oW, oH, theta);
-    const swap = working.rotate === 90 || working.rotate === 270;
-    // The base img is sized so that after a 90/270 CSS rotate it exactly fills the O-box.
-    layout = { stageW: s.w, stageH: s.h, oW, oH, imgW: swap ? oH : oW, imgH: swap ? oW : oH };
+    layout = { stageW: s.w, stageH: s.h };
   }
 
   // Effective crop for display: an explicit crop, or the auto-fill inscribed crop
@@ -366,26 +363,15 @@ function EditorCanvas({
     <div ref={wrapRef} className="relative flex h-full w-full items-center justify-center overflow-hidden">
       {layout && (
         <div className="absolute" style={{ width: layout.stageW, height: layout.stageH }}>
-          {/* O-box: holds the base image, tilted by the straighten angle */}
-          <div
-            className="absolute left-1/2 top-1/2"
-            style={{ width: layout.oW, height: layout.oH, transform: `translate(-50%, -50%) rotate(${theta}deg)` }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt=""
-              draggable={false}
-              onLoad={(e) => onBaseSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-              className="absolute left-1/2 top-1/2 max-w-none select-none"
-              style={{
-                width: layout.imgW,
-                height: layout.imgH,
-                transform: `translate(-50%, -50%) rotate(${working.rotate}deg) scaleX(${sx}) scaleY(${sy})`,
-                transformOrigin: "center center",
-              }}
-            />
-          </div>
+          <BaseImageStage
+            src={src}
+            stageW={layout.stageW}
+            orientedBase={orientedBase!}
+            working={working}
+            onLoad={(e) =>
+              onBaseSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
+            }
+          />
           <CropOverlay
             stageW={layout.stageW}
             stageH={layout.stageH}
