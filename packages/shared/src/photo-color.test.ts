@@ -50,11 +50,11 @@ describe("photo-color", () => {
   it("colorOverlays: only present fields, with expected shape", () => {
     expect(colorOverlays({ ...base })).toEqual([]);
     const warm = colorOverlays({ ...base, temperature: 100 });
-    expect(warm[0].kind).toBe("temperature");
-    expect(warm[0].opacity).toBeCloseTo(0.5, 3);
+    expect(warm[0]!.kind).toBe("temperature");
+    expect(warm[0]!.opacity).toBeCloseTo(0.5, 3);
     const vig = colorOverlays({ ...base, vignette: 100 });
-    expect(vig[0].kind).toBe("vignette");
-    expect(vig[0].background).toContain("radial-gradient");
+    expect(vig[0]!.kind).toBe("vignette");
+    expect(vig[0]!.background).toContain("radial-gradient");
   });
 
   it("toneLinear: null when neutral, folds gain×contrast", () => {
