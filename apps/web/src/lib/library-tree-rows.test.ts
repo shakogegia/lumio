@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AlbumSummaryDTO, FolderDTO } from "@lumio/shared";
-import { buildAlbumPickerRows, buildAlbumTree, buildFolderPickerRows } from "./library-tree-rows.js";
+import { buildAlbumTree, buildFolderPickerRows } from "./library-tree-rows.js";
 
 function folder(id: string, name: string, parentId: string | null = null): FolderDTO {
   return { id, name, parentId, createdAt: "", updatedAt: "" };
@@ -38,45 +38,14 @@ const ALBUMS = [
   album("smart", "Recent", null, true),
 ];
 
-describe("buildAlbumPickerRows", () => {
-  it("lists top-level albums first, then folders with albums nested + indented", () => {
-    const rows = buildAlbumPickerRows(FOLDERS, ALBUMS);
-    expect(rows).toEqual([
-      { kind: "album", album: ALBUMS[0], depth: 0 }, // Top Album
-      { kind: "folder", id: "europe", name: "Europe", depth: 0 },
-      { kind: "folder", id: "italy", name: "Italy", depth: 1 },
-      { kind: "album", album: ALBUMS.find((a) => a.id === "milan"), depth: 2 },
-      { kind: "album", album: ALBUMS.find((a) => a.id === "rome"), depth: 2 },
-    ]);
-  });
-
-  it("omits smart albums and folders with no pickable album in their subtree", () => {
-    const rows = buildAlbumPickerRows(FOLDERS, ALBUMS);
-    // "France" and "Empty" have no albums → not present; smart album not present.
-    expect(rows.some((r) => r.kind === "folder" && r.id === "france")).toBe(false);
-    expect(rows.some((r) => r.kind === "folder" && r.id === "empty")).toBe(false);
-    expect(rows.some((r) => r.kind === "album" && r.album.id === "smart")).toBe(false);
-  });
-
-  it("includes smart albums and empty folders when requested (sidebar nav tree)", () => {
-    const rows = buildAlbumPickerRows(FOLDERS, ALBUMS, {
-      includeSmart: true,
-      includeEmptyFolders: true,
-    });
-    expect(rows.some((r) => r.kind === "album" && r.album.id === "smart")).toBe(true);
-    expect(rows.some((r) => r.kind === "folder" && r.id === "france")).toBe(true);
-    expect(rows.some((r) => r.kind === "folder" && r.id === "empty")).toBe(true);
-  });
-
-  it("excludes a given albumId", () => {
-    const rows = buildAlbumPickerRows(FOLDERS, ALBUMS, { excludeAlbumId: "rome" });
-    expect(rows.some((r) => r.kind === "album" && r.album.id === "rome")).toBe(false);
-    // Italy still shows because Milan remains.
-    expect(rows.some((r) => r.kind === "folder" && r.id === "italy")).toBe(true);
-  });
-});
-
 describe("buildAlbumTree", () => {
+  it("excludes a given albumId, keeping a folder that still has another album", () => {
+    const tree = buildAlbumTree(FOLDERS, ALBUMS, { excludeAlbumId: "rome" });
+    const italy = tree.folders[0]?.folders[0];
+    expect(italy?.id).toBe("italy");
+    expect(italy?.albums.map((a) => a.id)).toEqual(["milan"]);
+  });
+
   it("nests albums under their folders, pruning empty branches and smart albums", () => {
     const tree = buildAlbumTree(FOLDERS, ALBUMS);
     expect(tree.albums.map((a) => a.id)).toEqual(["top"]); // top-level album only

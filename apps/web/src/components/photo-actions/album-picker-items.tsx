@@ -61,11 +61,11 @@ function FolderSubmenu({
         <span className="truncate">{node.name}</span>
       </SubTrigger>
       <SubContent className="max-h-72 w-56 overflow-y-auto">
-        {node.albums.map((a) => (
-          <AlbumOption key={a.id} album={a} Item={Item} onPick={onPick} />
-        ))}
         {node.folders.map((f) => (
           <FolderSubmenu key={f.id} node={f} menu={menu} onPick={onPick} />
+        ))}
+        {node.albums.map((a) => (
+          <AlbumOption key={a.id} album={a} Item={Item} onPick={onPick} />
         ))}
       </SubContent>
     </Sub>
@@ -104,11 +104,11 @@ export function AlbumPickerItems({
   return (
     <>
       {status && <div className="px-3 py-2 text-sm text-muted-foreground">{status}</div>}
-      {tree.albums.map((a) => (
-        <AlbumOption key={a.id} album={a} Item={Item} onPick={onPick} />
-      ))}
       {tree.folders.map((f) => (
         <FolderSubmenu key={f.id} node={f} menu={menu} onPick={onPick} />
+      ))}
+      {tree.albums.map((a) => (
+        <AlbumOption key={a.id} album={a} Item={Item} onPick={onPick} />
       ))}
       <Separator />
       <Item onSelect={() => onCreateNew()}>
