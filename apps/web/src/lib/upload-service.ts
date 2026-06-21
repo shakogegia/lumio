@@ -52,7 +52,12 @@ export async function handleUpload(input: UploadInput, deps: UploadDeps): Promis
 
   let relPath: string;
   try {
-    relPath = await placeUpload({ bytes: input.bytes, relPath: desired, photosDir: deps.photosDir });
+    relPath = await placeUpload({
+      bytes: input.bytes,
+      relPath: desired,
+      photosDir: deps.photosDir,
+      mtime: date,
+    });
   } catch (err) {
     return { status: "error", message: (err as Error).message };
   }

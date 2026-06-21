@@ -1,4 +1,4 @@
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -73,5 +73,7 @@ describe("handleUpload", () => {
     await expect(access(path.join(photosDir, "2023/2023-05-20/IMG_1.jpg"))).resolves.toBeUndefined();
     await expect(access(path.join(thumbnailsDir, "newid.webp"))).resolves.toBeUndefined();
     await expect(access(path.join(displaysDir, "newid.webp"))).resolves.toBeUndefined();
+    const st = await stat(path.join(photosDir, "2023/2023-05-20/IMG_1.jpg"));
+    expect(Math.round(st.mtimeMs)).toBe(lastModified);
   });
 });
