@@ -13,7 +13,7 @@ import {
   Redo2,
   X,
 } from "lucide-react";
-import { hasEdits, type AspectPreset } from "@lumio/shared";
+import { hasEdits, COLOR_FIELDS, type AspectPreset } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
@@ -50,6 +50,7 @@ export function LightboxEditPanel() {
     setEditing,
     setStraighten,
     setAspect,
+    setColor,
     cropMode,
     enterCropMode,
     doneCropMode,
@@ -163,6 +164,35 @@ export function LightboxEditPanel() {
             <FlipVertical aria-hidden /> Vertical
           </Button>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <p className="font-medium">Adjust</p>
+        {COLOR_FIELDS.map((f) => {
+          const value = working[f.key] ?? 0;
+          return (
+            <div key={f.key} className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span>{f.label}</span>
+                <button
+                  type="button"
+                  aria-label={`Reset ${f.label}`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setColor(f.key, f.neutral)}
+                >
+                  {value}
+                </button>
+              </div>
+              <Slider
+                min={f.min}
+                max={f.max}
+                step={f.step}
+                value={[value]}
+                onValueChange={(v) => setColor(f.key, v[0])}
+              />
+            </div>
+          );
+        })}
       </div>
 
       <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
