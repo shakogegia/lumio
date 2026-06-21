@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildFolderPickerRows } from "@/lib/library-tree-rows";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 
 const INDENT = 16;
 
@@ -76,6 +78,7 @@ export function AddToAlbumDialog({
       if (!res.ok) throw new Error();
       invalidateLibraryTree();
       router.refresh();
+      playSound(SoundEffect.ActionComplete);
       onAdded();
     } catch {
       setError("Album created, but adding the photos failed.");
