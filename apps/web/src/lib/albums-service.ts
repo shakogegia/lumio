@@ -26,15 +26,24 @@ export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryD
         ]);
         return { ...base, photoCount, coverPhotoId: cover?.id ?? null };
       }
-      const [photoCount, cover] = await Promise.all([
-        db.albumPhoto.count({ where: { albumId: a.id } }),
-        db.albumPhoto.findFirst({
+      const photoCount = await db.albumPhoto.count({ where: { albumId: a.id } });
+      let coverPhotoId: string | null = null;
+      if (a.coverPhotoId) {
+        const pinned = await db.albumPhoto.findUnique({
+          where: { albumId_photoId: { albumId: a.id, photoId: a.coverPhotoId } },
+          select: { photoId: true },
+        });
+        if (pinned) coverPhotoId = pinned.photoId;
+      }
+      if (!coverPhotoId) {
+        const cover = await db.albumPhoto.findFirst({
           where: { albumId: a.id },
           orderBy: { photo: { sortDate: "desc" } },
           select: { photoId: true },
-        }),
-      ]);
-      return { ...base, photoCount, coverPhotoId: cover?.photoId ?? null };
+        });
+        coverPhotoId = cover?.photoId ?? null;
+      }
+      return { ...base, photoCount, coverPhotoId };
     }),
   );
 }

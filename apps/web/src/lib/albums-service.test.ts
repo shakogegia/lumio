@@ -16,6 +16,7 @@ function albumRow(overrides: Partial<{
   name: string;
   isSmart: boolean;
   rules: object | null;
+  coverPhotoId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }> = {}) {
@@ -24,6 +25,7 @@ function albumRow(overrides: Partial<{
     name: "Test Album",
     isSmart: false,
     rules: null,
+    coverPhotoId: null,
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
     updatedAt: new Date("2024-01-01T00:00:00.000Z"),
     ...overrides,
@@ -99,6 +101,36 @@ describe("listAlbumSummaries", () => {
     expect(summaries[0]?.isSmart).toBe(true);
     expect(summaries[0]?.photoCount).toBe(2);
     expect(summaries[0]?.coverPhotoId).toBe("pX");
+  });
+});
+
+describe("listAlbumSummaries pinned cover", () => {
+  it("uses the pinned coverPhotoId when it is still a member", async () => {
+    const fakeDb = {
+      album: { findMany: async () => [albumRow({ coverPhotoId: "pinned1" })] },
+      albumPhoto: {
+        count: async () => 5,
+        findUnique: async () => ({ photoId: "pinned1" }),
+        findFirst: async () => ({ photoId: "p9" }),
+      },
+      photo: { count: async () => 0, findFirst: async () => null },
+    };
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries[0]?.coverPhotoId).toBe("pinned1");
+  });
+
+  it("falls back to the derived cover when the pinned photo is no longer a member", async () => {
+    const fakeDb = {
+      album: { findMany: async () => [albumRow({ coverPhotoId: "gone" })] },
+      albumPhoto: {
+        count: async () => 5,
+        findUnique: async () => null,
+        findFirst: async () => ({ photoId: "p9" }),
+      },
+      photo: { count: async () => 0, findFirst: async () => null },
+    };
+    const summaries = await listAlbumSummaries(fakeDb as never);
+    expect(summaries[0]?.coverPhotoId).toBe("p9");
   });
 });
 
