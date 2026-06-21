@@ -4,7 +4,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "r
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { rowCount, GRID_GAP, DEFAULT_COLUMNS, PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
-import { computeSelection } from "@/lib/grid-selection";
+import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
 import type { PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import {
@@ -35,6 +35,8 @@ const PHOTOS_EMPTY = (
 );
 
 const OVERSCAN_ROWS = 3;
+
+const EMPTY_SELECTION: Set<string> = new Set();
 
 export type PhotoGridHandle = {
   /** Merge `patch` into every loaded photo whose id is in `ids` (e.g. a new colorLabel). */
@@ -67,28 +69,6 @@ export function PhotoGrid({
   } = usePhotoCollection();
   useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos, getPhotos }), [patchPhotos, removePhotos, getPhotos]);
 
-  // Index of the last plain-clicked tile, used as the shift-range anchor.
-  const anchorRef = useRef<number | null>(null);
-
-  function handleTileClick(index: number, e: React.MouseEvent) {
-    if (!onSelectionChange) return;
-    // ⌘ (Mac) or Ctrl (Windows/Linux) makes the click a multi-select toggle.
-    const toggle = e.metaKey || e.ctrlKey;
-    // getLoadedIds() is sparse (holes for unloaded indices); computeSelection
-    // skips holes, so a shift-range across an unloaded gap selects only loaded ids.
-    const next = computeSelection(
-      selectedIds ?? new Set<string>(),
-      getLoadedIds(),
-      index,
-      { shift: e.shiftKey, toggle },
-      anchorRef.current,
-    );
-    // Shift extends from the anchor; every other click (plain or ⌘/Ctrl) becomes
-    // the new anchor for a subsequent shift-range.
-    if (!e.shiftKey) anchorRef.current = index;
-    onSelectionChange(next);
-  }
-
   // After a menu-driven trash, drop the trashed ids from the selection so the
   // toolbar count can't go stale. (Toolbar trash clears the whole selection
   // itself; this covers the per-photo menu path.)
@@ -104,14 +84,6 @@ export function PhotoGrid({
     },
     [onSelectionChange, selectedIds],
   );
-
-  // Reset the shift-range anchor whenever the selection empties (Escape, the
-  // toolbar's clear, or a bulk action) so the next shift-click ranges from a
-  // fresh plain click instead of a stale index.
-  const selectedCount = selectedIds?.size ?? 0;
-  useEffect(() => {
-    if (selectedCount === 0) anchorRef.current = null;
-  }, [selectedCount]);
 
   const [width, setWidth] = useState(0);
   const [offsetTop, setOffsetTop] = useState(0);
@@ -144,6 +116,16 @@ export function PhotoGrid({
     estimateSize: () => tileSize + GRID_GAP,
     overscan: OVERSCAN_ROWS,
     scrollMargin: offsetTop,
+  });
+
+  const { handleItemClick } = useGridSelectionNav({
+    count: total ?? 0,
+    columns,
+    idAt: (i) => photoAt(i)?.id,
+    getClickIds: getLoadedIds,
+    selectedIds: selectedIds ?? EMPTY_SELECTION,
+    onSelectionChange,
+    scrollToIndex: (i) => virtualizer.scrollToIndex(Math.floor(i / columns)),
   });
 
   useEffect(() => {
@@ -220,7 +202,7 @@ export function PhotoGrid({
                     onOpen={enableLightbox ? open : undefined}
                     urlForId={urlForId}
                     isSelected={selectedIds?.has(photo.id) ?? false}
-                    onTileClick={handleTileClick}
+                    onTileClick={handleItemClick}
                     selectedIds={selectedIds}
                     onTrash={handleTilesTrashed}
                   />
