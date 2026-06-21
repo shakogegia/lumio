@@ -24,24 +24,26 @@ enum ColorLabel {
 }
 
 model Photo {
-  id          String       @id @default(cuid())
-  path        String       @unique
-  source      PhotoSource
-  takenAt     DateTime?
-  sortDate    DateTime     @default(now())
-  width       Int
-  height      Int
-  hash        String?
-  thumbhash   String?
-  fileSize    Int? // bytes from fs.stat; nullable so existing rows migrate cleanly
-  fileMtimeMs Float? // mtimeMs from fs.stat (fractional ms) — change-detection signal
-  exif        Json
-  colorLabel  ColorLabel?
-  edits       Json? // PhotoEdits recipe; null = unedited
-  isFavorite  Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  albums      AlbumPhoto[]
+  id             String       @id @default(cuid())
+  path           String       @unique
+  source         PhotoSource
+  takenAt        DateTime?
+  sortDate       DateTime     @default(now())
+  width          Int
+  height         Int
+  hash           String?
+  thumbhash      String?
+  fileSize       Int // bytes from fs.stat
+  fileMtimeMs    Float // mtimeMs from fs.stat (fractional ms) — exact change-detection fingerprint
+  fileModifiedAt DateTime // readable mirror of fileMtimeMs; feeds sortDate's fallback chain
+  fileCreatedAt  DateTime // birthtime mirror; the other input to sortDate's earliest() fallback
+  exif           Json
+  colorLabel     ColorLabel?
+  edits          Json? // PhotoEdits recipe; null = unedited
+  isFavorite     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  albums         AlbumPhoto[]
 
   @@index([sortDate, id])
   @@index([createdAt, id])

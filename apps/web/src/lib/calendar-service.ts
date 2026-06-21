@@ -14,7 +14,7 @@ interface YearAcc {
  * the calendar month-filter flyout. Pulls the scope's photos as minimal
  * {id, sortDate} rows newest-first and buckets them in memory: the first id seen
  * for a (year, month) is that month's cover (it is the newest), and the running
- * tally is the count. Grouping is by `sortDate` (takenAt ?? import time) in UTC,
+ * tally is the count. Grouping is by `sortDate` (takenAt ?? earliest file created/modified date) in UTC,
  * so results are deterministic regardless of server timezone.
  *
  * Scope-agnostic by design: callers pass the same `where` the list endpoints use

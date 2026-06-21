@@ -10,6 +10,7 @@ export interface StoreInput {
   processed: ProcessedPhoto;
   fileSize: number; // bytes, from fs.stat
   fileMtimeMs: number; // mtimeMs, from fs.stat
+  fileBirthtimeMs: number; // birthtimeMs, from fs.stat
 }
 
 export interface StoreDeps {
@@ -26,7 +27,12 @@ export async function storePhoto(
   input: StoreInput,
   deps: StoreDeps,
 ): Promise<{ id: string }> {
-  const { path: relPath, source, processed, fileSize, fileMtimeMs } = input;
+  const { path: relPath, source, processed, fileSize, fileMtimeMs, fileBirthtimeMs } = input;
+
+  // Readable mirrors of the raw stat stamps. mtime and birthtime are both
+  // POSIX-provided numbers, so these are always valid Dates.
+  const fileModifiedAt = new Date(fileMtimeMs);
+  const fileCreatedAt = new Date(fileBirthtimeMs);
 
   // `source` records how a photo first entered the system (provenance), so it
   // is set on create only. Re-ingestion of the same path — e.g. the filesystem
@@ -34,7 +40,15 @@ export async function storePhoto(
   // source back to `filesystem`.
   const data = {
     takenAt: processed.takenAt,
-    sortDate: processed.takenAt ?? new Date(),
+    // Chronology for the "Date taken" sort: the EXIF capture date when present,
+    // otherwise the EARLIEST of the file's created/modified dates — the best
+    // lower-bound proxy for when the photo actually happened (a download keeps
+    // its server mtime; an edited screenshot keeps its birthtime). Both file
+    // dates are always set, so there is no import-time floor. A genuine
+    // re-import re-derives this; the content-unchanged restamp path leaves
+    // `sortDate` alone (see scan.ts).
+    sortDate:
+      processed.takenAt ?? (fileCreatedAt < fileModifiedAt ? fileCreatedAt : fileModifiedAt),
     width: processed.width,
     height: processed.height,
     hash: processed.hash,
@@ -42,6 +56,8 @@ export async function storePhoto(
     exif: processed.exif as object,
     fileSize,
     fileMtimeMs,
+    fileModifiedAt,
+    fileCreatedAt,
   };
 
   const row = await deps.db.photo.upsert({

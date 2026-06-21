@@ -136,7 +136,7 @@ describe("restorePhotos", () => {
     await writeFile(path.join(trashDir, "thumbnails", "a.webp"), "thumb");
     await writeFile(path.join(trashDir, "displays", "a.webp"), "display");
 
-    let createArgs: { data: { id: string; path: string; colorLabel: unknown; albums: { create: { albumId: string }[] } } } | null = null;
+    let createArgs: { data: { id: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } } } | null = null;
     const db = {
       trashedPhoto: {
         findUnique: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
@@ -158,6 +158,9 @@ describe("restorePhotos", () => {
     expect(createArgs!.data.path).toBe("a.jpg");
     expect(createArgs!.data.colorLabel).toBe("blue");
     expect(createArgs!.data.albums.create).toEqual([{ albumId: "keep" }]);
+    expect(createArgs!.data.fileSize).toBe(4); // "orig" is 4 bytes
+    expect(createArgs!.data.fileModifiedAt).toBeInstanceOf(Date);
+    expect(createArgs!.data.fileCreatedAt).toBeInstanceOf(Date);
     expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(true);
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(true);
     expect(db.trashedPhoto.delete).toHaveBeenCalledWith({ where: { id: "a" } });

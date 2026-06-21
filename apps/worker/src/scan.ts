@@ -47,7 +47,7 @@ export type ScanPlan = "new" | "skip" | "heal" | "check-hash";
  *    from a backup/sync that only touched the timestamp)
  */
 export function planScan(
-  row: { fileSize: number | null; fileMtimeMs: number | null } | undefined,
+  row: { fileSize: number; fileMtimeMs: number } | undefined,
   st: { size: number; mtimeMs: number },
   cacheExists: boolean,
 ): ScanPlan {
@@ -91,8 +91,8 @@ export const SCAN_SELECT = {
 export interface ScanRow {
   id: string;
   path: string;
-  fileSize: number | null;
-  fileMtimeMs: number | null;
+  fileSize: number;
+  fileMtimeMs: number;
   hash: string | null;
   edits: unknown;
 }
@@ -110,14 +110,24 @@ async function heal(row: ScanRow, absPath: string): Promise<void> {
 }
 
 /**
- * Record the current size+mtime so an unchanged file isn't re-hashed next scan.
+ * Record the current size + file dates so an unchanged file isn't re-hashed next scan.
  * Uses a raw UPDATE so it does NOT bump `updatedAt` — restamping a file whose
  * pixels never changed must stay invisible to the rendition cache-bust URL,
- * which keys off `updatedAt`.
+ * which keys off `updatedAt`. It updates the file-date columns to track the
+ * touched file but deliberately leaves `sortDate` untouched — a touch that
+ * doesn't change pixels must not reorder the photo.
  */
-async function refreshStamp(id: string, st: { size: number; mtimeMs: number }): Promise<void> {
+async function refreshStamp(
+  id: string,
+  st: { size: number; mtimeMs: number; birthtimeMs: number },
+): Promise<void> {
   await prisma.$executeRaw`
-    UPDATE "Photo" SET "fileSize" = ${st.size}, "fileMtimeMs" = ${st.mtimeMs} WHERE "id" = ${id}
+    UPDATE "Photo"
+    SET "fileSize" = ${st.size},
+        "fileMtimeMs" = ${st.mtimeMs},
+        "fileModifiedAt" = ${new Date(st.mtimeMs)},
+        "fileCreatedAt" = ${new Date(st.birthtimeMs)}
+    WHERE "id" = ${id}
   `;
 }
 

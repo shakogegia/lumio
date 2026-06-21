@@ -7,6 +7,7 @@ export interface PhotoCursor {
   id: string;
   sortDate: Date;
   createdAt: Date;
+  fileCreatedAt: Date;
 }
 
 type LocateDb = Pick<PrismaClient, "photo" | "album">;
@@ -21,10 +22,11 @@ export function beforeCursorWhere(
   sort: PhotoSort | undefined,
   cursor: PhotoCursor,
 ): Prisma.PhotoWhereInput {
+  const fileCreated = sort === "file-created-desc" || sort === "file-created-asc";
   const imported = sort === "imported-desc" || sort === "imported-asc";
-  const field = imported ? "createdAt" : "sortDate";
-  const value = imported ? cursor.createdAt : cursor.sortDate;
-  const asc = sort === "taken-asc" || sort === "imported-asc";
+  const field = fileCreated ? "fileCreatedAt" : imported ? "createdAt" : "sortDate";
+  const value = fileCreated ? cursor.fileCreatedAt : imported ? cursor.createdAt : cursor.sortDate;
+  const asc = sort === "taken-asc" || sort === "imported-asc" || sort === "file-created-asc";
   const dateBefore = asc ? { lt: value } : { gt: value };
   const idBefore = asc ? { lt: cursor.id } : { gt: cursor.id };
   // Computed key defeats TS narrowing; `field` is always a valid PhotoWhereInput key.
@@ -56,7 +58,7 @@ export async function locatePhoto(
 ): Promise<number | null> {
   const row = await db.photo.findUnique({
     where: { id },
-    select: { id: true, sortDate: true, createdAt: true },
+    select: { id: true, sortDate: true, createdAt: true, fileCreatedAt: true },
   });
   if (!row) return null;
   const scopeWhere = await scopeWhereFor(scope, db);

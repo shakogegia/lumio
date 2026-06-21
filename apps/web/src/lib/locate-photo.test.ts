@@ -5,6 +5,7 @@ const cursor = {
   id: "p5",
   sortDate: new Date("2024-03-01T00:00:00.000Z"),
   createdAt: new Date("2024-05-01T00:00:00.000Z"),
+  fileCreatedAt: new Date("2024-01-15T00:00:00.000Z"),
 };
 
 describe("beforeCursorWhere", () => {
@@ -40,6 +41,24 @@ describe("beforeCursorWhere", () => {
       OR: [
         { createdAt: { lt: cursor.createdAt } },
         { AND: [{ createdAt: cursor.createdAt }, { id: { lt: "p5" } }] },
+      ],
+    });
+  });
+
+  it("file-created-desc: keys on fileCreatedAt", () => {
+    expect(beforeCursorWhere("file-created-desc", cursor)).toEqual({
+      OR: [
+        { fileCreatedAt: { gt: cursor.fileCreatedAt } },
+        { AND: [{ fileCreatedAt: cursor.fileCreatedAt }, { id: { gt: "p5" } }] },
+      ],
+    });
+  });
+
+  it("file-created-asc: keys on fileCreatedAt, directions flipped", () => {
+    expect(beforeCursorWhere("file-created-asc", cursor)).toEqual({
+      OR: [
+        { fileCreatedAt: { lt: cursor.fileCreatedAt } },
+        { AND: [{ fileCreatedAt: cursor.fileCreatedAt }, { id: { lt: "p5" } }] },
       ],
     });
   });

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, utimes, writeFile } from "node:fs/promises";
 import { access } from "node:fs/promises";
 import path from "node:path";
 
@@ -16,6 +16,9 @@ export interface PlaceUploadInput {
   /** POSIX-style relative path under photosDir (e.g. "2024/2024-03-14/IMG.jpg"). */
   relPath: string;
   photosDir: string;
+  /** When set, the written file's atime/mtime are set to this. Uploads pass the
+   *  original source date so the photo sorts by its real date, not the write moment. */
+  mtime?: Date;
 }
 
 /**
@@ -24,7 +27,7 @@ export interface PlaceUploadInput {
  * final relative path actually written. Blocks path traversal.
  */
 export async function placeUpload(input: PlaceUploadInput): Promise<string> {
-  const { bytes, relPath, photosDir } = input;
+  const { bytes, relPath, photosDir, mtime } = input;
   const resolvedRoot = path.resolve(photosDir);
   const desired = path.resolve(resolvedRoot, relPath);
   if (desired !== resolvedRoot && !desired.startsWith(resolvedRoot + path.sep)) {
@@ -44,5 +47,6 @@ export async function placeUpload(input: PlaceUploadInput): Promise<string> {
 
   await mkdir(path.dirname(candidate), { recursive: true });
   await writeFile(candidate, bytes);
+  if (mtime) await utimes(candidate, mtime, mtime);
   return path.relative(resolvedRoot, candidate).split(path.sep).join("/");
 }

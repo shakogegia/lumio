@@ -36,9 +36,6 @@ describe("planScan", () => {
     expect(planScan({ fileSize: 100, fileMtimeMs: 1 }, st, true)).toBe("check-hash");
   });
 
-  it("is 'check-hash' for a legacy row with null stats", () => {
-    expect(planScan({ fileSize: null, fileMtimeMs: null }, st, true)).toBe("check-hash");
-  });
 });
 
 describe("planAfterHash", () => {

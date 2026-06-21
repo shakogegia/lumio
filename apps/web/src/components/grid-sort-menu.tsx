@@ -15,7 +15,7 @@ import {
 
 /**
  * Header control to pick the photo sort. Mirrors GridViewMenu: an icon-button
- * trigger opening a radio group, grouped into Date taken / Date imported with
+ * trigger opening a radio group, grouped into Date taken / Date imported / File created with
  * newest- and oldest-first under each. The active value is checked.
  */
 export function GridSortMenu({
@@ -48,6 +48,10 @@ export function GridSortMenu({
           <DropdownMenuLabel>Date imported</DropdownMenuLabel>
           <DropdownMenuRadioItem value="imported-desc">Newest first</DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="imported-asc">Oldest first</DropdownMenuRadioItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>File created</DropdownMenuLabel>
+          <DropdownMenuRadioItem value="file-created-desc">Newest first</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="file-created-asc">Oldest first</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

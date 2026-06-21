@@ -2,12 +2,14 @@ import { z } from "zod";
 import { colorLabelSchema } from "./color-labels.js";
 import type { PhotoDTO } from "./types.js";
 
-/** The four photo sort orderings, single source of truth. */
+/** The six photo sort orderings, single source of truth. */
 export const PHOTO_SORTS = [
   "taken-desc",
   "taken-asc",
   "imported-desc",
   "imported-asc",
+  "file-created-desc",
+  "file-created-asc",
 ] as const;
 
 export type PhotoSort = (typeof PHOTO_SORTS)[number];
