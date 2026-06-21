@@ -133,6 +133,8 @@ export class SmartAlbumMutationError extends Error {}
 
 export class AlbumNotFoundError extends Error {}
 
+export class PhotoNotInAlbumError extends Error {}
+
 export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
   await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
 }
@@ -150,6 +152,23 @@ export async function addPhotosToAlbum(
     skipDuplicates: true,
   });
   return result.count;
+}
+
+/**
+ * Pin `photoId` as the album's cover. Regular albums only; the photo must already
+ * be a member. The pin is honored by `listAlbumSummaries` only while the photo
+ * stays a member (see the membership check there) and is eager-cleared on removal.
+ */
+export async function setAlbumCover(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+  if (!album) throw new AlbumNotFoundError();
+  if (album.isSmart) throw new SmartAlbumMutationError("cannot set a cover on a smart album");
+  const member = await db.albumPhoto.findUnique({
+    where: { albumId_photoId: { albumId, photoId } },
+    select: { photoId: true },
+  });
+  if (!member) throw new PhotoNotInAlbumError();
+  await db.album.update({ where: { id: albumId }, data: { coverPhotoId: photoId } });
 }
 
 export async function removePhotosFromAlbum(

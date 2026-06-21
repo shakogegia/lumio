@@ -6,7 +6,9 @@ import {
   deleteAlbums,
   listAlbumPhotos,
   listAlbumSummaries,
+  PhotoNotInAlbumError,
   removePhotosFromAlbum,
+  setAlbumCover,
   SmartAlbumMutationError,
 } from "./albums-service.js";
 
@@ -254,6 +256,55 @@ describe("addPhotosToAlbum", () => {
     await expect(
       addPhotosToAlbum("missing", ["p1"], fakeDb as never),
     ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+});
+
+describe("setAlbumCover", () => {
+  it("updates the album's coverPhotoId when the photo is a member", async () => {
+    const update = vi.fn().mockResolvedValue({});
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), update },
+      albumPhoto: { findUnique: async () => ({ photoId: "p1" }) },
+      photo: {},
+    };
+    await setAlbumCover("alb1", "p1", fakeDb as never);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "alb1" },
+      data: { coverPhotoId: "p1" },
+    });
+  });
+
+  it("throws AlbumNotFoundError when the album does not exist", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => null, update: vi.fn() },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("missing", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+
+  it("throws SmartAlbumMutationError for smart albums", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: true }), update: vi.fn() },
+      albumPhoto: {},
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("alb1", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(SmartAlbumMutationError);
+  });
+
+  it("throws PhotoNotInAlbumError when the photo is not a member", async () => {
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), update: vi.fn() },
+      albumPhoto: { findUnique: async () => null },
+      photo: {},
+    };
+    await expect(
+      setAlbumCover("alb1", "p1", fakeDb as never),
+    ).rejects.toBeInstanceOf(PhotoNotInAlbumError);
   });
 });
 
