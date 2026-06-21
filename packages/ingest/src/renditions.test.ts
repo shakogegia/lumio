@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { buildRenditions } from "./renditions.js";
+import { buildRenditions, buildEditBase } from "./renditions.js";
 
 // A 4x2 PNG (landscape). No EXIF orientation.
 async function landscape(): Promise<Buffer> {
@@ -66,5 +66,17 @@ describe("buildRenditions crop & straighten", () => {
     }).png().toBuffer();
     const r = await buildRenditions(img, null);
     expect([r.width, r.height]).toEqual([4, 2]);
+  });
+});
+
+describe("buildEditBase", () => {
+  it("returns an EXIF-oriented, edit-free WebP at the natural aspect", async () => {
+    const img = await sharp({
+      create: { width: 40, height: 20, channels: 3, background: { r: 5, g: 6, b: 7 } },
+    }).png().toBuffer();
+    const out = await buildEditBase(img);
+    const meta = await sharp(out).metadata();
+    expect(meta.format).toBe("webp");
+    expect((meta.width ?? 0) / (meta.height ?? 1)).toBeCloseTo(2, 2);
   });
 });
