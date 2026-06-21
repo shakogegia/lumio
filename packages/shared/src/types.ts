@@ -94,6 +94,8 @@ export interface FolderContentsDTO {
   breadcrumbs: FolderDTO[];
   subfolders: FolderSummaryDTO[];
   albums: AlbumSummaryDTO[];
+  /** Deduplicated recursive photo count of the viewed folder (for the header subtitle); null at the top level. */
+  currentPhotoCount: number | null;
 }
 
 /** Minimal photo shape for the film strip — just enough to render a thumbnail. */

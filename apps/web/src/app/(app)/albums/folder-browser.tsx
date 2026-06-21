@@ -1,18 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Folder as FolderIcon, FolderOpen, FolderInput, Images, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, FolderInput, FolderOpen, Images, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
 import type { FolderContentsDTO } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,16 +20,17 @@ import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useAlbumColumns } from "@/lib/use-album-columns";
 import { ALBUM_DEFAULT_COLUMNS } from "@/lib/grid-layout";
+import { countLabel } from "@/lib/count-label";
 import { useConfirm } from "@/components/confirm-dialog";
 import { partitionAlbums } from "@/lib/partition-albums";
-import { NewAlbumDialog } from "./new-album-dialog";
-import { NewFolderDialog } from "./new-folder-dialog";
+import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
 import { FolderCard } from "./folder-card";
-import { FolderBreadcrumbs } from "./folder-breadcrumbs";
 import { RenameDialog } from "./rename-dialog";
 import { MoveToFolderDialog } from "./move-to-folder-dialog";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
+
+type Targets = { folderIds: string[]; albumIds: string[] };
 
 export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const router = useRouter();
@@ -45,11 +38,11 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const { columns, setColumns } = useAlbumColumns();
   const { confirm, confirmDialog } = useConfirm();
   const [busy, setBusy] = useState(false);
+  const [moveTargets, setMoveTargets] = useState<Targets>({ folderIds: [], albumIds: [] });
   const [moveOpen, setMoveOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Targets | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [dragCount, setDragCount] = useState(0);
   const [rename, setRename] = useState<{ endpoint: string; name: string; label: string } | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const currentFolderId = contents.folder?.id ?? null;
   const { subfolders, albums } = contents;
@@ -58,9 +51,6 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const folderIdSet = new Set(subfolders.map((f) => f.id));
   const selectedFolderIds = [...sel.selected].filter((id) => folderIdSet.has(id));
   const selectedAlbumIds = [...sel.selected].filter((id) => !folderIdSet.has(id));
-  const selectedFolderNonEmpty = subfolders.some(
-    (f) => selectedFolderIds.includes(f.id) && (f.albumCount > 0 || f.childFolderCount > 0),
-  );
 
   function toggle(id: string) {
     sel.setSelected((prev) => {
@@ -76,57 +66,52 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   function openAlbum(id: string) {
     router.push(`/albums/${id}`);
   }
-
-  function onDragStart(e: DragStartEvent) {
-    const id = String(e.active.data.current?.id ?? "");
-    setDragCount(sel.selected.has(id) ? sel.count : 1);
+  function viewFolderPhotos(id: string) {
+    router.push(`/albums/folder/${id}/photos`);
   }
 
-  async function onDragEnd(e: DragEndEvent) {
-    setDragCount(0);
-    const overData = e.over?.data.current as { type: string; id: string | null } | undefined;
-    if (!overData || overData.type !== "folder") return;
-    const target = overData.id; // null = top level (root crumb)
-    const activeId = String(e.active.data.current?.id ?? "");
-    const dragging = sel.selected.has(activeId) ? new Set(sel.selected) : new Set([activeId]);
-    if (target !== null && dragging.has(target)) return; // can't drop a folder onto itself
-    const movingFolderIds = [...dragging].filter((id) => folderIdSet.has(id));
-    const movingAlbumIds = [...dragging].filter((id) => !folderIdSet.has(id));
-    if (movingFolderIds.length === 0 && movingAlbumIds.length === 0) return;
-    try {
-      const res = await fetch("/api/folders/move", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          folderIds: movingFolderIds.length ? movingFolderIds : undefined,
-          albumIds: movingAlbumIds.length ? movingAlbumIds : undefined,
-          targetFolderId: target,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      sel.clear();
-      router.refresh();
-    } catch {
-      toast.error("Failed to move.");
+  /** Selection-aware: act on the whole selection when the item is selected, else just it. */
+  function resolveTargets(id: string): Targets {
+    const ids = sel.selected.has(id) ? [...sel.selected] : [id];
+    return {
+      folderIds: ids.filter((x) => folderIdSet.has(x)),
+      albumIds: ids.filter((x) => !folderIdSet.has(x)),
+    };
+  }
+
+  function startRename(id: string) {
+    const folder = subfolders.find((f) => f.id === id);
+    if (folder) {
+      setRename({ endpoint: `/api/folders/${id}`, name: folder.name, label: "folder" });
+      return;
     }
+    const album = albums.find((a) => a.id === id);
+    if (album) setRename({ endpoint: `/api/albums/${id}`, name: album.name, label: "album" });
   }
 
-  async function performDelete(mode: "reparent" | "cascade") {
+  function openMove(targets: Targets) {
+    if (targets.folderIds.length === 0 && targets.albumIds.length === 0) return;
+    setMoveTargets(targets);
+    setMoveOpen(true);
+  }
+
+  async function performDelete(targets: Targets, mode: "reparent" | "cascade") {
     setBusy(true);
     try {
       await Promise.all([
-        ...selectedFolderIds.map((id) =>
+        ...targets.folderIds.map((id) =>
           fetch(`/api/folders/${id}?mode=${mode}`, { method: "DELETE" }),
         ),
-        selectedAlbumIds.length > 0
+        targets.albumIds.length > 0
           ? fetch("/api/albums", {
               method: "DELETE",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ ids: selectedAlbumIds }),
+              body: JSON.stringify({ ids: targets.albumIds }),
             })
           : Promise.resolve(),
       ]);
       setDeleteOpen(false);
+      setPendingDelete(null);
       sel.clear();
       router.refresh();
     } catch {
@@ -136,23 +121,73 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
     }
   }
 
-  async function handleDelete() {
-    if (busy || sel.count === 0) return;
-    if (selectedFolderNonEmpty) {
+  async function requestDelete(targets: Targets) {
+    if (busy) return;
+    const count = targets.folderIds.length + targets.albumIds.length;
+    if (count === 0) return;
+    // A non-empty folder needs the keep/delete-contents/cancel choice (custom dialog).
+    const nonEmptyFolder = targets.folderIds.some((id) => {
+      const f = subfolders.find((x) => x.id === id);
+      return !!f && (f.albumCount > 0 || f.childFolderCount > 0);
+    });
+    if (nonEmptyFolder) {
+      setPendingDelete(targets);
       setDeleteOpen(true);
       return;
     }
     const ok = await confirm({
-      title: `Delete ${sel.count} ${sel.count === 1 ? "item" : "items"}?`,
+      title: `Delete ${count} ${count === 1 ? "item" : "items"}?`,
       description: "This can't be undone. Your photos stay in the library.",
       confirmLabel: "Delete",
       destructive: true,
     });
     if (!ok) return;
-    void performDelete("reparent");
+    void performDelete(targets, "reparent");
   }
 
   const isEmpty = subfolders.length === 0 && albums.length === 0;
+
+  // Header title: a breadcrumb trail in the header's title slot (no separate bar).
+  const titleNode =
+    contents.breadcrumbs.length === 0 ? (
+      "Albums"
+    ) : (
+      <span className="flex items-center gap-1">
+        <Link href="/albums" className="font-normal text-muted-foreground hover:text-foreground">
+          Albums
+        </Link>
+        {contents.breadcrumbs.map((crumb, i) => {
+          const isLast = i === contents.breadcrumbs.length - 1;
+          return (
+            <span key={crumb.id} className="flex items-center gap-1">
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              {isLast ? (
+                <span className="truncate">{crumb.name}</span>
+              ) : (
+                <Link
+                  href={`/albums/folder/${crumb.id}`}
+                  className="font-normal text-muted-foreground hover:text-foreground"
+                >
+                  {crumb.name}
+                </Link>
+              )}
+            </span>
+          );
+        })}
+      </span>
+    );
+
+  // Header subtitle: top level → folder/album/smart-album counts; in a folder → photo count.
+  let subtitle: React.ReactNode = null;
+  if (contents.folder === null) {
+    const parts: string[] = [];
+    if (subfolders.length > 0) parts.push(countLabel(subfolders.length, "folder", "folders"));
+    if (regular.length > 0) parts.push(countLabel(regular.length, "album", "albums"));
+    if (smart.length > 0) parts.push(countLabel(smart.length, "smart album", "smart albums"));
+    subtitle = parts.length > 0 ? parts.join(" · ") : null;
+  } else {
+    subtitle = countLabel(contents.currentPhotoCount ?? 0, "photo", "photos");
+  }
 
   return (
     <>
@@ -169,145 +204,145 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
       <MoveToFolderDialog
         open={moveOpen}
         onOpenChange={setMoveOpen}
-        folderIds={selectedFolderIds}
-        albumIds={selectedAlbumIds}
+        folderIds={moveTargets.folderIds}
+        albumIds={moveTargets.albumIds}
         onMoved={sel.clear}
       />
       <DeleteFolderDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        count={selectedFolderIds.length}
+        count={pendingDelete?.folderIds.length ?? 0}
         pending={busy}
-        onChoose={(mode) => void performDelete(mode)}
+        onChoose={(mode) => pendingDelete && void performDelete(pendingDelete, mode)}
       />
 
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        {contents.breadcrumbs.length > 0 && <FolderBreadcrumbs breadcrumbs={contents.breadcrumbs} />}
-
-        {sel.count > 0 ? (
-          <SelectionToolbar
-            title="Select items"
-            count={sel.count}
-            onCancel={sel.clear}
-            actions={
-              <>
-                {sel.count === 1 && selectedFolderIds.length === 1 && (
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="View all photos"
-                    title="View all photos"
-                    onClick={() => router.push(`/albums/folder/${selectedFolderIds[0]}/photos`)}
-                  >
-                    <Images aria-hidden />
-                  </Button>
-                )}
-                {sel.count === 1 && (
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="Rename"
-                    title="Rename"
-                    onClick={() => {
-                      const id = [...sel.selected][0];
-                      const folder = subfolders.find((f) => f.id === id);
-                      if (folder) {
-                        setRename({ endpoint: `/api/folders/${id}`, name: folder.name, label: "folder" });
-                      } else {
-                        const album = albums.find((a) => a.id === id);
-                        if (album) setRename({ endpoint: `/api/albums/${id}`, name: album.name, label: "album" });
-                      }
-                    }}
-                  >
-                    <Pencil aria-hidden />
-                  </Button>
-                )}
+      {sel.count > 0 ? (
+        <SelectionToolbar
+          title="Select items"
+          count={sel.count}
+          onCancel={sel.clear}
+          actions={
+            <>
+              {sel.count === 1 && selectedFolderIds.length === 1 && (
                 <Button
                   variant="outline"
                   size="icon-sm"
-                  aria-label="Move to folder"
-                  title="Move to…"
-                  onClick={() => setMoveOpen(true)}
+                  aria-label="View all photos"
+                  title="View all photos"
+                  onClick={() => viewFolderPhotos(selectedFolderIds[0])}
                 >
-                  <FolderInput aria-hidden />
+                  <Images aria-hidden />
                 </Button>
+              )}
+              {sel.count === 1 && (
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="icon-sm"
-                  disabled={busy}
-                  onClick={() => void handleDelete()}
-                  aria-label="Delete"
-                  title="Delete"
+                  aria-label="Rename"
+                  title="Rename"
+                  onClick={() => startRename([...sel.selected][0])}
                 >
-                  {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                  <Pencil aria-hidden />
                 </Button>
-              </>
-            }
-          />
-        ) : (
-          <HeaderBar
-            title={contents.folder?.name ?? "Albums"}
-            actions={
-              <>
-                <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                <NewFolderDialog parentId={currentFolderId} />
-                <NewAlbumDialog folderId={currentFolderId} />
-              </>
-            }
-          />
-        )}
+              )}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Move to folder"
+                title="Move to…"
+                onClick={() => openMove({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds })}
+              >
+                <FolderInput aria-hidden />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon-sm"
+                disabled={busy}
+                onClick={() => void requestDelete({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds })}
+                aria-label="Delete"
+                title="Delete"
+              >
+                {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+              </Button>
+            </>
+          }
+        />
+      ) : (
+        <HeaderBar
+          title={titleNode}
+          subtitle={subtitle}
+          actions={
+            <>
+              <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+              <NewItemMenu parentId={currentFolderId} />
+            </>
+          }
+        />
+      )}
 
-        {isEmpty ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <FolderOpen />
-              </EmptyMedia>
-              <EmptyTitle>Nothing here yet</EmptyTitle>
-              <EmptyDescription>Create a folder or an album to get started.</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div className="space-y-8">
-            {subfolders.length > 0 && (
-              <Section title="Folders">
-                {subfolders.map((f) => (
-                  <FolderCard
-                    key={f.id}
-                    folder={f}
-                    isSelected={sel.selected.has(f.id)}
-                    onToggle={toggle}
-                    onOpen={openFolder}
-                  />
-                ))}
-              </Section>
-            )}
-            {regular.length > 0 && (
-              <Section title="Albums">
-                {regular.map((a) => (
-                  <AlbumCard key={a.id} album={a} isSelected={sel.selected.has(a.id)} onToggle={toggle} onOpen={openAlbum} />
-                ))}
-              </Section>
-            )}
-            {smart.length > 0 && (
-              <Section title="Smart Albums">
-                {smart.map((a) => (
-                  <AlbumCard key={a.id} album={a} isSelected={sel.selected.has(a.id)} onToggle={toggle} onOpen={openAlbum} />
-                ))}
-              </Section>
-            )}
-          </div>
-        )}
-
-        <DragOverlay>
-          {dragCount > 0 ? (
-            <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg">
-              <FolderIcon className="size-4 text-muted-foreground" aria-hidden />
-              {dragCount} {dragCount === 1 ? "item" : "items"}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      {isEmpty ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FolderOpen />
+            </EmptyMedia>
+            <EmptyTitle>Nothing here yet</EmptyTitle>
+            <EmptyDescription>Create a folder or an album to get started.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <div className="space-y-8">
+          {subfolders.length > 0 && (
+            <Section title="Folders">
+              {subfolders.map((f) => (
+                <FolderCard
+                  key={f.id}
+                  folder={f}
+                  isSelected={sel.selected.has(f.id)}
+                  onToggle={toggle}
+                  onOpen={openFolder}
+                  onViewPhotos={viewFolderPhotos}
+                  onRename={startRename}
+                  onMove={(id) => openMove(resolveTargets(id))}
+                  onDelete={(id) => void requestDelete(resolveTargets(id))}
+                />
+              ))}
+            </Section>
+          )}
+          {regular.length > 0 && (
+            <Section title="Albums">
+              {regular.map((a) => (
+                <AlbumCard
+                  key={a.id}
+                  album={a}
+                  isSelected={sel.selected.has(a.id)}
+                  onToggle={toggle}
+                  onOpen={openAlbum}
+                  onRename={startRename}
+                  onMove={(id) => openMove(resolveTargets(id))}
+                  onDelete={(id) => void requestDelete(resolveTargets(id))}
+                />
+              ))}
+            </Section>
+          )}
+          {smart.length > 0 && (
+            <Section title="Smart Albums">
+              {smart.map((a) => (
+                <AlbumCard
+                  key={a.id}
+                  album={a}
+                  isSelected={sel.selected.has(a.id)}
+                  onToggle={toggle}
+                  onOpen={openAlbum}
+                  onRename={startRename}
+                  onMove={(id) => openMove(resolveTargets(id))}
+                  onDelete={(id) => void requestDelete(resolveTargets(id))}
+                />
+              ))}
+            </Section>
+          )}
+        </div>
+      )}
     </>
   );
 }

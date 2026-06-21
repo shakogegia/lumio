@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Images, Loader2, Trash2 } from "lucide-react";
+import { Download, Folder as FolderIcon, Images, Loader2, Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -39,12 +39,19 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, onTrashed: () => router.refresh() });
 
+  const titleNode = (
+    <span className="flex items-center gap-1.5">
+      <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      {folderName}
+    </span>
+  );
+
   return (
     <>
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title={`${folderName} — all photos`}
+          title={titleNode}
           count={sel.count}
           onCancel={sel.clear}
           actions={
@@ -87,7 +94,7 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
         />
       ) : (
         <HeaderBar
-          title={`${folderName} — all photos`}
+          title={titleNode}
           actions={
             <>
               <GridViewMenu mode={mode} onModeChange={setMode} />

@@ -109,6 +109,7 @@ describe("listFolderContents", () => {
     expect(contents!.subfolders[0]?.totalPhotoCount).toBe(2);
     expect(contents!.subfolders[0]?.previewPhotoIds).toEqual(["p1", "p2"]);
     expect(contents!.subfolders[0]?.childFolderCount).toBe(1);
+    expect(contents!.currentPhotoCount).toBeNull();
   });
 
   it("inside europe: breadcrumbs + direct child folder italy + direct album rome", async () => {
@@ -117,6 +118,7 @@ describe("listFolderContents", () => {
     expect(contents!.breadcrumbs.map((b) => b.id)).toEqual(["europe"]);
     expect(contents!.subfolders.map((f) => f.id)).toEqual(["italy"]);
     expect(contents!.albums.map((a) => a.id)).toEqual(["rome"]);
+    expect(contents!.currentPhotoCount).toBe(2);
   });
 });
 

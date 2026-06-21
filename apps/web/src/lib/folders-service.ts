@@ -114,7 +114,15 @@ export async function listFolderContents(
   const directAlbums = allAlbums.filter((a) => a.folderId === folderId);
   const albums: AlbumSummaryDTO[] = await Promise.all(directAlbums.map((a) => albumSummary(a, db, now)));
 
-  return { folder, breadcrumbs, subfolders, albums };
+  // Recursive deduplicated photo count of the viewed folder (for the header subtitle).
+  let currentPhotoCount: number | null = null;
+  if (folderId !== null) {
+    const descendantIds = new Set(collectDescendantFolderIds(allFolders, folderId));
+    const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
+    currentPhotoCount = await db.photo.count({ where: folderPhotoWhere({ regularAlbumIds, smartAlbums }, now) });
+  }
+
+  return { folder, breadcrumbs, subfolders, albums, currentPhotoCount };
 }
 
 export async function moveItems(

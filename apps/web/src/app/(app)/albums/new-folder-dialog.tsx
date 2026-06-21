@@ -14,13 +14,36 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/** Create a folder at the current level (parentId = the folder being viewed, or null). */
-export function NewFolderDialog({ parentId }: { parentId: string | null }) {
+/**
+ * Create a folder at the current level (parentId = the folder being viewed, or null).
+ * Renders its own trigger button when uncontrolled; pass `open`/`onOpenChange` to
+ * drive it from elsewhere (e.g. the "New" dropdown), in which case no trigger renders.
+ */
+export function NewFolderDialog({
+  parentId,
+  open,
+  onOpenChange,
+}: {
+  parentId: string | null;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const controlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlled ? open : internalOpen;
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function setOpen(v: boolean) {
+    if (controlled) onOpenChange?.(v);
+    else setInternalOpen(v);
+    if (!v) {
+      setName("");
+      setError(null);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +61,6 @@ export function NewFolderDialog({ parentId }: { parentId: string | null }) {
         return;
       }
       setOpen(false);
-      setName("");
       router.refresh();
     } catch {
       setError("Failed to create folder");
@@ -48,21 +70,14 @@ export function NewFolderDialog({ parentId }: { parentId: string | null }) {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) {
-          setName("");
-          setError(null);
-        }
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          New folder
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" variant="outline">
+            New folder
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New folder</DialogTitle>

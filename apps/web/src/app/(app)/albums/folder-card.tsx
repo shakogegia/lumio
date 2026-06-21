@@ -1,29 +1,41 @@
 "use client";
 
-import { Folder as FolderIcon } from "lucide-react";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 } from "lucide-react";
 import type { FolderSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
-import { cn } from "@/lib/utils";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
+/**
+ * One folder in the listing grid. Plain left click toggles selection; double click
+ * opens it; ⌘/Ctrl/middle click falls through to the native link (new tab).
+ * Right click opens a context menu (open / view photos / rename / move / delete);
+ * move + delete are selection-aware (resolved by the caller's handlers).
+ */
 export function FolderCard({
   folder,
   isSelected,
   onToggle,
   onOpen,
+  onViewPhotos,
+  onRename,
+  onMove,
+  onDelete,
 }: {
   folder: FolderSummaryDTO;
   isSelected: boolean;
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
+  onViewPhotos: (id: string) => void;
+  onRename: (id: string) => void;
+  onMove: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
-  const draggable = useDraggable({ id: `album-or-folder:${folder.id}`, data: { type: "folder", id: folder.id } });
-  const droppable = useDroppable({ id: `drop:${folder.id}`, data: { type: "folder", id: folder.id } });
-  const setRefs = (el: HTMLElement | null) => {
-    draggable.setNodeRef(el);
-    droppable.setNodeRef(el);
-  };
-
   const previews = folder.previewPhotoIds;
   const cover = (
     <div className="relative grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-sm bg-muted">
@@ -56,39 +68,58 @@ export function FolderCard({
   }
 
   return (
-    <a
-      ref={setRefs}
-      {...draggable.listeners}
-      {...draggable.attributes}
-      draggable={false}
-      href={`/albums/folder/${folder.id}`}
-      onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.button !== 0) return;
-        e.preventDefault();
-        onToggle(folder.id);
-      }}
-      onDoubleClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-        e.preventDefault();
-        onOpen(folder.id);
-      }}
-      className={cn(
-        "group block select-none rounded-sm",
-        droppable.isOver && "outline outline-2 outline-primary outline-offset-2",
-        draggable.isDragging && "opacity-40",
-      )}
-    >
-      <div className="relative rounded-sm">
-        {cover}
-        {isSelected && <SelectionRing className="rounded-sm" />}
-      </div>
-      <div className="mt-2.5">
-        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-          <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          {folder.name}
-        </p>
-        <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>
-      </div>
-    </a>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <a
+          href={`/albums/folder/${folder.id}`}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.button !== 0) return;
+            e.preventDefault();
+            onToggle(folder.id);
+          }}
+          onDoubleClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+            e.preventDefault();
+            onOpen(folder.id);
+          }}
+          className="group block select-none"
+        >
+          <div className="relative rounded-sm">
+            {cover}
+            {isSelected && <SelectionRing className="rounded-sm" />}
+          </div>
+          <div className="mt-2.5">
+            <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
+              <FolderIcon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              {folder.name}
+            </p>
+            <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>
+          </div>
+        </a>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        <ContextMenuItem onSelect={() => onOpen(folder.id)}>
+          <FolderOpen aria-hidden />
+          Open
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onViewPhotos(folder.id)}>
+          <Images aria-hidden />
+          View all photos
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onRename(folder.id)}>
+          <Pencil aria-hidden />
+          Rename
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onMove(folder.id)}>
+          <FolderInput aria-hidden />
+          Move to…
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem variant="destructive" onSelect={() => onDelete(folder.id)}>
+          <Trash2 aria-hidden />
+          Delete
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

@@ -54,6 +54,7 @@ export function MoveToFolderDialog({
 
   useEffect(() => {
     if (!open) return;
+    setTarget(null); // fresh selection each open (don't reuse a stale destination)
     fetch("/api/folders/all")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((d: { items: FolderDTO[] }) => setAllFolders(d.items))

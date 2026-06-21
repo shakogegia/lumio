@@ -32,9 +32,19 @@ function buildRule(row: RuleRow) {
   return { field: "exif.cameraModel", op: "eq" as const, value: row.value };
 }
 
-export function NewAlbumDialog({ folderId = null }: { folderId?: string | null } = {}) {
+export function NewAlbumDialog({
+  folderId = null,
+  open,
+  onOpenChange,
+}: {
+  folderId?: string | null;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
+} = {}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const controlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlled ? open : internalOpen;
   const [name, setName] = useState("");
   const [isSmart, setIsSmart] = useState(false);
   const [match, setMatch] = useState<"all" | "any">("all");
@@ -112,8 +122,7 @@ export function NewAlbumDialog({ folderId = null }: { folderId?: string | null }
         return;
       }
 
-      setOpen(false);
-      reset();
+      handleOpenChange(false);
       router.refresh();
     } catch {
       setError("Failed to create album");
@@ -123,15 +132,18 @@ export function NewAlbumDialog({ folderId = null }: { folderId?: string | null }
   }
 
   function handleOpenChange(value: boolean) {
-    setOpen(value);
+    if (controlled) onOpenChange?.(value);
+    else setInternalOpen(value);
     if (!value) reset();
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button size="sm">New album</Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button size="sm">New album</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New album</DialogTitle>
