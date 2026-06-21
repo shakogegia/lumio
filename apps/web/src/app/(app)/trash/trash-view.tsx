@@ -21,6 +21,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 
 const TRASH_EMPTY = (
   <Empty>
@@ -53,6 +55,7 @@ export function TrashView() {
   // "Empty trash" is an async job (worker-driven); restore/purge stay synchronous.
   const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", {
     onComplete: () => {
+      playSound(SoundEffect.EmptyTrash);
       setReloadKey((k) => k + 1);
       sel.clear();
     },
@@ -70,6 +73,7 @@ export function TrashView() {
     confirmOpts: ConfirmOptions | null,
     failMsg: string,
     remount: boolean,
+    onSuccess?: () => void,
   ) {
     if (pending) return;
     if (confirmOpts && !(await confirm(confirmOpts))) return;
@@ -84,6 +88,7 @@ export function TrashView() {
       if (!res.ok) throw new Error("request failed");
       if (remount) setReloadKey((k) => k + 1);
       else gridRef.current?.removePhotos(selectedIds);
+      onSuccess?.();
       sel.clear();
     } catch {
       toast.error(failMsg);
@@ -141,6 +146,7 @@ export function TrashView() {
                       },
                       "Failed to delete photos.",
                       false,
+                      () => playSound(SoundEffect.EmptyTrash),
                     )
                   }
                 >
