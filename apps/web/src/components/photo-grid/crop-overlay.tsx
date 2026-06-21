@@ -103,10 +103,10 @@ export function CropOverlay({
       >
         {/* rule of thirds */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute top-0 bottom-0 bg-white/30" style={{ left: "33.33%", width: 1 }} />
-          <div className="absolute top-0 bottom-0 bg-white/30" style={{ left: "66.66%", width: 1 }} />
-          <div className="absolute left-0 right-0 bg-white/30" style={{ top: "33.33%", height: 1 }} />
-          <div className="absolute left-0 right-0 bg-white/30" style={{ top: "66.66%", height: 1 }} />
+          <div className="absolute top-0 bottom-0 bg-white/30" style={{ left: "33.33%", width: 2 }} />
+          <div className="absolute top-0 bottom-0 bg-white/30" style={{ left: "66.66%", width: 2 }} />
+          <div className="absolute left-0 right-0 bg-white/30" style={{ top: "33.33%", height: 2 }} />
+          <div className="absolute left-0 right-0 bg-white/30" style={{ top: "66.66%", height: 2 }} />
         </div>
         {interactive &&
           (["nw", "ne", "sw", "se", "n", "s", "e", "w"] as Handle[]).map((h) => (
