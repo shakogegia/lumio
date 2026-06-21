@@ -17,6 +17,8 @@ import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
 import { summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { computeSelection } from "@/lib/grid-selection";
+import { playSound } from "@/lib/sound/player";
+import { SoundEffect } from "@/lib/sound/registry";
 import { SelectionToolbar } from "../photos/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
@@ -45,7 +47,7 @@ export function UploadClient() {
   }, []);
 
   const uploadOne = useCallback(
-    async (file: File, rowId: number) => {
+    async (file: File, rowId: number): Promise<RowStatus> => {
       update(rowId, { status: "uploading", message: undefined });
       const body = new FormData();
       body.set("file", file);
@@ -56,11 +58,13 @@ export function UploadClient() {
         if (data.status === "unsupported") {
           // Pre-filtered client-side; a late unsupported is treated as a failure.
           update(rowId, { status: "error", message: "Unsupported format" });
-          return;
+          return "error";
         }
         update(rowId, { status: data.status, message: data.message, photoId: data.id });
+        return data.status;
       } catch (err) {
         update(rowId, { status: "error", message: (err as Error).message });
+        return "error";
       }
     },
     [update],
@@ -71,13 +75,17 @@ export function UploadClient() {
     async (queued: Array<{ file: File; rowId: number }>) => {
       if (queued.length === 0) return;
       let cursor = 0;
+      let added = 0;
       async function worker() {
         while (cursor < queued.length) {
           const item = queued[cursor++];
-          if (item) await uploadOne(item.file, item.rowId);
+          if (item && (await uploadOne(item.file, item.rowId)) === "added") added++;
         }
       }
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queued.length) }, worker));
+      // Chime once per batch when at least one genuinely new photo landed
+      // (not for all-duplicate/all-failed batches). Respects the sound setting.
+      if (added > 0) playSound(SoundEffect.UploadComplete);
       router.refresh();
     },
     [router, uploadOne],

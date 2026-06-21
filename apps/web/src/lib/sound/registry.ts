@@ -5,12 +5,14 @@
 export enum SoundEffect {
   MoveToTrash = "move-to-trash",
   EmptyTrash = "empty-trash",
+  UploadComplete = "upload-complete",
 }
 
 /** Public URL (served from `apps/web/public`) for each effect. */
 export const SOUND_URLS: Record<SoundEffect, string> = {
   [SoundEffect.MoveToTrash]: "/sounds/move-to-trash.mp3",
   [SoundEffect.EmptyTrash]: "/sounds/empty-trash.mp3",
+  [SoundEffect.UploadComplete]: "/sounds/upload-complete.mp3",
 };
 
 /** Default playback volume for all effects (0–1). */
