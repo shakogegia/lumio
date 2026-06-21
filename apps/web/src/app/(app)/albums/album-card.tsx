@@ -8,8 +8,12 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { MovePickerItems } from "./move-picker-items";
 
 /**
  * One album in the listing grid. Plain left click toggles selection; double click
@@ -31,7 +35,7 @@ export function AlbumCard({
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
   onRename: (id: string) => void;
-  onMove: (id: string) => void;
+  onMove: (id: string, targetFolderId: string | null) => void;
   onDelete: (id: string) => void;
 }) {
   const cover = (
@@ -92,10 +96,15 @@ export function AlbumCard({
           <Pencil aria-hidden />
           Rename
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onMove(album.id)}>
-          <FolderInput aria-hidden />
-          Move to…
-        </ContextMenuItem>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className="gap-2.5">
+            <FolderInput aria-hidden />
+            Move to…
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="max-h-72 w-56 overflow-y-auto">
+            <MovePickerItems Item={ContextMenuItem} onPick={(target) => onMove(album.id, target)} />
+          </ContextMenuSubContent>
+        </ContextMenuSub>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" onSelect={() => onDelete(album.id)}>
           <Trash2 aria-hidden />

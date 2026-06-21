@@ -56,6 +56,8 @@ export interface AlbumDTO {
   /** The explicitly pinned cover, raw from the row. null = no pin (use derived).
    *  This is the value the album-detail view uses for the "current cover" hint. */
   coverPhotoId: string | null;
+  /** The folder this album lives in (null = top level). Drives folder-nested album pickers. */
+  folderId: string | null;
   createdAt: string;
   updatedAt: string;
 }

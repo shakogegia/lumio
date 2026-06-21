@@ -1,53 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Folder as FolderIcon, Images } from "lucide-react";
-import type { AlbumSummaryDTO, FolderContentsDTO, FolderSummaryDTO } from "@lumio/shared";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { NavLink, type NavItem } from "@/components/sidebar-nav-link";
+import { useLibraryTree } from "@/components/library-tree/library-tree";
+import { buildAlbumPickerRows } from "@/lib/library-tree-rows";
 
-export function SidebarAlbums({
-  item,
-  active,
-}: {
-  item: NavItem;
-  active: boolean;
-}) {
-  const [albums, setAlbums] = useState<AlbumSummaryDTO[]>([]);
-  const [folders, setFolders] = useState<FolderSummaryDTO[]>([]);
+const INDENT = 12;
+
+/**
+ * The Albums nav flyout: the full folder/album tree in the same compact, indented
+ * style as the "Add to album" picker, but every row is a navigation link. Reads the
+ * shared LibraryTreeProvider, so it shares one prefetched copy with the pickers.
+ */
+export function SidebarAlbums({ item, active }: { item: NavItem; active: boolean }) {
+  const { folders, albums } = useLibraryTree();
   const [open, setOpen] = useState(false);
 
-  const load = useCallback(() => {
-    fetch("/api/folders")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
-      .then((data: FolderContentsDTO) => {
-        setFolders(data.subfolders);
-        setAlbums(data.albums);
-      })
-      .catch(() => {
-        // Leave lists empty; the flyout simply won't open.
-      });
-  }, []);
-
-  // Load once on mount so the first hover can open immediately.
-  useEffect(() => {
-    load();
-  }, [load]);
+  const rows = buildAlbumPickerRows(folders, albums, {
+    includeSmart: true,
+    includeEmptyFolders: true,
+  });
 
   return (
     <HoverCard
-      open={open}
-      onOpenChange={(next) => {
-        // Refresh on each open so newly-created folders/albums show up.
-        if (next) load();
-        // Never open when there are no items (empty guard).
-        setOpen(next && (folders.length > 0 || albums.length > 0));
-      }}
+      open={open && rows.length > 0}
+      onOpenChange={setOpen}
       openDelay={120}
       closeDelay={100}
     >
@@ -58,58 +42,48 @@ export function SidebarAlbums({
         side="right"
         align="center"
         sideOffset={8}
-        className="max-h-[360px] overflow-y-auto"
+        className="max-h-[360px] w-64 overflow-y-auto p-1"
       >
         <ul role="list">
-          {folders.map((folder) => (
-            <li key={folder.id}>
-              <Link
-                href={`/albums/folder/${folder.id}`}
-                prefetch={false}
-                className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted"
-              >
-                <div className="flex aspect-[4/3] w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted">
-                  <FolderIcon className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{folder.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {folder.albumCount} {folder.albumCount === 1 ? "album" : "albums"}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-          {albums.map((album) => (
-            <li key={album.id}>
-              <Link
-                href={`/albums/${album.id}`}
-                prefetch={false}
-                className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-muted"
-              >
-                <div className="flex aspect-[4/3] w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted">
-                  {album.coverPhotoId ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={`/api/thumbnails/${album.coverPhotoId}`}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Images className="size-4 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{album.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {album.photoCount}{" "}
-                    {album.photoCount === 1 ? "photo" : "photos"}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
+          {rows.map((row) =>
+            row.kind === "folder" ? (
+              <li key={`f:${row.id}`}>
+                <Link
+                  href={`/albums/folder/${row.id}/photos`}
+                  prefetch={false}
+                  className="flex items-center gap-2 rounded-md py-1.5 text-sm transition-colors hover:bg-muted"
+                  style={{ paddingLeft: 8 + row.depth * INDENT, paddingRight: 8 }}
+                >
+                  <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="truncate font-medium">{row.name}</span>
+                </Link>
+              </li>
+            ) : (
+              <li key={`a:${row.album.id}`}>
+                <Link
+                  href={`/albums/${row.album.id}`}
+                  prefetch={false}
+                  className="flex items-center gap-2 rounded-md py-1 text-sm transition-colors hover:bg-muted"
+                  style={{ paddingLeft: 8 + row.depth * INDENT, paddingRight: 8 }}
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+                    {row.album.coverPhotoId ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/thumbnails/${row.album.coverPhotoId}`}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Images className="size-3.5 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="truncate">{row.album.name}</span>
+                </Link>
+              </li>
+            ),
+          )}
         </ul>
       </HoverCardContent>
     </HoverCard>

@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 
 type RuleType = "last_30_days" | "camera_eq";
 
@@ -123,6 +124,7 @@ export function NewAlbumDialog({
       }
 
       handleOpenChange(false);
+      invalidateLibraryTree();
       router.refresh();
     } catch {
       setError("Failed to create album");

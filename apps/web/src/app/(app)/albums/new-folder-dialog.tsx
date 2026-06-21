@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 
 /**
  * Create a folder at the current level (parentId = the folder being viewed, or null).
@@ -61,6 +62,7 @@ export function NewFolderDialog({
         return;
       }
       setOpen(false);
+      invalidateLibraryTree();
       router.refresh();
     } catch {
       setError("Failed to create folder");

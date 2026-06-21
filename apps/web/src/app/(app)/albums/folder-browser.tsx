@@ -16,18 +16,26 @@ import {
 } from "@/components/ui/empty";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useAlbumColumns } from "@/lib/use-album-columns";
 import { ALBUM_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { countLabel } from "@/lib/count-label";
 import { useConfirm } from "@/components/confirm-dialog";
+import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { partitionAlbums } from "@/lib/partition-albums";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
 import { FolderCard } from "./folder-card";
 import { RenameDialog } from "./rename-dialog";
-import { MoveToFolderDialog } from "./move-to-folder-dialog";
+import { MovePickerItems } from "./move-picker-items";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
 
 type Targets = { folderIds: string[]; albumIds: string[] };
@@ -38,8 +46,6 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const { columns, setColumns } = useAlbumColumns();
   const { confirm, confirmDialog } = useConfirm();
   const [busy, setBusy] = useState(false);
-  const [moveTargets, setMoveTargets] = useState<Targets>({ folderIds: [], albumIds: [] });
-  const [moveOpen, setMoveOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Targets | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [rename, setRename] = useState<{ endpoint: string; name: string; label: string } | null>(null);
@@ -89,10 +95,25 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
     if (album) setRename({ endpoint: `/api/albums/${id}`, name: album.name, label: "album" });
   }
 
-  function openMove(targets: Targets) {
+  async function doMove(targets: Targets, targetFolderId: string | null) {
     if (targets.folderIds.length === 0 && targets.albumIds.length === 0) return;
-    setMoveTargets(targets);
-    setMoveOpen(true);
+    try {
+      const res = await fetch("/api/folders/move", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          folderIds: targets.folderIds.length ? targets.folderIds : undefined,
+          albumIds: targets.albumIds.length ? targets.albumIds : undefined,
+          targetFolderId,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      sel.clear();
+      invalidateLibraryTree();
+      router.refresh();
+    } catch {
+      toast.error("Failed to move.");
+    }
   }
 
   async function performDelete(targets: Targets, mode: "reparent" | "cascade") {
@@ -113,6 +134,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
       setDeleteOpen(false);
       setPendingDelete(null);
       sel.clear();
+      invalidateLibraryTree();
       router.refresh();
     } catch {
       toast.error("Failed to delete.");
@@ -201,13 +223,6 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
           label={rename.label}
         />
       )}
-      <MoveToFolderDialog
-        open={moveOpen}
-        onOpenChange={setMoveOpen}
-        folderIds={moveTargets.folderIds}
-        albumIds={moveTargets.albumIds}
-        onMoved={sel.clear}
-      />
       <DeleteFolderDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
@@ -245,15 +260,28 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   <Pencil aria-hidden />
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Move to folder"
-                title="Move to…"
-                onClick={() => openMove({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds })}
-              >
-                <FolderInput aria-hidden />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label="Move to folder"
+                    title="Move to…"
+                  >
+                    <FolderInput aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-72 w-56 overflow-y-auto">
+                  <DropdownMenuLabel>Move to…</DropdownMenuLabel>
+                  <MovePickerItems
+                    Item={DropdownMenuItem}
+                    excludeSubtreeOf={selectedFolderIds.length === 1 ? selectedFolderIds[0] : undefined}
+                    onPick={(target) =>
+                      void doMove({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds }, target)
+                    }
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="destructive"
                 size="icon-sm"
@@ -303,7 +331,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   onOpen={openFolder}
                   onViewPhotos={viewFolderPhotos}
                   onRename={startRename}
-                  onMove={(id) => openMove(resolveTargets(id))}
+                  onMove={(id, target) => void doMove(resolveTargets(id), target)}
                   onDelete={(id) => void requestDelete(resolveTargets(id))}
                 />
               ))}
@@ -319,7 +347,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   onToggle={toggle}
                   onOpen={openAlbum}
                   onRename={startRename}
-                  onMove={(id) => openMove(resolveTargets(id))}
+                  onMove={(id, target) => void doMove(resolveTargets(id), target)}
                   onDelete={(id) => void requestDelete(resolveTargets(id))}
                 />
               ))}
@@ -335,7 +363,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                   onToggle={toggle}
                   onOpen={openAlbum}
                   onRename={startRename}
-                  onMove={(id) => openMove(resolveTargets(id))}
+                  onMove={(id, target) => void doMove(resolveTargets(id), target)}
                   onDelete={(id) => void requestDelete(resolveTargets(id))}
                 />
               ))}

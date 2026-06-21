@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 
 /**
  * Controlled rename dialog. `endpoint` is PATCHed with `{ name }`.
@@ -51,6 +52,7 @@ export function RenameDialog({
         return;
       }
       onOpenChange(false);
+      invalidateLibraryTree();
       router.refresh();
     } catch {
       setError("Failed to rename");

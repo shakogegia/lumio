@@ -55,6 +55,7 @@ export function toAlbumDTO(row: Album): AlbumDTO {
     isSmart: row.isSmart,
     rules: (row.rules as SmartAlbumRules | null) ?? null,
     coverPhotoId: row.coverPhotoId ?? null,
+    folderId: row.folderId ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
