@@ -92,15 +92,18 @@ The original `.aif` attachments are not committed (they live under gitignored
 soundEffectsEnabled Boolean @default(true)
 ```
 
-Migration via the repo recipe (NOT `db push`, NO reset/backfill — the Postgres
-instance on `localhost:5433` is shared across worktrees, so unrelated pending
-migrations from other branches are expected and must be left alone):
+Migration via the repo's shared-DB recipe: the Postgres on `localhost:5433` is
+shared across all worktrees, so `prisma migrate dev` sees sibling branches'
+migrations as drift and offers a destructive reset. **Never** run `migrate dev`,
+`migrate reset`, or `--force`. Instead: edit the schema, **hand-write** the
+migration SQL in a new timestamped folder, apply with `prisma migrate deploy`,
+then regenerate the client (`pnpm db:generate`). This migration is
+non-destructive — the column has a default, so the existing singleton row
+migrates cleanly with no `DELETE`/backfill:
 
+```sql
+ALTER TABLE "AppSettings" ADD COLUMN "soundEffectsEnabled" BOOLEAN NOT NULL DEFAULT true;
 ```
-pnpm --filter @lumio/db migrate -- --name add_sound_effects_enabled
-```
-
-(Equivalent to `dotenv -e ../../.env -- prisma migrate dev --name …`.)
 
 **Shared** (`packages/shared/src/uploads.ts`):
 
