@@ -358,6 +358,43 @@ Stop the dev server when done. No commit (verification only).
 
 ---
 
+### Task 6: Make the manifest publicly reachable
+
+**Added during Task 5 verification.** The auth middleware (`apps/web/src/proxy.ts`) gates all routes except static-asset extensions and a small public allow-list. Its matcher already skips `.png`/`.svg`/`.ico`/`.xml`/`.txt`/`.woff2?` (so the icons return 200), but `.webmanifest` is not skipped — so `/manifest.webmanifest` was being 307-redirected to `/login` for unauthenticated requests. A manifest must be publicly reachable. Fix: add `webmanifest` to the matcher's extension alternation, treating it like the other static metadata assets.
+
+**Files:**
+- Modify: `apps/web/src/proxy.ts` (the `config.matcher` regex)
+
+- [ ] **Step 1: Add `webmanifest` to the matcher skip-list**
+
+In `apps/web/src/proxy.ts`, the `config.matcher` regex currently ends its extension alternation with `...|woff2?)`. Change that group to include `webmanifest`:
+
+```ts
+export const config = {
+  // Skip Next internals and static asset files; run on everything else.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:png|jpe?g|gif|svg|webp|avif|ico|txt|xml|woff2?|webmanifest)$).*)",
+  ],
+};
+```
+
+- [ ] **Step 2: Verify the manifest is now public (200, not 307)**
+
+With the dev server running (it recompiles the proxy on save), confirm an unauthenticated request returns the manifest JSON:
+```bash
+curl -s -o /dev/null -w "status=%{http_code}\n" http://localhost:55050/manifest.webmanifest
+```
+Expected: `status=200` (was `307`). Also re-confirm icons still return 200.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/web/src/proxy.ts
+git commit -m "fix(web): exempt /manifest.webmanifest from auth redirect"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage:**
