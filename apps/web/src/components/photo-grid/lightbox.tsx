@@ -60,8 +60,9 @@ export function Lightbox() {
 }
 
 function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
-  const { openIndex, total, step, close, open, openTab } = usePhotoCollection();
-  const { guard, dirty, undo, redo, canUndo, canRedo } = useEditSession();
+  const { openIndex, total, step, close, open, openTab, setOpenTab } = usePhotoCollection();
+  const { guard, dirty, undo, redo, canUndo, canRedo, cropMode, enterCropMode, doneCropMode, cancelCropMode } =
+    useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +79,12 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     undo,
     redo,
     toggleFavorite: () => void toggleFavorite(),
+    activeTab: openTab,
+    setTab: setOpenTab,
+    cropMode,
+    enterCropMode,
+    doneCropMode,
+    cancelCropMode,
   });
 
   const onTrashed = useCallback(() => {
@@ -118,7 +125,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             />
           )}
         </div>
-        <LightboxSidebar photo={photo} initialTab={openTab} />
+        <LightboxSidebar photo={photo} />
       </div>
     </div>
   );

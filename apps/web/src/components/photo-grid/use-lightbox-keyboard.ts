@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createHoldStepper, HOLD_STEP_MS } from "@/lib/hold-key-nav";
+import { LightboxTab } from "@/lib/lightbox-tab";
 
 export interface LightboxKeys {
   openIndex: number | null;
@@ -18,6 +19,18 @@ export interface LightboxKeys {
   redo: () => void;
   /** Toggle the open photo's favorite state. */
   toggleFavorite: () => void;
+  /** The currently active sidebar tab. */
+  activeTab: LightboxTab;
+  /** Switch the sidebar tab (i → Info, e → Edit). */
+  setTab: (tab: LightboxTab) => void;
+  /** True while focused Crop mode is active. */
+  cropMode: boolean;
+  /** Enter Crop mode (r, only on the Edit tab). */
+  enterCropMode: () => void;
+  /** Commit Crop mode (Enter). */
+  doneCropMode: () => void;
+  /** Revert and exit Crop mode (Escape). */
+  cancelCropMode: () => void;
 }
 
 /**
@@ -50,23 +63,51 @@ export function useLightboxKeyboard(keys: LightboxKeys): void {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = ref.current;
       if (e.key === "Escape") {
-        k.guard(() => k.close());
+        // In Crop mode, Escape cancels the crop instead of closing the lightbox.
+        if (k.cropMode) {
+          e.preventDefault();
+          k.cancelCropMode();
+        } else {
+          k.guard(() => k.close());
+        }
         return;
       }
       const el = document.activeElement;
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return;
-      // Favorite toggle: F (unmodified, single press).
-      if (
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !e.altKey &&
-        !e.shiftKey &&
-        !e.repeat &&
-        (e.key === "f" || e.key === "F")
-      ) {
-        e.preventDefault();
-        k.toggleFavorite();
+      // In Crop mode, Enter confirms (Done). Skip when a button is focused so its
+      // native activation (e.g. tabbed to Cancel) isn't doubled by this handler.
+      if (k.cropMode && e.key === "Enter") {
+        if (!(el instanceof HTMLButtonElement)) {
+          e.preventDefault();
+          k.doneCropMode();
+        }
         return;
+      }
+      // Unmodified single-press shortcuts.
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.repeat) {
+        // Favorite toggle.
+        if (e.key === "f" || e.key === "F") {
+          e.preventDefault();
+          k.toggleFavorite();
+          return;
+        }
+        // Tab switches: i → Info, e → Edit.
+        if (e.key === "i" || e.key === "I") {
+          e.preventDefault();
+          k.setTab(LightboxTab.Info);
+          return;
+        }
+        if (e.key === "e" || e.key === "E") {
+          e.preventDefault();
+          k.setTab(LightboxTab.Edit);
+          return;
+        }
+        // Enter Crop mode from the Edit tab.
+        if ((e.key === "r" || e.key === "R") && k.activeTab === LightboxTab.Edit && !k.cropMode) {
+          e.preventDefault();
+          k.enterCropMode();
+          return;
+        }
       }
       // Undo / redo edits: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, or Ctrl+Y.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {

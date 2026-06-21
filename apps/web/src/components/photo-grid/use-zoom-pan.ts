@@ -42,7 +42,7 @@ export interface ZoomPan {
   };
 }
 
-export function useZoomPan(width: number, height: number): ZoomPan {
+export function useZoomPan(width: number, height: number, enabled = true): ZoomPan {
   const photo = useMemo<Size>(() => ({ width, height }), [width, height]);
 
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -57,9 +57,9 @@ export function useZoomPan(width: number, height: number): ZoomPan {
 
   // Latest values for native (non-passive) wheel + pointer math, refreshed after
   // each commit (writing refs during render is disallowed by react-hooks/refs).
-  const stateRef = useRef({ photo, viewport, fitZoom, effZoom, offset });
+  const stateRef = useRef({ photo, viewport, fitZoom, effZoom, offset, enabled });
   useEffect(() => {
-    stateRef.current = { photo, viewport, fitZoom, effZoom, offset };
+    stateRef.current = { photo, viewport, fitZoom, effZoom, offset, enabled };
   });
 
   // Cursor position relative to the viewport center, in CSS px.
@@ -126,6 +126,12 @@ export function useZoomPan(width: number, height: number): ZoomPan {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       const s = stateRef.current;
+      // Zoom disabled (e.g. crop mode): swallow the pinch so the page doesn't
+      // zoom, but otherwise ignore the wheel.
+      if (!s.enabled) {
+        if (e.ctrlKey || e.metaKey) e.preventDefault();
+        return;
+      }
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const factor = Math.exp(-e.deltaY / PINCH_SENSITIVITY);

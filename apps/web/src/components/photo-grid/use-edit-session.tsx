@@ -41,8 +41,9 @@ interface EditSessionValue {
   reset: () => void;
   undo: () => void;
   redo: () => void;
-  apply: () => Promise<void>;
-  /** Run `go` unless there are unsaved edits and the user declines to discard. */
+  /** Persist the working recipe; resolves true on success, false on skip/failure. */
+  apply: () => Promise<boolean>;
+  /** Run `go`; with unsaved edits, prompt to save first and only proceed once saved. */
   guard: (go: () => void) => void;
   /** True while the Edit tab is mounted/active (drives the editor canvas). */
   editing: boolean;
@@ -249,8 +250,8 @@ export function EditSessionProvider({
     setHistory((h) => (h.index < h.stack.length - 1 ? { ...h, index: h.index + 1 } : h));
   }, []);
 
-  const apply = useCallback(async () => {
-    if (applying || sameEdits(working, photo.edits ?? NO_EDITS)) return;
+  const apply = useCallback(async (): Promise<boolean> => {
+    if (applying || sameEdits(working, photo.edits ?? NO_EDITS)) return false;
     const startedId = photo.id; // the edit targets this photo, even if we navigate
     setApplying(true);
     try {
@@ -275,8 +276,10 @@ export function EditSessionProvider({
       // Only reset history if we're still on the photo we edited — otherwise we'd
       // clobber the (already reseeded) history of the new photo.
       if (photoIdRef.current === startedId) setHistory(freshHistory(dto.edits ?? NO_EDITS));
+      return true;
     } catch {
       toast.error("Failed to save edits.");
+      return false;
     } finally {
       setApplying(false);
     }
@@ -288,19 +291,21 @@ export function EditSessionProvider({
         go();
         return;
       }
+      // Leaving a photo with unsaved edits offers to save them (rather than
+      // discard): on confirm we apply, and only navigate once the save lands so a
+      // failed save keeps the user on the photo with their edits intact.
       void confirm({
-        title: "Discard edits?",
-        description: "Your unsaved changes will be lost.",
-        confirmLabel: "Discard",
-        destructive: true,
+        title: "Save edits?",
+        description: "Save your changes before leaving this photo?",
+        confirmLabel: "Save",
       }).then((ok) => {
-        if (ok) {
-          setHistory(freshHistory(photo.edits ?? NO_EDITS));
-          go();
-        }
+        if (!ok) return;
+        void apply().then((saved) => {
+          if (saved) go();
+        });
       });
     },
-    [dirty, confirm, photo.edits],
+    [dirty, confirm, apply],
   );
 
   const value: EditSessionValue = {

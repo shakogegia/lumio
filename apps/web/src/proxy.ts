@@ -22,6 +22,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Skip Next internals and static asset files; run on everything else.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:png|jpe?g|gif|svg|webp|avif|ico|txt|xml|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:png|jpe?g|gif|svg|webp|avif|ico|txt|xml|woff2?|webmanifest)$).*)",
   ],
 };

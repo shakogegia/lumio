@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { clampCropToImage, type CropRect } from "@lumio/shared";
+import { constrainCropDrag, type CropRect } from "@lumio/shared";
 
 type Handle = "move" | "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w";
 const MIN = 0.05; // minimum crop size as a fraction of O′
@@ -62,14 +62,19 @@ export function CropOverlay({
     const dx = (e.clientX - d.startX) / sw;
     const dy = (e.clientY - d.startY) / sh;
     let next = applyDrag(d.handle, d.start, dx, dy);
+    let aspectLocked = false;
     if (d.handle !== "move") {
       // Shift locks to the rect's current aspect; the `ratio` prop locks to a preset.
       // Both are w/h in O′-fraction space (stage scale is constant during a drag, so
       // preserving that ratio preserves the on-screen aspect too).
       const A = e.shiftKey ? d.start.w / d.start.h : ra;
-      if (A) next = lockAspect(next, d.start, d.handle, A);
+      if (A) {
+        next = lockAspect(next, d.start, d.handle, A);
+        aspectLocked = true;
+      }
     }
-    setLive(clampCropToImage(next, w, h, dg));
+    // Pin the gesture at the image edge instead of shrinking it about its center.
+    setLive(constrainCropDrag(d.start, next, w, h, dg, { move: d.handle === "move", aspectLocked }));
   }, []);
 
   const onPointerUp = useCallback(() => {

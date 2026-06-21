@@ -81,9 +81,11 @@ export function LightboxEditPanel() {
         <div className="flex gap-2">
           <Button size="sm" className="flex-1" onClick={doneCropMode}>
             <Check aria-hidden /> Done
+            <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">Enter</Kbd>
           </Button>
           <Button variant="outline" size="sm" className="flex-1" onClick={cancelCropMode}>
             <X aria-hidden /> Cancel
+            <Kbd className="ml-auto">Esc</Kbd>
           </Button>
         </div>
 
@@ -135,7 +137,7 @@ export function LightboxEditPanel() {
       <div className="flex gap-2">
         <Button size="sm" className="flex-1" disabled={!dirty || applying} onClick={() => void apply()}>
           {applying ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
-          {applying ? "Applying…" : "Apply"}
+          {applying ? "Applying" : "Apply"}
           <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">⌘S</Kbd>
         </Button>
         <Button
@@ -185,6 +187,7 @@ export function LightboxEditPanel() {
         <p className="font-medium text-muted-foreground">Crop</p>
         <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
           <Crop aria-hidden /> Crop &amp; Straighten
+          <Kbd className="ml-auto">R</Kbd>
         </Button>
       </div>
 
@@ -232,9 +235,11 @@ export function LightboxEditPanel() {
       <div className="mt-auto flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
           <Undo2 aria-hidden /> Undo
+          <Kbd className="ml-auto">⌘Z</Kbd>
         </Button>
         <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
           <Redo2 aria-hidden /> Redo
+          <Kbd className="ml-auto">⌘⇧Z</Kbd>
         </Button>
       </div>
     </div>
