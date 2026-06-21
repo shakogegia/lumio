@@ -50,9 +50,9 @@ export function GridShortcuts({ selectedIds }: { selectedIds: Set<string> }) {
       });
       if (!action) return;
 
-      // Enter on a focused tile `<a>` would otherwise fire its click (toggling
-      // selection); prevent the default activation since we handle it here.
-      if (e.key === "Enter") e.preventDefault();
+      // We're handling this key — suppress the browser default (e.g. Enter on a
+      // focused tile `<a>` would otherwise fire its click and toggle selection).
+      e.preventDefault();
 
       if (action.kind === "favorite") {
         if (!c.actions) return;
