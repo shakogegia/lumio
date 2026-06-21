@@ -22,7 +22,7 @@ export const COLOR_FIELDS: ColorField[] = [
   { key: "contrast",    label: "Contrast",    min: -100, max: 100, neutral: 0, step: 1 },
   { key: "saturation",  label: "Saturation",  min: -100, max: 100, neutral: 0, step: 1 },
   { key: "hue",         label: "Hue",         min: -180, max: 180, neutral: 0, step: 1 },
-  { key: "fade",        label: "Fade",        min: 0,    max: 100, neutral: 0, step: 1 },
+  { key: "fade",        label: "Fade",        min: -100, max: 100, neutral: 0, step: 1 },
   { key: "vignette",    label: "Vignette",    min: 0,    max: 100, neutral: 0, step: 1 },
 ];
 
@@ -65,8 +65,9 @@ export function hasColor(e: PhotoEdits | null): boolean {
 
 // --- CSS preview ---
 
-/** Per-pixel CSS filter chain (exposure/brightness/contrast/saturation/hue).
- *  "" when neutral. Temperature/fade/vignette are overlays (colorOverlays). */
+/** Per-pixel CSS filter chain (exposure/brightness/contrast/saturation/hue, plus
+ *  negative fade). "" when neutral. Temperature, positive fade, and vignette are
+ *  overlays (colorOverlays). */
 export function colorCssFilter(e: PhotoEdits | null): string {
   const parts: string[] = [];
   const g = gainFactor(e);
@@ -80,6 +81,10 @@ export function colorCssFilter(e: PhotoEdits | null): string {
   if (c !== 1) parts.push(`contrast(${round(c)})`);
   if (s !== 1) parts.push(`saturate(${round(s)})`);
   if (h !== 0) parts.push(`hue-rotate(${h}deg)`);
+  // Fade is bidirectional: POSITIVE is a matte white-overlay (see colorOverlays);
+  // NEGATIVE deepens blacks / adds punch, which CSS expresses here as contrast(>1).
+  const fadeF = val(e, "fade") / 100;
+  if (fadeF < 0) parts.push(`contrast(${round(1 - FADE_SCALE * fadeF)})`);
   return parts.join(" ");
 }
 
@@ -98,7 +103,7 @@ export interface ColorOverlay {
 export function colorOverlays(e: PhotoEdits | null): ColorOverlay[] {
   const out: ColorOverlay[] = [];
   const temp = val(e, "temperature") / 100; // -1..1
-  const fade = val(e, "fade") / 100;          // 0..1
+  const fade = val(e, "fade") / 100;          // -1..1 (only positive draws a matte overlay)
   const vig = vignetteStrength(e);            // 0..max
   if (temp !== 0) {
     out.push({
@@ -145,7 +150,7 @@ export interface ChannelLinear { a: [number, number, number]; b: [number, number
 /** Temperature × fade folded into one per-channel [R,G,B] linear. null = neutral. */
 export function tempFadeLinear(e: PhotoEdits | null): ChannelLinear | null {
   const t = val(e, "temperature") / 100; // -1..1
-  const f = val(e, "fade") / 100;         // 0..1
+  const f = val(e, "fade") / 100;         // -1..1 (negative → scale>1, lift<0 = punch)
   if (t === 0 && f === 0) return null;
   const tempR = 1 + TEMP_CHANNEL_GAIN * t;
   const tempG = 1; // green is unaffected by warm/cool balance

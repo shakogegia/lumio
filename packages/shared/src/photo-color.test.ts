@@ -80,4 +80,30 @@ describe("photo-color", () => {
     expect(vignetteStrength({ ...base })).toBe(0);
     expect(vignetteStrength({ ...base, vignette: 100 })).toBeCloseTo(0.6, 6);
   });
+
+  it("fade ranges -100..100 in COLOR_FIELDS", () => {
+    const fade = COLOR_FIELDS.find((f) => f.key === "fade")!;
+    expect([fade.min, fade.max]).toEqual([-100, 100]);
+  });
+
+  it("positive fade is a matte overlay (no filter contrast)", () => {
+    expect(colorCssFilter({ ...base, fade: 100 })).toBe("");
+    const ov = colorOverlays({ ...base, fade: 100 });
+    expect(ov[0]!.kind).toBe("fade");
+    expect(ov[0]!.opacity).toBeGreaterThan(0);
+  });
+
+  it("negative fade adds punch via contrast(>1) and draws no overlay", () => {
+    const filter = colorCssFilter({ ...base, fade: -100 });
+    expect(filter).toMatch(/^contrast\(/);
+    const c = Number(filter.match(/contrast\(([\d.]+)\)/)![1]);
+    expect(c).toBeGreaterThan(1);
+    expect(colorOverlays({ ...base, fade: -100 })).toEqual([]);
+  });
+
+  it("negative fade bakes as a punch linear (scale>1, lift<0)", () => {
+    const lin = tempFadeLinear({ ...base, fade: -100 })!;
+    expect(lin.a[1]).toBeGreaterThan(1);
+    expect(lin.b[0]).toBeLessThan(0);
+  });
 });

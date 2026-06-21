@@ -85,7 +85,7 @@ export const photoEditsSchema = z.object({
   saturation: z.number().min(-100).max(100).optional(),
   temperature: z.number().min(-100).max(100).optional(),
   hue: z.number().min(-180).max(180).optional(),
-  fade: z.number().min(0).max(100).optional(),
+  fade: z.number().min(-100).max(100).optional(),
   vignette: z.number().min(0).max(100).optional(),
 });
 export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });

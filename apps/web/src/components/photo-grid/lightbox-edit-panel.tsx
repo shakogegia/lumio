@@ -89,7 +89,7 @@ export function LightboxEditPanel() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="font-medium">Straighten</p>
+            <p className="font-medium text-muted-foreground">Straighten</p>
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground"
@@ -108,7 +108,7 @@ export function LightboxEditPanel() {
         </div>
 
         <div className="space-y-2">
-          <p className="font-medium">Crop</p>
+          <p className="font-medium text-muted-foreground">Crop</p>
           <div className="flex flex-wrap gap-1.5">
             {ASPECTS.map(({ preset, label }) => {
               const active = preset === "free" ? working.crop == null : false;
@@ -151,7 +151,7 @@ export function LightboxEditPanel() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="font-medium">Transform</p>
+          <p className="font-medium text-muted-foreground">Transform</p>
           <Button
             variant="ghost"
             size="icon"
@@ -182,7 +182,7 @@ export function LightboxEditPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-medium">Crop</p>
+        <p className="font-medium text-muted-foreground">Crop</p>
         <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
           <Crop aria-hidden /> Crop &amp; Straighten
         </Button>
@@ -190,7 +190,7 @@ export function LightboxEditPanel() {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <p className="font-medium">Adjust</p>
+          <p className="font-medium text-muted-foreground">Adjust</p>
           <Button
             variant="ghost"
             size="icon"
@@ -206,8 +206,8 @@ export function LightboxEditPanel() {
           const value = working[f.key] ?? 0;
           return (
             <div key={f.key} className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span>{f.label}</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{f.label}</span>
                 <button
                   type="button"
                   aria-label={`Reset ${f.label}`}

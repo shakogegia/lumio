@@ -86,7 +86,7 @@ export interface PhotoEdits {
   /** Hue rotation in degrees. -180..180, 0 = neutral. */
   hue?: number;
   /** Matte/wash: lifts blacks + softens contrast. 0..100, 0 = neutral. */
-  fade?: number;
+  fade?: number; // -100..100: + matte/wash, - punch/deepen-blacks
   /** Corner darkening. 0..100, 0 = neutral. */
   vignette?: number;
 }
@@ -106,7 +106,7 @@ one place (the formula module).
 | Saturation | −100..100 | 0 | `s = 1 + v/100`; CSS `saturate(s)`, sharp `.modulate({ saturation: s })` | very close |
 | Hue | −180..180 | 0 | CSS `hue-rotate(v deg)`, sharp `.modulate({ hue: v })` | very close |
 | Temperature | −100..100 | 0 | overlay (warm/cool) `mix-blend-mode: soft-light`, opacity ∝ \|v\|; sharp per-channel `.linear([rGain,1,bGain], 0)` | tuned-close |
-| Fade | 0..100 | 0 | white overlay (normal blend) low opacity + slight `contrast(<1)`; sharp black-lift `.linear` + white composite | tuned-close |
+| Fade | −100..100 | 0 | +: white matte overlay; −: `contrast(>1)` punch in the filter. Bake: per-channel `.linear` (scale/lift symmetric in sign) | tuned-close |
 | Vignette | 0..100 | 0 | radial-gradient overlay `<div>`; sharp composite of a radial alpha mask | tuned-close |
 
 Notes:

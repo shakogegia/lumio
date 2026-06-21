@@ -35,7 +35,7 @@ export interface PhotoEdits {
   temperature?: number;
   /** Hue rotation in degrees. -180..180, 0 = neutral. */
   hue?: number;
-  /** Matte/wash: lifts blacks + softens contrast. 0..100, 0 = neutral. */
+  /** Fade: + lifts blacks (matte/wash), − deepens blacks (punch/contrast). -100..100, 0 = neutral. */
   fade?: number;
   /** Corner darkening. 0..100, 0 = neutral. */
   vignette?: number;
