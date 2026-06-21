@@ -1,8 +1,8 @@
 import { prisma } from "@lumio/db";
-import type { IngestDeps, RemoveDeps } from "@lumio/ingest";
+import type { IngestDeps, RegenerateDeps, RemoveDeps } from "@lumio/ingest";
 import { DISPLAYS_DIR, EDITED_DISPLAYS_DIR, PHOTOS_DIR, THUMBNAILS_DIR } from "./config.js";
 
-export const ingestDeps: IngestDeps & { editedDisplaysDir: string } = {
+export const ingestDeps: IngestDeps & RegenerateDeps = {
   db: prisma,
   photosDir: PHOTOS_DIR,
   thumbnailsDir: THUMBNAILS_DIR,

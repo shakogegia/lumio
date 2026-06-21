@@ -63,3 +63,8 @@ export function thumbnailPath(id: string): string {
 export function displayPath(id: string): string {
   return path.join(DISPLAYS_DIR, `${id}.webp`);
 }
+
+/** Absolute path of a photo's edited display rendition. */
+export function editedDisplayPath(id: string): string {
+  return path.join(EDITED_DISPLAYS_DIR, `${id}.webp`);
+}
