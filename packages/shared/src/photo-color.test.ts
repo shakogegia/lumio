@@ -15,8 +15,8 @@ const base = { rotate: 0 as const, flipH: false, flipV: false };
 describe("photo-color", () => {
   it("exposes 8 ordered fields", () => {
     expect(COLOR_FIELDS.map((f) => f.key)).toEqual([
-      "exposure", "brightness", "contrast", "saturation",
-      "temperature", "hue", "fade", "vignette",
+      "exposure", "temperature", "brightness", "contrast",
+      "saturation", "hue", "fade", "vignette",
     ]);
   });
 

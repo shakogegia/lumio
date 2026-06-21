@@ -7,13 +7,14 @@ import {
   FlipHorizontal,
   FlipVertical,
   Loader2,
+  RefreshCcw,
   RotateCcw,
   RotateCw,
   Undo2,
   Redo2,
   X,
 } from "lucide-react";
-import { hasEdits, COLOR_FIELDS, type AspectPreset } from "@lumio/shared";
+import { hasEdits, hasColor, COLOR_FIELDS, type AspectPreset } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
@@ -51,6 +52,8 @@ export function LightboxEditPanel() {
     setStraighten,
     setAspect,
     setColor,
+    resetTransform,
+    resetColor,
     cropMode,
     enterCropMode,
     doneCropMode,
@@ -147,7 +150,19 @@ export function LightboxEditPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-medium">Transform</p>
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Transform</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset transform"
+            disabled={working.rotate === 0 && !working.flipH && !working.flipV}
+            onClick={resetTransform}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="sm" onClick={rotateLeft}>
             <RotateCcw aria-hidden /> Left
@@ -166,8 +181,27 @@ export function LightboxEditPanel() {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <p className="font-medium">Crop</p>
+        <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
+          <Crop aria-hidden /> Crop &amp; Straighten
+        </Button>
+      </div>
+
       <div className="space-y-3">
-        <p className="font-medium">Adjust</p>
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Adjust</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset adjustments"
+            disabled={!hasColor(working)}
+            onClick={resetColor}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
         {COLOR_FIELDS.map((f) => {
           const value = working[f.key] ?? 0;
           return (
@@ -194,10 +228,6 @@ export function LightboxEditPanel() {
           );
         })}
       </div>
-
-      <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
-        <Crop aria-hidden /> Crop &amp; Straighten
-      </Button>
 
       <div className="mt-auto flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>

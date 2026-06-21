@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { buildRenditions } from "./renditions.js";
+import { buildRenditions, encodeEditedJpeg } from "./renditions.js";
 
 // A 4x2 PNG (landscape). No EXIF orientation.
 async function landscape(): Promise<Buffer> {
@@ -109,6 +109,16 @@ describe("buildRenditions color", () => {
     expect([r.width, r.height]).toEqual([50, 50]);
     const mean = (await sharp(r.display).stats()).channels[0]!.mean;
     expect(mean).toBeGreaterThan(150);
+  });
+
+  it("encodeEditedJpeg applies a color-only recipe", async () => {
+    const plain = await encodeEditedJpeg(await grey(), null);
+    const bright = await encodeEditedJpeg(await grey(), {
+      rotate: 0, flipH: false, flipV: false, brightness: 80,
+    });
+    const m0 = (await sharp(plain).stats()).channels[0]!.mean;
+    const m1 = (await sharp(bright).stats()).channels[0]!.mean;
+    expect(m1).toBeGreaterThan(m0);
   });
 });
 

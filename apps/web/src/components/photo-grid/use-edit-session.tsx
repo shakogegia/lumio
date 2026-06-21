@@ -14,6 +14,7 @@ import {
   setCrop as recipeSetCrop,
   aspectCrop as recipeAspectCrop,
   clampCropToImage,
+  COLOR_FIELDS,
   type PhotoDTO,
   type PhotoEdits,
   type AspectPreset,
@@ -56,6 +57,10 @@ interface EditSessionValue {
   setAspect: (preset: AspectPreset) => void;
   /** Set a single color-adjustment field (0/neutral removes it). Pushes history. */
   setColor: (key: ColorKey, value: number) => void;
+  /** Reset rotate + flip to identity (the Transform group). Pushes history. */
+  resetTransform: () => void;
+  /** Reset all color adjustments to neutral (the Adjust group). Pushes history. */
+  resetColor: () => void;
   /** True while the focused Crop mode is active. */
   cropMode: boolean;
   /** Enter Crop mode (snapshots crop+straighten for Cancel). */
@@ -205,7 +210,20 @@ export function EditSessionProvider({
   const setColor = useCallback((key: ColorKey, value: number) => {
     setHistory((h) => {
       const cur = h.stack[h.index];
-      const next = value === 0 ? withoutColor(cur, key) : { ...cur, [key]: value };
+      const neutral = COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0;
+      const next = value === neutral ? withoutColor(cur, key) : { ...cur, [key]: value };
+      return pushHistory(h, next);
+    });
+  }, []);
+  const resetTransform = useCallback(() => {
+    setHistory((h) =>
+      pushHistory(h, { ...h.stack[h.index], rotate: 0, flipH: false, flipV: false }),
+    );
+  }, []);
+  const resetColor = useCallback(() => {
+    setHistory((h) => {
+      const next = { ...h.stack[h.index] };
+      for (const f of COLOR_FIELDS) delete next[f.key];
       return pushHistory(h, next);
     });
   }, []);
@@ -310,6 +328,8 @@ export function EditSessionProvider({
     setCrop,
     setAspect,
     setColor,
+    resetTransform,
+    resetColor,
     cropMode,
     enterCropMode,
     doneCropMode,

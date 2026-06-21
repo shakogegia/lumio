@@ -17,10 +17,10 @@ export interface ColorField {
 
 export const COLOR_FIELDS: ColorField[] = [
   { key: "exposure",    label: "Exposure",    min: -100, max: 100, neutral: 0, step: 1 },
+  { key: "temperature", label: "Temperature", min: -100, max: 100, neutral: 0, step: 1 },
   { key: "brightness",  label: "Brightness",  min: -100, max: 100, neutral: 0, step: 1 },
   { key: "contrast",    label: "Contrast",    min: -100, max: 100, neutral: 0, step: 1 },
   { key: "saturation",  label: "Saturation",  min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "temperature", label: "Temperature", min: -100, max: 100, neutral: 0, step: 1 },
   { key: "hue",         label: "Hue",         min: -180, max: 180, neutral: 0, step: 1 },
   { key: "fade",        label: "Fade",        min: 0,    max: 100, neutral: 0, step: 1 },
   { key: "vignette",    label: "Vignette",    min: 0,    max: 100, neutral: 0, step: 1 },
