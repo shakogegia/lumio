@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { keyboardTargetBlocked } from "./grid-key-guard";
 
 /** Owns the selected photo-id set. Selection is always available (no mode). */
 export function useGridSelection() {
@@ -13,17 +14,7 @@ export function useGridSelection() {
     if (!hasSelection) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      const target = e.target as HTMLElement | null;
-      if (target?.isContentEditable || target?.closest("input, textarea, select")) {
-        return;
-      }
-      if (
-        document.querySelector(
-          '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"]',
-        )
-      ) {
-        return;
-      }
+      if (keyboardTargetBlocked(e.target)) return;
       e.preventDefault();
       clear();
     };
