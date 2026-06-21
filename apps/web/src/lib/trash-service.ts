@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, rename, rm } from "node:fs/promises";
+import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { type PrismaClient, prisma, toTrashedPhotoDTO } from "@lumio/db";
 import type { PhotosPage, PhotosQuery } from "@lumio/shared";
@@ -141,6 +141,16 @@ export async function restorePhotos(
     const destRel = freePath(deps.photosDir, t.originalPath);
     const albumIds = await existingAlbumIds(deps.db, t.albumIds);
 
+    // The trashed original is still in place here; stat it for the NOT NULL
+    // file-stat columns. If it's somehow gone, fall back to the snapshot's
+    // sortDate (and 0 bytes) — the watcher's re-ingest and the next scan
+    // re-stamp from the real file once it lands.
+    const ext = path.extname(t.originalPath);
+    const trashOriginal = path.join(deps.trashDir, "originals", `${id}${ext}`);
+    const st = await stat(trashOriginal).catch(() => null);
+    const fileMtimeMs = st?.mtimeMs ?? t.sortDate.getTime();
+    const fileBirthtimeMs = st?.birthtimeMs ?? t.sortDate.getTime();
+
     // 1. Recreate the row (same id) BEFORE the file lands, so the watcher's
     //    `add` upserts in place (keeps id + album links) instead of recreating.
     //    Reuses the trashed id, which is safe because a trashed photo's row was
@@ -158,12 +168,15 @@ export async function restorePhotos(
         thumbhash: t.thumbhash,
         exif: t.exif as object,
         colorLabel: t.colorLabel,
+        fileSize: st?.size ?? 0,
+        fileMtimeMs,
+        fileModifiedAt: new Date(fileMtimeMs),
+        fileCreatedAt: new Date(fileBirthtimeMs),
         albums: { create: albumIds.map((albumId) => ({ albumId })) },
       },
     });
 
     // 2. Move renditions + original back.
-    const ext = path.extname(t.originalPath);
     await moveFile(
       path.join(deps.trashDir, "thumbnails", `${id}.webp`),
       path.join(deps.cacheDir, "thumbnails", `${id}.webp`),
