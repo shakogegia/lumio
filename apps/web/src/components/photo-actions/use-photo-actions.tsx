@@ -24,6 +24,11 @@ export interface PhotoActions {
   addToAlbumDirect: (ids: string[], albumId: string, opts?: ActionOpts) => Promise<void>;
   /** The album currently being viewed, so album pickers can exclude it. */
   excludeAlbumId?: string;
+  /** Present only in a regular-album view: the album to set covers on, plus its
+   *  current pinned cover (for the "current cover" menu hint). Absent elsewhere. */
+  albumCover?: { albumId: string; coverPhotoId: string | null };
+  /** Pin a single photo as the current album's cover. No-op without `albumCover`. */
+  setAlbumCover: (photoId: string, opts?: ActionOpts) => Promise<void>;
   pending: { download: boolean; label: boolean; trash: boolean; favorite: boolean };
   /** Dialogs (add-to-album + trash confirm). Render once per view. */
   element: React.ReactNode;
@@ -42,6 +47,7 @@ const DEFAULT_TRASH_DESCRIPTION = "They'll be moved to Trash. You can restore th
 export function usePhotoActions({
   gridRef,
   excludeAlbumId,
+  albumCover,
   trashDescription = DEFAULT_TRASH_DESCRIPTION,
   onTrashed,
   dropOnUnfavorite = false,
@@ -49,6 +55,8 @@ export function usePhotoActions({
   gridRef: React.RefObject<PhotoGridHandle | null>;
   /** Hide this album from the add-to-album list (the album being viewed). */
   excludeAlbumId?: string;
+  /** Enable "set as album cover" for a regular album (see PhotoActions.albumCover). */
+  albumCover?: { albumId: string; coverPhotoId: string | null };
   /** Confirm-dialog body for trash (album view phrases it differently). */
   trashDescription?: string;
   /** Fires after any successful trash, for view-level side effects (e.g. a
@@ -187,6 +195,28 @@ export function usePhotoActions({
     [router],
   );
 
+  const setAlbumCover = useCallback(
+    async (photoId: string, opts?: ActionOpts) => {
+      if (!albumCover) return;
+      try {
+        const res = await fetch(`/api/albums/${albumCover.albumId}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ coverPhotoId: photoId }),
+        });
+        if (!res.ok) throw new Error("set cover failed");
+        // Refresh so the card/sidebar thumbnails and the "current cover" menu
+        // hint (seeded from the server) all update.
+        router.refresh();
+        toast.success("Album cover updated");
+        opts?.onSuccess?.();
+      } catch {
+        toast.error("Failed to set the album cover.");
+      }
+    },
+    [albumCover, router],
+  );
+
   const element = (
     <>
       {confirmDialog}
@@ -212,7 +242,9 @@ export function usePhotoActions({
     favorite,
     addToAlbum,
     addToAlbumDirect,
+    setAlbumCover,
     excludeAlbumId,
+    albumCover,
     pending: { download: downloading, label: labelPending, trash: deleting, favorite: favoritePending },
     element,
   };
