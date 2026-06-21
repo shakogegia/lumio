@@ -37,6 +37,8 @@ function photoRow(id: string) {
     source: "filesystem" as const,
     takenAt: new Date("2024-01-01T00:00:00.000Z"),
     sortDate: new Date("2024-01-01T00:00:00.000Z"),
+    fileModifiedAt: new Date("2024-01-01T00:00:00.000Z"),
+    fileCreatedAt: new Date("2024-01-01T00:00:00.000Z"),
     width: 10,
     height: 10,
     hash: null,
