@@ -60,7 +60,7 @@ export function Lightbox() {
 }
 
 function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
-  const { openIndex, total, step, close, open } = usePhotoCollection();
+  const { openIndex, total, step, close, open, openTab } = usePhotoCollection();
   const { guard, dirty, undo, redo, canUndo, canRedo } = useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             />
           )}
         </div>
-        <LightboxSidebar photo={photo} />
+        <LightboxSidebar photo={photo} initialTab={openTab} />
       </div>
     </div>
   );

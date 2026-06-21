@@ -11,8 +11,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
+import { LightboxTab } from "@/lib/lightbox-tab";
 
-export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
+export function LightboxSidebar({
+  photo,
+  initialTab = LightboxTab.Info,
+}: {
+  photo: PhotoDTO;
+  initialTab?: LightboxTab;
+}) {
   const camera =
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
@@ -38,17 +45,17 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
 
   return (
     <aside className="w-full shrink-0 border-t bg-background text-sm lg:flex lg:h-dvh lg:w-80 lg:flex-col lg:overflow-hidden lg:border-t-0 lg:border-l">
-      <Tabs defaultValue="info" className="gap-0 lg:min-h-0 lg:flex-1">
+      <Tabs defaultValue={initialTab} className="gap-0 lg:min-h-0 lg:flex-1">
         <div className="flex shrink-0 items-center border-b px-3 py-2">
           <TabsList className="w-full">
-            <TabsTrigger value="info">Info</TabsTrigger>
-            <TabsTrigger value="edit">Edit</TabsTrigger>
-            <TabsTrigger value="exif">EXIF</TabsTrigger>
+            <TabsTrigger value={LightboxTab.Info}>Info</TabsTrigger>
+            <TabsTrigger value={LightboxTab.Edit}>Edit</TabsTrigger>
+            <TabsTrigger value={LightboxTab.Exif}>EXIF</TabsTrigger>
           </TabsList>
         </div>
 
         <div className="p-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
-          <TabsContent value="info" className="space-y-4">
+          <TabsContent value={LightboxTab.Info} className="space-y-4">
             <div className="space-y-3">
               <Row label="Source" value={<Badge>{photo.source}</Badge>} />
               <Row label="Taken" value={photo.takenAt ?? "—"} />
@@ -73,11 +80,11 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
             )}
           </TabsContent>
 
-          <TabsContent value="edit" className="lg:flex lg:flex-col">
+          <TabsContent value={LightboxTab.Edit} className="lg:flex lg:flex-col">
             <LightboxEditPanel />
           </TabsContent>
 
-          <TabsContent value="exif">
+          <TabsContent value={LightboxTab.Exif}>
             <ExifPanel entries={metadata} />
           </TabsContent>
         </div>

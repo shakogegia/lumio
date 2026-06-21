@@ -39,6 +39,7 @@ import { FolderCard } from "./folder-card";
 import { RenameDialog } from "./rename-dialog";
 import { MovePickerItems } from "./move-picker-items";
 import { DeleteFolderDialog } from "./delete-folder-dialog";
+import { FolderBrowserShortcuts } from "./folder-browser-shortcuts";
 
 type Targets = { folderIds: string[]; albumIds: string[] };
 
@@ -216,6 +217,10 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
 
   return (
     <>
+      <FolderBrowserShortcuts
+        selectedIds={sel.selected}
+        onEnter={(id) => (folderIdSet.has(id) ? openFolder(id) : openAlbum(id))}
+      />
       {confirmDialog}
       {rename && (
         <RenameDialog

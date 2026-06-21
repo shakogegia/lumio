@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
@@ -229,6 +230,7 @@ export function SearchView() {
                     empty={<SearchEmpty />}
                   />
                   <Lightbox />
+                  <GridShortcuts selectedIds={sel.selected} />
                 </PhotoActionsProvider>
               </PhotoCollectionProvider>
             </div>

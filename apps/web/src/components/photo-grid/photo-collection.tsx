@@ -15,6 +15,7 @@ import { photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
+import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
 
 /** How far around the open photo to keep loaded (neighbors + film strip). */
@@ -35,7 +36,9 @@ interface PhotoCollectionValue {
   // Lightbox
   enableLightbox: boolean;
   openIndex: number | null;
-  open: (index: number) => void;
+  /** The tab the lightbox should show on this open (defaults to Info). */
+  openTab: LightboxTab;
+  open: (index: number, opts?: { tab?: LightboxTab }) => void;
   close: () => void;
   step: (delta: 1 | -1) => void;
   urlForId: (id: string) => string;
@@ -88,6 +91,7 @@ export function PhotoCollectionProvider({
 
   const store = usePhotoPages(resolvedEndpoint, resolvedParams, PHOTO_PAGE_SIZE);
   const [openIndex, setOpenIndex] = useState<number | null>(initialIndex);
+  const [openTab, setOpenTab] = useState<LightboxTab>(LightboxTab.Info);
   // True once we've pushed a history entry for the lightbox this session, so
   // close() can pop it (restoring grid scroll) rather than replacing the URL.
   const pushed = useRef(false);
@@ -157,7 +161,7 @@ export function PhotoCollectionProvider({
   }, [openIndex, photoForIndex, url]);
 
   const open = useCallback(
-    (index: number) => {
+    (index: number, opts?: { tab?: LightboxTab }) => {
       if (!enableLightbox) return;
       // First open of this session pushes ONE history entry; navigating within the
       // already-open lightbox (film-strip jumps, arrows) only replaces — the
@@ -173,6 +177,9 @@ export function PhotoCollectionProvider({
           pushed.current = true;
         }
       }
+      // Always reset to Info unless a tab is requested, so double-click /
+      // film-strip / deep-link opens never inherit a stale Edit tab.
+      setOpenTab(opts?.tab ?? LightboxTab.Info);
       setOpenIndex(index);
     },
     [enableLightbox, openIndex, photoForIndex, url],
@@ -250,6 +257,7 @@ export function PhotoCollectionProvider({
       retry,
       enableLightbox,
       openIndex,
+      openTab,
       open,
       close,
       step,
@@ -267,6 +275,7 @@ export function PhotoCollectionProvider({
       retry,
       enableLightbox,
       openIndex,
+      openTab,
       open,
       close,
       step,

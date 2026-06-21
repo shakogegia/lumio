@@ -22,6 +22,7 @@ import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-g
 import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
 import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
 import { Lightbox } from "@/components/photo-grid/lightbox";
+import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
@@ -143,6 +144,7 @@ export function FavoritesView() {
             empty={FAVORITES_EMPTY}
           />
           <Lightbox />
+          <GridShortcuts selectedIds={sel.selected} />
         </PhotoActionsProvider>
       </PhotoCollectionProvider>
     </>
