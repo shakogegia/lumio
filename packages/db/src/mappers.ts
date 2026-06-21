@@ -1,9 +1,10 @@
-import type { Album, Photo, TrashedPhoto } from "@prisma/client";
+import type { Album, Folder, Photo, TrashedPhoto } from "@prisma/client";
 import {
   type AlbumDTO,
   type ColorLabel,
   coercePhotoEdits,
   type ExifData,
+  type FolderDTO,
   PhotoSource,
   type PhotoDTO,
   type SmartAlbumRules,
@@ -54,6 +55,16 @@ export function toAlbumDTO(row: Album): AlbumDTO {
     isSmart: row.isSmart,
     rules: (row.rules as SmartAlbumRules | null) ?? null,
     coverPhotoId: row.coverPhotoId ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toFolderDTO(row: Folder): FolderDTO {
+  return {
+    id: row.id,
+    name: row.name,
+    parentId: row.parentId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
