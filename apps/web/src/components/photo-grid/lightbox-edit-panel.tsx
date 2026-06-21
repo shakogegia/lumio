@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import {
   Check,
+  Crop,
   FlipHorizontal,
   FlipVertical,
   Loader2,
@@ -10,6 +11,7 @@ import {
   RotateCw,
   Undo2,
   Redo2,
+  X,
 } from "lucide-react";
 import { hasEdits, type AspectPreset } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,10 @@ export function LightboxEditPanel() {
     setEditing,
     setStraighten,
     setAspect,
+    cropMode,
+    enterCropMode,
+    doneCropMode,
+    cancelCropMode,
   } = useEditSession();
   useEditKeyboard({ rotateLeft, rotateRight, apply: () => void apply() });
 
@@ -56,24 +62,77 @@ export function LightboxEditPanel() {
     return () => setEditing(false);
   }, [setEditing]);
 
+  if (cropMode) {
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="font-medium">Straighten</p>
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setStraighten(0)}
+            >
+              {(working.straighten ?? 0).toFixed(0)}°
+            </button>
+          </div>
+          <Slider
+            min={-45}
+            max={45}
+            step={1}
+            value={[working.straighten ?? 0]}
+            onValueChange={(v) => setStraighten(v[0])}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="font-medium">Crop</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ASPECTS.map(({ preset, label }) => {
+              const active = preset === "free" ? working.crop == null : false;
+              return (
+                <Button
+                  key={preset}
+                  variant={active ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setAspect(preset)}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
+            <Undo2 aria-hidden /> Undo
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
+            <Redo2 aria-hidden /> Redo
+          </Button>
+        </div>
+
+        <div className="mt-auto flex gap-2">
+          <Button size="sm" className="flex-1" onClick={doneCropMode}>
+            <Check aria-hidden /> Done
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={cancelCropMode}>
+            <X aria-hidden /> Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex gap-2">
-        <Button
-          size="sm"
-          className="flex-1"
-          disabled={!dirty || applying}
-          onClick={() => void apply()}
-        >
-          {applying ? (
-            <Loader2 className="animate-spin" aria-hidden />
-          ) : (
-            <Check aria-hidden />
-          )}
+        <Button size="sm" className="flex-1" disabled={!dirty || applying} onClick={() => void apply()}>
+          {applying ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
           {applying ? "Applying…" : "Apply"}
-          <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">
-            ⌘S
-          </Kbd>
+          <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">⌘S</Kbd>
         </Button>
         <Button
           variant="outline"
@@ -106,63 +165,15 @@ export function LightboxEditPanel() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="font-medium">Straighten</p>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setStraighten(0)}
-          >
-            {(working.straighten ?? 0).toFixed(0)}°
-          </button>
-        </div>
-        <Slider
-          min={-45}
-          max={45}
-          step={1}
-          value={[working.straighten ?? 0]}
-          onValueChange={(v) => setStraighten(v[0])}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <p className="font-medium">Crop</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ASPECTS.map(({ preset, label }) => {
-            const active = preset === "free" ? working.crop == null : false;
-            return (
-              <Button
-                key={preset}
-                variant={active ? "default" : "outline"}
-                size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setAspect(preset)}
-              >
-                {label}
-              </Button>
-            );
-          })}
-        </div>
-      </div>
+      <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
+        <Crop aria-hidden /> Crop &amp; Straighten
+      </Button>
 
       <div className="mt-auto flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          disabled={!canUndo}
-          onClick={undo}
-        >
+        <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
           <Undo2 aria-hidden /> Undo
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          disabled={!canRedo}
-          onClick={redo}
-        >
+        <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
           <Redo2 aria-hidden /> Redo
         </Button>
       </div>
