@@ -32,7 +32,7 @@ function buildRule(row: RuleRow) {
   return { field: "exif.cameraModel", op: "eq" as const, value: row.value };
 }
 
-export function NewAlbumDialog() {
+export function NewAlbumDialog({ folderId = null }: { folderId?: string | null } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -88,12 +88,13 @@ export function NewAlbumDialog() {
         ? {
             name: name.trim(),
             isSmart: true,
+            folderId,
             rules: {
               match,
               rules: rules.map(buildRule),
             },
           }
-        : { name: name.trim(), isSmart: false };
+        : { name: name.trim(), isSmart: false, folderId };
 
       const res = await fetch("/api/albums", {
         method: "POST",
