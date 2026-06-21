@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { Download, Loader2, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
@@ -16,7 +16,7 @@ import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
 import { partitionSupported } from "@/lib/upload-collect";
-import { summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
+import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { computeSelection } from "@/lib/grid-selection";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
@@ -30,12 +30,25 @@ let nextRowId = 1;
 
 type UploadResponse = { status: RowStatus | "unsupported"; id?: string; message?: string };
 
-export function UploadClient() {
+export function UploadClient({
+  targetAlbum: initialTargetAlbum,
+}: {
+  targetAlbum?: { id: string; name: string };
+}) {
   const router = useRouter();
   const sel = useGridSelection();
   const { columns, setColumns } = useGridColumns();
   const { confirm, confirmDialog } = useConfirm();
   const album = useAddToAlbum();
+
+  // Seeded from the URL-derived prop, but clearable in-session. Clearing stops
+  // further auto-adds and strips ?albumId from the URL — via history.replaceState
+  // (no navigation) so the already-uploaded tiles below aren't lost.
+  const [targetAlbum, setTargetAlbum] = useState(initialTargetAlbum);
+  const clearTargetAlbum = useCallback(() => {
+    setTargetAlbum(undefined);
+    window.history.replaceState(null, "", "/upload");
+  }, []);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [unsupportedCount, setUnsupportedCount] = useState(0);
@@ -48,7 +61,7 @@ export function UploadClient() {
   }, []);
 
   const uploadOne = useCallback(
-    async (file: File, rowId: number): Promise<RowStatus> => {
+    async (file: File, rowId: number): Promise<{ status: RowStatus; photoId?: string }> => {
       update(rowId, { status: "uploading", message: undefined });
       const body = new FormData();
       body.set("file", file);
@@ -59,13 +72,13 @@ export function UploadClient() {
         if (data.status === "unsupported") {
           // Pre-filtered client-side; a late unsupported is treated as a failure.
           update(rowId, { status: "error", message: "Unsupported format" });
-          return "error";
+          return { status: "error" };
         }
         update(rowId, { status: data.status, message: data.message, photoId: data.id });
-        return data.status;
+        return { status: data.status, photoId: data.id };
       } catch (err) {
         update(rowId, { status: "error", message: (err as Error).message });
-        return "error";
+        return { status: "error" };
       }
     },
     [update],
@@ -76,20 +89,38 @@ export function UploadClient() {
     async (queued: Array<{ file: File; rowId: number }>) => {
       if (queued.length === 0) return;
       let cursor = 0;
-      let added = 0;
+      const results: Array<{ status: RowStatus; photoId?: string }> = [];
       async function worker() {
         while (cursor < queued.length) {
           const item = queued[cursor++];
-          if (item && (await uploadOne(item.file, item.rowId)) === "added") added++;
+          if (item) results.push(await uploadOne(item.file, item.rowId));
         }
       }
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queued.length) }, worker));
+      // When the upload page is scoped to an album, add this batch's resolved
+      // photos (newly stored or pre-existing duplicates) to it. Idempotent server
+      // side. Quiet on success — the upload chime + refresh below cover the batch.
+      if (targetAlbum) {
+        const ids = albumTargetIds(results);
+        if (ids.length > 0) {
+          try {
+            const res = await fetch(`/api/albums/${targetAlbum.id}/photos`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ photoIds: ids }),
+            });
+            if (!res.ok) throw new Error("add failed");
+          } catch {
+            toast.error("Failed to add photos to the album.");
+          }
+        }
+      }
       // Chime once per batch when at least one genuinely new photo landed
       // (not for all-duplicate/all-failed batches). Respects the sound setting.
-      if (added > 0) playSound(SoundEffect.ActionComplete);
+      if (results.some((r) => r.status === "added")) playSound(SoundEffect.ActionComplete);
       router.refresh();
     },
-    [router, uploadOne],
+    [router, targetAlbum, uploadOne],
   );
 
   const addFiles = useCallback(
@@ -280,6 +311,25 @@ export function UploadClient() {
       ) : (
         <HeaderBar
           title="Upload"
+          subtitle={
+            targetAlbum ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span>
+                  Uploading to{" "}
+                  <span className="font-medium text-foreground">{targetAlbum.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearTargetAlbum}
+                  aria-label="Stop uploading to this album"
+                  title="Stop uploading to this album"
+                  className="inline-flex size-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" aria-hidden />
+                </button>
+              </span>
+            ) : undefined
+          }
           actions={
             hasRows ? <GridSizeMenu columns={columns} onColumnsChange={setColumns} /> : null
           }

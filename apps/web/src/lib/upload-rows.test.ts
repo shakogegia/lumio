@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectableIds, summarizeRows, type Row } from "./upload-rows";
+import { albumTargetIds, selectableIds, summarizeRows, type Row } from "./upload-rows";
 
 function mkRow(p: Partial<Row> & Pick<Row, "status">): Row {
   return {
@@ -42,5 +42,26 @@ describe("selectableIds", () => {
       mkRow({ id: 4, status: "uploading" }),
     ];
     expect(selectableIds(rows)).toEqual(["a", "b"]);
+  });
+});
+
+describe("albumTargetIds", () => {
+  it("collects added and duplicate ids, skipping errors and missing ids", () => {
+    expect(
+      albumTargetIds([
+        { status: "added", photoId: "a" },
+        { status: "duplicate", photoId: "b" },
+        { status: "error" },
+        { status: "added" }, // resolved without an id — defensively skipped
+      ]),
+    ).toEqual(["a", "b"]);
+  });
+
+  it("is empty for an all-failed batch", () => {
+    expect(albumTargetIds([{ status: "error" }, { status: "error" }])).toEqual([]);
+  });
+
+  it("is empty for an empty batch", () => {
+    expect(albumTargetIds([])).toEqual([]);
   });
 });
