@@ -1,14 +1,32 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import type { AlbumSummaryDTO, PhotoDTO } from "@lumio/shared";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { exifEntries, filterExifEntries } from "@/lib/exif-entries";
+import { useLibraryTree } from "@/components/library-tree/library-tree";
+import {
+  AlbumPickerItems,
+  AlbumThumb,
+} from "@/components/photo-actions/album-picker-items";
+import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
 
@@ -17,24 +35,6 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
     [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
     "—";
   const metadata = exifEntries(photo.exif);
-
-  // The store's grid photo carries no album list, so fetch the catalog of
-  // regular (non-smart) albums client-side once.
-  const [regularAlbums, setRegularAlbums] = useState<AlbumSummaryDTO[]>([]);
-  useEffect(() => {
-    let alive = true;
-    fetch("/api/albums")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
-      .then((data: { items: AlbumSummaryDTO[] }) => {
-        if (alive) setRegularAlbums(data.items.filter((a) => !a.isSmart));
-      })
-      .catch(() => {
-        /* leave the album list empty on failure */
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   return (
     <aside className="w-full shrink-0 border-t bg-background text-sm lg:flex lg:h-dvh lg:w-80 lg:flex-col lg:overflow-hidden lg:border-t-0 lg:border-l">
@@ -57,20 +57,10 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
               <Row label="Camera" value={camera} />
               <Row label="Hash" value={photo.hash ?? "—"} />
             </div>
-            {regularAlbums.length > 0 && (
-              <>
-                <Separator />
-                {/* Keyed on photo.id so membership state re-initializes to null on
-                  each photo: a toggle during arrow-nav can't compute nextIds from
-                  the previous photo's membership. The album LIST fetch stays in
-                  the parent, so it isn't re-fetched per navigation. */}
-                <AlbumMembership
-                  key={photo.id}
-                  photo={photo}
-                  regularAlbums={regularAlbums}
-                />
-              </>
-            )}
+            <Separator />
+            {/* Keyed on photo.id so membership re-initializes per photo during
+              arrow-key navigation. */}
+            <AlbumMembership key={photo.id} photo={photo} />
           </TabsContent>
 
           <TabsContent value="edit" className="lg:flex lg:flex-col">
@@ -86,21 +76,17 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
   );
 }
 
-function AlbumMembership({
-  photo,
-  regularAlbums,
-}: {
-  photo: PhotoDTO;
-  regularAlbums: AlbumSummaryDTO[];
-}) {
+function AlbumMembership({ photo }: { photo: PhotoDTO }) {
   const { patchPhotos } = usePhotoCollection();
-  const [pending, setPending] = useState<string | null>(null);
-  // The grid's photo has albumIds === undefined; fetch the full DTO to learn
-  // membership. Null until loaded so the checkboxes only render once known.
+  const { albums, loading: treeLoading } = useLibraryTree();
+  const { addToAlbum, addToAlbumDirect, element } = useAddToAlbum();
+  const [pending, setPending] = useState(false);
+  // Null until the photo's full DTO loads (the grid photo carries no albumIds).
   const [albumIds, setAlbumIds] = useState<string[] | null>(
     photo.albumIds ?? null,
   );
 
+  // Learn this photo's current membership.
   useEffect(() => {
     let alive = true;
     fetch(`/api/photos/${photo.id}`)
@@ -116,59 +102,125 @@ function AlbumMembership({
     };
   }, [photo.id]);
 
-  async function toggle(album: AlbumSummaryDTO) {
-    const isMember = albumIds?.includes(album.id) ?? false;
-    const nextIds = isMember
-      ? (albumIds ?? []).filter((id) => id !== album.id)
-      : [...(albumIds ?? []), album.id];
-    setPending(album.id);
+  // Re-read membership from the server and sync the grid store. Used after the
+  // "New album…" dialog adds the photo (the dialog doesn't return the new id).
+  const resync = useCallback(() => {
+    fetch(`/api/photos/${photo.id}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((data: PhotoDTO) => {
+        const next = data.albumIds ?? [];
+        setAlbumIds(next);
+        patchPhotos(new Set([photo.id]), { albumIds: next });
+      })
+      .catch(() => {
+        /* leave membership as-is on failure */
+      });
+  }, [photo.id, patchPhotos]);
+
+  // Add to an existing album via the shared quick-pick (POST + sound + refresh),
+  // then optimistically reflect it locally and in the grid store.
+  function add(albumId: string) {
+    const next = [...(albumIds ?? []), albumId];
+    void addToAlbumDirect([photo.id], albumId, {
+      onSuccess: () => {
+        setAlbumIds(next);
+        patchPhotos(new Set([photo.id]), { albumIds: next });
+      },
+    });
+  }
+
+  async function remove(albumId: string) {
+    if (pending) return;
+    const next = (albumIds ?? []).filter((id) => id !== albumId);
+    setPending(true);
     try {
-      const res = isMember
-        ? await fetch(`/api/albums/${album.id}/photos/${photo.id}`, {
-            method: "DELETE",
-          })
-        : await fetch(`/api/albums/${album.id}/photos`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ photoIds: [photo.id] }),
-          });
-      // Only commit the optimistic local + store update once the server confirms
-      // (a smart album → 400, a deleted album → 404 would otherwise leave phantom
-      // membership in the UI and the shared grid store).
+      const res = await fetch(`/api/albums/${albumId}/photos/${photo.id}`, {
+        method: "DELETE",
+      });
+      // Only commit once the server confirms, so a failed delete can't leave
+      // phantom membership in the UI or the shared grid store.
       if (!res.ok) {
         toast.error("Failed to update album.");
         return;
       }
-      setAlbumIds(nextIds);
-      patchPhotos(new Set([photo.id]), { albumIds: nextIds });
+      setAlbumIds(next);
+      patchPhotos(new Set([photo.id]), { albumIds: next });
     } finally {
-      setPending(null);
+      setPending(false);
     }
   }
 
+  const byId = new Map(albums.map((a) => [a.id, a]));
+  const memberAlbums = (albumIds ?? [])
+    .map((id) => byId.get(id))
+    .filter((a): a is AlbumSummaryDTO => a !== undefined && !a.isSmart)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  // Skeleton until we know membership AND have the album list to resolve names.
+  const loading = albumIds === null || (treeLoading && albums.length === 0);
+
   return (
     <div>
-      <p className="mb-2 font-medium">Albums</p>
-      <div className="space-y-2">
-        {regularAlbums.map((album) => {
-          const checked = albumIds?.includes(album.id) ?? false;
-          return (
-            <label
+      <p className="mb-2 font-medium">Appears in</p>
+      {loading ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="size-6 rounded-md" />
+              <Skeleton className="h-4 w-32 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : memberAlbums.length === 0 ? (
+        <p className="text-muted-foreground">Not in any album yet</p>
+      ) : (
+        <div className="space-y-0.5">
+          {memberAlbums.map((album) => (
+            <div
               key={album.id}
-              className="flex cursor-pointer items-center gap-2"
+              className="group/row flex items-center gap-2 rounded-md"
             >
-              <input
-                type="checkbox"
-                checked={checked}
-                disabled={pending !== null}
-                onChange={() => void toggle(album)}
-                className="h-4 w-4 rounded border-input accent-primary"
-              />
-              <span>{album.name}</span>
-            </label>
-          );
-        })}
-      </div>
+              <AlbumThumb coverPhotoId={album.coverPhotoId} />
+              <span className="truncate">{album.name}</span>
+              <button
+                type="button"
+                onClick={() => void remove(album.id)}
+                aria-label={`Remove from ${album.name}`}
+                className="ml-auto rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={albumIds === null}
+            className="mt-2 w-full"
+          >
+            <Plus aria-hidden />
+            Add more
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
+          <AlbumPickerItems
+            menu={{
+              Item: DropdownMenuItem,
+              Separator: DropdownMenuSeparator,
+              Sub: DropdownMenuSub,
+              SubTrigger: DropdownMenuSubTrigger,
+              SubContent: DropdownMenuSubContent,
+            }}
+            excludeAlbumIds={new Set(albumIds ?? [])}
+            onPick={(albumId) => add(albumId)}
+            onCreateNew={() => addToAlbum([photo.id], { onSuccess: resync })}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {element}
     </div>
   );
 }
