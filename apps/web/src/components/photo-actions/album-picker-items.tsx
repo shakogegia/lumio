@@ -20,6 +20,25 @@ export interface AlbumPickerMenu {
   SubContent: React.ComponentType<{ className?: string; children?: React.ReactNode }>;
 }
 
+/** The square album cover thumbnail (or a fallback icon), shared by the picker
+ *  rows and the lightbox "Appears in" list. */
+export function AlbumThumb({ coverPhotoId }: { coverPhotoId: string | null }) {
+  return (
+    <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+      {coverPhotoId ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/api/thumbnails/${coverPhotoId}`}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <Images className="size-3.5 text-muted-foreground" />
+      )}
+    </span>
+  );
+}
+
 function AlbumOption({
   album,
   Item,
@@ -31,14 +50,7 @@ function AlbumOption({
 }) {
   return (
     <Item onSelect={() => onPick(album.id)}>
-      <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-        {album.coverPhotoId ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/api/thumbnails/${album.coverPhotoId}`} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <Images className="size-3.5 text-muted-foreground" />
-        )}
-      </span>
+      <AlbumThumb coverPhotoId={album.coverPhotoId} />
       <span className="truncate">{album.name}</span>
     </Item>
   );
@@ -80,16 +92,18 @@ function FolderSubmenu({
 export function AlbumPickerItems({
   menu,
   excludeAlbumId,
+  excludeAlbumIds,
   onPick,
   onCreateNew,
 }: {
   menu: AlbumPickerMenu;
   excludeAlbumId?: string;
+  excludeAlbumIds?: Set<string>;
   onPick: (albumId: string) => void;
   onCreateNew: () => void;
 }) {
   const { folders, albums, loading, error } = useLibraryTree();
-  const tree = buildAlbumTree(folders, albums, { excludeAlbumId });
+  const tree = buildAlbumTree(folders, albums, { excludeAlbumId, excludeAlbumIds });
   const { Item, Separator } = menu;
 
   const isEmpty = tree.albums.length === 0 && tree.folders.length === 0;

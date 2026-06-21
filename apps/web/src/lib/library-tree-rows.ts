@@ -26,16 +26,25 @@ export interface AlbumTreeNode {
 /**
  * The folder/album hierarchy as a NESTED tree for true submenu pickers ("Add to
  * album"): top-level albums + folder nodes, each with its direct albums and child
- * folder nodes. Smart albums and `excludeAlbumId` are filtered out; folders with no
- * pickable album anywhere beneath are pruned (unless `includeEmptyFolders`).
+ * folder nodes. Smart albums, `excludeAlbumId`, and any id in `excludeAlbumIds` are
+ * filtered out; folders with no pickable album anywhere beneath are pruned (unless
+ * `includeEmptyFolders`).
  */
 export function buildAlbumTree(
   folders: FolderDTO[],
   albums: AlbumSummaryDTO[],
-  opts: { excludeAlbumId?: string; includeSmart?: boolean; includeEmptyFolders?: boolean } = {},
+  opts: {
+    excludeAlbumId?: string;
+    excludeAlbumIds?: Set<string>;
+    includeSmart?: boolean;
+    includeEmptyFolders?: boolean;
+  } = {},
 ): { albums: AlbumSummaryDTO[]; folders: AlbumTreeNode[] } {
   const pickable = albums.filter(
-    (a) => (opts.includeSmart || !a.isSmart) && a.id !== opts.excludeAlbumId,
+    (a) =>
+      (opts.includeSmart || !a.isSmart) &&
+      a.id !== opts.excludeAlbumId &&
+      !opts.excludeAlbumIds?.has(a.id),
   );
   const albumsByFolder = new Map<string | null, AlbumSummaryDTO[]>();
   for (const a of pickable) {
