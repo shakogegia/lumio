@@ -32,6 +32,13 @@ export const metadata: Metadata = {
   // `template` wraps each page's `title` export, so "Photos" → "Photos · Lumio".
   title: { default: "Lumio", template: "%s · Lumio" },
   description: "Your photo library.",
+  // iOS home-screen launch: standalone chrome + a black status bar to match the
+  // dark splash. (The manifest already covers Android/desktop installability.)
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Lumio",
+  },
 };
 
 export default function RootLayout({
