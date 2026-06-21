@@ -15,6 +15,7 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     path: row.path,
     source: row.source as PhotoSource,
     takenAt: row.takenAt ? row.takenAt.toISOString() : null,
+    fileModifiedAt: row.fileModifiedAt.toISOString(),
     width: row.width,
     height: row.height,
     hash: row.hash,
@@ -34,6 +35,7 @@ export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
     path: row.originalPath,
     source: row.source as PhotoSource,
     takenAt: row.takenAt ? row.takenAt.toISOString() : null,
+    fileModifiedAt: null, // TrashedPhoto has no file-stat columns
     width: row.width,
     height: row.height,
     hash: row.hash,

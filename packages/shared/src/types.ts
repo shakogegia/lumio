@@ -23,6 +23,7 @@ export interface PhotoDTO {
   path: string;
   source: PhotoSource;
   takenAt: string | null; // ISO string
+  fileModifiedAt: string | null; // ISO string; null for trashed photos (no such column)
   width: number;
   height: number;
   hash: string | null;
