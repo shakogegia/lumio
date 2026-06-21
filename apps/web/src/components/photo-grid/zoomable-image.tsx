@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   NO_EDITS,
+  hasEdits,
   previewTransform,
   straightenedSize,
   centeredAspectCrop,
@@ -14,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
-import { displayUrl } from "@/lib/rendition-url";
+import { displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
@@ -22,6 +23,7 @@ import { useEditSession } from "./use-edit-session";
 import { LightboxHeader } from "./lightbox-header";
 import { CropOverlay } from "./crop-overlay";
 import { BaseImageStage } from "./base-image-stage";
+import { EditedResult } from "./edited-result";
 
 export function ZoomableImage({
   photo,
@@ -36,12 +38,16 @@ export function ZoomableImage({
   step: (delta: 1 | -1) => void;
   onTrashed: () => void;
 }) {
-  const { working, editing, cropMode, setBaseSize } = useEditSession();
+  const { working, editing, cropMode, orientedBase, setBaseSize } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
   const displaySrc = displayUrl(photo);
   const originalSrc = `/api/photos/${photo.id}/original`;
   const editBaseSrc = `/api/photos/${photo.id}/edit-base`;
+  const editBaseFullSrc = `/api/photos/${photo.id}/edit-base?full=1`;
+  const hiResSrc = hasEdits(photo.edits)
+    ? `/api/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`
+    : originalSrc;
 
   // Double-buffer the display rendition: when an Apply changes the rendition
   // (same photo, new ?v=), keep showing the current one — transformed by the
@@ -101,19 +107,25 @@ export function ZoomableImage({
   const t = previewTransform(shown.recipe, working);
   const rotated = t.deg === 90 || t.deg === 270;
 
-  // Crop/straighten differ from the displayed (baked) rendition — the rotate/flip
-  // CSS delta can't represent that, so render the edit-base instead.
-  const wc = working.crop ?? null;
-  const sc = shown.recipe.crop ?? null;
-  const cropSame =
-    (!wc && !sc) || (!!wc && !!sc && wc.x === sc.x && wc.y === sc.y && wc.w === sc.w && wc.h === sc.h);
-  const pendingGeom =
-    (working.straighten ?? 0) !== (shown.recipe.straighten ?? 0) || !cropSame;
-  // Feed the zoom/pan engine the *previewed* orientation, so a rotated-but-unsaved
-  // image still pans and fits correctly (a 90/270 delta swaps width and height).
-  // Uses the shown rendition's dimensions — see the double-buffer note above.
-  const viewW = rotated ? shown.h : shown.w;
-  const viewH = rotated ? shown.w : shown.h;
+  // Feed the zoom/pan engine the *previewed* dimensions. When editing, use the
+  // EditedResult's actual output size (straightened + cropped). Otherwise use the
+  // shown rendition's dimensions with the delta rotation applied (a 90/270 delta
+  // swaps width and height). See the double-buffer note above.
+  const editResultDims =
+    editing && orientedBase
+      ? (() => {
+          const theta = working.straighten ?? 0;
+          const { w: wp, h: hp } = straightenedSize(orientedBase.w, orientedBase.h, theta);
+          const crop =
+            working.crop ??
+            (theta !== 0
+              ? centeredAspectCrop(orientedBase.w / orientedBase.h, orientedBase.w, orientedBase.h, theta)
+              : { x: 0, y: 0, w: 1, h: 1 });
+          return [crop.w * wp, crop.h * hp] as const;
+        })()
+      : null;
+  const viewW = editResultDims ? editResultDims[0] : rotated ? shown.h : shown.w;
+  const viewH = editResultDims ? editResultDims[1] : rotated ? shown.w : shown.h;
 
   const { containerRef, setImgEl, blurBox } = useBlurBox(
     photo.width,
@@ -132,29 +144,45 @@ export function ZoomableImage({
     stepIn,
     stepOut,
     handlers,
+    reset: resetZoom,
   } = useZoomPan(viewW, viewH);
 
-  // First zoom past fit: preload + decode the full original, then swap it in.
+  // Toggling edit/crop mode swaps the content (baked → edited-result, or in/out of
+  // crop), changing its dimensions. A persisted zoom would be stale/mis-scaled
+  // afterward, so reset back to fit whenever the view mode changes. The ref guard
+  // makes resetZoom() an indirection that only fires on a real mode change (same
+  // pattern as `latch`/`advance`), not a direct setState in the effect body.
+  const viewModeRef = useRef({ editing, cropMode });
+  useEffect(() => {
+    const v = viewModeRef.current;
+    if (v.editing !== editing || v.cropMode !== cropMode) {
+      viewModeRef.current = { editing, cropMode };
+      resetZoom();
+    }
+  }, [editing, cropMode, resetZoom]);
+
+  // First zoom past fit: preload + decode the hi-res source, then swap it in.
+  // For edited photos this is /edited; for untouched photos it is the original.
   // Cache hit means the swap is seamless; geometry is unchanged (same fit size).
   const [hiRes, setHiRes] = useState(false);
   useEffect(() => {
     if (!isZoomed || hiRes) return;
     let cancelled = false;
     const img = new Image();
-    img.src = originalSrc;
+    img.src = hiResSrc;
     img
       .decode()
       .then(() => {
         if (!cancelled) setHiRes(true);
       })
       .catch(() => {
-        // Original missing/unreadable: keep showing the rendition.
+        // Source missing/unreadable: keep showing the rendition.
       });
     return () => {
       cancelled = true;
     };
-  }, [isZoomed, hiRes, originalSrc]);
-  const src = isZoomed && hiRes ? originalSrc : shown.src;
+  }, [isZoomed, hiRes, hiResSrc]);
+  const src = isZoomed && hiRes ? hiResSrc : shown.src;
 
   // Track the base display load for the blur-up. `everLoaded` latches true so the
   // display->original and Apply src swaps can't flash the blur back in.
@@ -213,8 +241,6 @@ export function ZoomableImage({
       >
         {cropMode ? (
           <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} interactive />
-        ) : editing && pendingGeom ? (
-          <EditorCanvas src={editBaseSrc} onBaseSize={setBaseSize} interactive={false} />
         ) : (
           <div
             ref={containerRef}
@@ -226,44 +252,57 @@ export function ZoomableImage({
             onPointerCancel={handlers.onPointerCancel}
             onDoubleClick={handlers.onDoubleClick}
           >
-            {/* eslint-disable @next/next/no-img-element */}
-            {blurUrl && blurBox && (
-              <img
-                src={blurUrl}
-                alt=""
-                aria-hidden
-                className="pointer-events-none absolute object-cover transition-opacity duration-500"
-                style={{
-                  left: blurBox.left,
-                  top: blurBox.top,
-                  width: blurBox.width,
-                  height: blurBox.height,
-                  opacity: everLoaded ? 0 : 1,
-                  // The main <img> carries an edit-preview `transform`, which makes
-                  // it establish a stacking context and paint above its in-flow
-                  // siblings. Without an explicit z-index the blur would sit
-                  // *behind* the image and never get to fade away over it — the
-                  // blur-up reveal would be lost.
-                  zIndex: 1,
-                }}
+            {editing ? (
+              <EditedResult
+                src={editBaseSrc}
+                fullSrc={editBaseFullSrc}
+                zoomed={isZoomed}
+                working={working}
+                orientedBase={orientedBase}
+                onBaseSize={setBaseSize}
               />
+            ) : (
+              <>
+                {/* eslint-disable @next/next/no-img-element */}
+                {blurUrl && blurBox && (
+                  <img
+                    src={blurUrl}
+                    alt=""
+                    aria-hidden
+                    className="pointer-events-none absolute object-cover transition-opacity duration-500"
+                    style={{
+                      left: blurBox.left,
+                      top: blurBox.top,
+                      width: blurBox.width,
+                      height: blurBox.height,
+                      opacity: everLoaded ? 0 : 1,
+                      // The main <img> carries an edit-preview `transform`, which makes
+                      // it establish a stacking context and paint above its in-flow
+                      // siblings. Without an explicit z-index the blur would sit
+                      // *behind* the image and never get to fade away over it — the
+                      // blur-up reveal would be lost.
+                      zIndex: 1,
+                    }}
+                  />
+                )}
+                <img
+                  ref={setImg}
+                  src={src}
+                  alt={photo.path}
+                  width={shown.w}
+                  height={shown.h}
+                  onLoad={onLoad}
+                  draggable={false}
+                  className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
+                  style={{
+                    transform: editTransform,
+                    transformOrigin: "center center",
+                    transition: "none",
+                  }}
+                />
+                {/* eslint-enable @next/next/no-img-element */}
+              </>
             )}
-            <img
-              ref={setImg}
-              src={src}
-              alt={photo.path}
-              width={shown.w}
-              height={shown.h}
-              onLoad={onLoad}
-              draggable={false}
-              className="max-h-[80vh] w-full select-none object-contain lg:max-h-full lg:w-auto lg:max-w-full"
-              style={{
-                transform: editTransform,
-                transformOrigin: "center center",
-                transition: "none",
-              }}
-            />
-            {/* eslint-enable @next/next/no-img-element */}
           </div>
         )}
         {hasPrev && (
