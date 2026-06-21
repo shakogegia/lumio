@@ -229,7 +229,6 @@ export function usePhotoActions({
           if (!open) setAlbumTarget(null);
         }}
         photoIds={albumTarget?.ids ?? []}
-        excludeAlbumId={excludeAlbumId}
         onAdded={() => {
           albumTarget?.onSuccess?.();
           setAlbumTarget(null);

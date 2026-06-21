@@ -8,6 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AlbumPickerItems } from "./album-picker-items";
@@ -44,8 +47,13 @@ export function AddToAlbumMenu({
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Add to album</DropdownMenuLabel>
         <AlbumPickerItems
-          Item={DropdownMenuItem}
-          Separator={DropdownMenuSeparator}
+          menu={{
+            Item: DropdownMenuItem,
+            Separator: DropdownMenuSeparator,
+            Sub: DropdownMenuSub,
+            SubTrigger: DropdownMenuSubTrigger,
+            SubContent: DropdownMenuSubContent,
+          }}
           excludeAlbumId={excludeAlbumId}
           onPick={onPick}
           onCreateNew={onCreateNew}

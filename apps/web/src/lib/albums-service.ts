@@ -1,4 +1,4 @@
-import { type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
+import { type Album, type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
 import {
   monthRange,
   type AlbumDTO,
@@ -12,40 +12,49 @@ import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 
+/** Shape one album row into a summary DTO (photo count + effective cover).
+ *  Exported so the folders service can reuse identical album-card shaping.
+ *  `now` is injected for smart-album evaluation. */
+export async function albumSummary(
+  row: Album,
+  db: Db = prisma,
+  now: Date = new Date(),
+): Promise<AlbumSummaryDTO> {
+  const base = toAlbumDTO(row);
+  if (row.isSmart) {
+    const where = smartAlbumWhere(base.rules as SmartAlbumRules, now);
+    const [photoCount, cover] = await Promise.all([
+      db.photo.count({ where }),
+      db.photo.findFirst({ where, orderBy: PHOTO_ORDER, select: { id: true } }),
+    ]);
+    return { ...base, photoCount, coverPhotoId: cover?.id ?? null };
+  }
+  const photoCount = await db.albumPhoto.count({ where: { albumId: row.id } });
+  let coverPhotoId: string | null = null;
+  // Honor an explicitly pinned cover only while that photo is still a member.
+  if (row.coverPhotoId) {
+    const pinned = await db.albumPhoto.findUnique({
+      where: { albumId_photoId: { albumId: row.id, photoId: row.coverPhotoId } },
+      select: { photoId: true },
+    });
+    if (pinned) coverPhotoId = pinned.photoId;
+  }
+  // Fall back to the most-recent member.
+  if (!coverPhotoId) {
+    const cover = await db.albumPhoto.findFirst({
+      where: { albumId: row.id },
+      orderBy: { photo: { sortDate: "desc" } },
+      select: { photoId: true },
+    });
+    coverPhotoId = cover?.photoId ?? null;
+  }
+  return { ...base, photoCount, coverPhotoId };
+}
+
 export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryDTO[]> {
   const albums = await db.album.findMany({ orderBy: { createdAt: "asc" } });
   const now = new Date();
-  return Promise.all(
-    albums.map(async (a) => {
-      const base = toAlbumDTO(a);
-      if (a.isSmart) {
-        const where = smartAlbumWhere(base.rules as SmartAlbumRules, now);
-        const [photoCount, cover] = await Promise.all([
-          db.photo.count({ where }),
-          db.photo.findFirst({ where, orderBy: PHOTO_ORDER, select: { id: true } }),
-        ]);
-        return { ...base, photoCount, coverPhotoId: cover?.id ?? null };
-      }
-      const photoCount = await db.albumPhoto.count({ where: { albumId: a.id } });
-      let coverPhotoId: string | null = null;
-      if (a.coverPhotoId) {
-        const pinned = await db.albumPhoto.findUnique({
-          where: { albumId_photoId: { albumId: a.id, photoId: a.coverPhotoId } },
-          select: { photoId: true },
-        });
-        if (pinned) coverPhotoId = pinned.photoId;
-      }
-      if (!coverPhotoId) {
-        const cover = await db.albumPhoto.findFirst({
-          where: { albumId: a.id },
-          orderBy: { photo: { sortDate: "desc" } },
-          select: { photoId: true },
-        });
-        coverPhotoId = cover?.photoId ?? null;
-      }
-      return { ...base, photoCount, coverPhotoId };
-    }),
-  );
+  return Promise.all(albums.map((a) => albumSummary(a, db, now)));
 }
 
 export async function getAlbum(id: string, db: Db = prisma): Promise<AlbumDTO | null> {
@@ -59,6 +68,7 @@ export async function createAlbum(input: CreateAlbumInput, db: Db = prisma): Pro
       name: input.name,
       isSmart: input.isSmart,
       rules: input.isSmart ? (input.rules as object) : undefined,
+      folderId: input.folderId ?? null,
     },
   });
   return toAlbumDTO(row);
@@ -79,6 +89,13 @@ export async function deleteAlbum(id: string, db: Db = prisma): Promise<void> {
 export async function deleteAlbums(ids: string[], db: Db = prisma): Promise<number> {
   const { count } = await db.album.deleteMany({ where: { id: { in: ids } } });
   return count;
+}
+
+export async function renameAlbum(id: string, name: string, db: Db = prisma): Promise<AlbumDTO> {
+  const found = await db.album.findUnique({ where: { id }, select: { id: true } });
+  if (!found) throw new AlbumNotFoundError();
+  const row = await db.album.update({ where: { id }, data: { name } });
+  return toAlbumDTO(row);
 }
 
 /**

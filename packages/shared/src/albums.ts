@@ -23,6 +23,7 @@ export const createAlbumSchema = z
     name: z.string().min(1).max(200),
     isSmart: z.boolean().default(false),
     rules: smartRulesSchema.optional(),
+    folderId: z.string().min(1).nullish(),
   })
   .refine((v) => (v.isSmart ? !!v.rules : !v.rules), {
     message: "smart albums require rules; regular albums must omit rules",
@@ -44,3 +45,8 @@ export const deleteAlbumsSchema = z.object({
 export type DeleteAlbumsInput = z.infer<typeof deleteAlbumsSchema>;
 
 export type CreateAlbumInput = z.infer<typeof createAlbumSchema>;
+
+export const renameAlbumSchema = z.object({
+  name: z.string().min(1).max(200),
+});
+export type RenameAlbumInput = z.infer<typeof renameAlbumSchema>;
