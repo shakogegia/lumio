@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, Images, Loader2, Trash2 } from "lucide-react";
+import { Download, FolderMinus, Images, ImageUp, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -39,10 +39,12 @@ export function AlbumView({
   albumId,
   albumName,
   isSmart,
+  coverPhotoId,
 }: {
   albumId: string;
   albumName: string;
   isSmart: boolean;
+  coverPhotoId: string | null;
 }) {
   const router = useRouter();
   const sel = useGridSelection();
@@ -62,6 +64,7 @@ export function AlbumView({
   const actions = usePhotoActions({
     gridRef,
     excludeAlbumId: albumId,
+    albumCover: isSmart ? undefined : { albumId, coverPhotoId },
     trashDescription: "This removes them from your whole library. You can restore them from Trash.",
     // Trash is a whole-library op; refresh so server-derived album data
     // (counts, smart-album membership) stays current.
@@ -132,6 +135,18 @@ export function AlbumView({
                 onPick={(targetId) => void actions.addToAlbumDirect([...sel.selected], targetId)}
                 onCreateNew={() => actions.addToAlbum([...sel.selected])}
               />
+              {!isSmart && (
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  disabled={sel.count !== 1}
+                  onClick={() => void actions.setAlbumCover([...sel.selected][0])}
+                  aria-label="Set as album cover"
+                  title="Set as album cover"
+                >
+                  <ImageUp aria-hidden />
+                </Button>
+              )}
               {!isSmart && (
                 <Button
                   variant="destructive"
