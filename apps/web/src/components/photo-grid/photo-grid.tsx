@@ -72,15 +72,19 @@ export function PhotoGrid({
 
   function handleTileClick(index: number, e: React.MouseEvent) {
     if (!onSelectionChange) return;
+    // ⌘ (Mac) or Ctrl (Windows/Linux) makes the click a multi-select toggle.
+    const toggle = e.metaKey || e.ctrlKey;
     // getLoadedIds() is sparse (holes for unloaded indices); computeSelection
     // skips holes, so a shift-range across an unloaded gap selects only loaded ids.
     const next = computeSelection(
       selectedIds ?? new Set<string>(),
       getLoadedIds(),
       index,
-      e.shiftKey,
+      { shift: e.shiftKey, toggle },
       anchorRef.current,
     );
+    // Shift extends from the anchor; every other click (plain or ⌘/Ctrl) becomes
+    // the new anchor for a subsequent shift-range.
     if (!e.shiftKey) anchorRef.current = index;
     onSelectionChange(next);
   }
