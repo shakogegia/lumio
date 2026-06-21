@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { Prisma } from "@lumio/db";
 import { PhotoSource } from "@lumio/shared";
 import { storePhoto } from "./store.js";
 import type { ProcessedPhoto } from "./process.js";
@@ -86,5 +87,27 @@ describe("storePhoto", () => {
     };
     expect(args.create.source).toBe(PhotoSource.upload);
     expect(args.update).not.toHaveProperty("source");
+  });
+
+  it("clears edits on update (a re-import replaces stale recipes) but not on create", async () => {
+    const db = fakeDb("photo123");
+    await storePhoto(
+      {
+        path: "vacation/img.jpg",
+        source: PhotoSource.filesystem,
+        processed,
+        fileSize: 1,
+        fileMtimeMs: 1,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "t3"), displaysDir: path.join(dir, "d3") },
+    );
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    // Prisma's JsonNull sentinel is the only way to clear a Json column.
+    expect(args.update.edits).toBe(Prisma.JsonNull);
+    expect(args.create).not.toHaveProperty("edits");
   });
 });
