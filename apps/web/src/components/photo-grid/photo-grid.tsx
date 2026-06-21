@@ -125,7 +125,6 @@ export function PhotoGrid({
     getClickIds: getLoadedIds,
     selectedIds: selectedIds ?? EMPTY_SELECTION,
     onSelectionChange,
-    onOpen: enableLightbox ? open : undefined,
     scrollToIndex: (i) => virtualizer.scrollToIndex(Math.floor(i / columns)),
   });
 

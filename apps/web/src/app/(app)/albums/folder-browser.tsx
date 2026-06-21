@@ -95,7 +95,8 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
     getClickIds: () => orderedIds,
     selectedIds: sel.selected,
     onSelectionChange: sel.setSelected,
-    onOpen: (i) => orderedIds[i] && openItem(orderedIds[i]),
+    // Enter-to-open is owned by <FolderBrowserShortcuts> (shared with the grid's
+    // GridShortcuts); the nav hook only moves the selection.
     scrollToIndex: (i) => {
       const id = orderedIds[i];
       if (id) gridRef.current?.querySelector(`[data-card-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
@@ -245,10 +246,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
 
   return (
     <>
-      <FolderBrowserShortcuts
-        selectedIds={sel.selected}
-        onEnter={(id) => (folderIdSet.has(id) ? openFolder(id) : openAlbum(id))}
-      />
+      <FolderBrowserShortcuts selectedIds={sel.selected} onEnter={openItem} />
       {confirmDialog}
       {rename && (
         <RenameDialog

@@ -22,8 +22,6 @@ type NavState = {
   getClickIds: () => string[];
   selectedIds: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
-  /** Open the item at an index (Enter / nav). Omit where there is no target. */
-  onOpen?: (index: number) => void;
   /** Bring the item at an index into view after a keyboard move. */
   scrollToIndex?: (index: number) => void;
 };
@@ -31,9 +29,11 @@ type NavState = {
 /**
  * Shared mouse + keyboard selection driver for a grid of `count` items laid out
  * in `columns`. Plain click / arrow selects one item; ⌘/Ctrl click toggles;
- * shift click / arrow extends a range from the anchor; Enter opens the cursor
- * item. The anchor (range origin) and lead (cursor) are kept in sync across both
- * input methods, so clicking and then arrowing feels continuous.
+ * shift click / arrow extends a range from the anchor. The anchor (range origin)
+ * and lead (cursor) are kept in sync across both input methods, so clicking and
+ * then arrowing feels continuous. Enter-to-open is intentionally NOT handled
+ * here — GridShortcuts / FolderBrowserShortcuts own Enter (and e/f) off the
+ * current selection, and a plain arrow leaves exactly one item selected.
  */
 export function useGridSelectionNav(state: NavState) {
   // Latest props for the once-registered keydown listener and the stable click
@@ -77,14 +77,6 @@ export function useGridSelectionNav(state: NavState) {
       const s = ref.current;
       if (!s.onSelectionChange || s.count <= 0) return;
       if (keyboardTargetBlocked(e.target)) return;
-
-      if (e.key === "Enter") {
-        if (leadRef.current !== null && s.onOpen) {
-          e.preventDefault();
-          s.onOpen(leadRef.current);
-        }
-        return;
-      }
       if (!ARROW_KEYS.has(e.key)) return;
       e.preventDefault();
 
