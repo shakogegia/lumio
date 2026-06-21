@@ -55,9 +55,13 @@ model Album {
   isSmart      Boolean      @default(false)
   rules        Json?
   coverPhotoId String? // explicitly pinned cover; null = use derived default
+  folderId     String?
+  folder       Folder?      @relation(fields: [folderId], references: [id])
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   photos       AlbumPhoto[]
+
+  @@index([folderId])
 }
 
 model AlbumPhoto {
@@ -68,6 +72,19 @@ model AlbumPhoto {
 
   @@id([albumId, photoId])
   @@index([photoId])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  parentId  String?
+  parent    Folder?  @relation("FolderTree", fields: [parentId], references: [id])
+  children  Folder[] @relation("FolderTree")
+  albums    Album[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
 }
 
 model TrashedPhoto {

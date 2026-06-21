@@ -96,6 +96,7 @@ describe("toAlbumDTO", () => {
       isSmart: false,
       rules: null,
       coverPhotoId: null,
+      folderId: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-02T00:00:00.000Z"),
     });
@@ -117,6 +118,7 @@ describe("toAlbumDTO", () => {
       isSmart: true,
       rules: rules as never,
       coverPhotoId: null,
+      folderId: null,
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-01T00:00:00.000Z"),
     });
