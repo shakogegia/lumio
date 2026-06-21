@@ -92,16 +92,18 @@ function FolderSubmenu({
 export function AlbumPickerItems({
   menu,
   excludeAlbumId,
+  excludeAlbumIds,
   onPick,
   onCreateNew,
 }: {
   menu: AlbumPickerMenu;
   excludeAlbumId?: string;
+  excludeAlbumIds?: Set<string>;
   onPick: (albumId: string) => void;
   onCreateNew: () => void;
 }) {
   const { folders, albums, loading, error } = useLibraryTree();
-  const tree = buildAlbumTree(folders, albums, { excludeAlbumId });
+  const tree = buildAlbumTree(folders, albums, { excludeAlbumId, excludeAlbumIds });
   const { Item, Separator } = menu;
 
   const isEmpty = tree.albums.length === 0 && tree.folders.length === 0;
