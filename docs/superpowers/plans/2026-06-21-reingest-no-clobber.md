@@ -10,6 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-06-21-reingest-no-clobber-design.md`
 
+> **Pre-existing typecheck baseline (read before any `typecheck` step):** At the
+> base commit, `packages/shared/src/calendar.ts` already has 3 TypeScript errors
+> (`(34,28)` TS2769, `(34,31)` TS18048, `(35,27)` TS2769). These are unrelated to
+> this work and surface in every package that references `@lumio/shared`. So a
+> `typecheck` step's success criterion is: **no NEW errors are introduced — the
+> only errors reported are those 3 in `packages/shared/src/calendar.ts`.** Do not
+> fix calendar.ts (out of scope).
+
 ---
 
 ## File Structure
