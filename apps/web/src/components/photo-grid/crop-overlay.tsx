@@ -10,7 +10,9 @@ const MIN = 0.05; // minimum crop size as a fraction of O′
  *  `ho`/`deg` describe the oriented image + straighten angle for the inscribed
  *  clamp (aspect-only — units don't matter). `crop` is normalized to O′ (null =
  *  full frame). Tracks the drag locally for a smooth preview; commits once per
- *  gesture via onCommit (→ one undo entry). */
+ *  gesture via onCommit (→ one undo entry).
+ *  Pass `interactive={false}` to render a read-only preview (dim + frame +
+ *  rule-of-thirds, no handles, no pointer interaction). */
 export function CropOverlay({
   stageW,
   stageH,
@@ -20,6 +22,7 @@ export function CropOverlay({
   crop,
   ratio,
   onCommit,
+  interactive = true,
 }: {
   stageW: number;
   stageH: number;
@@ -29,6 +32,7 @@ export function CropOverlay({
   crop: CropRect | null;
   ratio: number | null;
   onCommit: (c: CropRect) => void;
+  interactive?: boolean;
 }) {
   const drag = useRef<{ handle: Handle; startX: number; startY: number; start: CropRect } | null>(null);
   const [live, setLive] = useState<CropRect | null>(null);
@@ -79,9 +83,9 @@ export function CropOverlay({
   return (
     <div
       className="absolute inset-0"
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
+      onPointerMove={interactive ? onPointerMove : undefined}
+      onPointerUp={interactive ? onPointerUp : undefined}
+      onPointerCancel={interactive ? onPointerCancel : undefined}
     >
       {/* dim surround */}
       <div className="pointer-events-none absolute inset-0">
@@ -93,9 +97,9 @@ export function CropOverlay({
       {/* crop frame */}
       <div
         className="absolute border border-white/90"
-        data-handle="move"
-        style={{ left: px(rect.x), top: px(rect.y), width: px(rect.w), height: px(rect.h), cursor: "move" }}
-        onPointerDown={onPointerDown}
+        data-handle={interactive ? "move" : undefined}
+        style={{ left: px(rect.x), top: px(rect.y), width: px(rect.w), height: px(rect.h), cursor: interactive ? "move" : "default" }}
+        onPointerDown={interactive ? onPointerDown : undefined}
       >
         {/* rule of thirds */}
         <div className="pointer-events-none absolute inset-0">
@@ -104,15 +108,16 @@ export function CropOverlay({
           <div className="absolute left-0 right-0 bg-white/30" style={{ top: "33.33%", height: 1 }} />
           <div className="absolute left-0 right-0 bg-white/30" style={{ top: "66.66%", height: 1 }} />
         </div>
-        {(["nw", "ne", "sw", "se", "n", "s", "e", "w"] as Handle[]).map((h) => (
-          <span
-            key={h}
-            data-handle={h}
-            onPointerDown={onPointerDown}
-            className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 border-2 border-white bg-black/40"
-            style={handleStyle(h)}
-          />
-        ))}
+        {interactive &&
+          (["nw", "ne", "sw", "se", "n", "s", "e", "w"] as Handle[]).map((h) => (
+            <span
+              key={h}
+              data-handle={h}
+              onPointerDown={onPointerDown}
+              className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 border-2 border-white bg-black/40"
+              style={handleStyle(h)}
+            />
+          ))}
       </div>
     </div>
   );
