@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Trash" };
 
 export default function TrashPage() {
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       <TrashView />
     </main>
   );

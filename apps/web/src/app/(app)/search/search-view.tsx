@@ -26,6 +26,7 @@ import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
 import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
 import { useSearchCount } from "./use-search-count";
+import { countLabel } from "@/lib/count-label";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 
@@ -94,11 +95,11 @@ export function SearchView() {
           active ? "pt-0" : "pt-[32vh]",
         )}
       >
-        {/* Sticky search header. The full-width band (-mx-6/px-6 bg-background) only
+        {/* Sticky search header. The full-width band (-mx-4/px-4 bg-background) only
             paints once active, so the centered hero shows just the pill — no stripe. */}
         <div
           className={cn(
-            "sticky top-0 z-20 -mx-6 px-6 transition-colors duration-300",
+            "sticky top-0 z-20 -mx-4 px-4 transition-colors duration-300",
             active ? "bg-background py-3" : "py-0",
           )}
         >
@@ -132,12 +133,14 @@ export function SearchView() {
                   because the sticky search box already owns top-0 above. */}
               <div className="mb-2 flex items-center justify-between gap-4">
                 {sel.count > 0 ? (
-                  <span className="text-sm font-medium">{sel.count} selected</span>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs font-medium">
                     {searchCount !== null
-                      ? `${searchCount.toLocaleString()} ${searchCount === 1 ? "photo" : "photos"}`
-                      : null}
+                      ? `${countLabel(searchCount, "photo", "photos")} · ${sel.count} selected`
+                      : `${sel.count} selected`}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {searchCount !== null ? countLabel(searchCount, "photo", "photos") : null}
                   </span>
                 )}
                 <div className="flex items-center gap-2">

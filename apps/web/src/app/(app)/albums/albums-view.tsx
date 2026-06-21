@@ -14,6 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { HeaderBar } from "@/components/header-bar";
+import { countLabel } from "@/lib/count-label";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
@@ -32,6 +33,7 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
   const [deleting, setDeleting] = useState(false);
 
   const { regular, smart } = partitionAlbums(albums);
+  const totalLabel = countLabel(albums.length, "album", "albums");
 
   function open(id: string) {
     router.push(`/albums/${id}`);
@@ -97,8 +99,9 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
       {confirmDialog}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title="Select albums"
+          title="Albums"
           count={sel.count}
+          totalLabel={totalLabel}
           onCancel={sel.clear}
           actions={
             <Button
@@ -116,6 +119,7 @@ export function AlbumsView({ albums }: { albums: AlbumSummaryDTO[] }) {
       ) : (
         <HeaderBar
           title="Albums"
+          subtitle={totalLabel}
           actions={
             <>
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />

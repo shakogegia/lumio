@@ -38,7 +38,7 @@ export default async function PhotoPage({
   if (!photo || index === null) notFound();
 
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       {/* Grid renders behind the lightbox; closing lands here scrolled into place.
           `scope` is a plain (serializable) object — the provider derives the
           endpoint/params/urlForId/baseUrl from it on the client, so no function

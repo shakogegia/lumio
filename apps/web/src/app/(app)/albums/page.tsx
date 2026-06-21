@@ -10,7 +10,7 @@ export default async function AlbumsPage() {
   const albums = await listAlbumSummaries();
 
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       <AlbumsView albums={albums} />
     </main>
   );
