@@ -111,7 +111,8 @@ export default async function SettingsPage() {
             <CardHeader>
               <CardTitle>Indexing</CardTitle>
               <CardDescription>
-                Trigger a full rescan of the photos directory.
+                Scan the library for new and deleted files. Existing photos and
+                their edits are left untouched.
               </CardDescription>
             </CardHeader>
             <CardContent>
