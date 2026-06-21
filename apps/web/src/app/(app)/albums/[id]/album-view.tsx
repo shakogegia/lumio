@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FolderMinus, Images, ImageUp, Loader2, Trash2 } from "lucide-react";
+import { Download, FolderMinus, Images, ImageUp, Loader2, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
@@ -196,6 +196,13 @@ export function AlbumView({
                 value={month}
                 onChange={setMonth}
               />
+              {!isSmart && (
+                <Button asChild variant="outline" size="icon-sm" aria-label="Upload to this album" title="Upload to this album">
+                  <a href={`/upload?albumId=${albumId}`}>
+                    <Upload aria-hidden />
+                  </a>
+                </Button>
+              )}
               <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
                 <a href={`/api/albums/${albumId}/download`}>
                   <Download aria-hidden />
