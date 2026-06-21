@@ -116,8 +116,9 @@ Notes:
   combined gain `mE · mB`. In a future sharp-gamma or WebGL upgrade, Brightness can
   be redefined as a true midtone gamma curve *without changing the recipe schema*
   (the field stays `brightness`; only the formula changes) — this is exactly the
-  portability the formula module buys us. **Flagged for spec review: accept the
-  v1 overlap, or drop one slider?**
+  portability the formula module buys us. **Decided (2026-06-21): keep both as
+  gains in v1 (option a) — exact preview/bake parity wins over the minor feel
+  overlap.**
 - "exact" = CSS shorthand and sharp produce the same result in the sRGB/gamma
   space both operate in. "very close" = CSS uses an SVG color matrix while sharp
   uses an HSB rotation; visually near-identical. "tuned-close" = preview uses an
