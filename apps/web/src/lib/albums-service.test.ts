@@ -7,6 +7,7 @@ import {
   listAlbumPhotos,
   listAlbumSummaries,
   PhotoNotInAlbumError,
+  removePhotoFromAlbum,
   removePhotosFromAlbum,
   setAlbumCover,
   SmartAlbumMutationError,
@@ -323,7 +324,7 @@ describe("removePhotosFromAlbum", () => {
   it("deleteMany on the given ids and returns the removed count", async () => {
     const deleteMany = vi.fn().mockResolvedValue({ count: 2 });
     const fakeDb = {
-      album: { findUnique: async () => ({ isSmart: false }) },
+      album: { findUnique: async () => ({ isSmart: false }), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       albumPhoto: { deleteMany },
       photo: {},
     };
@@ -343,6 +344,38 @@ describe("removePhotosFromAlbum", () => {
     await expect(
       removePhotosFromAlbum("missing", ["p1"], fakeDb as never),
     ).rejects.toBeInstanceOf(AlbumNotFoundError);
+  });
+
+  it("clears the album cover pin if a removed photo was the cover", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const fakeDb = {
+      album: { findUnique: async () => ({ isSmart: false }), updateMany },
+      albumPhoto: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+      photo: {},
+    };
+    await removePhotosFromAlbum("alb1", ["p1", "p2"], fakeDb as never);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "alb1", coverPhotoId: { in: ["p1", "p2"] } },
+      data: { coverPhotoId: null },
+    });
+  });
+});
+
+describe("removePhotoFromAlbum", () => {
+  it("deletes the membership row and clears a matching cover pin", async () => {
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const fakeDb = {
+      album: { updateMany },
+      albumPhoto: { deleteMany },
+      photo: {},
+    };
+    await removePhotoFromAlbum("alb1", "p1", fakeDb as never);
+    expect(deleteMany).toHaveBeenCalledWith({ where: { albumId: "alb1", photoId: "p1" } });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "alb1", coverPhotoId: "p1" },
+      data: { coverPhotoId: null },
+    });
   });
 });
 

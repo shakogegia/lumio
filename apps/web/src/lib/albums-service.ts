@@ -137,6 +137,12 @@ export class PhotoNotInAlbumError extends Error {}
 
 export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
   await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
+  // If the removed photo was the pinned cover, drop the pin so the cover defaults
+  // back to the derived most-recent member.
+  await db.album.updateMany({
+    where: { id: albumId, coverPhotoId: photoId },
+    data: { coverPhotoId: null },
+  });
 }
 
 export async function addPhotosToAlbum(
@@ -181,6 +187,10 @@ export async function removePhotosFromAlbum(
   if (album.isSmart) throw new SmartAlbumMutationError("cannot remove photos from a smart album");
   const result = await db.albumPhoto.deleteMany({
     where: { albumId, photoId: { in: photoIds } },
+  });
+  await db.album.updateMany({
+    where: { id: albumId, coverPhotoId: { in: photoIds } },
+    data: { coverPhotoId: null },
   });
   return result.count;
 }
