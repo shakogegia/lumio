@@ -12,8 +12,8 @@ export const PHOTO_SORTS = [
 
 export type PhotoSort = (typeof PHOTO_SORTS)[number];
 
-/** The default ordering: newest taken-date first (today's behaviour). */
-export const DEFAULT_PHOTO_SORT: PhotoSort = "taken-desc";
+/** The default ordering: newest imported-date first. */
+export const DEFAULT_PHOTO_SORT: PhotoSort = "imported-desc";
 
 /** Zod enum for a sort value (strict — used in API query schemas). */
 export const photoSortSchema = z.enum(PHOTO_SORTS);
