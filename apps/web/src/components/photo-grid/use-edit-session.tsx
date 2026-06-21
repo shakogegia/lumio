@@ -53,6 +53,14 @@ interface EditSessionValue {
   setStraighten: (deg: number) => void;
   setCrop: (crop: CropRect | null) => void;
   setAspect: (preset: AspectPreset) => void;
+  /** True while the focused Crop mode is active. */
+  cropMode: boolean;
+  /** Enter Crop mode (snapshots crop+straighten for Cancel). */
+  enterCropMode: () => void;
+  /** Exit Crop mode, keeping the crop/straighten in the working recipe (pending Apply). */
+  doneCropMode: () => void;
+  /** Exit Crop mode, reverting crop+straighten to the pre-enter snapshot. */
+  cancelCropMode: () => void;
 }
 
 const Ctx = createContext<EditSessionValue | null>(null);
@@ -103,6 +111,8 @@ export function EditSessionProvider({
   const [applying, setApplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [baseSize, setBaseSize] = useState<{ w: number; h: number } | null>(null);
+  const [cropMode, setCropMode] = useState(false);
+  const cropSnapshot = useRef<PhotoEdits | null>(null);
   const photoIdRef = useRef(photo.id);
 
   const working = history.stack[history.index];
@@ -122,6 +132,7 @@ export function EditSessionProvider({
     const reseed = (e: PhotoEdits) => {
       setHistory(freshHistory(e));
       setBaseSize(null);
+      setCropMode(false);
     };
     if (photoIdRef.current !== photo.id) {
       photoIdRef.current = photo.id;
@@ -179,6 +190,18 @@ export function EditSessionProvider({
     },
     [baseSize],
   );
+  const enterCropMode = useCallback(() => {
+    cropSnapshot.current = working;
+    setCropMode(true);
+  }, [working]);
+  const doneCropMode = useCallback(() => setCropMode(false), []);
+  const cancelCropMode = useCallback(() => {
+    const snap = cropSnapshot.current;
+    // Restore the crop+straighten captured on enter (rotate/flip can't change in
+    // crop mode, so restoring the whole snapshot recipe is equivalent and simpler).
+    if (snap) setHistory((h) => pushHistory(h, snap));
+    setCropMode(false);
+  }, []);
   const reset = useCallback(() => {
     setHistory((h) => pushHistory(h, NO_EDITS));
   }, []);
@@ -267,6 +290,10 @@ export function EditSessionProvider({
     setStraighten,
     setCrop,
     setAspect,
+    cropMode,
+    enterCropMode,
+    doneCropMode,
+    cancelCropMode,
   };
 
   return (
