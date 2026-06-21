@@ -1,3 +1,31 @@
+export type ArrowKey = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
+
+/**
+ * Clamped neighbor index for an arrow key in a `columns`-wide grid of `count`
+ * items. A null cursor (nothing focused yet) lands on the first item. Movement
+ * never wraps: a blocked move returns the current index unchanged.
+ */
+export function nextGridIndex(
+  current: number | null,
+  key: ArrowKey,
+  columns: number,
+  count: number,
+): number {
+  if (count <= 0) return 0;
+  if (current === null) return 0;
+  const i = Math.min(Math.max(current, 0), count - 1);
+  switch (key) {
+    case "ArrowLeft":
+      return i > 0 ? i - 1 : i;
+    case "ArrowRight":
+      return i < count - 1 ? i + 1 : i;
+    case "ArrowUp":
+      return i - columns >= 0 ? i - columns : i;
+    case "ArrowDown":
+      return i + columns < count ? i + columns : i;
+  }
+}
+
 /**
  * Pure selection reducer for the photo grid. Given the current selected set and
  * a click at `index` (with the ordered photo id list), returns the next set.

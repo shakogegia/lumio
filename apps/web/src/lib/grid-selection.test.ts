@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeSelection } from "./grid-selection.js";
+import { arrowSelection, computeSelection, nextGridIndex } from "./grid-selection.js";
 
 const IDS = ["a", "b", "c", "d", "e"];
 
@@ -53,5 +53,30 @@ describe("computeSelection", () => {
   it("selects only the clicked photo when shift is held but anchor is null", () => {
     const next = computeSelection(new Set(["a"]), IDS, 2, SHIFT, null);
     expect([...next]).toEqual(["c"]);
+  });
+});
+
+describe("nextGridIndex", () => {
+  // 5 items, 3 columns:  [0 1 2 / 3 4]
+  it("lands on the first item when nothing is focused yet", () => {
+    expect(nextGridIndex(null, "ArrowDown", 3, 5)).toBe(0);
+    expect(nextGridIndex(null, "ArrowUp", 3, 5)).toBe(0);
+  });
+
+  it("moves one column left/right and clamps at the row/grid edges", () => {
+    expect(nextGridIndex(1, "ArrowLeft", 3, 5)).toBe(0);
+    expect(nextGridIndex(1, "ArrowRight", 3, 5)).toBe(2);
+    expect(nextGridIndex(0, "ArrowLeft", 3, 5)).toBe(0); // already first
+    expect(nextGridIndex(4, "ArrowRight", 3, 5)).toBe(4); // already last
+  });
+
+  it("moves one row up/down by the column count", () => {
+    expect(nextGridIndex(3, "ArrowUp", 3, 5)).toBe(0);
+    expect(nextGridIndex(0, "ArrowDown", 3, 5)).toBe(3);
+  });
+
+  it("clamps vertical moves that would leave the grid", () => {
+    expect(nextGridIndex(1, "ArrowUp", 3, 5)).toBe(1); // top row, no row above
+    expect(nextGridIndex(4, "ArrowDown", 3, 5)).toBe(4); // no row below (index 7 absent)
   });
 });
