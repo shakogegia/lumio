@@ -21,6 +21,24 @@ export interface PhotoEdits {
   straighten?: number;
   /** Crop rectangle normalized to O′. Absent/null = full frame. */
   crop?: CropRect | null;
+
+  // Color adjustments. All optional; absent === neutral. See photo-color.ts.
+  /** Tonal gain in perceptual stops-ish units. -100..100, 0 = neutral. */
+  exposure?: number;
+  /** Linear lightness multiply. -100..100, 0 = neutral. */
+  brightness?: number;
+  /** Contrast around mid-grey. -100..100, 0 = neutral. */
+  contrast?: number;
+  /** Saturation multiply. -100..100, 0 = neutral. */
+  saturation?: number;
+  /** Warm (+) / cool (−) white-balance tint. -100..100, 0 = neutral. */
+  temperature?: number;
+  /** Hue rotation in degrees. -180..180, 0 = neutral. */
+  hue?: number;
+  /** Matte/wash: lifts blacks + softens contrast. 0..100, 0 = neutral. */
+  fade?: number;
+  /** Corner darkening. 0..100, 0 = neutral. */
+  vignette?: number;
 }
 
 /** Normalized subset of EXIF we surface to clients. */

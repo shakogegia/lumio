@@ -79,6 +79,14 @@ export const photoEditsSchema = z.object({
   flipV: z.boolean(),
   straighten: z.number().min(-45).max(45).optional(),
   crop: cropRectSchema.nullable().optional(),
+  exposure: z.number().min(-100).max(100).optional(),
+  brightness: z.number().min(-100).max(100).optional(),
+  contrast: z.number().min(-100).max(100).optional(),
+  saturation: z.number().min(-100).max(100).optional(),
+  temperature: z.number().min(-100).max(100).optional(),
+  hue: z.number().min(-180).max(180).optional(),
+  fade: z.number().min(0).max(100).optional(),
+  vignette: z.number().min(0).max(100).optional(),
 });
 export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });
 export type EditPhotoInput = z.infer<typeof editPhotoSchema>;
