@@ -55,3 +55,15 @@ export function summarizeRows(rows: Row[]): RowSummary {
 export function selectableIds(rows: Row[]): string[] {
   return rows.filter((r) => r.photoId).map((r) => r.photoId as string);
 }
+
+/** From a batch's upload results, the photo ids to auto-add to a target album:
+ * every upload that resolved to a real photo — newly stored (`added`) or an
+ * existing library photo (`duplicate`). Errors and id-less results contribute
+ * nothing. The album write is idempotent, so `duplicate` re-adds are no-ops. */
+export function albumTargetIds(
+  results: Array<{ status: RowStatus; photoId?: string }>,
+): string[] {
+  return results
+    .filter((r) => (r.status === "added" || r.status === "duplicate") && r.photoId)
+    .map((r) => r.photoId as string);
+}
