@@ -11,6 +11,8 @@ export function nextGridIndex(
   columns: number,
   count: number,
 ): number {
+  // Callers must gate on `count > 0`: an empty grid has no valid index (the
+  // nav hook already guards this). The `<= 0` branch is a defensive fallback.
   if (count <= 0) return 0;
   if (current === null) return 0;
   const i = Math.min(Math.max(current, 0), count - 1);
@@ -72,7 +74,9 @@ export function computeSelection(
 /**
  * Selection after an arrow move to `leadIndex`. Shift extends the inclusive
  * range from the anchor (replace-with-range, so it grows and shrinks as the
- * cursor moves); a plain move selects only the cursor. Holes (unloaded indices,
+ * cursor moves); a plain move selects only the cursor. Unlike `computeSelection`'s
+ * additive shift-click range, this REPLACES the selection with the anchor→lead
+ * range rather than merging it into the prior set. Holes (unloaded indices,
  * via a sparse `idAt`) are skipped. `idAt` lets the virtualized photo grid avoid
  * materializing a full id array on every keystroke.
  */

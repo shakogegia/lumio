@@ -92,6 +92,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
   return (
     <div
       ref={overlayRef}
+      data-keyboard-overlay
       className="fixed inset-y-0 left-[76px] right-0 z-40 overflow-y-auto bg-background lg:bg-background/85 lg:backdrop-blur-xl"
       onClick={(e) => {
         // Click on the backdrop (not a child) closes — guarded for unsaved edits.
