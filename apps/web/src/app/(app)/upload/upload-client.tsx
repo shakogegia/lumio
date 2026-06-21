@@ -147,7 +147,9 @@ export function UploadClient() {
       const anchor = anchorRef.current;
       if (!e.shiftKey) anchorRef.current = index;
       const photoIds = rowsRef.current.map((r) => r.photoId ?? "");
-      setSelected((prev) => computeSelection(prev, photoIds, index, e.shiftKey, anchor));
+      // ⌘ (Mac) / Ctrl (Windows) toggles multi-select; shift extends a range.
+      const modifiers = { shift: e.shiftKey, toggle: e.metaKey || e.ctrlKey };
+      setSelected((prev) => computeSelection(prev, photoIds, index, modifiers, anchor));
     },
     [setSelected],
   );

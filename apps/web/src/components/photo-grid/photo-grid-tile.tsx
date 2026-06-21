@@ -13,11 +13,12 @@ import { SelectionRing } from "./selection-ring";
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
 
 /**
- * One grid cell. Selection is always available: a plain left click toggles the
- * tile (shift-click extends a range); a double click opens the detail. ⌘/Ctrl/
- * middle click falls through to the native link, so the photo opens in a new tab.
- * When the collection has no detail view (e.g. Trash, where `onOpen` is absent)
- * there is no href and double click is a no-op — the tile is select-only.
+ * One grid cell. Selection is always available: a plain left click selects only
+ * this tile, ⌘ (Mac) / Ctrl (Windows) click toggles it into a multi-selection,
+ * and shift-click extends a range. A double click opens the detail; middle click
+ * falls through to the native link, so the photo opens in a new tab. When the
+ * collection has no detail view (e.g. Trash, where `onOpen` is absent) there is
+ * no href and double click is a no-op — the tile is select-only.
  *
  * The tile is wrapped in a right-click PhotoContextMenu, which renders the tile
  * unwrapped when no actions provider is present (e.g. the Trash grid).
@@ -78,9 +79,10 @@ export function PhotoGridTile({
       <a
         href={href}
         onClick={(e) => {
-          // ⌘/Ctrl/middle click on a real link opens the detail in a new tab;
-          // every other click selects (plain = toggle, shift = range).
-          if (href && (e.metaKey || e.ctrlKey || e.button !== 0)) return;
+          // Middle/aux click on a real link opens the detail in a new tab; every
+          // left click drives selection: plain = select only this, ⌘/Ctrl =
+          // toggle into a multi-selection, shift = extend the range.
+          if (href && e.button !== 0) return;
           e.preventDefault();
           onTileClick(index, e);
         }}
