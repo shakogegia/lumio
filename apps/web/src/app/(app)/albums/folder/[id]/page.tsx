@@ -24,7 +24,7 @@ export default async function FolderPage({ params }: { params: Promise<{ id: str
   if (!contents) notFound();
 
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       <FolderBrowser contents={contents} />
     </main>
   );

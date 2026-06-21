@@ -10,7 +10,7 @@ export default async function AlbumsPage() {
   const contents = await listFolderContents(null);
 
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       {/* contents is never null for the top level */}
       <FolderBrowser contents={contents!} />
     </main>

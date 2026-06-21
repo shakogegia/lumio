@@ -10,7 +10,7 @@ export default async function FolderPhotosPage({ params }: { params: Promise<{ i
   if (!folder) notFound();
 
   return (
-    <main className="w-full px-6 pb-6">
+    <main className="w-full px-4 pb-6">
       <FolderPhotosView folderId={folder.id} folderName={folder.name} />
     </main>
   );
