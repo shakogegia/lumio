@@ -1,6 +1,7 @@
 export * from "./constants.js";
 export * from "./decode.js";
 export * from "./process.js";
+export * from "./hash.js";
 export * from "./renditions.js";
 export * from "./store.js";
 export * from "./ingest.js";

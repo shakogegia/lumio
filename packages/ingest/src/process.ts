@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { extractMetadata } from "./metadata.js";
+import { hashBuffer } from "./hash.js";
 import type { ExifData } from "@lumio/shared";
 import { decodeToSharpInput } from "./decode.js";
 import { buildRenditions } from "./renditions.js";
@@ -27,7 +27,7 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
       decoded.input,
       null,
     );
-    const hash = createHash("sha256").update(original).digest("hex");
+    const hash = hashBuffer(original);
 
     return { width, height, takenAt, hash, thumbhash, exif, thumbnail, display };
   } finally {
