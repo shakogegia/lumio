@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   NO_EDITS,
   hasEdits,
+  hasGeometry,
+  hasColor,
   rotateLeft,
   rotateRight,
   toggleFlipH,
@@ -171,5 +173,32 @@ describe("photo-edits crop & straighten", () => {
     const r = rotateRight(e).crop!;
     expect(r.x + r.w / 2).toBeCloseTo(0.5, 6);
     expect(r.y + r.h / 2).toBeCloseTo(0.5, 6);
+  });
+});
+
+describe("photo-edits color", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+
+  it("hasGeometry ignores color; hasColor ignores geometry; hasEdits unions them", () => {
+    expect(hasGeometry({ ...base, brightness: 50 })).toBe(false);
+    expect(hasColor({ ...base, brightness: 50 })).toBe(true);
+    expect(hasEdits({ ...base, brightness: 50 })).toBe(true);
+    expect(hasGeometry({ ...base, rotate: 90 })).toBe(true);
+    expect(hasColor({ ...base, rotate: 90 })).toBe(false);
+    expect(hasEdits({ ...base })).toBe(false);
+  });
+
+  it("sameEdits compares color fields (absent === 0)", () => {
+    expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 10 })).toBe(true);
+    expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 11 })).toBe(false);
+    expect(sameEdits({ ...base, exposure: 0 }, { ...base })).toBe(true);
+  });
+
+  it("coercePhotoEdits clamps color and omits neutral", () => {
+    const out = coercePhotoEdits({ ...base, brightness: 50, contrast: 999, exposure: 0 })!;
+    expect(out.brightness).toBe(50);
+    expect(out.contrast).toBe(100);
+    expect(out).not.toHaveProperty("exposure");
+    expect(out).not.toHaveProperty("vignette");
   });
 });
