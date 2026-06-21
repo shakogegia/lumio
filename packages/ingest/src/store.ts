@@ -28,13 +28,21 @@ export async function storePhoto(
 ): Promise<{ id: string }> {
   const { path: relPath, source, processed, fileSize, fileMtimeMs } = input;
 
+  // The file's modified date, as a readable mirror of the raw `fileMtimeMs`
+  // fingerprint. mtime is POSIX-guaranteed, so this is always a valid Date.
+  const fileModifiedAt = new Date(fileMtimeMs);
+
   // `source` records how a photo first entered the system (provenance), so it
   // is set on create only. Re-ingestion of the same path — e.g. the filesystem
   // watcher picking up a freshly uploaded file — must NOT overwrite an upload's
   // source back to `filesystem`.
   const data = {
     takenAt: processed.takenAt,
-    sortDate: processed.takenAt ?? new Date(),
+    // Chronology for the "taken" sorts: the EXIF capture date when present,
+    // otherwise the file's modified date. fileModifiedAt is always set, so there
+    // is no import-time floor (a genuine re-import re-derives this from the new
+    // file; the content-unchanged restamp path leaves it alone — see scan.ts).
+    sortDate: processed.takenAt ?? fileModifiedAt,
     width: processed.width,
     height: processed.height,
     hash: processed.hash,
@@ -42,6 +50,7 @@ export async function storePhoto(
     exif: processed.exif as object,
     fileSize,
     fileMtimeMs,
+    fileModifiedAt,
   };
 
   const row = await deps.db.photo.upsert({

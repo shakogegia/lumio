@@ -110,4 +110,46 @@ describe("storePhoto", () => {
     expect(args.update.edits).toBe(Prisma.JsonNull);
     expect(args.create).not.toHaveProperty("edits");
   });
+
+  it("derives fileModifiedAt from fileMtimeMs and uses takenAt for sortDate when present", async () => {
+    const db = fakeDb("p");
+    await storePhoto(
+      {
+        path: "with-exif.jpg",
+        source: PhotoSource.filesystem,
+        processed, // processed.takenAt = 2024-03-14T09:26:53.000Z
+        fileSize: 1,
+        fileMtimeMs: 1710408413000.5,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "te"), displaysDir: path.join(dir, "de") },
+    );
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(args.create.fileModifiedAt).toEqual(new Date(1710408413000.5));
+    expect(args.update.fileModifiedAt).toEqual(new Date(1710408413000.5));
+    // takenAt wins over the file date when EXIF has a capture date.
+    expect(args.create.sortDate).toEqual(processed.takenAt);
+    expect(args.update.sortDate).toEqual(processed.takenAt);
+  });
+
+  it("falls back to fileModifiedAt for sortDate when takenAt is null", async () => {
+    const db = fakeDb("p");
+    await storePhoto(
+      {
+        path: "no-exif.png",
+        source: PhotoSource.filesystem,
+        processed: { ...processed, takenAt: null },
+        fileSize: 1,
+        fileMtimeMs: 1710408413000.5,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "tn"), displaysDir: path.join(dir, "dn") },
+    );
+
+    const args = db.calls[0] as { create: Record<string, unknown> };
+    expect(args.create.sortDate).toEqual(new Date(1710408413000.5));
+    expect(args.create.fileModifiedAt).toEqual(new Date(1710408413000.5));
+  });
 });
