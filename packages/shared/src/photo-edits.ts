@@ -1,27 +1,57 @@
-import type { PhotoEdits } from "./types.js";
+import type { CropRect, PhotoEdits } from "./types.js";
+import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
 
-export const NO_EDITS: PhotoEdits = { rotate: 0, flipH: false, flipV: false };
+export const NO_EDITS: PhotoEdits = { rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null };
 
 /** True when the recipe changes the image (non-null and not the identity). */
 export function hasEdits(e: PhotoEdits | null): boolean {
-  return e !== null && (e.rotate !== 0 || e.flipH || e.flipV);
+  return (
+    e !== null &&
+    (e.rotate !== 0 || e.flipH || e.flipV || (e.straighten ?? 0) !== 0 || e.crop != null)
+  );
+}
+
+function sameCrop(a: CropRect | null | undefined, b: CropRect | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
 }
 
 /** Structural equality of two recipes. */
 export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
-  return a.rotate === b.rotate && a.flipH === b.flipH && a.flipV === b.flipV;
+  return (
+    a.rotate === b.rotate &&
+    a.flipH === b.flipH &&
+    a.flipV === b.flipV &&
+    (a.straighten ?? 0) === (b.straighten ?? 0) &&
+    sameCrop(a.crop, b.crop)
+  );
 }
 
 function withRotate(e: PhotoEdits, rotate: number): PhotoEdits {
   return { ...e, rotate: (((rotate % 360) + 360) % 360) as PhotoEdits["rotate"] };
 }
 
+// Crop is normalized to the on-screen (O′) frame, so coarse rotate/flip map it
+// with simple normalized-rect transforms. 90° also swaps width/height.
+function rotateCropCW(c: CropRect): CropRect {
+  return { x: 1 - (c.y + c.h), y: c.x, w: c.h, h: c.w };
+}
+function rotateCropCCW(c: CropRect): CropRect {
+  return { x: c.y, y: 1 - (c.x + c.w), w: c.h, h: c.w };
+}
+function mirrorCropX(c: CropRect): CropRect {
+  return { x: 1 - (c.x + c.w), y: c.y, w: c.w, h: c.h };
+}
+function mirrorCropY(c: CropRect): CropRect {
+  return { x: c.x, y: 1 - (c.y + c.h), w: c.w, h: c.h };
+}
+
 export function rotateRight(e: PhotoEdits): PhotoEdits {
-  return withRotate(e, e.rotate + 90);
+  return { ...withRotate(e, e.rotate + 90), crop: e.crop ? rotateCropCW(e.crop) : null };
 }
 
 export function rotateLeft(e: PhotoEdits): PhotoEdits {
-  return withRotate(e, e.rotate - 90);
+  return { ...withRotate(e, e.rotate - 90), crop: e.crop ? rotateCropCCW(e.crop) : null };
 }
 
 /** When rotated 90/270 the on-screen axes are swapped, so a "flip horizontal"
@@ -32,16 +62,78 @@ function axisSwapped(e: PhotoEdits): boolean {
 }
 
 export function toggleFlipH(e: PhotoEdits): PhotoEdits {
-  return axisSwapped(e) ? { ...e, flipV: !e.flipV } : { ...e, flipH: !e.flipH };
+  const flipped = axisSwapped(e) ? { ...e, flipV: !e.flipV } : { ...e, flipH: !e.flipH };
+  return {
+    ...flipped,
+    crop: e.crop ? mirrorCropX(e.crop) : null,
+    straighten: -(e.straighten ?? 0),
+  };
 }
 
 export function toggleFlipV(e: PhotoEdits): PhotoEdits {
-  return axisSwapped(e) ? { ...e, flipH: !e.flipH } : { ...e, flipV: !e.flipV };
+  const flipped = axisSwapped(e) ? { ...e, flipH: !e.flipH } : { ...e, flipV: !e.flipV };
+  return {
+    ...flipped,
+    crop: e.crop ? mirrorCropY(e.crop) : null,
+    straighten: -(e.straighten ?? 0),
+  };
 }
 
-/** Predicted [width, height] after the recipe (rotate 90/270 swaps). */
+export function setStraighten(e: PhotoEdits, deg: number): PhotoEdits {
+  return { ...e, straighten: Math.max(-45, Math.min(45, deg)) };
+}
+
+export function setCrop(e: PhotoEdits, crop: CropRect | null): PhotoEdits {
+  return { ...e, crop };
+}
+
+/** Aspect-ratio preset names used by the Crop chips. */
+export type AspectPreset =
+  | "free"
+  | "original"
+  | "square"
+  | "5:4" | "4:5" | "4:3" | "3:4" | "3:2" | "2:3" | "16:9" | "9:16";
+
+const RATIO: Record<Exclude<AspectPreset, "free" | "original">, number> = {
+  square: 1,
+  "5:4": 5 / 4, "4:5": 4 / 5, "4:3": 4 / 3, "3:4": 3 / 4,
+  "3:2": 3 / 2, "2:3": 2 / 3, "16:9": 16 / 9, "9:16": 9 / 16,
+};
+
+/** Apply an aspect preset: returns the recipe with a centered max-fit crop at the
+ *  requested ratio (computed against the oriented dims wo×ho). "free" clears any
+ *  crop (unconstrained); "original" uses wo:ho. */
+export function aspectCrop(e: PhotoEdits, preset: AspectPreset, wo: number, ho: number): PhotoEdits {
+  if (preset === "free") return { ...e, crop: null };
+  const deg = e.straighten ?? 0;
+  const ratio = preset === "original" ? wo / ho : RATIO[preset];
+  return { ...e, crop: centeredAspectCrop(ratio, wo, ho, deg) };
+}
+
+/** Predicted [width, height] after the recipe, for optimistic store patching. */
 export function orientedSize(w: number, h: number, e: PhotoEdits | null): [number, number] {
-  return e && (e.rotate === 90 || e.rotate === 270) ? [h, w] : [w, h];
+  if (!e) return [w, h];
+  let [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [h, w] : [w, h];
+  if ((e.straighten ?? 0) !== 0) {
+    const s = straightenedSize(ow, oh, e.straighten ?? 0);
+    ow = s.w;
+    oh = s.h;
+  }
+  if (e.crop) {
+    ow = Math.max(1, Math.round(ow * e.crop.w));
+    oh = Math.max(1, Math.round(oh * e.crop.h));
+  }
+  return [Math.round(ow), Math.round(oh)];
+}
+
+function coerceCrop(value: unknown): CropRect | null {
+  if (!value || typeof value !== "object") return null;
+  const c = value as Record<string, unknown>;
+  const nums = [c.x, c.y, c.w, c.h];
+  if (!nums.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1)) return null;
+  if ((c.w as number) <= 0 || (c.h as number) <= 0) return null;
+  if ((c.x as number) + (c.w as number) > 1 + 1e-6 || (c.y as number) + (c.h as number) > 1 + 1e-6) return null;
+  return { x: c.x as number, y: c.y as number, w: c.w as number, h: c.h as number };
 }
 
 /** Defensively coerce an unknown JSON value (e.g. from the DB) into a recipe or
@@ -51,7 +143,12 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
   const e = value as Record<string, unknown>;
   if (![0, 90, 180, 270].includes(e.rotate as number)) return null;
   if (typeof e.flipH !== "boolean" || typeof e.flipV !== "boolean") return null;
-  return { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV };
+  const straighten =
+    typeof e.straighten === "number" && Number.isFinite(e.straighten) && Math.abs(e.straighten) <= 45
+      ? e.straighten
+      : 0;
+  const crop = coerceCrop(e.crop);
+  return { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV, straighten, crop };
 }
 
 /**

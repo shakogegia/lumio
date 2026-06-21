@@ -9,13 +9,17 @@ import {
   orientedSize,
   coercePhotoEdits,
   previewTransform,
+  sameEdits,
+  setStraighten,
+  setCrop,
+  aspectCrop,
 } from "./photo-edits.js";
 
 const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotate, flipH, flipV });
 
 describe("photo-edits", () => {
   it("NO_EDITS is the identity recipe", () => {
-    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false });
+    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is false for null and identity, true otherwise", () => {
@@ -46,7 +50,7 @@ describe("photo-edits", () => {
   });
 
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
-    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ rotate: 90, flipH: true, flipV: false });
+    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();
     expect(coercePhotoEdits({ rotate: 45, flipH: false, flipV: false })).toBeNull();
     expect(coercePhotoEdits({ rotate: 90 })).toBeNull();
@@ -79,5 +83,86 @@ describe("photo-edits", () => {
       // saved=90, working=270 → delta should be +180.
       expect(previewTransform(R(90), R(270))).toEqual({ deg: 180, mirror: false });
     });
+  });
+});
+
+describe("photo-edits crop & straighten", () => {
+  const base = { rotate: 0, flipH: false, flipV: false } as const;
+
+  it("NO_EDITS includes straighten 0 and crop null", () => {
+    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+  });
+
+  it("hasEdits is true when only straighten or only crop is set", () => {
+    expect(hasEdits({ ...base, straighten: 5 })).toBe(true);
+    expect(hasEdits({ ...base, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } })).toBe(true);
+    expect(hasEdits({ ...base, straighten: 0, crop: null })).toBe(false);
+  });
+
+  it("setStraighten clamps to [-45, 45]", () => {
+    expect(setStraighten(base, 90).straighten).toBe(45);
+    expect(setStraighten(base, -90).straighten).toBe(-45);
+    expect(setStraighten(base, 12).straighten).toBe(12);
+  });
+
+  it("setCrop sets and clears", () => {
+    const c = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
+    expect(setCrop(base, c).crop).toEqual(c);
+    expect(setCrop({ ...base, crop: c }, null).crop).toBeNull();
+  });
+
+  it("sameEdits accounts for straighten and crop", () => {
+    expect(sameEdits({ ...base, straighten: 5 }, { ...base, straighten: 5 })).toBe(true);
+    expect(sameEdits({ ...base, straighten: 5 }, { ...base, straighten: 6 })).toBe(false);
+    expect(sameEdits({ ...base, crop: { x: 0, y: 0, w: 1, h: 1 } }, base)).toBe(false);
+  });
+
+  it("aspectCrop('original', …) selects the full oriented frame at 0°", () => {
+    const out = aspectCrop(base, "original", 400, 200);
+    expect(out.crop?.w).toBeCloseTo(1, 3);
+    expect(out.crop?.h).toBeCloseTo(1, 3);
+  });
+
+  it("coercePhotoEdits reads new fields and rejects malformed ones", () => {
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, straighten: 9 })?.straighten).toBe(9);
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, straighten: 999 })?.straighten).toBe(0);
+    expect(
+      coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, crop: { x: 2, y: 0, w: 1, h: 1 } })?.crop,
+    ).toBeNull();
+  });
+
+  it("rotateRight transforms the crop into the rotated frame (swaps w/h)", () => {
+    const c = setCrop(base, { x: 0.1, y: 0, w: 0.2, h: 1 });
+    expect(rotateRight(c).crop).toEqual({ x: 0, y: 0.1, w: 1, h: 0.2 });
+  });
+
+  it("rotateLeft is the inverse of rotateRight on the crop", () => {
+    const c = setCrop(base, { x: 0.1, y: 0.2, w: 0.3, h: 0.4 });
+    const round = rotateLeft(rotateRight(c)).crop!;
+    expect(round.x).toBeCloseTo(0.1, 6);
+    expect(round.y).toBeCloseTo(0.2, 6);
+    expect(round.w).toBeCloseTo(0.3, 6);
+    expect(round.h).toBeCloseTo(0.4, 6);
+  });
+
+  it("toggleFlipH mirrors the crop on X and negates straighten", () => {
+    const e = { ...base, straighten: 10, crop: { x: 0.1, y: 0, w: 0.2, h: 1 } };
+    const out = toggleFlipH(e);
+    expect(out.crop).toEqual({ x: 0.7, y: 0, w: 0.2, h: 1 });
+    expect(out.straighten).toBe(-10);
+  });
+
+  it("toggleFlipV mirrors the crop on Y and negates straighten", () => {
+    const e = { ...base, straighten: 10, crop: { x: 0, y: 0.1, w: 1, h: 0.2 } };
+    const out = toggleFlipV(e);
+    expect(out.crop).toEqual({ x: 0, y: 0.7, w: 1, h: 0.2 });
+    expect(out.straighten).toBe(-10);
+  });
+
+  it("a centered aspect crop stays centered through a rotate", () => {
+    const e = aspectCrop(base, "square", 400, 200); // centered square
+    const r = rotateRight(e).crop!;
+    expect(r.x + r.w / 2).toBeCloseTo(0.5, 6);
+    expect(r.y + r.h / 2).toBeCloseTo(0.5, 6);
   });
 });
