@@ -22,7 +22,14 @@ export async function ingestPath(
   const st = await stat(absPath);
   const processed = await processImage(absPath);
   return storePhoto(
-    { path: relPath, source, processed, fileSize: st.size, fileMtimeMs: st.mtimeMs },
+    {
+      path: relPath,
+      source,
+      processed,
+      fileSize: st.size,
+      fileMtimeMs: st.mtimeMs,
+      fileBirthtimeMs: st.birthtimeMs,
+    },
     { db: deps.db, thumbnailsDir: deps.thumbnailsDir, displaysDir: deps.displaysDir },
   );
 }

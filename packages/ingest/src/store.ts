@@ -10,6 +10,7 @@ export interface StoreInput {
   processed: ProcessedPhoto;
   fileSize: number; // bytes, from fs.stat
   fileMtimeMs: number; // mtimeMs, from fs.stat
+  fileBirthtimeMs: number; // birthtimeMs, from fs.stat
 }
 
 export interface StoreDeps {
@@ -26,11 +27,12 @@ export async function storePhoto(
   input: StoreInput,
   deps: StoreDeps,
 ): Promise<{ id: string }> {
-  const { path: relPath, source, processed, fileSize, fileMtimeMs } = input;
+  const { path: relPath, source, processed, fileSize, fileMtimeMs, fileBirthtimeMs } = input;
 
-  // The file's modified date, as a readable mirror of the raw `fileMtimeMs`
-  // fingerprint. mtime is POSIX-guaranteed, so this is always a valid Date.
+  // Readable mirrors of the raw stat stamps. mtime and birthtime are both
+  // POSIX-provided numbers, so these are always valid Dates.
   const fileModifiedAt = new Date(fileMtimeMs);
+  const fileCreatedAt = new Date(fileBirthtimeMs);
 
   // `source` records how a photo first entered the system (provenance), so it
   // is set on create only. Re-ingestion of the same path — e.g. the filesystem
@@ -38,11 +40,15 @@ export async function storePhoto(
   // source back to `filesystem`.
   const data = {
     takenAt: processed.takenAt,
-    // Chronology for the "taken" sorts: the EXIF capture date when present,
-    // otherwise the file's modified date. fileModifiedAt is always set, so there
-    // is no import-time floor (a genuine re-import re-derives this from the new
-    // file; the content-unchanged restamp path leaves it alone — see scan.ts).
-    sortDate: processed.takenAt ?? fileModifiedAt,
+    // Chronology for the "Date taken" sort: the EXIF capture date when present,
+    // otherwise the EARLIEST of the file's created/modified dates — the best
+    // lower-bound proxy for when the photo actually happened (a download keeps
+    // its server mtime; an edited screenshot keeps its birthtime). Both file
+    // dates are always set, so there is no import-time floor. A genuine
+    // re-import re-derives this; the content-unchanged restamp path leaves
+    // `sortDate` alone (see scan.ts).
+    sortDate:
+      processed.takenAt ?? (fileCreatedAt < fileModifiedAt ? fileCreatedAt : fileModifiedAt),
     width: processed.width,
     height: processed.height,
     hash: processed.hash,
@@ -51,6 +57,7 @@ export async function storePhoto(
     fileSize,
     fileMtimeMs,
     fileModifiedAt,
+    fileCreatedAt,
   };
 
   const row = await deps.db.photo.upsert({

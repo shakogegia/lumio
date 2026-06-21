@@ -47,6 +47,7 @@ describe("storePhoto", () => {
         processed,
         fileSize: 12345,
         fileMtimeMs: 1710408413000.5,
+        fileBirthtimeMs: 1700000000000,
       },
       { db: db as never, thumbnailsDir: thumbs, displaysDir: displays },
     );
@@ -77,6 +78,7 @@ describe("storePhoto", () => {
         processed,
         fileSize: 1,
         fileMtimeMs: 1,
+        fileBirthtimeMs: 1700000000000,
       },
       { db: db as never, thumbnailsDir: path.join(dir, "t2"), displaysDir: path.join(dir, "d2") },
     );
@@ -98,6 +100,7 @@ describe("storePhoto", () => {
         processed,
         fileSize: 1,
         fileMtimeMs: 1,
+        fileBirthtimeMs: 1700000000000,
       },
       { db: db as never, thumbnailsDir: path.join(dir, "t3"), displaysDir: path.join(dir, "d3") },
     );
@@ -120,6 +123,7 @@ describe("storePhoto", () => {
         processed, // processed.takenAt = 2024-03-14T09:26:53.000Z
         fileSize: 1,
         fileMtimeMs: 1710408413000.5,
+        fileBirthtimeMs: 1710408000000,
       },
       { db: db as never, thumbnailsDir: path.join(dir, "te"), displaysDir: path.join(dir, "de") },
     );
@@ -130,26 +134,48 @@ describe("storePhoto", () => {
     };
     expect(args.create.fileModifiedAt).toEqual(new Date(1710408413000.5));
     expect(args.update.fileModifiedAt).toEqual(new Date(1710408413000.5));
+    expect(args.create.fileCreatedAt).toEqual(new Date(1710408000000));
+    expect(args.update.fileCreatedAt).toEqual(new Date(1710408000000));
     // takenAt wins over the file date when EXIF has a capture date.
     expect(args.create.sortDate).toEqual(processed.takenAt);
     expect(args.update.sortDate).toEqual(processed.takenAt);
   });
 
-  it("falls back to fileModifiedAt for sortDate when takenAt is null", async () => {
+  it("falls back to the earliest of created/modified for sortDate when takenAt is null (created earlier)", async () => {
     const db = fakeDb("p");
     await storePhoto(
       {
-        path: "no-exif.png",
+        path: "no-exif-a.png",
         source: PhotoSource.filesystem,
         processed: { ...processed, takenAt: null },
         fileSize: 1,
-        fileMtimeMs: 1710408413000.5,
+        fileMtimeMs: 1710408413000, // modified later
+        fileBirthtimeMs: 1700000000000, // created earlier
       },
-      { db: db as never, thumbnailsDir: path.join(dir, "tn"), displaysDir: path.join(dir, "dn") },
+      { db: db as never, thumbnailsDir: path.join(dir, "tna"), displaysDir: path.join(dir, "dna") },
     );
-
     const args = db.calls[0] as { create: Record<string, unknown> };
-    expect(args.create.sortDate).toEqual(new Date(1710408413000.5));
-    expect(args.create.fileModifiedAt).toEqual(new Date(1710408413000.5));
+    expect(args.create.fileCreatedAt).toEqual(new Date(1700000000000));
+    expect(args.create.fileModifiedAt).toEqual(new Date(1710408413000));
+    expect(args.create.sortDate).toEqual(new Date(1700000000000)); // earliest wins
+  });
+
+  it("falls back to the earliest of created/modified for sortDate when takenAt is null (modified earlier)", async () => {
+    const db = fakeDb("p");
+    await storePhoto(
+      {
+        path: "no-exif-b.png",
+        source: PhotoSource.filesystem,
+        processed: { ...processed, takenAt: null },
+        fileSize: 1,
+        fileMtimeMs: 1700000000000, // modified earlier
+        fileBirthtimeMs: 1710408413000, // created later
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "tnb"), displaysDir: path.join(dir, "dnb") },
+    );
+    const args = db.calls[0] as { create: Record<string, unknown> };
+    expect(args.create.fileCreatedAt).toEqual(new Date(1710408413000)); // created later
+    expect(args.create.fileModifiedAt).toEqual(new Date(1700000000000)); // modified earlier
+    expect(args.create.sortDate).toEqual(new Date(1700000000000)); // earliest (modified) wins
   });
 });
