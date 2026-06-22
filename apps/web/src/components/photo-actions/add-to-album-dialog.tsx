@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildFolderPickerRows } from "@/lib/library-tree-rows";
 import { playSound } from "@/lib/sound/player";
@@ -33,6 +35,7 @@ export function AddToAlbumDialog({
   onAdded: () => void;
 }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const { folders } = useLibraryTree();
   const [newName, setNewName] = useState("");
   const [target, setTarget] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function AddToAlbumDialog({
     setError(null);
     let albumId: string;
     try {
-      const res = await fetch("/api/albums", {
+      const res = await fetch(catalogApiUrl(slug, "/albums"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, isSmart: false, folderId: target }),
@@ -70,7 +73,7 @@ export function AddToAlbumDialog({
     }
     // The album exists now; a failure past this point is an add failure.
     try {
-      const res = await fetch(`/api/albums/${albumId}/photos`, {
+      const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos`), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ photoIds }),

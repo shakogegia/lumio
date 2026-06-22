@@ -28,6 +28,8 @@ import {
   AlbumThumb,
 } from "@/components/photo-actions/album-picker-items";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
 import { LightboxTab } from "@/lib/lightbox-tab";
@@ -92,6 +94,7 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
 }
 
 function AlbumMembership({ photo }: { photo: PhotoDTO }) {
+  const { slug } = useCatalog();
   const { patchPhotos } = usePhotoCollection();
   const { albums, loading: treeLoading } = useLibraryTree();
   const { addToAlbum, addToAlbumDirect, element } = useAddToAlbum();
@@ -104,7 +107,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
   // Learn this photo's current membership.
   useEffect(() => {
     let alive = true;
-    fetch(`/api/photos/${photo.id}`)
+    fetch(catalogApiUrl(slug, `/photos/${photo.id}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((data: PhotoDTO) => {
         if (alive) setAlbumIds(data.albumIds ?? []);
@@ -115,12 +118,12 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
     return () => {
       alive = false;
     };
-  }, [photo.id]);
+  }, [slug, photo.id]);
 
   // Re-read membership from the server and sync the grid store. Used after the
   // "New album…" dialog adds the photo (the dialog doesn't return the new id).
   const resync = useCallback(() => {
-    fetch(`/api/photos/${photo.id}`)
+    fetch(catalogApiUrl(slug, `/photos/${photo.id}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((data: PhotoDTO) => {
         const next = data.albumIds ?? [];
@@ -130,7 +133,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
       .catch(() => {
         /* leave membership as-is on failure */
       });
-  }, [photo.id, patchPhotos]);
+  }, [slug, photo.id, patchPhotos]);
 
   // Add to an existing album via the shared quick-pick (POST + sound + refresh),
   // then optimistically reflect it locally and in the grid store.
@@ -152,7 +155,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
     const next = (albumIds ?? []).filter((id) => id !== albumId);
     setPending(true);
     try {
-      const res = await fetch(`/api/albums/${albumId}/photos/${photo.id}`, {
+      const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos/${photo.id}`), {
         method: "DELETE",
       });
       // Only commit once the server confirms, so a failed delete can't leave

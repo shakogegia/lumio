@@ -22,6 +22,8 @@ import {
   type ColorKey,
 } from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { usePhotoCollection } from "./photo-collection";
 
 interface EditSessionValue {
@@ -120,6 +122,7 @@ export function EditSessionProvider({
   photo: PhotoDTO;
   children: React.ReactNode;
 }) {
+  const { slug } = useCatalog();
   const { patchPhotos } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
 
@@ -256,7 +259,7 @@ export function EditSessionProvider({
     setApplying(true);
     try {
       const body = hasEdits(working) ? working : null;
-      const res = await fetch(`/api/photos/${startedId}/edit`, {
+      const res = await fetch(catalogApiUrl(slug, `/photos/${startedId}/edit`), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ edits: body }),
@@ -283,7 +286,7 @@ export function EditSessionProvider({
     } finally {
       setApplying(false);
     }
-  }, [applying, working, photo.id, photo.edits, patchPhotos]);
+  }, [applying, working, slug, photo.id, photo.edits, patchPhotos]);
 
   const guard = useCallback(
     (go: () => void) => {

@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Download, FilePenLine, Heart, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -31,6 +33,7 @@ export function LightboxActions({
   photo: PhotoDTO;
   onTrashed: () => void;
 }) {
+  const { slug } = useCatalog();
   const { removePhotos } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
   const { dirty, reset } = useEditSession();
@@ -46,7 +49,7 @@ export function LightboxActions({
       destructive: true,
     });
     if (!ok) return;
-    const res = await fetch("/api/photos/trash", {
+    const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ids: [photo.id] }),
@@ -129,14 +132,18 @@ export function LightboxActions({
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onSelect={() =>
-                  downloadFromUrl(`/api/photos/${photo.id}/edited?download=1`)
+                  downloadFromUrl(
+                    catalogApiUrl(slug, `/photos/${photo.id}/edited?download=1`),
+                  )
                 }
               >
                 Download edited
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() =>
-                  downloadFromUrl(`/api/photos/${photo.id}/original?download=1`)
+                  downloadFromUrl(
+                    catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`),
+                  )
                 }
               >
                 Download original
@@ -152,7 +159,7 @@ export function LightboxActions({
             aria-label="Download"
             title="Download"
           >
-            <a href={`/api/photos/${photo.id}/original?download=1`}>
+            <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
               <Download aria-hidden />
             </a>
           </Button>

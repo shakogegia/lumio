@@ -1,3 +1,4 @@
+import { catalogApiUrl } from "@/lib/catalog-api";
 import { type DetailScope, detailScopeQuery } from "@/lib/detail-scope";
 
 export interface CollectionSource {
@@ -17,13 +18,13 @@ export interface CollectionSource {
  * view to borrow from). `urlForId` reuses `detailScopeQuery`, the one place the
  * ?album/?s/?q/?sort convention is defined, so URLs match `photoHref`.
  */
-export function collectionForScope(scope: DetailScope): CollectionSource {
+export function collectionForScope(slug: string, scope: DetailScope): CollectionSource {
   const query = detailScopeQuery(scope);
   const urlForId = (id: string) => (query ? `/photo/${id}?${query}` : `/photo/${id}`);
 
   if (scope.kind === "album") {
     return {
-      endpoint: `/api/albums/${scope.albumId}/photos`,
+      endpoint: catalogApiUrl(slug, `/albums/${scope.albumId}/photos`),
       params: new URLSearchParams({ sort: scope.sort }),
       urlForId,
       baseUrl: `/albums/${scope.albumId}`,
@@ -34,10 +35,10 @@ export function collectionForScope(scope: DetailScope): CollectionSource {
     for (const a of scope.albums) params.append("album", a);
     if (scope.q) params.set("q", scope.q);
     params.set("sort", scope.sort);
-    return { endpoint: "/api/search", params, urlForId, baseUrl: "/search" };
+    return { endpoint: catalogApiUrl(slug, "/search"), params, urlForId, baseUrl: "/search" };
   }
   return {
-    endpoint: "/api/photos",
+    endpoint: catalogApiUrl(slug, "/photos"),
     params: new URLSearchParams({ sort: scope.sort }),
     urlForId,
     baseUrl: "/photos",
