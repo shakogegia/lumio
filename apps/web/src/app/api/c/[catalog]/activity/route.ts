@@ -6,12 +6,14 @@ import {
   getActiveJobs,
   readWorkerStatus,
 } from "@lumio/jobs";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async () => {
+// Worker status is global; jobs are all active jobs across all catalogs.
+// The client can filter to this catalog's jobs using the catalogId in each job.
+export const GET = withCatalog(async (_request, _context, _extras) => {
   try {
     const [worker, jobs] = await Promise.all([
       readWorkerStatus(prisma),

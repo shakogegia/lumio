@@ -1,14 +1,14 @@
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { getSettings, prisma } from "@lumio/db";
+import { prisma } from "@lumio/db";
 import { handleUpload } from "@/lib/upload-service";
-import { CACHE_DIR, PHOTOS_DIR } from "@/lib/paths";
-import { withAuth } from "@/lib/with-auth";
+import { CACHE_DIR } from "@/lib/paths";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const POST = withAuth(async (request) => {
+export const POST = withCatalog(async (request, _context, { catalog }) => {
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
@@ -22,16 +22,16 @@ export const POST = withAuth(async (request) => {
       : undefined;
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const { uploadTemplate } = await getSettings();
 
   const result = await handleUpload(
     { bytes, originalFilename: file.name, lastModified },
     {
       db: prisma,
-      photosDir: PHOTOS_DIR,
-      thumbnailsDir: path.join(CACHE_DIR, "thumbnails"),
-      displaysDir: path.join(CACHE_DIR, "displays"),
-      template: uploadTemplate,
+      catalogId: catalog.id,
+      photosDir: catalog.path,
+      thumbnailsDir: path.join(CACHE_DIR, catalog.id, "thumbnails"),
+      displaysDir: path.join(CACHE_DIR, catalog.id, "displays"),
+      uploadTemplate: catalog.uploadTemplate,
     },
   );
 
