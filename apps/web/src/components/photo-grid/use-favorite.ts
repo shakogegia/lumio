@@ -3,8 +3,8 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import type { PhotoDTO } from "@lumio/shared";
-import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
+import { favoritePhotos } from "@/lib/photo-mutations";
 import { usePhotoCollection } from "./photo-collection";
 
 /**
@@ -17,15 +17,11 @@ export function useToggleFavorite(photo: PhotoDTO): () => Promise<void> {
   const { patchPhotos } = usePhotoCollection();
   return useCallback(async () => {
     const next = !photo.isFavorite;
-    const res = await fetch(catalogApiUrl(slug, "/photos/favorite"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ photoIds: [photo.id], isFavorite: next }),
-    });
-    if (!res.ok) {
+    try {
+      await favoritePhotos(slug, [photo.id], next);
+      patchPhotos(new Set([photo.id]), { isFavorite: next });
+    } catch {
       toast.error("Failed to update favorites.");
-      return;
     }
-    patchPhotos(new Set([photo.id]), { isFavorite: next });
   }, [slug, photo.id, photo.isFavorite, patchPhotos]);
 }

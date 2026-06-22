@@ -5,6 +5,7 @@ import { Download, FilePenLine, Heart, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { trashPhotos } from "@/lib/photo-mutations";
 import { useCatalog } from "@/lib/catalog-context";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -49,17 +50,13 @@ export function LightboxActions({
       destructive: true,
     });
     if (!ok) return;
-    const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ids: [photo.id] }),
-    });
-    if (!res.ok) {
+    try {
+      await trashPhotos(slug, [photo.id]);
+      removePhotos(new Set([photo.id]));
+      onTrashed();
+    } catch {
       toast.error("Failed to move to Trash.");
-      return;
     }
-    removePhotos(new Set([photo.id]));
-    onTrashed();
   }
 
   async function resetEdits() {
