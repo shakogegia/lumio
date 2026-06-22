@@ -7,6 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Catalog {
+  id             String         @id @default(cuid())
+  name           String
+  slug           String         @unique
+  path           String         @unique
+  uploadTemplate String         @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  photos         Photo[]
+  albums         Album[]
+  folders        Folder[]
+  trashedPhotos  TrashedPhoto[]
+}
+
+model UserSettings {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  soundEffectsEnabled Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+}
+
 enum PhotoSource {
   filesystem
   upload
@@ -25,7 +46,9 @@ enum ColorLabel {
 
 model Photo {
   id             String       @id @default(cuid())
-  path           String       @unique
+  path           String // was: @unique — now unique per catalog
+  catalogId      String
+  catalog        Catalog      @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   source         PhotoSource
   takenAt        DateTime?
   sortDate       DateTime     @default(now())
@@ -45,6 +68,8 @@ model Photo {
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
 
+  @@unique([catalogId, path])
+  @@index([catalogId])
   @@index([sortDate, id])
   @@index([createdAt, id])
   @@index([hash])
@@ -59,11 +84,14 @@ model Album {
   coverPhotoId String? // explicitly pinned cover; null = use derived default
   folderId     String?
   folder       Folder?      @relation(fields: [folderId], references: [id])
+  catalogId    String
+  catalog      Catalog      @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   photos       AlbumPhoto[]
 
   @@index([folderId])
+  @@index([catalogId])
 }
 
 model AlbumPhoto {
@@ -83,10 +111,13 @@ model Folder {
   parent    Folder?  @relation("FolderTree", fields: [parentId], references: [id])
   children  Folder[] @relation("FolderTree")
   albums    Album[]
+  catalogId String
+  catalog   Catalog  @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([parentId])
+  @@index([catalogId])
 }
 
 model TrashedPhoto {
@@ -103,8 +134,11 @@ model TrashedPhoto {
   colorLabel   ColorLabel?
   albumIds     String[]
   deletedAt    DateTime    @default(now())
+  catalogId    String
+  catalog      Catalog     @relation(fields: [catalogId], references: [id], onDelete: Cascade)
 
   @@index([deletedAt, id])
+  @@index([catalogId])
 }
 
 model AppSettings {
@@ -115,17 +149,18 @@ model AppSettings {
 }
 
 model User {
-  id               String      @id @default(cuid())
+  id               String        @id @default(cuid())
   name             String
-  email            String      @unique
-  emailVerified    Boolean     @default(false)
+  email            String        @unique
+  emailVerified    Boolean       @default(false)
   image            String?
-  twoFactorEnabled Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  twoFactorEnabled Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
+  settings         UserSettings?
 }
 
 model Session {
@@ -192,6 +227,7 @@ model Job {
   processed  Int       @default(0)
   message    String?
   error      String?
+  catalogId  String?
   createdAt  DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?

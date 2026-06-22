@@ -125,6 +125,7 @@ describe("toAlbumDTO", () => {
       rules: null,
       coverPhotoId: null,
       folderId: null,
+      catalogId: "cat1",
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-02T00:00:00.000Z"),
     });
@@ -147,6 +148,7 @@ describe("toAlbumDTO", () => {
       rules: rules as never,
       coverPhotoId: null,
       folderId: null,
+      catalogId: "cat1",
       createdAt: new Date("2024-02-01T00:00:00.000Z"),
       updatedAt: new Date("2024-02-01T00:00:00.000Z"),
     });
