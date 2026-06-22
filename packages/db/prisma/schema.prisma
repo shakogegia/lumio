@@ -16,10 +16,25 @@ model Catalog {
   position       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-  photos         Photo[]
-  albums         Album[]
-  folders        Folder[]
-  trashedPhotos  TrashedPhoto[]
+  photos          Photo[]
+  albums          Album[]
+  folders         Folder[]
+  trashedPhotos   TrashedPhoto[]
+  featureSettings FeatureSetting[]
+}
+
+model FeatureSetting {
+  id         String   @id @default(cuid())
+  featureKey String
+  catalogId  String?  // null = the global switch; non-null = a per-catalog override
+  catalog    Catalog? @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  enabled    Boolean
+  updatedAt  DateTime @updatedAt
+
+  // NOTE: Postgres treats NULL as distinct, so this does NOT dedupe global
+  // (catalogId = null) rows — setFeature() enforces single-row semantics in code.
+  @@unique([featureKey, catalogId])
+  @@index([catalogId])
 }
 
 model UserSettings {
