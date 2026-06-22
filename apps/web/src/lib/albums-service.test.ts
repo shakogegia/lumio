@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MatchType } from "@lumio/shared";
 import {
   addPhotosToAlbum,
   albumPhotoWhere,
@@ -201,7 +202,7 @@ describe("createAlbum", () => {
   it("includes smart rules and folderId when provided", async () => {
     const create = vi.fn().mockResolvedValue(albumRow({ id: "s1", isSmart: true }));
     const fakeDb = { album: { create }, albumPhoto: {}, photo: {} };
-    const rules = { match: "all" as const, rules: [] };
+    const rules = { match: MatchType.all, rules: [] };
     await createAlbum(CAT, { name: "Smart", isSmart: true, rules, folderId: "f1" }, fakeDb as never);
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({ catalogId: CAT, name: "Smart", isSmart: true, rules, folderId: "f1" }),

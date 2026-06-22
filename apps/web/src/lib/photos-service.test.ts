@@ -166,17 +166,21 @@ function keysetDb(ordered: Array<{ id: string; path: string }>) {
   };
 }
 
-// Wraps keysetDb so the same ordered set also answers album.findUnique with a
-// regular (non-smart) album — exercises the albumId != null / albumPhotoWhere path.
+// Wraps keysetDb so the same ordered set also answers album.findFirst with a
+// regular (non-smart) album for the catalog-scoped lookup
+// (where: { id, catalogId }) — exercises the albumId != null / albumPhotoWhere path.
 function albumKeysetDb(albumId: string, ordered: Array<{ id: string; path: string }>) {
   return {
     ...keysetDb(ordered),
     album: {
-      findUnique: async () => ({
+      findFirst: async () => ({
         id: albumId,
         name: "Scoped",
         isSmart: false,
         rules: null,
+        catalogId: CAT,
+        folderId: null,
+        coverPhotoId: null,
         createdAt: new Date("2024-01-01T00:00:00.000Z"),
         updatedAt: new Date("2024-01-01T00:00:00.000Z"),
       }),
@@ -228,7 +232,7 @@ describe("getPhotoNeighbors", () => {
 
   it("degrades to a single-item strip when the album is missing", async () => {
     const db = {
-      album: { findUnique: async () => null },
+      album: { findFirst: async () => null },
       photo: {
         findMany: async () => {
           throw new Error("should not query photos");
@@ -253,7 +257,7 @@ describe("getPhotoNeighbors", () => {
     const db = {
       ...keysetDb(ordered),
       album: {
-        findUnique: async () => ({
+        findFirst: async () => ({
           id: "smart1",
           name: "Smart",
           isSmart: true,
@@ -261,6 +265,9 @@ describe("getPhotoNeighbors", () => {
             match: "all",
             rules: [{ field: "exif.cameraModel", op: "eq", value: "TestCam" }],
           },
+          catalogId: CAT,
+          folderId: null,
+          coverPhotoId: null,
           createdAt: new Date("2024-01-01T00:00:00.000Z"),
           updatedAt: new Date("2024-01-01T00:00:00.000Z"),
         }),

@@ -23,23 +23,24 @@ export interface PhotoDetailData {
  * is missing so callers can `notFound()`.
  */
 export async function loadPhotoDetail(
+  catalogId: string,
   id: string,
   scope: DetailScope,
 ): Promise<PhotoDetailData | null> {
-  const photo = await getPhoto(id);
+  const photo = await getPhoto(catalogId, id);
   if (!photo) return null;
   const current = { id: photo.id, path: photo.path };
   const neighbors$ =
     scope.kind === "album"
-      ? getPhotoNeighbors(current, scope.albumId, scope.sort)
+      ? getPhotoNeighbors(catalogId, current, scope.albumId, scope.sort)
       : scope.kind === "search"
         ? getNeighborsForWhere(
             current,
-            buildSearchWhere({ album: scope.albums, q: scope.q }),
+            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q }) },
             scope.sort,
           )
-        : getPhotoNeighbors(current, null, scope.sort);
-  const [albums, neighbors] = await Promise.all([listAlbumSummaries(), neighbors$]);
+        : getPhotoNeighbors(catalogId, current, null, scope.sort);
+  const [albums, neighbors] = await Promise.all([listAlbumSummaries(catalogId), neighbors$]);
   return {
     photo,
     regularAlbums: albums.filter((a) => !a.isSmart),
