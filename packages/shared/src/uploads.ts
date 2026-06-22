@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export const DEFAULT_UPLOAD_TEMPLATE = "{YYYY}/{YYYY}-{MM}-{DD}/{filename}";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
@@ -44,12 +42,3 @@ export function validateTemplate(template: string): TemplateValidation {
   return { ok: true };
 }
 
-export const updateSettingsSchema = z.object({
-  uploadTemplate: z
-    .string()
-    .refine((t) => validateTemplate(t).ok, { message: "Invalid upload template" })
-    .optional(),
-  soundEffectsEnabled: z.boolean().optional(),
-});
-
-export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

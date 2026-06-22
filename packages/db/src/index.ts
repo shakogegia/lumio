@@ -3,7 +3,6 @@ export * from "./mappers.js";
 export * from "./smart-albums.js";
 export * from "./folders.js";
 export * from "./search.js";
-export * from "./settings.js";
 export * from "./users.js";
 export * from "./catalogs.js";
 export * from "./user-settings.js";
