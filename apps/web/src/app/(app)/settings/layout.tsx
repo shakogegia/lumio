@@ -14,7 +14,8 @@ export default async function SettingsLayout({
   return (
     <>
       <SettingsSidebar backHref={backHref} />
-      <div className="min-h-dvh pl-60">{children}</div>
+      {/* Offset content by the 76px fixed rail, matching the main app layout. */}
+      <div className="min-h-dvh pl-[76px]">{children}</div>
     </>
   );
 }
