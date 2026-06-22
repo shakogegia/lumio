@@ -45,7 +45,7 @@ describe("trashPhotos", () => {
     const created: unknown[] = [];
     const db = {
       photo: {
-        findUnique: async () => ({
+        findFirst: async () => ({
           id: "a",
           path: "a.jpg",
           source: "filesystem",
@@ -87,13 +87,13 @@ describe("trashPhotos", () => {
     expect(existsSync(path.join(trashDir, "originals", "a.jpg"))).toBe(true);
     expect(existsSync(path.join(trashDir, "thumbnails", "a.webp"))).toBe(true);
     expect(existsSync(path.join(trashDir, "displays", "a.webp"))).toBe(true);
-    expect(db.photo.deleteMany).toHaveBeenCalledWith({ where: { id: "a" } });
+    expect(db.photo.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
   });
 
   it("skips ids that no longer exist", async () => {
     const { photosDir, cacheDir, trashDir } = await dirs();
     const db = {
-      photo: { findUnique: async () => null, deleteMany: vi.fn() },
+      photo: { findFirst: async () => null, deleteMany: vi.fn() },
       trashedPhoto: { create: vi.fn() },
     };
     const result = await trashPhotos(["gone"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
@@ -152,8 +152,8 @@ describe("restorePhotos", () => {
     let createArgs: { data: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } } } | null = null;
     const db = {
       trashedPhoto: {
-        findUnique: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
-        delete: vi.fn().mockResolvedValue({}),
+        findFirst: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
+        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       album: { findMany: async () => [{ id: "keep" }] },
       photo: {
@@ -178,7 +178,7 @@ describe("restorePhotos", () => {
     expect(createArgs!.data.fileCreatedAt).toBeInstanceOf(Date);
     expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(true);
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(true);
-    expect(db.trashedPhoto.delete).toHaveBeenCalledWith({ where: { id: "a" } });
+    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
   });
 
   it("restores to a suffixed path when the original path is occupied", async () => {
@@ -189,7 +189,7 @@ describe("restorePhotos", () => {
 
     let restoredPath = "";
     const db = {
-      trashedPhoto: { findUnique: async () => trashRow("a"), delete: async () => ({}) },
+      trashedPhoto: { findFirst: async () => trashRow("a"), deleteMany: async () => ({ count: 1 }) },
       album: { findMany: async () => [] },
       photo: {
         create: async (args: { data: { path: string } }) => {

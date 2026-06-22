@@ -279,7 +279,7 @@ describe("listAlbumPhotos", () => {
     await listAlbumPhotos(CAT, "alb1", { limit: 2, offset: 0, month: "2026-06" }, fakeDb as never);
     expect(calls[0]?.where).toEqual({
       AND: [
-        { albums: { some: { albumId: "alb1" } } },
+        { catalogId: CAT, albums: { some: { albumId: "alb1" } } },
         {
           sortDate: {
             gte: new Date("2026-06-01T00:00:00.000Z"),
@@ -308,7 +308,8 @@ describe("addPhotosToAlbum", () => {
     const fakeDb = {
       album: { findFirst: async () => ({ isSmart: false }) },
       albumPhoto: { createMany },
-      photo: {},
+      // Only catalog-owned photos are linked; the service filters ids first.
+      photo: { findMany: async () => [{ id: "p1" }, { id: "p2" }] },
     };
     const count = await addPhotosToAlbum(CAT, "alb1", ["p1", "p2"], fakeDb as never);
     expect(count).toBe(2);

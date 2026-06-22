@@ -47,10 +47,10 @@ function freePath(photosDir: string, relPath: string): string {
   }
 }
 
-async function existingAlbumIds(db: Db, ids: string[]): Promise<string[]> {
+async function existingAlbumIds(db: Db, catalogId: string, ids: string[]): Promise<string[]> {
   if (ids.length === 0) return [];
   const rows = await db.album.findMany({
-    where: { id: { in: ids } },
+    where: { catalogId, id: { in: ids } },
     select: { id: true },
   });
   return rows.map((r) => r.id);
@@ -62,8 +62,10 @@ export async function trashPhotos(
 ): Promise<{ trashed: number }> {
   let trashed = 0;
   for (const id of ids) {
-    const photo = await deps.db.photo.findUnique({
-      where: { id },
+    // Scope by catalog so a request can't trash (and thereby delete) a photo
+    // that belongs to another catalog by passing its id.
+    const photo = await deps.db.photo.findFirst({
+      where: { id, catalogId: deps.catalogId },
       include: { albums: { select: { albumId: true } } },
     });
     if (!photo) continue;
@@ -104,7 +106,7 @@ export async function trashPhotos(
 
     // 3. Delete the Photo row. deleteMany is tolerant of "already gone" — the
     //    watcher's unlink (fired by step 2) may delete it first; same end state.
-    await deps.db.photo.deleteMany({ where: { id } });
+    await deps.db.photo.deleteMany({ where: { id, catalogId: deps.catalogId } });
     trashed++;
   }
   return { trashed };
@@ -134,13 +136,13 @@ export async function restorePhotos(
 ): Promise<{ restored: number }> {
   let restored = 0;
   for (const id of ids) {
-    const t = await deps.db.trashedPhoto.findUnique({
-      where: { id },
+    const t = await deps.db.trashedPhoto.findFirst({
+      where: { id, catalogId: deps.catalogId },
     });
     if (!t) continue;
 
     const destRel = freePath(deps.photosDir, t.originalPath);
-    const albumIds = await existingAlbumIds(deps.db, t.albumIds);
+    const albumIds = await existingAlbumIds(deps.db, deps.catalogId, t.albumIds);
 
     // The trashed original is still in place here; stat it for the NOT NULL
     // file-stat columns. If it's somehow gone, fall back to the snapshot's
@@ -193,7 +195,7 @@ export async function restorePhotos(
     );
 
     // 3. Drop the trash record.
-    await deps.db.trashedPhoto.delete({ where: { id } });
+    await deps.db.trashedPhoto.deleteMany({ where: { id, catalogId: deps.catalogId } });
     restored++;
   }
   return { restored };

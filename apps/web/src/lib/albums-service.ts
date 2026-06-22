@@ -128,7 +128,10 @@ export async function listAlbumPhotos(
   const scoped = await albumPhotoWhere(catalogId, id, db);
   if (scoped === null) return null;
   const { limit, offset, sort, month } = params;
-  const where = month ? { AND: [scoped, { sortDate: monthRange(month) }] } : scoped;
+  // Scope by catalog: a SMART album's where is just its rule predicate (no
+  // catalog constraint), so without this it would match photos in EVERY catalog.
+  const base: Prisma.PhotoWhereInput = { catalogId, ...scoped };
+  const where = month ? { AND: [base, { sortDate: monthRange(month) }] } : base;
   const [rows, total] = await Promise.all([
     db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
     db.photo.count({ where }),
@@ -143,10 +146,12 @@ export async function listAlbumPhotosForDownload(
   id: string,
   db: Db = prisma,
 ): Promise<{ id: string; path: string }[] | null> {
-  const where = await albumPhotoWhere(catalogId, id, db);
-  if (where === null) return null;
+  const scoped = await albumPhotoWhere(catalogId, id, db);
+  if (scoped === null) return null;
+  // Scope by catalog (see listAlbumPhotos) so a smart album never zips photos
+  // from another catalog.
   return db.photo.findMany({
-    where,
+    where: { catalogId, ...scoped },
     orderBy: PHOTO_ORDER,
     select: { id: true, path: true },
   });
@@ -179,8 +184,13 @@ export async function addPhotosToAlbum(
   const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { isSmart: true } });
   if (!album) throw new AlbumNotFoundError();
   if (album.isSmart) throw new SmartAlbumMutationError("cannot add photos to a smart album");
+  // Only link photos that belong to this catalog — never another catalog's ids.
+  const owned = await db.photo.findMany({
+    where: { catalogId, id: { in: photoIds } },
+    select: { id: true },
+  });
   const result = await db.albumPhoto.createMany({
-    data: photoIds.map((photoId) => ({ albumId, photoId })),
+    data: owned.map(({ id }) => ({ albumId, photoId: id })),
     skipDuplicates: true,
   });
   return result.count;
