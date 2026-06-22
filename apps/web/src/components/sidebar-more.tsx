@@ -6,6 +6,8 @@ import { useTheme } from "next-themes";
 import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun, Trash2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
+import { catalogPath } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +24,10 @@ import {
 export function SidebarMore() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
+  const { slug } = useCatalog();
   const { theme, setTheme } = useTheme();
-  const settingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
+  const settingsHref = catalogPath(slug, "/settings");
+  const settingsActive = pathname === settingsHref || pathname.startsWith(`${settingsHref}/`);
 
   async function handleLogout() {
     await signOut();
@@ -67,7 +71,7 @@ export function SidebarMore() {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href="/settings">
+          <Link href={settingsHref}>
             <Settings aria-hidden />
             Settings
           </Link>
@@ -100,7 +104,7 @@ export function SidebarMore() {
         </DropdownMenuSub>
 
         <DropdownMenuItem asChild>
-          <Link href="/trash">
+          <Link href={catalogPath(slug, "/trash")}>
             <Trash2 aria-hidden />
             Trash
           </Link>
