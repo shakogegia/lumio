@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
 import { moveItemsSchema } from "@lumio/shared";
 import { FolderCycleError, FolderNotFoundError, moveItems } from "@/lib/folders-service";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const POST = withAuth(async (request) => {
+export const POST = withCatalog(async (request, _context, { catalog }) => {
   const body: unknown = await request.json();
   const parsed = moveItemsSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   try {
-    const count = await moveItems(parsed.data);
+    const count = await moveItems(catalog.id, parsed.data);
     return NextResponse.json({ count });
   } catch (err) {
     if (err instanceof FolderCycleError) {

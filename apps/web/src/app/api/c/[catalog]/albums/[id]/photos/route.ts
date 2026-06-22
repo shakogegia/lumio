@@ -7,20 +7,20 @@ import {
   removePhotosFromAlbum,
   SmartAlbumMutationError,
 } from "@/lib/albums-service";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(
-  async (request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const GET = withCatalog<{ id: string }>(
+  async (request, context, { catalog }) => {
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const parsed = photosQuerySchema.safeParse(Object.fromEntries(searchParams));
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
-    const page = await listAlbumPhotos(id, parsed.data);
+    const page = await listAlbumPhotos(catalog.id, id, parsed.data);
     if (!page) {
       return NextResponse.json({ error: "Album not found" }, { status: 404 });
     }
@@ -28,16 +28,16 @@ export const GET = withAuth(
   },
 );
 
-export const POST = withAuth(
-  async (request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const POST = withCatalog<{ id: string }>(
+  async (request, context, { catalog }) => {
+    const { id } = await context.params;
     const body: unknown = await request.json();
     const parsed = albumPhotosSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     try {
-      const count = await addPhotosToAlbum(id, parsed.data.photoIds);
+      const count = await addPhotosToAlbum(catalog.id, id, parsed.data.photoIds);
       return NextResponse.json({ status: "added", count }, { status: 201 });
     } catch (err) {
       if (err instanceof SmartAlbumMutationError) {
@@ -51,16 +51,16 @@ export const POST = withAuth(
   },
 );
 
-export const DELETE = withAuth(
-  async (request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const DELETE = withCatalog<{ id: string }>(
+  async (request, context, { catalog }) => {
+    const { id } = await context.params;
     const body: unknown = await request.json();
     const parsed = albumPhotosSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     try {
-      const count = await removePhotosFromAlbum(id, parsed.data.photoIds);
+      const count = await removePhotosFromAlbum(catalog.id, id, parsed.data.photoIds);
       return NextResponse.json({ status: "removed", count });
     } catch (err) {
       if (err instanceof SmartAlbumMutationError) {

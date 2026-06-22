@@ -9,15 +9,15 @@ import {
   setAlbumCover,
   SmartAlbumMutationError,
 } from "@/lib/albums-service";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(
-  async (_request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
-    const album = await getAlbum(id);
+export const GET = withCatalog<{ id: string }>(
+  async (_request, context, { catalog }) => {
+    const { id } = await context.params;
+    const album = await getAlbum(catalog.id, id);
     if (!album) {
       return NextResponse.json({ error: "Album not found" }, { status: 404 });
     }
@@ -25,16 +25,16 @@ export const GET = withAuth(
   },
 );
 
-export const PATCH = withAuth(
-  async (request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const PATCH = withCatalog<{ id: string }>(
+  async (request, context, { catalog }) => {
+    const { id } = await context.params;
     const body: unknown = await request.json();
 
     // Rename takes precedence when a `name` is present; otherwise set the cover.
     const rename = renameAlbumSchema.safeParse(body);
     if (rename.success) {
       try {
-        const album = await renameAlbum(id, rename.data.name);
+        const album = await renameAlbum(catalog.id, id, rename.data.name);
         return NextResponse.json(album);
       } catch (err) {
         if (err instanceof AlbumNotFoundError) {
@@ -49,7 +49,7 @@ export const PATCH = withAuth(
       return NextResponse.json({ error: cover.error.flatten() }, { status: 400 });
     }
     try {
-      await setAlbumCover(id, cover.data.coverPhotoId);
+      await setAlbumCover(catalog.id, id, cover.data.coverPhotoId);
       return NextResponse.json({ status: "ok" });
     } catch (err) {
       if (err instanceof AlbumNotFoundError) {
@@ -63,11 +63,11 @@ export const PATCH = withAuth(
   },
 );
 
-export const DELETE = withAuth(
-  async (_request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const DELETE = withCatalog<{ id: string }>(
+  async (_request, context, { catalog }) => {
+    const { id } = await context.params;
     try {
-      await deleteAlbum(id);
+      await deleteAlbum(catalog.id, id);
     } catch (err) {
       if (err instanceof AlbumNotFoundError) {
         return NextResponse.json({ error: "Album not found" }, { status: 404 });

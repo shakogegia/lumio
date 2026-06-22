@@ -6,27 +6,27 @@ import {
   listFolderContents,
   renameFolder,
 } from "@/lib/folders-service";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async (_request, { params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params;
-  const contents = await listFolderContents(id);
+export const GET = withCatalog<{ id: string }>(async (_request, context, { catalog }) => {
+  const { id } = await context.params;
+  const contents = await listFolderContents(catalog.id, id);
   if (!contents) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
   return NextResponse.json(contents);
 });
 
-export const PATCH = withAuth(async (request, { params }: { params: Promise<{ id: string }> }) => {
-  const { id } = await params;
+export const PATCH = withCatalog<{ id: string }>(async (request, context, { catalog }) => {
+  const { id } = await context.params;
   const body: unknown = await request.json();
   const parsed = renameFolderSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   try {
-    const folder = await renameFolder(id, parsed.data.name);
+    const folder = await renameFolder(catalog.id, id, parsed.data.name);
     return NextResponse.json(folder);
   } catch (err) {
     if (err instanceof FolderNotFoundError) {
@@ -36,9 +36,9 @@ export const PATCH = withAuth(async (request, { params }: { params: Promise<{ id
   }
 });
 
-export const DELETE = withAuth(
-  async (request, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+export const DELETE = withCatalog<{ id: string }>(
+  async (request, context, { catalog }) => {
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const parsed = folderDeleteModeSchema.safeParse({
       mode: searchParams.get("mode") ?? undefined,
@@ -47,7 +47,7 @@ export const DELETE = withAuth(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     try {
-      await deleteFolder(id, parsed.data.mode);
+      await deleteFolder(catalog.id, id, parsed.data.mode);
     } catch (err) {
       if (err instanceof FolderNotFoundError) {
         return NextResponse.json({ error: "Folder not found" }, { status: 404 });
