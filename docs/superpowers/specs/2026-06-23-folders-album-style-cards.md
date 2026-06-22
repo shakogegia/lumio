@@ -68,6 +68,8 @@ interface FolderSummary {
 
 `page.tsx` calls `listSubfolderSummaries` instead of `listSubfolders` and passes the summaries.
 
+**Empty state:** a folder that has subfolders but no *direct* photos is not "empty" — the photo grid's default "No photos yet" block must NOT show beneath the folders. Pass `empty={subfolders.length > 0 ? null : undefined}` to `PhotoLibraryView` (`null` renders nothing; `undefined` keeps the grid's default empty state). Only a folder with neither subfolders nor direct photos falls back to the default empty state.
+
 ## D. Calendar on `/folders`
 
 **Direct vs. recursive — the one rule:** the photo *grid* shows only the folder's **direct** photos (`dirPath === rel`), exactly as today. The calendar facets must match the grid, so they are also **direct**. Recursion applies ONLY to the folder *cards'* covers + counts (a card affordance, §A), never to the grid or calendar.
