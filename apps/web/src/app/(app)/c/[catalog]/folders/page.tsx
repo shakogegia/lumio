@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { isFeatureEnabled } from "@lumio/db";
 import { FeatureKey } from "@lumio/shared";
 import { getCatalogForSlug } from "@/lib/active-catalog";
-import { listSubfolders, type Subfolder } from "@/lib/catalog-fs-service";
+import { listSubfolderSummaries, type FolderSummary } from "@/lib/catalog-fs-service";
 import { FolderExplorer } from "./folder-explorer";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +23,9 @@ export default async function FoldersPage({
   const sp = await searchParams;
   const rel = typeof sp.path === "string" ? sp.path : "";
 
-  let subfolders: Subfolder[];
+  let subfolders: FolderSummary[];
   try {
-    subfolders = await listSubfolders(catalog, rel);
+    subfolders = await listSubfolderSummaries(catalog, rel);
   } catch {
     notFound(); // traversal escape or missing directory
   }
