@@ -20,7 +20,7 @@ import { SoundEffectsForm } from "./sound-effects-form";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Profile" };
+export const metadata: Metadata = { title: "Account" };
 
 export default async function ProfilePage() {
   // (app)/layout.tsx already redirects unauthenticated requests; we still fetch
@@ -56,7 +56,7 @@ export default async function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
 
       <Tabs defaultValue="account" className="gap-6">
         <TabsList>
