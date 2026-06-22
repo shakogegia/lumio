@@ -32,19 +32,14 @@ export async function listPhotos(
 }
 
 /**
- * Offset-paginated page of photos matching an arbitrary `where`, in `orderBy`.
- * Backs scopes whose set is a Prisma where with a custom order (e.g. the disk
- * folder scope's `{ dirPath }` ordered by filename/mtime), mirroring
- * `listPhotos`' page shape.
+ * Offset-paginated page of photos matching an arbitrary `where`, ordered by
+ * the given standard sort. Backs scopes whose set is a Prisma where (e.g. the
+ * disk folder scope's `{ dirPath }`), mirroring `listPhotos`' page shape.
  */
 export async function listPhotosForWhere(
   catalogId: string,
   where: Prisma.PhotoWhereInput,
-  params: {
-    limit: number;
-    offset: number;
-    orderBy: Prisma.PhotoOrderByWithRelationInput | Prisma.PhotoOrderByWithRelationInput[];
-  },
+  params: { limit: number; offset: number; sort?: PhotoSort },
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const full: Prisma.PhotoWhereInput = { catalogId, ...where };
@@ -53,7 +48,7 @@ export async function listPhotosForWhere(
       where: full,
       skip: params.offset,
       take: params.limit,
-      orderBy: params.orderBy,
+      orderBy: photoOrderBy(params.sort),
     }),
     db.photo.count({ where: full }),
   ]);

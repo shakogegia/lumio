@@ -1,5 +1,4 @@
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { folderSortToParam } from "@/lib/catalog-fs";
 import { type DetailScope, detailScopeQuery } from "@/lib/detail-scope";
 
 export interface CollectionSource {
@@ -47,7 +46,7 @@ export function collectionForScope(slug: string, scope: DetailScope): Collection
   if (scope.kind === "folder") {
     return {
       endpoint: catalogApiUrl(slug, "/fs/photos"),
-      params: new URLSearchParams({ path: scope.dir, fsort: folderSortToParam(scope.fsort) }),
+      params: new URLSearchParams({ path: scope.dir, sort: scope.sort }),
       urlForId,
       baseUrl: catalogPath(
         slug,

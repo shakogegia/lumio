@@ -1,7 +1,6 @@
 import { buildSearchWhere, type Prisma, type PrismaClient, prisma } from "@lumio/db";
 import type { PhotoSort } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/albums-service";
-import { folderPhotoOrderBy } from "@/lib/photo-order";
 import type { DetailScope } from "@/lib/photo-detail-loader";
 
 export interface PhotoCursor {
@@ -43,6 +42,7 @@ async function scopeWhereFor(
 ): Promise<Prisma.PhotoWhereInput | null> {
   if (scope.kind === "album") return albumPhotoWhere(catalogId, scope.albumId, db);
   if (scope.kind === "search") return buildSearchWhere({ album: scope.albums, q: scope.q });
+  if (scope.kind === "folder") return { dirPath: scope.dir };
   return {};
 }
 
@@ -62,19 +62,6 @@ export async function locatePhoto(
   scope: DetailScope,
   db: LocateDb = prisma,
 ): Promise<number | null> {
-  // Folder scope: the set is `Photo.dirPath = dir`, ordered by the folder view's
-  // sort (filename / mtime). The directory is bounded, so the index is just the
-  // position in that ordered list — no date cursor needed.
-  if (scope.kind === "folder") {
-    const rows = await db.photo.findMany({
-      where: { catalogId, dirPath: scope.dir },
-      orderBy: folderPhotoOrderBy(scope.fsort),
-      select: { id: true },
-    });
-    const idx = rows.findIndex((r) => r.id === id);
-    return idx >= 0 ? idx : null;
-  }
-
   const row = await db.photo.findFirst({
     where: { id, catalogId },
     select: { id: true, sortDate: true, createdAt: true, fileCreatedAt: true },

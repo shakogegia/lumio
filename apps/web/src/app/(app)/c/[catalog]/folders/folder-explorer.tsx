@@ -65,19 +65,17 @@ function locationLabel(rel: string): string {
 }
 
 /** Detail-page href that scopes the lightbox film strip to the photo's own
- *  on-disk folder (its siblings), ordered the same as the folders view (`sort`),
- *  so prev/next stays within that directory in the order on screen. */
+ *  on-disk folder (its siblings), so prev/next stays within that directory. */
 function photoDetailHref(
   slug: string,
   photoId: string,
   fileRel: string,
-  sort: FolderSort,
+  _sort: FolderSort,
 ): string {
   const q = detailScopeQuery({
     kind: "folder",
     dir: parentDir(fileRel),
     sort: DEFAULT_PHOTO_SORT,
-    fsort: sort,
   });
   return catalogPath(slug, q ? `/photo/${photoId}?${q}` : `/photo/${photoId}`);
 }

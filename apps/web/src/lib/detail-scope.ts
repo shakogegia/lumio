@@ -1,9 +1,4 @@
 import { coercePhotoSort, DEFAULT_PHOTO_SORT, type PhotoSort } from "@lumio/shared";
-import {
-  folderSortToParam,
-  parseFolderSortParam,
-  type FolderSort,
-} from "@/lib/catalog-fs";
 
 // Pure scope helpers — NO server-only imports (no @lumio/db, no prisma), so this
 // module is safe to import from Client Components. `photo-detail-loader.ts`
@@ -17,7 +12,7 @@ import {
 export type DetailScope =
   | { kind: "album"; albumId: string; sort: PhotoSort }
   | { kind: "search"; albums: string[]; q?: string; sort: PhotoSort }
-  | { kind: "folder"; dir: string; sort: PhotoSort; fsort: FolderSort }
+  | { kind: "folder"; dir: string; sort: PhotoSort }
   | { kind: "library"; sort: PhotoSort };
 
 type RawSearchParams = {
@@ -26,7 +21,6 @@ type RawSearchParams = {
   s?: string;
   sort?: string;
   folder?: string;
-  fsort?: string;
 };
 
 /** Parse a detail route's query params into a scope. `s` marks a search scope;
@@ -44,7 +38,7 @@ export function parseDetailScope(sp: RawSearchParams): DetailScope {
   }
   // `folder` may be "" (the catalog root), so test the type, not truthiness.
   if (typeof sp.folder === "string") {
-    return { kind: "folder", dir: sp.folder, sort, fsort: parseFolderSortParam(sp.fsort) };
+    return { kind: "folder", dir: sp.folder, sort };
   }
   if (typeof sp.album === "string") return { kind: "album", albumId: sp.album, sort };
   return { kind: "library", sort };
@@ -61,7 +55,6 @@ export function detailScopeQuery(scope: DetailScope): string {
     if (scope.q) params.set("q", scope.q);
   } else if (scope.kind === "folder") {
     params.set("folder", scope.dir);
-    params.set("fsort", folderSortToParam(scope.fsort));
   }
   if (scope.sort !== DEFAULT_PHOTO_SORT) params.set("sort", scope.sort);
   return params.toString();

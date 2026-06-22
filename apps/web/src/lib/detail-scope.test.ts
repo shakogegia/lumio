@@ -3,17 +3,15 @@ import { detailScopeQuery, parseDetailScope } from "./detail-scope.js";
 
 describe("parseDetailScope", () => {
   it("parses a folder scope with its sort, including the root ('')", () => {
-    expect(parseDetailScope({ folder: "2024/trip", fsort: "date:desc" })).toEqual({
+    expect(parseDetailScope({ folder: "2024/trip" })).toEqual({
       kind: "folder",
       dir: "2024/trip",
       sort: "imported-desc",
-      fsort: { field: "date", dir: "desc" },
     });
     expect(parseDetailScope({ folder: "" })).toEqual({
       kind: "folder",
       dir: "",
       sort: "imported-desc",
-      fsort: { field: "name", dir: "asc" },
     });
   });
 
@@ -25,16 +23,24 @@ describe("parseDetailScope", () => {
 });
 
 describe("detailScopeQuery", () => {
-  it("serializes a folder scope with its sort", () => {
+  it("serializes a folder scope (omitting sort when default)", () => {
     const q = detailScopeQuery({
       kind: "folder",
-      dir: "2024/trip",
+      dir: "a/b",
       sort: "imported-desc",
-      fsort: { field: "date", dir: "desc" },
+    });
+    expect(q).toBe("folder=a%2Fb");
+  });
+
+  it("serializes a folder scope with a non-default sort", () => {
+    const q = detailScopeQuery({
+      kind: "folder",
+      dir: "a/b",
+      sort: "taken-asc",
     });
     expect(Object.fromEntries(new URLSearchParams(q))).toEqual({
-      folder: "2024/trip",
-      fsort: "date:desc",
+      folder: "a/b",
+      sort: "taken-asc",
     });
   });
 
@@ -43,7 +49,6 @@ describe("detailScopeQuery", () => {
       kind: "folder" as const,
       dir: "a/b",
       sort: "imported-desc" as const,
-      fsort: { field: "name" as const, dir: "asc" as const },
     };
     const sp = Object.fromEntries(new URLSearchParams(detailScopeQuery(scope)));
     expect(parseDetailScope(sp)).toEqual(scope);

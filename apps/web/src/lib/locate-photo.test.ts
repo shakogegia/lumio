@@ -116,34 +116,26 @@ describe("locatePhoto", () => {
     }
   });
 
-  it("folder scope: index is the photo's position in the dir's ordered photos", async () => {
-    const fake = {
-      photo: {
-        findMany: vi.fn(async () => [{ id: "a" }, { id: "b" }, { id: "c" }]),
-        findFirst: vi.fn(),
-        count: vi.fn(),
-      },
-    };
+  it("folder scope: resolves via dirPath before-count", async () => {
+    const fake = db({ row: cursor, before: 3, inScope: 1 });
     const idx = await locatePhoto(
       CAT,
-      "b",
-      { kind: "folder", dir: "2024", sort: "imported-desc", fsort: { field: "name", dir: "asc" } },
+      "p5",
+      { kind: "folder", dir: "2024", sort: "taken-desc" },
       fake as never,
     );
-    expect(idx).toBe(1);
-    expect(fake.photo.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { catalogId: CAT, dirPath: "2024" } }),
-    );
+    expect(idx).toBe(3);
+    // The count where should contain dirPath
+    const whereJson = fake.counts.map((w) => JSON.stringify(w));
+    expect(whereJson.some((s) => s.includes('"dirPath":"2024"'))).toBe(true);
   });
 
   it("folder scope: returns null when the photo is not in the dir", async () => {
-    const fake = {
-      photo: { findMany: vi.fn(async () => [{ id: "a" }]), findFirst: vi.fn(), count: vi.fn() },
-    };
+    const fake = db({ row: cursor, before: 0, inScope: 0 });
     const idx = await locatePhoto(
       CAT,
-      "missing",
-      { kind: "folder", dir: "2024", sort: "imported-desc", fsort: { field: "name", dir: "asc" } },
+      "p5",
+      { kind: "folder", dir: "2024", sort: "taken-desc" },
       fake as never,
     );
     expect(idx).toBeNull();
