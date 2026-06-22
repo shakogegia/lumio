@@ -109,7 +109,7 @@ export function CatalogSwitcher() {
             <Plus className="size-4 shrink-0" aria-hidden />
             New catalog…
           </button>
-          <Link href="/catalogs" className={rowClass}>
+          <Link href="/settings/catalogs" className={rowClass}>
             <Settings2 className="size-4 shrink-0" aria-hidden />
             Manage catalogs
           </Link>
