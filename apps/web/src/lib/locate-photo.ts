@@ -36,10 +36,11 @@ export function beforeCursorWhere(
 }
 
 async function scopeWhereFor(
+  catalogId: string,
   scope: DetailScope,
   db: LocateDb,
 ): Promise<Prisma.PhotoWhereInput | null> {
-  if (scope.kind === "album") return albumPhotoWhere(scope.albumId, db);
+  if (scope.kind === "album") return albumPhotoWhere(catalogId, scope.albumId, db);
   if (scope.kind === "search") return buildSearchWhere({ album: scope.albums, q: scope.q });
   return {};
 }
@@ -65,7 +66,7 @@ export async function locatePhoto(
     select: { id: true, sortDate: true, createdAt: true, fileCreatedAt: true },
   });
   if (!row) return null;
-  const scopeWhere = await scopeWhereFor(scope, db);
+  const scopeWhere = await scopeWhereFor(catalogId, scope, db);
   if (scopeWhere === null) return null;
   const catalogScoped = { catalogId, ...scopeWhere };
   const [index, inScope] = await Promise.all([

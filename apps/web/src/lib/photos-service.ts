@@ -99,7 +99,7 @@ export async function getPhotoNeighbors(
   window = 25,
   db: NeighborDb = prisma,
 ): Promise<PhotoNeighbors> {
-  const baseWhere = albumId ? await albumPhotoWhere(albumId, db) : {};
+  const baseWhere = albumId ? await albumPhotoWhere(catalogId, albumId, db) : {};
   if (baseWhere === null) {
     // Album no longer exists — degrade to no navigation rather than throwing.
     return { prevId: null, nextId: null, strip: [current] };
