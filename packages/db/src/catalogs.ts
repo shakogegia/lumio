@@ -10,7 +10,25 @@ export async function uniqueSlug(base: string, db: CatalogDb = prisma): Promise<
   return slug;
 }
 
-export function listCatalogs(db: CatalogDb = prisma) { return db.catalog.findMany({ orderBy: { createdAt: "asc" } }); }
+// Custom order first (fractional `position`), NULLS LAST so un-backfilled rows
+// keep createdAt order; createdAt breaks ties. This order drives the management
+// list AND the catalog switcher.
+export function listCatalogs(db: CatalogDb = prisma) {
+  return db.catalog.findMany({
+    orderBy: [{ position: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+  });
+}
+
+/** Persist a batch of fractional-position updates in one transaction. */
+export async function applyCatalogPositions(
+  updates: Array<{ id: string; position: string }>,
+  db: Pick<PrismaClient, "$transaction" | "catalog"> = prisma,
+): Promise<void> {
+  if (updates.length === 0) return;
+  await db.$transaction(
+    updates.map((u) => db.catalog.update({ where: { id: u.id }, data: { position: u.position } })),
+  );
+}
 export function getCatalogBySlug(slug: string, db: CatalogDb = prisma) { return db.catalog.findUnique({ where: { slug } }); }
 export function getCatalogById(id: string, db: CatalogDb = prisma) { return db.catalog.findUnique({ where: { id } }); }
 

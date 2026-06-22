@@ -24,10 +24,10 @@ import {
 export function SidebarMore() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { slug } = useCatalog();
+  const { id, slug } = useCatalog();
   const { theme, setTheme } = useTheme();
-  const settingsHref = catalogPath(slug, "/settings");
-  const settingsActive = pathname === settingsHref || pathname.startsWith(`${settingsHref}/`);
+  const settingsHref = `/settings/catalogs/${id}`;
+  const settingsActive = pathname.startsWith("/settings");
 
   async function handleLogout() {
     await signOut();
@@ -64,7 +64,7 @@ export function SidebarMore() {
 
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-44">
         <DropdownMenuItem asChild>
-          <Link href="/profile">
+          <Link href="/settings/account">
             <User aria-hidden />
             Profile
           </Link>
