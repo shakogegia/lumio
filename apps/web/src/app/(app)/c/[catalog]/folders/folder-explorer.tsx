@@ -14,6 +14,10 @@ export function FolderExplorer({ rel, subfolders }: { rel: string; subfolders: F
     <PhotoLibraryView
       title={<FolderBreadcrumb slug={slug} rel={rel} />}
       aboveGrid={<FoldersSection slug={slug} folders={subfolders} />}
+      // With subfolders to show, a folder that has no direct photos isn't "empty" —
+      // suppress the "No photos yet" block (null renders nothing). Only a folder with
+      // neither subfolders nor photos falls back to the grid's default empty state.
+      empty={subfolders.length > 0 ? null : undefined}
       calendar={{ facetsEndpoint: catalogApiUrl(slug, `/fs/calendar?path=${encodeURIComponent(rel)}`) }}
       collection={({ sort, month }) => {
         const q = detailScopeQuery({ kind: "folder", dir: rel, sort });
