@@ -20,7 +20,7 @@ import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
 import { computeFavoriteTarget } from "@lumio/shared";
-import { SelectionToolbar } from "./selection-toolbar";
+import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";

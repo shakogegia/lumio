@@ -23,7 +23,7 @@ import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/u
 import { computeSelection } from "@/lib/grid-selection";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
-import { SelectionToolbar } from "../photos/selection-toolbar";
+import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
 import { UploadTile } from "./upload-tile";

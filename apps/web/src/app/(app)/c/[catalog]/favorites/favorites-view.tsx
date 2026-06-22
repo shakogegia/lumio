@@ -26,7 +26,7 @@ import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
-import { SelectionToolbar } from "@/app/(app)/c/[catalog]/photos/selection-toolbar";
+import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";

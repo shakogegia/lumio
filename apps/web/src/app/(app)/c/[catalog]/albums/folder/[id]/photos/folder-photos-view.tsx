@@ -20,7 +20,7 @@ import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
-import { SelectionToolbar } from "@/app/(app)/c/[catalog]/photos/selection-toolbar";
+import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { HeaderBar } from "@/components/header-bar";
 import {
   Empty,
