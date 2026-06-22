@@ -38,12 +38,12 @@ fi
 # disk. MEDIA_ROOT bounds the in-app folder browser; catalogs are folders under it
 # (e.g. data/photos), so a workspace's catalog can target the shared photos. Only
 # under Conductor; manual/CI runs keep the workspace-local ./media|./cache|./trash.
-# Derived, not user-authored, so we always overwrite (idempotent; the grep also
-# drops any legacy PHOTOS_DIR). Same grep -v / .env.tmp / mv pattern as above.
+# Derived, not user-authored, so we always overwrite them (idempotent). Same
+# grep -v / .env.tmp / mv pattern as above.
 if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
   data_root="$CONDUCTOR_ROOT_PATH/data"
   mkdir -p "$data_root/photos" "$data_root/cache" "$data_root/trash"
-  grep -vE '^(PHOTOS_DIR|MEDIA_ROOT|CACHE_DIR|TRASH_DIR)=' .env > .env.tmp || true
+  grep -vE '^(MEDIA_ROOT|CACHE_DIR|TRASH_DIR)=' .env > .env.tmp || true
   { printf 'MEDIA_ROOT="%s"\n' "$data_root"
     printf 'CACHE_DIR="%s"\n'  "$data_root/cache"
     printf 'TRASH_DIR="%s"\n'  "$data_root/trash"; } >> .env.tmp

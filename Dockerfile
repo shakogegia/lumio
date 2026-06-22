@@ -53,9 +53,14 @@ RUN pnpm --filter @lumio/db exec prisma generate \
 
 # ---- runner: same contents, dispatched by the entrypoint ----
 FROM build AS runner
+# MEDIA_ROOT is a bind mount (the host photo library at /media), so it isn't
+# created here. CACHE_DIR/TRASH_DIR are named volumes for regenerable renditions
+# + trashed originals, subdivided per catalog (cache/<catalogId>, trash/<catalogId>).
 ENV NODE_ENV=production \
-    PHOTOS_DIR=/data/photos \
-    CACHE_DIR=/data/cache
+    MEDIA_ROOT=/media \
+    CACHE_DIR=/data/cache \
+    TRASH_DIR=/data/trash
+RUN mkdir -p /data/cache /data/trash
 # web/worker apply migrations first (advisory-locked, safe to run concurrently).
 COPY <<'EOF' /usr/local/bin/entrypoint.sh
 #!/bin/sh

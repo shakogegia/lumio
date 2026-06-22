@@ -20,7 +20,7 @@ them, or click **Advanced mode** and paste the block further down.
 |---|---|---|---|
 | `BETTER_AUTH_SECRET` | ✅ | `Xy3…` (32+ random bytes) | Generate with `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL` | ✅ | `https://photos.example.com` | The **public HTTPS origin**. Must match how you reach the app or auth fails with `INVALID_ORIGIN` — see the [README auth notes](../../README.md#authentication). |
-| `PHOTOS_DIR` | ✅ | `/mnt/tank/photos` | Absolute host path to your photo library. Mounted read-write — the app writes uploaded photos here. |
+| `MEDIA_DIR` | ✅ | `/mnt/tank/photos` | Absolute host path to your photo library. Bind-mounted **read-write** at `/media` — this is the root the in-app folder browser is bounded to; you create catalogs (folders at/under it) in the app, and uploads + a catalog's "delete originals" write here. |
 | `POSTGRES_PASSWORD` | ▢ recommended | `a-strong-password` | Defaults to `lumio`. Set a real one for anything exposed. |
 | `PORT` | ▢ | `3000` | Host port for the web UI (default `3000`). |
 | `INGEST_CONCURRENCY` | ▢ | `2` | Images the worker processes in parallel during a scan. Defaults to **half** the worker's cores so it leaves CPU for `web` + `db` on a shared box. Lower it (or cap the worker's CPUs — see [Ingest performance](#ingest-performance)) on a small machine; raise it on a dedicated one. |
@@ -30,13 +30,19 @@ them, or click **Advanced mode** and paste the block further down.
 | `POSTGRES_USER` | ▢ | `lumio` | Defaults to `lumio`. |
 | `POSTGRES_DB` | ▢ | `lumio` | Defaults to `lumio`. |
 
+> The container's `MEDIA_ROOT=/media`, `CACHE_DIR=/data/cache`, and
+> `TRASH_DIR=/data/trash` are **internal** and already wired up in the compose —
+> you don't set them. `cache` holds regenerable renditions and `trash` holds
+> trashed originals, both in named volumes and subdivided per catalog. Only
+> `MEDIA_DIR` (the host path bind-mounted at `/media`) is yours to set.
+
 <details>
 <summary><strong>Advanced mode</strong> — paste these as the stack's env vars</summary>
 
 ```ini
 BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32
 BETTER_AUTH_URL=https://photos.example.com
-PHOTOS_DIR=/mnt/tank/photos
+MEDIA_DIR=/mnt/tank/photos
 POSTGRES_PASSWORD=a-strong-password
 # Optional:
 # PORT=3000
@@ -85,8 +91,23 @@ Click **Deploy the stack**. Portainer pulls `shakogegia/lumio:latest` and starts
 `db`, `web`, and `worker`. The `web` and `worker` containers apply database
 migrations automatically on startup (advisory-locked, safe to run together).
 
-The worker then scans `PHOTOS_DIR` and ingests your photos in the background —
-large libraries take a while; watch the `worker` container logs for progress.
+## 4. First-run setup (admin + first catalog)
+
+Open the app (`BETTER_AUTH_URL`, or `http://<host>:3000`). On first launch it
+redirects to `/setup`:
+
+1. **Create the admin account** — the single owner login.
+2. **Create your first catalog** (required to continue). Give it a name and use
+   the built-in **folder browser** to pick the folder it indexes. The browser is
+   bounded to `/media` (your `MEDIA_DIR`), so choose `/media` itself or any
+   subfolder of it.
+
+Once the catalog exists, the worker scans that folder and ingests your photos in
+the background — large libraries take a while; watch the `worker` container logs
+for progress. You can add, switch, and manage more catalogs later: the sidebar
+logo is a catalog switcher, and the `/catalogs` page manages them. Each catalog's
+upload-folder template lives in its own **Settings**; sound effects are per-user
+in your **Profile**.
 
 ## Ingest performance
 
@@ -109,7 +130,7 @@ large libraries take a while; watch the `worker` container logs for progress.
           INGEST_CONCURRENCY: "2"
   ```
 
-## 4. Updating
+## 5. Updating
 
 When a new image is published, update in place from the stack page:
 
@@ -124,11 +145,12 @@ Migrations run automatically on the new containers' startup.
 - **`{"code":"INVALID_ORIGIN"}` on login** — `BETTER_AUTH_URL` doesn't match the
   origin you're actually loading the app from. Set it to the exact public HTTPS
   hostname (no trailing slash) and redeploy.
-- **No photos appear** — check the `worker` logs. Confirm `PHOTOS_DIR` is an
-  absolute path that exists on the host and contains images. The directory is
-  mounted read-write so the web app can save uploads into it; the worker only
-  reads and ingests, it never modifies your existing originals.
-- **Uploads fail / `ENOENT` writing to `/data/photos`** — `PHOTOS_DIR` must be
+- **No photos appear** — check the `worker` logs, and confirm you created a
+  catalog in the app pointing at a folder under `/media` that actually contains
+  images. Confirm `MEDIA_DIR` is an absolute host path that exists and holds your
+  library. It's bind-mounted read-write at `/media` so uploads and a catalog's
+  "delete originals" can write there.
+- **Uploads fail / `ENOENT` writing under `/media`** — `MEDIA_DIR` must be
   writable by the container. Check host permissions on that path.
 - **Large uploads fail to parse** — raise `MAX_UPLOAD_SIZE` (default `200mb`)
   and restart. If you're behind Cloudflare, note the free plan caps request
