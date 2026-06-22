@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Account" };
 
-export default async function ProfilePage() {
+export default async function AccountPage() {
   // (app)/layout.tsx already redirects unauthenticated requests; we still fetch
   // the session here for the user's name/email + sessions, and this null check
   // narrows the type before reading session.user (belt-and-suspenders).

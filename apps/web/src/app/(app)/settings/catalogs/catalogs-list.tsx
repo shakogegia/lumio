@@ -13,6 +13,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import { catalogPath } from "@/lib/catalog-api";
 import { RenameCatalogDialog } from "./rename-catalog-dialog";
@@ -113,75 +121,75 @@ export function CatalogsList({ rows }: { rows: CatalogRow[] }) {
         </Button>
       </div>
 
-      <ul className="divide-y divide-border overflow-hidden rounded-2xl bg-muted/40">
-        {items.map((row) => (
-          <li
-            key={row.id}
-            draggable
-            onDragStart={() => onDragStart(row.id)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              onDragOverRow(row.id);
-            }}
-            onDragEnd={onDragEnd}
-            className={cn(
-              "flex items-center gap-3 px-4 py-3.5",
-              draggingId === row.id && "opacity-50",
-            )}
-            data-slot="catalog-row"
-          >
-            <button
-              type="button"
-              aria-label={`Drag to reorder ${row.name}`}
-              className="cursor-grab text-muted-foreground/60 transition-colors hover:text-foreground active:cursor-grabbing"
-              // The whole <li> is draggable; this handle is just the affordance.
-              tabIndex={-1}
+      {items.length > 0 ? (
+        <ItemGroup className="gap-2.5">
+          {items.map((row) => (
+            <Item
+              key={row.id}
+              variant="outline"
+              draggable
+              onDragStart={() => onDragStart(row.id)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                onDragOverRow(row.id);
+              }}
+              onDragEnd={onDragEnd}
+              className={cn(draggingId === row.id && "opacity-50")}
             >
-              <GripVertical className="size-4" aria-hidden />
-            </button>
+              <button
+                type="button"
+                aria-label={`Drag to reorder ${row.name}`}
+                className="cursor-grab text-muted-foreground/60 transition-colors hover:text-foreground active:cursor-grabbing"
+                // The whole Item is draggable; this handle is just the affordance.
+                tabIndex={-1}
+              >
+                <GripVertical className="size-4" aria-hidden />
+              </button>
 
-            <Link
-              href={`/settings/catalogs/${row.id}`}
-              className="flex min-w-0 flex-1 items-center gap-4 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="truncate text-sm font-medium text-foreground">{row.name}</div>
-                <code className="block truncate font-mono text-xs text-muted-foreground">
-                  {row.path}
-                </code>
-              </div>
-              <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                {row.photoCount.toLocaleString()} photo{plural(row.photoCount)}
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden />
-            </Link>
+              <Link
+                href={`/settings/catalogs/${row.id}`}
+                className="flex min-w-0 flex-1 items-center gap-4 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="truncate">{row.name}</ItemTitle>
+                  <ItemDescription className="truncate font-mono text-xs">
+                    {row.path}
+                  </ItemDescription>
+                </ItemContent>
+                <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                  {row.photoCount.toLocaleString()} photo{plural(row.photoCount)}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden />
+              </Link>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.name}`}>
-                  <MoreHorizontal aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setRenameTarget(row)}>
-                  <Pencil aria-hidden />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(row)}>
-                  <Trash2 aria-hidden />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </li>
-        ))}
-        {items.length === 0 && (
-          <li className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-muted-foreground">
-            <Folder className="size-6 opacity-50" aria-hidden />
-            No catalogs yet. Create one to get started.
-          </li>
-        )}
-      </ul>
+              <ItemActions>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.name}`}>
+                      <MoreHorizontal aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setRenameTarget(row)}>
+                      <Pencil aria-hidden />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(row)}>
+                      <Trash2 aria-hidden />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ItemActions>
+            </Item>
+          ))}
+        </ItemGroup>
+      ) : (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border px-4 py-10 text-center text-sm text-muted-foreground">
+          <Folder className="size-6 opacity-50" aria-hidden />
+          No catalogs yet. Create one to get started.
+        </div>
+      )}
 
       <CreateCatalogDialog
         open={createOpen}
