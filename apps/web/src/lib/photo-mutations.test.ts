@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addPhotosToAlbum,
-  createAlbum,
   favoritePhotos,
   removePhotoFromAlbum,
   setPhotoColorLabel,
@@ -54,16 +53,6 @@ describe("photo-mutations", () => {
     const f = mockFetch();
     await removePhotoFromAlbum("fam", "alb1", "a");
     expect(f).toHaveBeenCalledWith("/api/c/fam/albums/alb1/photos/a", expect.objectContaining({ method: "DELETE" }));
-  });
-
-  it("createAlbum POSTs the name and returns the row", async () => {
-    const f = mockFetch(true, { id: "new1" });
-    const out = await createAlbum("fam", "Trip");
-    expect(f).toHaveBeenCalledWith("/api/c/fam/albums", expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ name: "Trip" }),
-    }));
-    expect(out).toEqual({ id: "new1" });
   });
 
   it("throws on a non-OK response", async () => {

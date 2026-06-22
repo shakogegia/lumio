@@ -36,7 +36,6 @@ export async function removePhotoFromAlbum(slug: string, albumId: string, photoI
   if (!res.ok) throw new Error(`Request failed (${res.status})`);
 }
 
-export async function createAlbum(slug: string, name: string): Promise<{ id: string }> {
-  const res = await postJson(catalogApiUrl(slug, "/albums"), { name });
-  return (await res.json()) as { id: string };
-}
+// NOTE: album *creation* lives only in add-to-album-dialog (its body carries
+// dialog-specific isSmart/folderId), so it stays there — not duplicated, no need
+// to move it here. This module covers the mutations shared across callers.
