@@ -1,4 +1,6 @@
+import type { Prisma } from "@lumio/db";
 import type { PhotoSort } from "@lumio/shared";
+import type { FolderSort } from "@/lib/catalog-fs";
 
 /**
  * Map a sort choice to a Prisma `orderBy`: the chosen date field plus an `id`
@@ -29,3 +31,15 @@ export function photoOrderBy(sort?: PhotoSort) {
 /** The default order (newest taken-date first). Used by the album-cover query,
  *  which always shows the most-recent representative regardless of user sort. */
 export const PHOTO_ORDER = photoOrderBy();
+
+/**
+ * Prisma `orderBy` for the disk-folder film strip: by filename (`path`) or file
+ * modified date (`fileModifiedAt`), matching the folders view's name/date sort.
+ * An `id` tiebreak in the same direction keeps the order stable.
+ */
+export function folderPhotoOrderBy(sort: FolderSort): Prisma.PhotoOrderByWithRelationInput[] {
+  const dir = sort.dir;
+  return sort.field === "date"
+    ? [{ fileModifiedAt: dir }, { id: dir }]
+    : [{ path: dir }, { id: dir }];
+}

@@ -1,9 +1,9 @@
-"use client";
-
-import { useCallback, useState } from "react";
-import { parseColumns } from "@/lib/columns-store";
-import { FOLDERS_DEFAULT_COLUMNS } from "@/lib/grid-layout";
+import { COLUMNS_MAX, COLUMNS_MIN, FOLDERS_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import type { FolderSort } from "@/lib/catalog-fs";
+
+// Pure (no "use client"): the server page reads + parses the cookie, and the
+// client hook (use-folder-prefs.ts) reuses these helpers. Keep it dependency-free
+// of client-only modules so it stays callable from Server Components.
 
 export type FolderViewMode = "grid" | "list";
 
@@ -22,6 +22,11 @@ export const DEFAULT_FOLDER_PREFS: FolderPrefs = {
   columns: FOLDERS_DEFAULT_COLUMNS,
   sort: { field: "name", dir: "asc" },
 };
+
+function clampColumns(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return FOLDERS_DEFAULT_COLUMNS;
+  return Math.min(COLUMNS_MAX, Math.max(COLUMNS_MIN, Math.round(value)));
+}
 
 /** Parse the folder-prefs cookie value (URL-encoded flat JSON), falling back
  *  per-field to the defaults. Pure; tolerates encoded or already-decoded input. */
@@ -43,10 +48,7 @@ export function parseFolderPrefs(raw: string | undefined | null): FolderPrefs {
   const o = obj as Record<string, unknown>;
   return {
     view: o.view === "list" ? "list" : "grid",
-    columns: parseColumns(
-      typeof o.columns === "number" ? String(o.columns) : null,
-      FOLDERS_DEFAULT_COLUMNS,
-    ),
+    columns: clampColumns(o.columns),
     sort: {
       field: o.sortField === "date" ? "date" : "name",
       dir: o.sortDir === "desc" ? "desc" : "asc",
@@ -62,23 +64,4 @@ export function serializeFolderPrefs(p: FolderPrefs): string {
     sortField: p.sort.field,
     sortDir: p.sort.dir,
   });
-}
-
-/**
- * Folder-explorer prefs seeded from the server (cookie) so first paint matches
- * the user's choice. Writes persist back to the cookie (1 year) so later SSR
- * renders stay correct.
- */
-export function useFolderPrefs(initial: FolderPrefs) {
-  const [prefs, setPrefs] = useState(initial);
-  const update = useCallback((patch: Partial<FolderPrefs>) => {
-    setPrefs((prev) => {
-      const next = { ...prev, ...patch };
-      document.cookie = `${FOLDER_PREFS_COOKIE}=${encodeURIComponent(
-        serializeFolderPrefs(next),
-      )}; path=/; max-age=31536000; samesite=lax`;
-      return next;
-    });
-  }, []);
-  return { prefs, update };
 }

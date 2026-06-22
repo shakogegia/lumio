@@ -115,4 +115,37 @@ describe("locatePhoto", () => {
       expect(JSON.stringify(w)).toContain(CAT);
     }
   });
+
+  it("folder scope: index is the photo's position in the dir's ordered photos", async () => {
+    const fake = {
+      photo: {
+        findMany: vi.fn(async () => [{ id: "a" }, { id: "b" }, { id: "c" }]),
+        findFirst: vi.fn(),
+        count: vi.fn(),
+      },
+    };
+    const idx = await locatePhoto(
+      CAT,
+      "b",
+      { kind: "folder", dir: "2024", sort: "imported-desc", fsort: { field: "name", dir: "asc" } },
+      fake as never,
+    );
+    expect(idx).toBe(1);
+    expect(fake.photo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { catalogId: CAT, dirPath: "2024" } }),
+    );
+  });
+
+  it("folder scope: returns null when the photo is not in the dir", async () => {
+    const fake = {
+      photo: { findMany: vi.fn(async () => [{ id: "a" }]), findFirst: vi.fn(), count: vi.fn() },
+    };
+    const idx = await locatePhoto(
+      CAT,
+      "missing",
+      { kind: "folder", dir: "2024", sort: "imported-desc", fsort: { field: "name", dir: "asc" } },
+      fake as never,
+    );
+    expect(idx).toBeNull();
+  });
 });

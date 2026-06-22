@@ -32,7 +32,14 @@ export default async function PhotoPage({
   searchParams,
 }: {
   params: Promise<{ catalog: string; id: string }>;
-  searchParams: Promise<{ album?: string | string[]; q?: string; s?: string; sort?: string }>;
+  searchParams: Promise<{
+    album?: string | string[];
+    q?: string;
+    s?: string;
+    sort?: string;
+    folder?: string;
+    fsort?: string;
+  }>;
 }) {
   const { catalog: slug, id } = await params;
   const catalog = await getCatalogForSlug(slug);

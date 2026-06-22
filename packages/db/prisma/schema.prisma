@@ -63,6 +63,7 @@ enum ColorLabel {
 model Photo {
   id             String       @id @default(cuid())
   path           String // was: @unique — now unique per catalog
+  dirPath        String       @default("") // parent dir of `path`, catalog-relative ("" = root); for folder-scoped queries
   catalogId      String
   catalog        Catalog      @relation(fields: [catalogId], references: [id], onDelete: Cascade)
   source         PhotoSource
@@ -86,6 +87,7 @@ model Photo {
 
   @@unique([catalogId, path])
   @@index([catalogId])
+  @@index([catalogId, dirPath])
   @@index([sortDate, id])
   @@index([createdAt, id])
   @@index([hash])

@@ -19,6 +19,8 @@ export const GET = withCatalog(async (request, _context, { catalog }) => {
     q: searchParams.get("q") ?? undefined,
     s: searchParams.get("s") ?? undefined,
     sort: searchParams.get("sort") ?? undefined,
+    folder: searchParams.get("folder") ?? undefined,
+    fsort: searchParams.get("fsort") ?? undefined,
   });
   const index = await locatePhoto(catalog.id, id, scope);
   if (index === null) {

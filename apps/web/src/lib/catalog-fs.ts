@@ -111,6 +111,20 @@ export interface FolderSort {
   dir: FolderSortDir;
 }
 
+/** Serialize a folder sort to a compact "field:dir" URL param. */
+export function folderSortToParam(sort: FolderSort): string {
+  return `${sort.field}:${sort.dir}`;
+}
+
+/** Parse a "field:dir" folder-sort param; defaults to name/asc. Pure. */
+export function parseFolderSortParam(raw: string | null | undefined): FolderSort {
+  const [field, dir] = (raw ?? "").split(":");
+  return {
+    field: field === "date" ? "date" : "name",
+    dir: dir === "desc" ? "desc" : "asc",
+  };
+}
+
 /** Sort a copy of `items` by name (locale-aware) or modified date, asc/desc.
  *  Ties on date fall back to name so the order stays stable. Pure. */
 export function sortFolderItems<T extends { name: string; mtimeMs: number }>(
@@ -125,12 +139,6 @@ export function sortFolderItems<T extends { name: string; mtimeMs: number }>(
         : a.name.localeCompare(b.name);
     return sign * cmp;
   });
-}
-
-/** The parent directory of a catalog-relative path ("" if it is top-level). Pure. */
-export function relDirname(rel: string): string {
-  const i = rel.lastIndexOf("/");
-  return i < 0 ? "" : rel.slice(0, i);
 }
 
 /** Human label for a folder's immediate children, e.g. "3 folders, 12 files"

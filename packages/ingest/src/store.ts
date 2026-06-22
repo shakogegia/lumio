@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Prisma, type PrismaClient } from "@lumio/db";
-import type { PhotoSource } from "@lumio/shared";
+import { parentDir, type PhotoSource } from "@lumio/shared";
 import type { ProcessedPhoto } from "./process.js";
 
 export interface StoreInput {
@@ -40,6 +40,10 @@ export async function storePhoto(
   // watcher picking up a freshly uploaded file — must NOT overwrite an upload's
   // source back to `filesystem`.
   const data = {
+    // Parent directory of `path`, relative to the catalog root ("" = root). Lets
+    // folder-scoped queries (the disk-explorer film strip) filter by directory
+    // without scanning the filesystem.
+    dirPath: parentDir(relPath),
     takenAt: processed.takenAt,
     // Chronology for the "Date taken" sort: the EXIF capture date when present,
     // otherwise the EARLIEST of the file's created/modified dates — the best

@@ -3,8 +3,9 @@ import {
   buildCatalogListing,
   catalogBreadcrumbs,
   folderCountLabel,
+  folderSortToParam,
   joinRel,
-  relDirname,
+  parseFolderSortParam,
   sortFolderItems,
 } from "./catalog-fs.js";
 
@@ -101,11 +102,14 @@ describe("sortFolderItems", () => {
   });
 });
 
-describe("relDirname", () => {
-  it("returns the parent path", () => {
-    expect(relDirname("2024/trip/a.jpg")).toBe("2024/trip");
-    expect(relDirname("2024")).toBe("");
-    expect(relDirname("")).toBe("");
+describe("folder sort params", () => {
+  it("round-trips field:dir", () => {
+    expect(folderSortToParam({ field: "date", dir: "desc" })).toBe("date:desc");
+    expect(parseFolderSortParam("date:desc")).toEqual({ field: "date", dir: "desc" });
+  });
+  it("defaults to name/asc for missing or invalid input", () => {
+    expect(parseFolderSortParam(null)).toEqual({ field: "name", dir: "asc" });
+    expect(parseFolderSortParam("bogus")).toEqual({ field: "name", dir: "asc" });
   });
 });
 

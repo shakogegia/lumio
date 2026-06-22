@@ -39,7 +39,6 @@ import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import {
   catalogBreadcrumbs,
   folderCountLabel,
-  relDirname,
   sortFolderItems,
   type CatalogDirChild,
   type CatalogFileChild,
@@ -47,9 +46,12 @@ import {
   type FolderSort,
 } from "@/lib/catalog-fs";
 import type { CatalogSearchResult } from "@/lib/catalog-fs-service";
+import { detailScopeQuery } from "@/lib/detail-scope";
+import { DEFAULT_PHOTO_SORT, parentDir } from "@lumio/shared";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { useFolderPrefs, type FolderPrefs, type FolderViewMode } from "@/lib/folder-prefs";
+import { useFolderPrefs } from "@/lib/use-folder-prefs";
+import type { FolderPrefs, FolderViewMode } from "@/lib/folder-prefs";
 
 /** Build the /folders page href for a catalog-relative path ("" = root). */
 function folderHref(slug: string, rel: string): string {
@@ -59,7 +61,25 @@ function folderHref(slug: string, rel: string): string {
 
 /** Where a (possibly nested) entry lives, for search results: its parent path or "Library". */
 function locationLabel(rel: string): string {
-  return relDirname(rel) || "Library";
+  return parentDir(rel) || "Library";
+}
+
+/** Detail-page href that scopes the lightbox film strip to the photo's own
+ *  on-disk folder (its siblings), ordered the same as the folders view (`sort`),
+ *  so prev/next stays within that directory in the order on screen. */
+function photoDetailHref(
+  slug: string,
+  photoId: string,
+  fileRel: string,
+  sort: FolderSort,
+): string {
+  const q = detailScopeQuery({
+    kind: "folder",
+    dir: parentDir(fileRel),
+    sort: DEFAULT_PHOTO_SORT,
+    fsort: sort,
+  });
+  return catalogPath(slug, q ? `/photo/${photoId}?${q}` : `/photo/${photoId}`);
 }
 
 /** Segmented grid/list switch for the explorer layout. */
@@ -144,12 +164,14 @@ function GridItems({
   dirs,
   files,
   columns,
+  sort,
   showPath,
 }: {
   slug: string;
   dirs: CatalogDirChild[];
   files: CatalogFileChild[];
   columns: number;
+  sort: FolderSort;
   showPath?: boolean;
 }) {
   return (
@@ -175,7 +197,7 @@ function GridItems({
         f.photoId ? (
           <Link
             key={f.rel}
-            href={catalogPath(slug, `/photo/${f.photoId}`)}
+            href={photoDetailHref(slug, f.photoId, f.rel, sort)}
             className="group flex flex-col gap-2 rounded-lg border border-border p-2 transition-colors hover:bg-muted"
           >
             <span className="aspect-square w-full overflow-hidden rounded bg-muted">
@@ -216,11 +238,13 @@ function ListItems({
   slug,
   dirs,
   files,
+  sort,
   showPath,
 }: {
   slug: string;
   dirs: CatalogDirChild[];
   files: CatalogFileChild[];
+  sort: FolderSort;
   showPath?: boolean;
 }) {
   return (
@@ -245,7 +269,7 @@ function ListItems({
         <li key={f.rel}>
           {f.photoId ? (
             <Link
-              href={catalogPath(slug, `/photo/${f.photoId}`)}
+              href={photoDetailHref(slug, f.photoId, f.rel, sort)}
               className="flex items-center gap-3 px-3 py-2 text-xs transition-colors hover:bg-muted"
             >
               <span className="size-9 shrink-0 overflow-hidden rounded bg-muted">
@@ -343,7 +367,7 @@ export function FolderExplorer({
   const files = sortFolderItems(baseFiles, sort);
 
   return (
-    <div className="space-y-6">
+    <div>
       <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-3 bg-background px-4 py-2">
         <Breadcrumb>
           <BreadcrumbList>
@@ -416,9 +440,9 @@ export function FolderExplorer({
         ) : (
           <div className="space-y-3">
             {view === "grid" ? (
-              <GridItems slug={slug} dirs={dirs} files={files} columns={columns} showPath />
+              <GridItems slug={slug} dirs={dirs} files={files} columns={columns} sort={sort} showPath />
             ) : (
-              <ListItems slug={slug} dirs={dirs} files={files} showPath />
+              <ListItems slug={slug} dirs={dirs} files={files} sort={sort} showPath />
             )}
             {results?.truncated && (
               <p className="text-xs text-muted-foreground">
@@ -437,9 +461,9 @@ export function FolderExplorer({
           </EmptyHeader>
         </Empty>
       ) : view === "grid" ? (
-        <GridItems slug={slug} dirs={dirs} files={files} columns={columns} />
+        <GridItems slug={slug} dirs={dirs} files={files} columns={columns} sort={sort} />
       ) : (
-        <ListItems slug={slug} dirs={dirs} files={files} />
+        <ListItems slug={slug} dirs={dirs} files={files} sort={sort} />
       )}
     </div>
   );

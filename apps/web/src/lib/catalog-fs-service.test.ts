@@ -84,3 +84,4 @@ describe("searchCatalogTree", () => {
     await expect(searchCatalogTree(catalog, "../x", "trip", treeDeps())).rejects.toThrow();
   });
 });
+
