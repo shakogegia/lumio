@@ -65,9 +65,12 @@ indexed every catalog. Deleting a catalog is, by default, just removing the *vie
   indexing of "the active one" is undefined; continuous indexing of every catalog
   makes switching instant and keeps every catalog fresh.
 - **API catalog scoping: nest every route under `/api/c/[catalog]` vs. flat + param.**
-  → **flat + `?catalog=<slug>` for list/query routes; asset routes resolve the
-  catalog from `Photo.catalogId`.** Less route churn, and per-photo asset URLs
-  (`<img src>`) stay unchanged because the photo row already knows its catalog.
+  → **nest every catalog-scoped route under `/api/c/[catalog]/…`** (including
+  per-photo asset routes). The catalog is an explicit, validated path segment
+  everywhere rather than a forgettable query param, mirroring the page routes;
+  global routes (catalog CRUD, folder browser, profile, auth) stay top-level. The
+  cost is updating the client helpers that build thumbnail/display URLs to include
+  the catalog slug — acceptable for the consistency and the built-in scoping guard.
 - **Existing data: migrate into a "Default" catalog vs. clean wipe.** → **clean wipe**
   (user's call). Removes all backfill/cache-relocation complexity; acceptable
   pre-1.0 since originals on disk are re-scannable.
@@ -155,14 +158,21 @@ migration recipe where possible (see `lumio-env-gotchas`).
 - **Root redirect**: `/` (and `(app)` index) redirects to `/c/<last-used-or-first>/photos`.
   Last-used is remembered in a cookie *only* to choose the redirect target; the URL
   remains authoritative for the active catalog.
-- **API**:
-  - List/query routes (`/api/photos`, `/api/search`, `/api/albums`, `/api/exif/*`,
-    upload, settings) take `?catalog=<slug>` (or body field), validated against
-    existing catalogs; the handler scopes every query by `catalogId`.
-  - Per-photo **asset** routes (`/api/photos/[id]/thumbnail`, `/display`) resolve the
-    catalog from the `Photo.catalogId` row, so existing `<img src>` URLs are unchanged.
-  - **New** `/api/catalogs` (list/create/rename/delete) and `/api/fs/browse`
-    (folder browser, bounded to `MEDIA_ROOT`).
+- **API** — every catalog-scoped route nests under `apps/web/src/app/api/c/[catalog]/…`:
+  - Data/query/mutation routes: `…/photos`, `…/photos/[id]`, `…/search`, `…/albums`,
+    `…/albums/[id]`, `…/exif/{fields,values}`, `…/uploads`, `…/trash`, `…/jobs`
+    (rescan / purge-all / empty-trash for *this* catalog), `…/settings` (catalog
+    settings: upload template), `…/stats`. The `[catalog]` segment is resolved
+    slug → catalog and validated once (shared helper, 404 on unknown slug); handlers
+    scope every query by `catalogId`.
+  - Per-photo **asset** routes also nest: `…/photos/[id]/thumbnail`, `…/photos/[id]/display`.
+    The handler resolves the catalog from the `[catalog]` segment, loads the photo,
+    verifies `photo.catalogId === catalog.id` (404 on mismatch → no cross-catalog
+    leakage), and serves `cache/<catalogId>/…`. Client helpers that build these URLs
+    take the catalog slug from catalog context.
+  - **Global (top-level)** routes: `/api/catalogs` (list/create/rename/delete),
+    `/api/fs/browse` (folder browser, bounded to `MEDIA_ROOT`), `/api/profile`
+    (per-user settings: sound effects), and the existing `/api/auth/*`.
 - **Catalog switcher**: a control in the sidebar listing catalogs + "Manage / New
   catalog"; selecting one navigates to `/c/<slug>/photos`.
 
@@ -210,8 +220,9 @@ Docker Compose:
   `MEDIA_ROOT`); slug generation + uniqueness; duplicate/nested catalog-path rejection.
 - **Unit (db/ingest)**: photo create writes `catalogId`; queries scope by catalog;
   per-catalog stats counts/sizes.
-- **API**: `/api/catalogs` CRUD; `?catalog=` validation + scoping on list routes;
-  asset routes resolve catalog from the photo row; `/api/fs/browse` bounds.
+- **API**: `/api/catalogs` CRUD; `/api/c/[catalog]/…` slug resolution + 404 on
+  unknown slug + per-`catalogId` query scoping; asset routes reject cross-catalog
+  photo ids (404); `/api/fs/browse` bounds.
 - **Browser verification** (auth-gated, per project workflow): setup → create first
   catalog via folder browser → land in `/c/<slug>/photos`; create a second catalog +
   switch; per-catalog settings/stats; delete with the detach prompt.
