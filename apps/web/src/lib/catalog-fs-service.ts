@@ -7,13 +7,14 @@ import {
   buildCatalogListing,
   joinRel,
   type CatalogListing,
+  type DirChildCounts,
   type RawEntry,
 } from "@/lib/catalog-fs";
 
 /** Injectable IO so the assembly is testable without a real FS/DB. */
 export interface CatalogDirDeps {
   readdir: (absPath: string) => Promise<{ name: string; isDirectory: () => boolean }[]>;
-  stat: (absPath: string) => Promise<{ size: number }>;
+  stat: (absPath: string) => Promise<{ size: number; mtimeMs: number }>;
   findIndexedPhotos: (
     catalogId: string,
     rels: string[],
@@ -46,14 +47,15 @@ export async function readCatalogDir(
     dirents.map(async (d) => {
       const isDirectory = d.isDirectory();
       let size = 0;
-      if (!isDirectory) {
-        try {
-          size = (await deps.stat(path.join(absDir, d.name))).size;
-        } catch {
-          size = 0;
-        }
+      let mtimeMs = 0;
+      try {
+        const st = await deps.stat(path.join(absDir, d.name));
+        mtimeMs = st.mtimeMs;
+        if (!isDirectory) size = st.size;
+      } catch {
+        // Unreadable entry: leave size/mtime at 0 rather than failing the listing.
       }
-      return { name: d.name, isDirectory, size };
+      return { name: d.name, isDirectory, size, mtimeMs };
     }),
   );
   const imageRels = raw
@@ -63,5 +65,29 @@ export async function readCatalogDir(
     ? await deps.findIndexedPhotos(catalog.id, imageRels)
     : [];
   const photoIdByRel = new Map(photos.map((p) => [p.path, p.id]));
-  return buildCatalogListing(rel, raw, photoIdByRel);
+
+  // One extra readdir per subfolder to show its immediate folder/file counts.
+  // Permission/read errors fall back to 0/0 rather than failing the whole listing.
+  const dirCounts = new Map<string, DirChildCounts>();
+  await Promise.all(
+    raw
+      .filter((e) => e.isDirectory)
+      .map(async (e) => {
+        const childRel = joinRel(rel, e.name);
+        try {
+          const children = await deps.readdir(path.join(absDir, e.name));
+          let folderCount = 0;
+          let fileCount = 0;
+          for (const c of children) {
+            if (c.isDirectory()) folderCount++;
+            else fileCount++;
+          }
+          dirCounts.set(childRel, { folderCount, fileCount });
+        } catch {
+          dirCounts.set(childRel, { folderCount: 0, fileCount: 0 });
+        }
+      }),
+  );
+
+  return buildCatalogListing(rel, raw, photoIdByRel, dirCounts);
 }

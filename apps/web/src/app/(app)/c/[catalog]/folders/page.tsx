@@ -32,8 +32,7 @@ export default async function FoldersPage({
   }
 
   return (
-    <main className="w-full px-4 py-6">
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight">Folders</h1>
+    <main className="w-full px-4 pb-6">
       <FolderExplorer slug={slug} listing={listing} />
     </main>
   );
