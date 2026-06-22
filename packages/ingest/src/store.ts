@@ -6,7 +6,7 @@ import type { ProcessedPhoto } from "./process.js";
 
 export interface StoreInput {
   catalogId: string;
-  path: string; // path relative to PHOTOS_DIR
+  path: string; // path relative to the catalog root
   source: PhotoSource;
   processed: ProcessedPhoto;
   fileSize: number; // bytes, from fs.stat

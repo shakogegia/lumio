@@ -22,6 +22,7 @@ export async function purgeAllPhotos(deps: PurgeAllDeps): Promise<{ deleted: num
       rm(path.join(deps.photosDir, p.path), { force: true }),
       rm(path.join(deps.cacheDir, "thumbnails", `${p.id}.webp`), { force: true }),
       rm(path.join(deps.cacheDir, "displays", `${p.id}.webp`), { force: true }),
+      rm(path.join(deps.cacheDir, "displays-edited", `${p.id}.webp`), { force: true }),
     ]),
   );
   const { count } = await deps.db.photo.deleteMany({ where: { catalogId: deps.catalogId } });
