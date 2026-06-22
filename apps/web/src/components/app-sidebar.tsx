@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
+import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderTree } from "lucide-react";
+import { FeatureKey } from "@lumio/shared";
+import { useFeature } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
@@ -20,10 +22,23 @@ const PRIMARY: NavItem[] = [
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
 
+const FOLDERS_ITEM: NavItem = {
+  href: "/folders",
+  label: "Folders",
+  icon: FolderTree,
+  match: ["/folders"],
+};
+
 export function AppSidebar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const { slug } = useCatalog();
+  const showFolders = useFeature(FeatureKey.DiskExplorer);
+  // Insert Folders after Albums when enabled (Photos, Search, Albums, Folders, …).
+  const albumsIdx = PRIMARY.findIndex((i) => i.href === "/albums");
+  const items = showFolders
+    ? [...PRIMARY.slice(0, albumsIdx + 1), FOLDERS_ITEM, ...PRIMARY.slice(albumsIdx + 1)]
+    : PRIMARY;
 
   // The nav items match against catalog-relative paths, so strip the active
   // catalog's `/c/<slug>` prefix from the current pathname before matching.
@@ -67,7 +82,7 @@ export function AppSidebar() {
         {/* Albums gets the hover flyout; the others are plain nav links. Each
             item's href is scoped to the active catalog; active state matches
             the catalog-relative pathname. */}
-        {PRIMARY.map((item) => {
+        {items.map((item) => {
           const scoped = { ...item, href: catalogPath(slug, item.href) };
           return item.href === "/albums" ? (
             <SidebarAlbums
