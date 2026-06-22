@@ -3,6 +3,8 @@
 import { FolderInput, Images, Pencil, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -39,12 +41,13 @@ export function AlbumCard({
   onMove: (id: string, targetFolderId: string | null) => void;
   onDelete: (id: string) => void;
 }) {
+  const { slug } = useCatalog();
   const cover = (
     <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-sm bg-muted">
       {album.coverPhotoId ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/thumbnails/${album.coverPhotoId}`}
+          src={catalogApiUrl(slug, `/photos/${album.coverPhotoId}/thumbnail`)}
           alt={album.name}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"

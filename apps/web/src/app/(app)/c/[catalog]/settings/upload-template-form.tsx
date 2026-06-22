@@ -15,11 +15,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const PREVIEW_DATE = new Date("2026-06-18T00:00:00.000Z");
 
 export function UploadTemplateForm({ initial }: { initial: string }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const [template, setTemplate] = useState(initial);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
@@ -31,7 +34,7 @@ export function UploadTemplateForm({ initial }: { initial: string }) {
   async function save() {
     setState("saving");
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetch(catalogApiUrl(slug, "/settings"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uploadTemplate: template }),

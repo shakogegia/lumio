@@ -4,10 +4,13 @@ import { useRouter } from "next/navigation";
 import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { useAsyncJob } from "@/lib/use-async-job";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function RescanButton() {
   const router = useRouter();
-  const { phase, isActive, run } = useAsyncJob(JobType.rescan, "/api/rescan", {
+  const { slug } = useCatalog();
+  const { phase, isActive, run } = useAsyncJob(JobType.rescan, catalogApiUrl(slug, "/rescan"), {
     onComplete: () => router.refresh(),
     toasts: {
       pending: "Rescanning library…",

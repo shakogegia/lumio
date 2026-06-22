@@ -3,6 +3,8 @@
 import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 } from "lucide-react";
 import type { FolderSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -41,6 +43,7 @@ export function FolderCard({
   onMove: (id: string, targetFolderId: string | null) => void;
   onDelete: (id: string) => void;
 }) {
+  const { slug } = useCatalog();
   const previews = folder.previewPhotoIds;
   const cover = (
     <div className="relative grid aspect-[4/3] grid-cols-2 grid-rows-2 gap-px overflow-hidden rounded-sm bg-muted">
@@ -54,7 +57,7 @@ export function FolderCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={previews[i]}
-              src={`/api/thumbnails/${previews[i]}`}
+              src={catalogApiUrl(slug, `/photos/${previews[i]}/thumbnail`)}
               alt=""
               loading="lazy"
               className="h-full w-full object-cover"

@@ -34,6 +34,8 @@ import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { partitionAlbums } from "@/lib/partition-albums";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
 import { FolderCard } from "./folder-card";
@@ -46,6 +48,7 @@ type Targets = { folderIds: string[]; albumIds: string[] };
 
 export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { columns, setColumns } = useAlbumColumns();
   const { confirm, confirmDialog } = useConfirm();
@@ -120,17 +123,17 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   function startRename(id: string) {
     const folder = subfolders.find((f) => f.id === id);
     if (folder) {
-      setRename({ endpoint: `/api/folders/${id}`, name: folder.name, label: "folder" });
+      setRename({ endpoint: catalogApiUrl(slug, `/folders/${id}`), name: folder.name, label: "folder" });
       return;
     }
     const album = albums.find((a) => a.id === id);
-    if (album) setRename({ endpoint: `/api/albums/${id}`, name: album.name, label: "album" });
+    if (album) setRename({ endpoint: catalogApiUrl(slug, `/albums/${id}`), name: album.name, label: "album" });
   }
 
   async function doMove(targets: Targets, targetFolderId: string | null) {
     if (targets.folderIds.length === 0 && targets.albumIds.length === 0) return;
     try {
-      const res = await fetch("/api/folders/move", {
+      const res = await fetch(catalogApiUrl(slug, "/folders/move"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -154,10 +157,10 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
     try {
       await Promise.all([
         ...targets.folderIds.map((id) =>
-          fetch(`/api/folders/${id}?mode=${mode}`, { method: "DELETE" }),
+          fetch(catalogApiUrl(slug, `/folders/${id}?mode=${mode}`), { method: "DELETE" }),
         ),
         targets.albumIds.length > 0
-          ? fetch("/api/albums", {
+          ? fetch(catalogApiUrl(slug, "/albums"), {
               method: "DELETE",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ ids: targets.albumIds }),

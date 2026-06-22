@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 type RuleType = "last_30_days" | "camera_eq";
 
@@ -43,6 +45,7 @@ export function NewAlbumDialog({
   onOpenChange?: (v: boolean) => void;
 } = {}) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const controlled = open !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlled ? open : internalOpen;
@@ -107,7 +110,7 @@ export function NewAlbumDialog({
           }
         : { name: name.trim(), isSmart: false, folderId };
 
-      const res = await fetch("/api/albums", {
+      const res = await fetch(catalogApiUrl(slug, "/albums"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),

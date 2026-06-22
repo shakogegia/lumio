@@ -35,6 +35,8 @@ import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-c
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function AlbumView({
   albumId,
@@ -48,6 +50,7 @@ export function AlbumView({
   coverPhotoId: string | null;
 }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
@@ -91,7 +94,7 @@ export function AlbumView({
     setRemoving(true);
     setRemoveError(null);
     try {
-      const res = await fetch(`/api/albums/${albumId}/photos`, {
+      const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos`), {
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ photoIds: ids }),
@@ -193,7 +196,7 @@ export function AlbumView({
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
               <GridCalendarMenu
-                facetsEndpoint={`/api/albums/${albumId}/calendar`}
+                facetsEndpoint={catalogApiUrl(slug, `/albums/${albumId}/calendar`)}
                 value={month}
                 onChange={setMonth}
               />
@@ -205,7 +208,7 @@ export function AlbumView({
                 </Button>
               )}
               <Button asChild variant="outline" size="icon-sm" aria-label="Download album" title="Download album">
-                <a href={`/api/albums/${albumId}/download`}>
+                <a href={catalogApiUrl(slug, `/albums/${albumId}/download`)}>
                   <Download aria-hidden />
                 </a>
               </Button>
@@ -220,7 +223,7 @@ export function AlbumView({
 
       <PhotoCollectionProvider
         key={`${reloadKey}:${sort}:${month ?? ""}`}
-        endpoint={`/api/albums/${albumId}/photos`}
+        endpoint={catalogApiUrl(slug, `/albums/${albumId}/photos`)}
         params={new URLSearchParams(month ? { sort, month } : { sort })}
         urlForId={(id) => photoHref(id, albumId, sort)}
         baseUrl={`/albums/${albumId}`}

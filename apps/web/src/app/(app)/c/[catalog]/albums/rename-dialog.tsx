@@ -16,7 +16,8 @@ import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 
 /**
  * Controlled rename dialog. `endpoint` is PATCHed with `{ name }`.
- * Used for both folders (`/api/folders/:id`) and albums (`/api/albums/:id`).
+ * Used for both folders and albums; the caller passes the catalog-scoped URL
+ * (`/api/c/:slug/folders/:id` or `/api/c/:slug/albums/:id`).
  */
 export function RenameDialog({
   open,

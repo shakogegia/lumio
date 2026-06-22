@@ -17,6 +17,8 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useAsyncJob } from "@/lib/use-async-job";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -26,9 +28,10 @@ function plural(n: number) {
 
 export function DeleteAllPhotos({ photoCount }: { photoCount: number }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState("");
-  const { phase, isActive, run } = useAsyncJob(JobType.purge_all, "/api/photos/purge", {
+  const { phase, isActive, run } = useAsyncJob(JobType.purge_all, catalogApiUrl(slug, "/photos/purge"), {
     onComplete: () => router.refresh(),
     toasts: {
       pending: "Deleting all photos…",

@@ -4,6 +4,8 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 /**
  * The on-disk size/count figures are memoized server-side (so navigating to
@@ -12,12 +14,13 @@ import { Button } from "@/components/ui/button";
  */
 export function RefreshStatsButton() {
   const router = useRouter();
+  const { slug } = useCatalog();
   const [busy, setBusy] = useState(false);
 
   async function recalculate() {
     setBusy(true);
     try {
-      await fetch("/api/storage/refresh", { method: "POST" });
+      await fetch(catalogApiUrl(slug, "/storage/refresh"), { method: "POST" });
     } catch {
       // best-effort — re-render anyway so the user isn't stuck on a spinner
     } finally {
