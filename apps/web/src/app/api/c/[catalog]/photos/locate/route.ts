@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 import { parseDetailScope } from "@/lib/photo-detail-loader";
 import { locatePhoto } from "@/lib/locate-photo";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Resolve a photo id to its absolute index within a navigation scope, so the
 // client can open the lightbox at the right grid position. Read-only.
-export const GET = withAuth(async (request) => {
+export const GET = withCatalog(async (request, _context, { catalog: _catalog }) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) {

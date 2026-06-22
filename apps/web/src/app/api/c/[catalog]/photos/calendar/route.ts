@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { buildCalendarFacets } from "@/lib/calendar-service";
-import { withAuth } from "@/lib/with-auth";
+import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async () => {
-  const facets = await buildCalendarFacets({});
+export const GET = withCatalog(async (_request, _context, { catalog }) => {
+  const facets = await buildCalendarFacets(catalog.id, {});
   return NextResponse.json(facets);
 });
