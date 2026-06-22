@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { useCatalog } from "@/lib/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
@@ -102,12 +103,7 @@ export function usePhotoActions({
       if (ids.length === 0 || labelPending) return;
       setLabelPending(true);
       try {
-        const res = await fetch(catalogApiUrl(slug, "/photos/color-label"), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: ids, label }),
-        });
-        if (!res.ok) throw new Error("label failed");
+        await setPhotoColorLabel(slug, ids, label);
         gridRef.current?.patchPhotos(new Set(ids), { colorLabel: label });
         opts?.onSuccess?.();
       } catch {
@@ -124,12 +120,7 @@ export function usePhotoActions({
       if (ids.length === 0 || favoritePending) return;
       setFavoritePending(true);
       try {
-        const res = await fetch(catalogApiUrl(slug, "/photos/favorite"), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: ids, isFavorite }),
-        });
-        if (!res.ok) throw new Error("favorite failed");
+        await favoritePhotos(slug, ids, isFavorite);
         if (!isFavorite && dropOnUnfavorite) {
           gridRef.current?.removePhotos(new Set(ids));
         } else {
@@ -158,12 +149,7 @@ export function usePhotoActions({
       if (!ok) return;
       setDeleting(true);
       try {
-        const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ ids }),
-        });
-        if (!res.ok) throw new Error("trash failed");
+        await trashPhotos(slug, ids);
         gridRef.current?.removePhotos(new Set(ids));
         playSound(SoundEffect.MoveToTrash);
         onTrashed?.(ids);
