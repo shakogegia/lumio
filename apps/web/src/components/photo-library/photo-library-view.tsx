@@ -99,17 +99,17 @@ export function PhotoLibraryView({
           onCancel={sel.clear}
           actions={
             <>
+              {selectionActions?.({
+                actions,
+                selectedIds: sel.selected,
+                clearSelection: sel.clear,
+              })}
               <SelectionActions
                 actions={actions}
                 selectedIds={sel.selected}
                 gridRef={gridRef}
                 clearSelection={sel.clear}
               />
-              {selectionActions?.({
-                actions,
-                selectedIds: sel.selected,
-                clearSelection: sel.clear,
-              })}
             </>
           }
         />
@@ -119,6 +119,7 @@ export function PhotoLibraryView({
           subtitle={countSubtitle}
           actions={
             <>
+              {headerActions}
               <GridViewMenu mode={mode} onModeChange={setMode} />
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
@@ -129,7 +130,6 @@ export function PhotoLibraryView({
                   onChange={setMonth}
                 />
               )}
-              {headerActions}
             </>
           }
         />
