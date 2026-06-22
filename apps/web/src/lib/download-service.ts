@@ -3,8 +3,6 @@ import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
 import { coercePhotoEdits, hasEdits, type DownloadVariant } from "@lumio/shared";
 import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
-import { originalPath } from "@/lib/paths";
-
 /** A path's basename with the extension swapped to `.jpg` (edited exports). */
 export function jpegName(relPath: string): string {
   const base = relPath.split("/").pop() || relPath;
@@ -75,7 +73,7 @@ export function streamPhotosZip(
   photos: { id: string; path: string; edits?: unknown }[],
   zipName: string,
   variant: DownloadVariant = "original",
-  resolve: (relPath: string) => string = originalPath,
+  resolve: (relPath: string) => string,
 ): Response {
   const archive = new ZipArchive({ store: true });
   const pass = new PassThrough();
