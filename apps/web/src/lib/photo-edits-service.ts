@@ -50,7 +50,7 @@ export async function applyPhotoEdits(
     }
 
     const updated = await db.photo.update({
-      where: { id },
+      where: { id, catalogId: catalog.id },
       // Prisma needs the JsonNull sentinel (not JS null) to clear a Json column.
       data: { edits: recipe ? (recipe as unknown as Prisma.InputJsonValue) : Prisma.JsonNull, width, height, thumbhash },
     });
