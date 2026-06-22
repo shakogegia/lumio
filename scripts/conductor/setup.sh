@@ -10,8 +10,8 @@ if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
     && git -C "$CONDUCTOR_ROOT_PATH" pull --ff-only || true
 fi
 
-# Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, PHOTOS_DIR and
-# CACHE_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
+# Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, MEDIA_ROOT,
+# CACHE_DIR and TRASH_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
 # real .env from the root checkout when one is present; this is the fallback for
 # fresh setups (no root .env), initialized from the committed .env.example. We never
 # clobber an existing .env.
