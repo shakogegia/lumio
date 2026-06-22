@@ -13,18 +13,23 @@ import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
  * The standard bulk-action button set shared by every photo library view:
  * favorite, color label, add-to-album, download, trash. Wired to usePhotoActions
  * + the selection. Download and trash clear the selection on success (the
- * terminal actions); favorite/label/add keep it so you can chain edits.
+ * terminal actions); favorite/label/add keep it so you can chain edits — except
+ * in a favorites view (`clearOnFavorite`), where unfavoriting drops the tiles so
+ * the selection must clear too.
  */
 export function SelectionActions({
   actions,
   selectedIds,
   gridRef,
   clearSelection,
+  clearOnFavorite = false,
 }: {
   actions: PhotoActions;
   selectedIds: Set<string>;
   gridRef: React.RefObject<PhotoGridHandle | null>;
   clearSelection: () => void;
+  /** Favorites view: (un)favorite drops tiles, so clear the selection after. */
+  clearOnFavorite?: boolean;
 }) {
   const ids = [...selectedIds];
   const none = ids.length === 0;
@@ -35,7 +40,7 @@ export function SelectionActions({
         pending={actions.pending.favorite}
         onClick={() => {
           const target = computeFavoriteTarget(gridRef.current?.getPhotos(selectedIds) ?? []);
-          void actions.favorite(ids, target);
+          void actions.favorite(ids, target, clearOnFavorite ? { onSuccess: clearSelection } : undefined);
         }}
       />
       <ColorLabelMenu

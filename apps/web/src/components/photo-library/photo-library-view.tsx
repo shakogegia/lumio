@@ -109,6 +109,7 @@ export function PhotoLibraryView({
                 selectedIds={sel.selected}
                 gridRef={gridRef}
                 clearSelection={sel.clear}
+                clearOnFavorite={!!actionOptions?.dropOnUnfavorite}
               />
             </>
           }
