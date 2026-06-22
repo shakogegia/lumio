@@ -3,6 +3,7 @@ import {
   FeatureScopeError,
   UnknownFeatureError,
   setFeature,
+  getCatalogById,
 } from "@lumio/db";
 import { FeatureKey } from "@lumio/shared";
 import { withAuth } from "@/lib/with-auth";
@@ -31,6 +32,12 @@ export const PUT = withAuth(async (request) => {
   }
   if (typeof enabled !== "boolean") {
     return NextResponse.json({ error: "enabled must be a boolean" }, { status: 400 });
+  }
+  if (catalogId !== null) {
+    const catalog = await getCatalogById(catalogId);
+    if (!catalog) {
+      return NextResponse.json({ error: "Catalog not found" }, { status: 404 });
+    }
   }
   try {
     await setFeature({ key: key as FeatureKey, catalogId, enabled });

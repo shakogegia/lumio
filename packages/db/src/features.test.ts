@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { FeatureKey } from "@lumio/shared";
+import { FeatureKey, FeatureScope, type FeatureDef } from "@lumio/shared";
 import {
   resolveFeatures,
   setFeature,
   getGlobalFeatureStates,
   getCatalogFeatureStates,
   FeatureScopeError,
+  assertScopeAllowed,
 } from "./features.js";
 
 type Row = { featureKey: string; catalogId: string | null; enabled: boolean };
@@ -57,10 +58,7 @@ describe("getGlobalFeatureStates / getCatalogFeatureStates", () => {
 });
 
 describe("setFeature", () => {
-  it("rejects a scope the feature does not declare", async () => {
-    // DiskExplorer allows both scopes, so fabricate rejection via an unknown scope:
-    // a global-only feature would reject catalogId != null. DiskExplorer accepts
-    // both, so assert the happy path writes instead.
+  it("writes via updateMany then create when no row exists", async () => {
     const updateMany = vi.fn(async () => ({ count: 0 }));
     const create = vi.fn(async () => undefined);
     const db = {
@@ -73,5 +71,21 @@ describe("setFeature", () => {
   });
   it("FeatureScopeError is exported", () => {
     expect(new FeatureScopeError("x")).toBeInstanceOf(Error);
+  });
+});
+
+describe("assertScopeAllowed", () => {
+  const globalOnly: FeatureDef = {
+    key: FeatureKey.DiskExplorer,
+    label: "x",
+    description: "x",
+    scopes: [FeatureScope.Global],
+    default: false,
+  };
+  it("returns the scope when the feature declares it", () => {
+    expect(assertScopeAllowed(globalOnly, null)).toBe(FeatureScope.Global);
+  });
+  it("throws FeatureScopeError for an undeclared scope (catalog override on a global-only feature)", () => {
+    expect(() => assertScopeAllowed(globalOnly, "cat1")).toThrow(FeatureScopeError);
   });
 });

@@ -4,6 +4,7 @@ import {
   FEATURES,
   FeatureKey,
   FeatureScope,
+  type FeatureDef,
   type FeatureMap,
 } from "@lumio/shared";
 import { prisma } from "./client.js";
@@ -111,6 +112,19 @@ export async function getCatalogFeatureStates(
 }
 
 /**
+ * Validate that `catalogId`'s implied scope (null = Global, else Catalog) is one
+ * the feature declares; returns that scope, or throws FeatureScopeError. Pure and
+ * exported so the scope rule is unit-testable independently of the registry.
+ */
+export function assertScopeAllowed(def: FeatureDef, catalogId: string | null): FeatureScope {
+  const scope = catalogId === null ? FeatureScope.Global : FeatureScope.Catalog;
+  if (!def.scopes.includes(scope)) {
+    throw new FeatureScopeError(`${def.key} cannot be toggled at scope ${scope}`);
+  }
+  return scope;
+}
+
+/**
  * Upsert one toggle. `catalogId === null` writes the global switch; a non-null
  * id writes a per-catalog override. We use updateMany+create inside a
  * transaction (not upsert) because Postgres treats a NULL catalogId as distinct
@@ -122,10 +136,7 @@ export async function setFeature(
 ): Promise<void> {
   const def = FEATURES[input.key];
   if (!def) throw new UnknownFeatureError(String(input.key));
-  const scope = input.catalogId === null ? FeatureScope.Global : FeatureScope.Catalog;
-  if (!def.scopes.includes(scope)) {
-    throw new FeatureScopeError(`${input.key} cannot be toggled at scope ${scope}`);
-  }
+  assertScopeAllowed(def, input.catalogId);
   await db.$transaction(async (tx) => {
     const updated = await tx.featureSetting.updateMany({
       where: { featureKey: input.key, catalogId: input.catalogId },

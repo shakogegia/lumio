@@ -36,8 +36,9 @@ export function AppSidebar() {
   const showFolders = useFeature(FeatureKey.DiskExplorer);
   // Insert Folders after Albums when enabled (Photos, Search, Albums, Folders, …).
   const albumsIdx = PRIMARY.findIndex((i) => i.href === "/albums");
+  const insertAt = albumsIdx >= 0 ? albumsIdx + 1 : PRIMARY.length;
   const items = showFolders
-    ? [...PRIMARY.slice(0, albumsIdx + 1), FOLDERS_ITEM, ...PRIMARY.slice(albumsIdx + 1)]
+    ? [...PRIMARY.slice(0, insertAt), FOLDERS_ITEM, ...PRIMARY.slice(insertAt)]
     : PRIMARY;
 
   // The nav items match against catalog-relative paths, so strip the active
