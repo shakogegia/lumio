@@ -10,13 +10,10 @@ import { useCatalog } from "@/lib/catalog-context";
 import { WorkerActivity } from "@/components/worker-activity";
 import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface CatalogOption {
   id: string;
@@ -26,12 +23,13 @@ interface CatalogOption {
 
 /**
  * Catalog switcher for the narrow sidebar rail. The Lumio brand logo (which also
- * surfaces worker activity) IS the dropdown trigger: clicking it lists every
- * catalog (the active one checked). Picking another navigates to its Photos
- * page; "New catalog…" opens the create dialog and "Manage catalogs" links to
- * the management page. The list is fetched once from the global `/api/catalogs`
- * route — the switcher seeds itself with the active catalog so it always shows
- * at least one option before the fetch resolves.
+ * surfaces worker activity) IS the trigger: hovering it opens a flyout listing
+ * every catalog (the active one checked). Picking another navigates to its
+ * Photos page; "New catalog…" opens the create dialog and "Manage catalogs"
+ * links to the management page. Uses a HoverCard (open-on-hover) to match the
+ * Albums flyout. The list is fetched once from the global `/api/catalogs` route
+ * — the switcher seeds itself with the active catalog so it always shows at
+ * least one option before the fetch resolves.
  */
 export function CatalogSwitcher() {
   const current = useCatalog();
@@ -59,54 +57,70 @@ export function CatalogSwitcher() {
     };
   }, []);
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        title={`Catalog: ${current.name} — switch`}
-        aria-label={`Catalog: ${current.name}. Switch catalog`}
-        className={cn(
-          "group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground outline-none transition-colors",
-          "hover:bg-muted data-[state=open]:bg-muted",
-        )}
-      >
-        <WorkerActivity />
-        <span className="sr-only">Switch catalog ({current.name})</span>
-      </DropdownMenuTrigger>
+  const rowClass =
+    "flex w-full items-center gap-2 rounded-md p-1.5 text-left text-sm transition-colors hover:bg-muted";
 
-      <DropdownMenuContent side="right" align="start" sideOffset={8} className="w-56">
-        <DropdownMenuLabel>Catalogs</DropdownMenuLabel>
-        {catalogs.map((c) => {
-          const active = c.slug === current.slug;
-          return (
-            <DropdownMenuItem
-              key={c.id}
-              onSelect={() => {
-                if (!active) router.push(catalogPath(c.slug, "/photos"));
-              }}
-            >
-              <Check className={cn("size-4", active ? "opacity-100" : "opacity-0")} aria-hidden />
-              <span className="truncate">{c.name}</span>
-            </DropdownMenuItem>
-          );
-        })}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
-          <Plus aria-hidden />
-          New catalog…
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/catalogs">
-            <Settings2 aria-hidden />
+  return (
+    <>
+      <HoverCard openDelay={80} closeDelay={120}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            title={`Catalog: ${current.name}`}
+            aria-label={`Catalog: ${current.name}. Switch catalog`}
+            className={cn(
+              "group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground outline-none transition-colors",
+              "hover:bg-muted data-[state=open]:bg-muted",
+            )}
+          >
+            <WorkerActivity />
+            <span className="sr-only">Switch catalog ({current.name})</span>
+          </button>
+        </HoverCardTrigger>
+
+        <HoverCardContent side="right" align="start" sideOffset={8} className="w-56 p-1">
+          <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Catalogs</p>
+          <ul role="list">
+            {catalogs.map((c) => {
+              const active = c.slug === current.slug;
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!active) router.push(catalogPath(c.slug, "/photos"));
+                    }}
+                    className={rowClass}
+                  >
+                    <Check
+                      className={cn("size-4 shrink-0", active ? "opacity-100" : "opacity-0")}
+                      aria-hidden
+                    />
+                    <span className="truncate">{c.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="my-1 h-px bg-border" role="separator" />
+
+          <button type="button" onClick={() => setCreateOpen(true)} className={rowClass}>
+            <Plus className="size-4 shrink-0" aria-hidden />
+            New catalog…
+          </button>
+          <Link href="/catalogs" className={rowClass}>
+            <Settings2 className="size-4 shrink-0" aria-hidden />
             Manage catalogs
           </Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
+        </HoverCardContent>
+      </HoverCard>
 
       <CreateCatalogDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(catalog) => router.push(catalogPath(catalog.slug, "/photos"))}
       />
-    </DropdownMenu>
+    </>
   );
 }
