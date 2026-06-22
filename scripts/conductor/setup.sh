@@ -51,23 +51,6 @@ if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
   echo "setup: pointed MEDIA_ROOT/CACHE_DIR/TRASH_DIR at shared $data_root"
 fi
 
-# Per-workspace database. The multi-catalog schema diverges DESTRUCTIVELY from
-# older branches (its migration truncates Photo/Album/…), so workspaces can no
-# longer share one Postgres database — a migrate in one would wipe the others.
-# Give each workspace its own DB on the shared Postgres instance; run.sh creates
-# + migrates it (this script stays DB/Docker-free). Catalogs still live on the
-# shared MEDIA_ROOT on disk, so workspaces can index the same photos into their
-# own DBs. Derived line, always overwritten. Non-Conductor runs keep the
-# .env.example DATABASE_URL.
-if [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
-  db_port="$(grep -E '^DB_PORT=' .env | head -1 | cut -d= -f2 | tr -d '"' )"
-  ws_db="lumio_$(printf '%s' "$CONDUCTOR_WORKSPACE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '_' )"
-  grep -vE '^DATABASE_URL=' .env > .env.tmp || true
-  printf 'DATABASE_URL="postgresql://lumio:lumio@localhost:%s/%s?schema=public"\n' "${db_port:-5433}" "$ws_db" >> .env.tmp
-  mv .env.tmp .env
-  echo "setup: pointed DATABASE_URL at per-workspace DB $ws_db"
-fi
-
 # Install dependencies and generate the Prisma client so typecheck/build/tests
 # work immediately in the fresh workspace.
 pnpm install
