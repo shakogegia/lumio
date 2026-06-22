@@ -13,6 +13,7 @@ model Catalog {
   slug           String         @unique
   path           String         @unique
   uploadTemplate String         @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
+  position       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   photos         Photo[]
