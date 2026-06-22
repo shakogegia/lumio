@@ -26,26 +26,36 @@ function fakeDb(overrides: Record<string, unknown> = {}) {
 describe("enqueueJob", () => {
   it("creates a new job when none is active", async () => {
     const db = fakeDb();
-    const job = await enqueueJob(db as never, JobType.rescan);
-    expect(db.job.create).toHaveBeenCalledWith({ data: { type: "rescan" } });
+    const job = await enqueueJob(db as never, JobType.rescan, "cat1");
+    expect(db.job.create).toHaveBeenCalledWith({ data: { type: "rescan", catalogId: "cat1" } });
     expect(job.id).toBe("new");
   });
 
   it("returns the existing active job instead of double-queueing", async () => {
     const existing = { id: "x", type: "rescan", status: "running" };
     const db = fakeDb({ findFirst: vi.fn().mockResolvedValue(existing) });
-    const job = await enqueueJob(db as never, JobType.rescan);
+    const job = await enqueueJob(db as never, JobType.rescan, "cat1");
     expect(job).toBe(existing);
     expect(db.job.create).not.toHaveBeenCalled();
+  });
+
+  it("does not de-dup across different catalogs", async () => {
+    const db = fakeDb();
+    // findFirst returns null (no active job for cat2), so a new job is created
+    await enqueueJob(db as never, JobType.rescan, "cat2");
+    expect(db.job.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: "cat2" }) }),
+    );
+    expect(db.job.create).toHaveBeenCalledWith({ data: { type: "rescan", catalogId: "cat2" } });
   });
 });
 
 describe("findActiveJob", () => {
-  it("queries for queued/running of the given type", async () => {
+  it("queries for queued/running of the given type and catalog", async () => {
     const db = fakeDb();
-    await findActiveJob(db as never, JobType.purge_all);
+    await findActiveJob(db as never, JobType.purge_all, "cat1");
     expect(db.job.findFirst).toHaveBeenCalledWith({
-      where: { type: "purge_all", status: { in: ["queued", "running"] } },
+      where: { type: "purge_all", catalogId: "cat1", status: { in: ["queued", "running"] } },
       orderBy: { createdAt: "asc" },
     });
   });
