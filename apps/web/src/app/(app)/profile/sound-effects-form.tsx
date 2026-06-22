@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { setSoundEnabled } from "@/lib/sound/player";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
 
 export function SoundEffectsForm({ initial }: { initial: boolean }) {
   const router = useRouter();
-  const { slug } = useCatalog();
   const [enabled, setEnabled] = useState(initial);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -22,7 +19,7 @@ export function SoundEffectsForm({ initial }: { initial: boolean }) {
     setError(false);
     setSaving(true);
     try {
-      const res = await fetch(catalogApiUrl(slug, "/settings"), {
+      const res = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ soundEffectsEnabled: next }),
