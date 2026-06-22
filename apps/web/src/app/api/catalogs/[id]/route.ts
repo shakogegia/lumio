@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export const PATCH = withAuth(async (request, context: { params: Promise<{ id: string }> }) => {
   const { id } = await context.params;
   const body = (await request.json()) as { name?: string };
-  const catalog = await renameCatalog(id, body.name ?? "");
+  const name = (body.name ?? "").trim();
+  if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  const catalog = await renameCatalog(id, name);
   return NextResponse.json({ catalog });
 });
 
