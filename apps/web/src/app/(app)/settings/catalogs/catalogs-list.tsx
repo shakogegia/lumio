@@ -72,8 +72,9 @@ export function CatalogsList({ rows }: { rows: CatalogRow[] }) {
       if (!res.ok) throw new Error(String(res.status));
       router.refresh();
     } catch {
-      setItems(rows); // revert to server order
+      setItems(rows); // immediate revert to the last-known server order
       toast.error("Couldn't save the new order");
+      router.refresh(); // reconcile with the server in case it changed mid-flight
     }
   }
 
