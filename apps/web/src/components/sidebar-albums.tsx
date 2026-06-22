@@ -12,8 +12,11 @@ import {
 import { NavLink, type NavItem } from "@/components/sidebar-nav-link";
 import { useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildAlbumTree, type AlbumTreeNode } from "@/lib/library-tree-rows";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
+  const { slug } = useCatalog();
   return (
     <Link
       href={`/albums/${album.id}`}
@@ -24,7 +27,7 @@ function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
         {album.coverPhotoId ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/thumbnails/${album.coverPhotoId}`}
+            src={catalogApiUrl(slug, `/photos/${album.coverPhotoId}/thumbnail`)}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover"

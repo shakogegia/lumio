@@ -15,6 +15,7 @@ import { photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
+import { useCatalog } from "@/lib/catalog-context";
 import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
 
@@ -82,6 +83,7 @@ export function PhotoCollectionProvider({
   initialPhoto?: PhotoDTO | null;
   children: React.ReactNode;
 }) {
+  const { slug } = useCatalog();
   // Seeded from a Server Component? Derive the store source + URLs from `scope` on
   // the client (collectionForScope is pure/client-safe). Otherwise use the
   // explicit props the client grid views pass.
@@ -146,7 +148,7 @@ export function PhotoCollectionProvider({
         const p = photoForIndex(i);
         if (p) {
           const img = new Image();
-          img.src = displayUrl(p);
+          img.src = displayUrl(slug, p);
         }
       }
     }
