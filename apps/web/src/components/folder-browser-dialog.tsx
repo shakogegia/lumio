@@ -175,19 +175,14 @@ export function FolderBrowserDialog({
           )}
         </div>
 
-        <DialogFooter className="sm:items-center sm:justify-between">
-          <code className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-            {path || "—"}
-          </code>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handlePick} disabled={!path || loading}>
-              <Check />
-              Use this folder
-            </Button>
-          </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handlePick} disabled={!path || loading}>
+            <Check />
+            Use this folder
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
