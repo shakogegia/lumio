@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
+import { SelectionToolbar } from "@/app/(app)/c/[catalog]/photos/selection-toolbar";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
 import { useAlbumColumns } from "@/lib/use-album-columns";

@@ -6,6 +6,7 @@ import {
   getPhotoFileCount,
   getStorageSizes,
 } from "@/lib/status-service";
+import { getCatalogForSlug } from "@/lib/active-catalog";
 import { formatBytes } from "@/lib/format";
 import {
   Card,
@@ -28,14 +29,14 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Settings" };
 
 /** Count of image files actually on disk; streamed so it never blocks the page. */
-async function FilesOnDisk() {
-  const count = await getPhotoFileCount();
+async function FilesOnDisk({ catalog }: { catalog: { id: string; path: string } }) {
+  const count = await getPhotoFileCount(catalog);
   return <InfoRow label="Files on disk" value={count.toLocaleString()} />;
 }
 
 /** On-disk byte sizes (filesystem walk); streamed so they never block the page. */
-async function StorageSizes() {
-  const { photosSize, thumbnailsSize, displaysSize, trashSize } = await getStorageSizes();
+async function StorageSizes({ catalog }: { catalog: { id: string; path: string } }) {
+  const { photosSize, thumbnailsSize, displaysSize, trashSize } = await getStorageSizes(catalog);
   return (
     <>
       <InfoRow label="Photo storage" value={formatBytes(photosSize)} />
@@ -46,8 +47,14 @@ async function StorageSizes() {
   );
 }
 
-export default async function SettingsPage() {
-  const stats = await getCatalogStats();
+export default async function SettingsPage({
+  params,
+}: {
+  params: Promise<{ catalog: string }>;
+}) {
+  const { catalog: slug } = await params;
+  const catalog = await getCatalogForSlug(slug);
+  const stats = await getCatalogStats(catalog.id);
   const settings = await getSettings();
 
   return (
@@ -64,7 +71,7 @@ export default async function SettingsPage() {
 
         <TabsContent value="catalog" className="space-y-8">
           <InfoList>
-            <InfoRow label="Library folder" value={stats.photosDir} mono />
+            <InfoRow label="Library folder" value={catalog.path} mono />
             <InfoRow label="Photos" value={stats.photoCount.toLocaleString()} />
             <Suspense
               fallback={
@@ -74,7 +81,7 @@ export default async function SettingsPage() {
                 />
               }
             >
-              <FilesOnDisk />
+              <FilesOnDisk catalog={catalog} />
             </Suspense>
             <Suspense
               fallback={
@@ -91,7 +98,7 @@ export default async function SettingsPage() {
                 </>
               }
             >
-              <StorageSizes />
+              <StorageSizes catalog={catalog} />
             </Suspense>
             <InfoRow
               label="Last updated"

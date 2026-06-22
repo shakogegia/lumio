@@ -1,16 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Download, Heart, Loader2, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Images, Loader2, Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridView } from "@/lib/use-grid-view";
 import { useGridColumns } from "@/lib/use-grid-columns";
@@ -26,46 +20,39 @@ import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { photoHref } from "@/lib/photo-href";
-import { SelectionToolbar } from "@/app/(app)/photos/selection-toolbar";
-import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
-import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
-import { FavoriteButton } from "@/components/photo-actions/favorite-button";
+import { SelectionToolbar } from "@/app/(app)/c/[catalog]/photos/selection-toolbar";
 import { HeaderBar } from "@/components/header-bar";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
+import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 
-const FAVORITES_EMPTY = (
-  <Empty>
-    <EmptyHeader>
-      <EmptyMedia variant="icon">
-        <Heart />
-      </EmptyMedia>
-      <EmptyTitle>No favorites yet</EmptyTitle>
-      <EmptyDescription>
-        Tap the heart on a photo to add it to your favorites.
-      </EmptyDescription>
-    </EmptyHeader>
-  </Empty>
-);
-
-export function FavoritesView() {
+export function FolderPhotosView({ folderId, folderName }: { folderId: string; folderName: string }) {
+  const router = useRouter();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
   const { sort, setSort } = useGridSort();
   const [total, setTotal] = useState<number | null>(null);
-  const gridRef = useRef<PhotoGridHandle>(null);
-  const actions = usePhotoActions({ gridRef, dropOnUnfavorite: true });
   const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
-  // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
+  // Skeleton holds the subtitle line while the count loads.
   const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
+  const gridRef = useRef<PhotoGridHandle>(null);
+  const actions = usePhotoActions({ gridRef, onTrashed: () => router.refresh() });
 
   return (
     <>
       {actions.element}
       {sel.count > 0 ? (
         <SelectionToolbar
-          title="Favorites"
+          title={folderName}
           count={sel.count}
           totalLabel={totalLabel}
           onCancel={sel.clear}
@@ -76,17 +63,12 @@ export function FavoritesView() {
                 pending={actions.pending.favorite}
                 onClick={() => {
                   const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
-                  void actions.favorite([...sel.selected], target, { onSuccess: sel.clear });
+                  void actions.favorite([...sel.selected], target);
                 }}
-              />
-              <ColorLabelMenu
-                disabled={sel.count === 0 || actions.pending.label}
-                onPick={(label) => void actions.applyLabel([...sel.selected], label)}
               />
               <AddToAlbumMenu
                 disabled={sel.count === 0}
-                excludeAlbumId={actions.excludeAlbumId}
-                onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
+                onPick={(targetId) => void actions.addToAlbumDirect([...sel.selected], targetId)}
                 onCreateNew={() => actions.addToAlbum([...sel.selected])}
               />
               <Button
@@ -114,7 +96,7 @@ export function FavoritesView() {
         />
       ) : (
         <HeaderBar
-          title="Favorites"
+          title={folderName}
           subtitle={countSubtitle}
           actions={
             <>
@@ -127,11 +109,11 @@ export function FavoritesView() {
       )}
 
       <PhotoCollectionProvider
-        key={`fav:${sort}`}
-        endpoint="/api/photos"
-        params={new URLSearchParams({ sort, favorite: "true" })}
+        key={sort}
+        endpoint={`/api/folders/${folderId}/photos`}
+        params={new URLSearchParams({ sort })}
         urlForId={(id) => photoHref(id, undefined, sort)}
-        baseUrl="/favorites"
+        baseUrl={`/albums/folder/${folderId}/photos`}
       >
         <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
@@ -141,7 +123,17 @@ export function FavoritesView() {
             columns={columns}
             selectedIds={sel.selected}
             onSelectionChange={sel.setSelected}
-            empty={FAVORITES_EMPTY}
+            empty={
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Images />
+                  </EmptyMedia>
+                  <EmptyTitle>No photos here yet</EmptyTitle>
+                  <EmptyDescription>Photos from albums in this folder will appear here.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            }
           />
           <Lightbox />
           <GridShortcuts selectedIds={sel.selected} />
