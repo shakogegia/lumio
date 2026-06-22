@@ -28,7 +28,7 @@ import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent
 import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
 import { useSearchCount } from "./use-search-count";
 import { countLabel } from "@/lib/count-label";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
@@ -220,8 +220,8 @@ export function SearchView() {
                   if (month) p.set("month", month);
                   return p;
                 })()}
-                urlForId={(id) => `/photo/${id}?${scopeQuery(filters, sort)}`}
-                baseUrl="/search"
+                urlForId={(id) => catalogPath(slug, `/photo/${id}?${scopeQuery(filters, sort)}`)}
+                baseUrl={catalogPath(slug, "/search")}
               >
                 <PhotoActionsProvider value={actions}>
                   <PhotoGrid

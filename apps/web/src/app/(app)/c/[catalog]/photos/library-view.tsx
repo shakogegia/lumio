@@ -27,7 +27,7 @@ import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 
 export function LibraryView() {
@@ -119,8 +119,8 @@ export function LibraryView() {
         key={`${sort}:${month ?? ""}`}
         endpoint={catalogApiUrl(slug, "/photos")}
         params={new URLSearchParams(month ? { sort, month } : { sort })}
-        urlForId={(id) => photoHref(id, undefined, sort)}
-        baseUrl="/photos"
+        urlForId={(id) => photoHref(slug, id, undefined, sort)}
+        baseUrl={catalogPath(slug, "/photos")}
       >
         <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>

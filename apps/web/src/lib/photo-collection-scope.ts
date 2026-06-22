@@ -1,4 +1,4 @@
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { type DetailScope, detailScopeQuery } from "@/lib/detail-scope";
 
 export interface CollectionSource {
@@ -20,14 +20,15 @@ export interface CollectionSource {
  */
 export function collectionForScope(slug: string, scope: DetailScope): CollectionSource {
   const query = detailScopeQuery(scope);
-  const urlForId = (id: string) => (query ? `/photo/${id}?${query}` : `/photo/${id}`);
+  const urlForId = (id: string) =>
+    catalogPath(slug, query ? `/photo/${id}?${query}` : `/photo/${id}`);
 
   if (scope.kind === "album") {
     return {
       endpoint: catalogApiUrl(slug, `/albums/${scope.albumId}/photos`),
       params: new URLSearchParams({ sort: scope.sort }),
       urlForId,
-      baseUrl: `/albums/${scope.albumId}`,
+      baseUrl: catalogPath(slug, `/albums/${scope.albumId}`),
     };
   }
   if (scope.kind === "search") {
@@ -35,12 +36,17 @@ export function collectionForScope(slug: string, scope: DetailScope): Collection
     for (const a of scope.albums) params.append("album", a);
     if (scope.q) params.set("q", scope.q);
     params.set("sort", scope.sort);
-    return { endpoint: catalogApiUrl(slug, "/search"), params, urlForId, baseUrl: "/search" };
+    return {
+      endpoint: catalogApiUrl(slug, "/search"),
+      params,
+      urlForId,
+      baseUrl: catalogPath(slug, "/search"),
+    };
   }
   return {
     endpoint: catalogApiUrl(slug, "/photos"),
     params: new URLSearchParams({ sort: scope.sort }),
     urlForId,
-    baseUrl: "/photos",
+    baseUrl: catalogPath(slug, "/photos"),
   };
 }

@@ -33,7 +33,7 @@ import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { HeaderBar } from "@/components/header-bar";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 
 const FAVORITES_EMPTY = (
@@ -133,8 +133,8 @@ export function FavoritesView() {
         key={`fav:${sort}`}
         endpoint={catalogApiUrl(slug, "/photos")}
         params={new URLSearchParams({ sort, favorite: "true" })}
-        urlForId={(id) => photoHref(id, undefined, sort)}
-        baseUrl="/favorites"
+        urlForId={(id) => photoHref(slug, id, undefined, sort)}
+        baseUrl={catalogPath(slug, "/favorites")}
       >
         <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>

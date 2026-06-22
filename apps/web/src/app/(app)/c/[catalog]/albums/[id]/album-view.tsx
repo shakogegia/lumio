@@ -35,7 +35,7 @@ import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-c
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 
 export function AlbumView({
@@ -202,7 +202,7 @@ export function AlbumView({
               />
               {!isSmart && (
                 <Button asChild variant="outline" size="icon-sm" aria-label="Upload to this album" title="Upload to this album">
-                  <a href={`/upload?albumId=${albumId}`}>
+                  <a href={catalogPath(slug, `/upload?albumId=${albumId}`)}>
                     <Upload aria-hidden />
                   </a>
                 </Button>
@@ -225,8 +225,8 @@ export function AlbumView({
         key={`${reloadKey}:${sort}:${month ?? ""}`}
         endpoint={catalogApiUrl(slug, `/albums/${albumId}/photos`)}
         params={new URLSearchParams(month ? { sort, month } : { sort })}
-        urlForId={(id) => photoHref(id, albumId, sort)}
-        baseUrl={`/albums/${albumId}`}
+        urlForId={(id) => photoHref(slug, id, albumId, sort)}
+        baseUrl={catalogPath(slug, `/albums/${albumId}`)}
       >
         <CollectionTotalReporter onTotal={setTotal} />
         <PhotoActionsProvider value={actions}>
