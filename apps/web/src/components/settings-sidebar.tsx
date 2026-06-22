@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, GalleryVerticalEnd, User, Users } from "lucide-react";
+import { ArrowLeft, GalleryVerticalEnd, ToggleRight, User, Users } from "lucide-react";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 
 // Settings sections — absolute hrefs (not catalog-scoped). Catalogs matches its
@@ -10,6 +10,7 @@ import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 const ITEMS: NavItem[] = [
   { href: "/settings/account", label: "Account", icon: User, match: ["/settings/account"] },
   { href: "/settings/catalogs", label: "Catalogs", icon: GalleryVerticalEnd, match: ["/settings/catalogs"] },
+  { href: "/settings/features", label: "Features", icon: ToggleRight, match: ["/settings/features"] },
   { href: "/settings/users", label: "Users", icon: Users, match: ["/settings/users"] },
 ];
 
