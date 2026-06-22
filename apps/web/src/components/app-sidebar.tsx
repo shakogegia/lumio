@@ -1,13 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
-import { WorkerActivity } from "@/components/worker-activity";
+import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SidebarAlbums } from "@/components/sidebar-albums";
+import { catalogPath } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
+// Hrefs/match segments are catalog-relative; the sidebar scopes them to the
+// active catalog (`/c/<slug>/…`) at render and strips that prefix before
+// matching the active route.
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/search", label: "Search", icon: Search, match: ["/search"] },
@@ -19,7 +23,13 @@ const PRIMARY: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const onPhotoDetail = pathname.startsWith("/photo/");
+  const { slug } = useCatalog();
+
+  // The nav items match against catalog-relative paths, so strip the active
+  // catalog's `/c/<slug>` prefix from the current pathname before matching.
+  const prefix = `/c/${encodeURIComponent(slug)}`;
+  const scopedPath = pathname.startsWith(prefix) ? pathname.slice(prefix.length) || "/" : pathname;
+  const onPhotoDetail = scopedPath.startsWith("/photo/");
 
   // On a soft navigation into the photo overlay there's an in-app history entry
   // to pop, and popping it restores the grid's scroll position. But on a fresh
@@ -27,12 +37,13 @@ export function AppSidebar() {
   // router.back() has no destination — fall back to the grid explicitly.
   const handleBack = () => {
     if (window.history.length > 1) router.back();
-    else router.push("/photos");
+    else router.push(catalogPath(slug, "/photos"));
   };
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex h-dvh w-[76px] flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
-      {/* Brand — becomes a back button on the photo detail page */}
+      {/* Brand logo doubles as the catalog switcher; on the photo detail page it
+          becomes a back button instead. */}
       {onPhotoDetail ? (
         <button
           type="button"
@@ -48,34 +59,30 @@ export function AppSidebar() {
           <span className="sr-only">Back</span>
         </button>
       ) : (
-        <Link
-          href="/photos"
-          title="Lumio"
-          className="group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground"
-        >
-          <WorkerActivity />
-          <span className="sr-only">Lumio</span>
-        </Link>
+        <CatalogSwitcher />
       )}
 
       {/* Primary nav — vertically centered in the rail */}
       <nav className="flex flex-1 flex-col items-center justify-center gap-1">
-        {/* Albums gets the hover flyout; the others are plain nav links */}
-        {PRIMARY.map((item) =>
-          item.href === "/albums" ? (
+        {/* Albums gets the hover flyout; the others are plain nav links. Each
+            item's href is scoped to the active catalog; active state matches
+            the catalog-relative pathname. */}
+        {PRIMARY.map((item) => {
+          const scoped = { ...item, href: catalogPath(slug, item.href) };
+          return item.href === "/albums" ? (
             <SidebarAlbums
               key={item.href}
-              item={item}
-              active={isActive(pathname, item)}
+              item={scoped}
+              active={isActive(scopedPath, item)}
             />
           ) : (
             <NavLink
               key={item.href}
-              item={item}
-              active={isActive(pathname, item)}
+              item={scoped}
+              active={isActive(scopedPath, item)}
             />
-          ),
-        )}
+          );
+        })}
       </nav>
 
       {/* Bottom group */}

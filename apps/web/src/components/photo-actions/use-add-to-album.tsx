@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 
@@ -28,6 +30,7 @@ export interface AddToAlbumControls {
  */
 export function useAddToAlbum(): AddToAlbumControls {
   const router = useRouter();
+  const { slug } = useCatalog();
   // Open the add-to-album dialog for a captured id set; `onSuccess` runs on add.
   const [albumTarget, setAlbumTarget] = useState<{ ids: string[]; onSuccess?: () => void } | null>(null);
 
@@ -40,7 +43,7 @@ export function useAddToAlbum(): AddToAlbumControls {
     async (ids: string[], albumId: string, opts?: AddToAlbumOpts) => {
       if (ids.length === 0) return;
       try {
-        const res = await fetch(`/api/albums/${albumId}/photos`, {
+        const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos`), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ photoIds: ids }),
@@ -54,7 +57,7 @@ export function useAddToAlbum(): AddToAlbumControls {
         toast.error("Failed to add photos to the album.");
       }
     },
-    [router],
+    [router, slug],
   );
 
   const element = (

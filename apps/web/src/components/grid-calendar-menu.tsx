@@ -6,6 +6,8 @@ import type { CalendarFacets } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -35,6 +37,7 @@ export function GridCalendarMenu({
   value: string | null;
   onChange: (month: string | null) => void;
 }) {
+  const { slug } = useCatalog();
   const [open, setOpen] = useState(false);
   const [facets, setFacets] = useState<CalendarFacets | null>(null);
   const [loading, setLoading] = useState(false);
@@ -195,7 +198,7 @@ export function GridCalendarMenu({
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={`/api/photos/${m.coverId}/display`}
+                        src={catalogApiUrl(slug, `/photos/${m.coverId}/display`)}
                         alt=""
                         className="size-full object-cover transition group-hover:scale-105"
                       />

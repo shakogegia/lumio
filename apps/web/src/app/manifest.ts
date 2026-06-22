@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Lumio",
     short_name: "Lumio",
     description: "Your photo library.",
-    // `/` redirects to `/photos`; start there directly to skip the hop on launch.
-    start_url: "/photos",
+    // `/` resolves to the user's default catalog (last-used or first) photos page.
+    start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: "#000000",

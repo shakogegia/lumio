@@ -56,6 +56,7 @@ describe("toJobDTO + buildActivitySnapshot", () => {
     processed: 40,
     message: "Scanning…",
     error: null,
+    catalogId: null,
     createdAt: NOW,
     startedAt: NOW,
     finishedAt: null,

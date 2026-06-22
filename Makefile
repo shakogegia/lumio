@@ -15,11 +15,12 @@ IMAGE       := $(DOCKER_REPO):$(TAG)
 # --- runtime config (consumed by infra/docker-compose.prod.yml) ---
 COMPOSE     := docker compose -f infra/docker-compose.prod.yml
 PORT        ?= 3000
-# Absolute so the photos bind mount resolves correctly no matter the cwd.
-# (Cache lives in a named volume, so no host path is needed for it.)
-PHOTOS_DIR  ?= $(CURDIR)/photos
+# Absolute so the /media bind mount resolves correctly no matter the cwd. This is
+# MEDIA_ROOT inside the container — create catalogs (folders under it) in the app.
+# (Cache + trash live in named volumes, so no host paths are needed for them.)
+MEDIA_DIR   ?= $(CURDIR)/media
 
-export PORT PHOTOS_DIR
+export PORT MEDIA_DIR
 
 .PHONY: dev build push up down logs shell migrate clean
 
@@ -55,7 +56,7 @@ shell:
 migrate:
 	$(COMPOSE) run --rm web migrate
 
-# Stop the stack and remove the image + the Postgres and cache volumes.
+# Stop the stack and remove the image + the Postgres, cache, and trash volumes.
 clean: down
 	-docker rmi $(IMAGE)
-	-docker volume rm lumio_pgdata lumio_cache
+	-docker volume rm lumio_pgdata lumio_cache lumio_trash

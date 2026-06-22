@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import manifest from "./manifest.js";
 
 describe("manifest", () => {
-  it("is an installable standalone PWA pointing at the photos view", () => {
+  it("is an installable standalone PWA starting at the catalog-resolving root", () => {
     const m = manifest();
     expect(m.name).toBe("Lumio");
     expect(m.short_name).toBe("Lumio");
     expect(m.description).toBe("Your photo library.");
     expect(m.display).toBe("standalone");
-    expect(m.start_url).toBe("/photos");
+    expect(m.start_url).toBe("/");
     expect(m.scope).toBe("/");
     expect(m.background_color).toBe("#000000");
     expect(m.theme_color).toBe("#000000");

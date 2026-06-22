@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getServerSession } from "@/lib/server-session";
+import { getProfile } from "@/lib/profile-service";
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import { AccountForm } from "./account-form";
 import { PasswordForm } from "./password-form";
 import { TwoFactorSection } from "./two-factor-section";
 import { SessionsList, type SessionRow } from "./sessions-list";
+import { SoundEffectsForm } from "./sound-effects-form";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,8 @@ export default async function ProfilePage() {
   if (!session) {
     redirect("/login");
   }
+
+  const userSettings = await getProfile(session.user.id);
 
   // Fetch active sessions server-side and reduce to a serializable shape for the
   // client list. listSessions can throw (e.g. the session went stale between the
@@ -58,6 +62,7 @@ export default async function ProfilePage() {
         <TabsList>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account">
@@ -113,6 +118,20 @@ export default async function ProfilePage() {
                 sessions={sessions}
                 currentToken={session.session.token}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <Card>
+            <CardHeader>
+              <CardTitle>Preferences</CardTitle>
+              <CardDescription>
+                Interface preferences for your Lumio account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SoundEffectsForm initial={userSettings.soundEffectsEnabled} />
             </CardContent>
           </Card>
         </TabsContent>

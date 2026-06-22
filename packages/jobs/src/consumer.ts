@@ -3,8 +3,8 @@ import type { JobType } from "@lumio/shared";
 import { createProgressReporter, type ProgressReporter } from "./progress.js";
 import { claimNextJob, type JobDb, markJobFailed, markJobSucceeded } from "./queue.js";
 
-/** One handler per job type; receives a throttled progress reporter. */
-export type JobHandler = (report: ProgressReporter) => Promise<void>;
+/** One handler per job type; receives a throttled progress reporter and the claimed job. */
+export type JobHandler = (report: ProgressReporter, job: Job) => Promise<void>;
 export type JobHandlers = Partial<Record<JobType, JobHandler>>;
 
 export interface ConsumerOptions {
@@ -47,7 +47,7 @@ export async function processNextJob(
     const handler = handlers[job.type as JobType];
     if (!handler) throw new Error(`No handler for job type: ${job.type}`);
     const report = createProgressReporter(db, job.id);
-    await handler(report);
+    await handler(report, job);
     await markJobSucceeded(db, job.id);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

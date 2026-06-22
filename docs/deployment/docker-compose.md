@@ -34,7 +34,7 @@ auto-loads it when you run from that folder.
 |---|---|---|---|
 | `BETTER_AUTH_SECRET` | ✅ | `Xy3…` (32+ random bytes) | Generate with `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL` | ✅ | `https://photos.example.com` | The **public HTTPS origin**. Must match how you reach the app or auth fails with `INVALID_ORIGIN` — see the [README auth notes](../../README.md#authentication). |
-| `PHOTOS_DIR` | ✅ | `/mnt/tank/photos` | Absolute host path to your photo library. Mounted read-write — the app writes uploaded photos here. |
+| `MEDIA_DIR` | ✅ | `/mnt/tank/photos` | Absolute host path to your photo library. Bind-mounted **read-write** at `/media` — this is the root the in-app folder browser is bounded to; you create catalogs (folders at/under it) in the app, and uploads + a catalog's "delete originals" write here. |
 | `POSTGRES_PASSWORD` | ▢ recommended | `a-strong-password` | Defaults to `lumio`. Set a real one for anything exposed. |
 | `PORT` | ▢ | `3000` | Host port for the web UI (default `3000`). |
 | `MAX_UPLOAD_SIZE` | ▢ | `200mb` | Largest photo the upload form accepts. **Include a unit** (`b`/`kb`/`mb`/`gb`) — a bare number is bytes, so `300` means 300 B, not 300 MB. Defaults to `200mb`; changing it only needs a container restart. |
@@ -43,12 +43,18 @@ auto-loads it when you run from that folder.
 | `POSTGRES_USER` | ▢ | `lumio` | Defaults to `lumio`. |
 | `POSTGRES_DB` | ▢ | `lumio` | Defaults to `lumio`. |
 
+> The container's `MEDIA_ROOT=/media`, `CACHE_DIR=/data/cache`, and
+> `TRASH_DIR=/data/trash` are **internal** and already wired up in the compose —
+> you don't set them. `cache` holds regenerable renditions and `trash` holds
+> trashed originals, both in named volumes and subdivided per catalog. Only
+> `MEDIA_DIR` (the host path bind-mounted at `/media`) is yours to set.
+
 A starter `.env`:
 
 ```ini
 BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32
 BETTER_AUTH_URL=https://photos.example.com
-PHOTOS_DIR=/mnt/tank/photos
+MEDIA_DIR=/mnt/tank/photos
 POSTGRES_PASSWORD=a-strong-password
 # Optional:
 # PORT=3000
@@ -82,19 +88,30 @@ Compose pulls `shakogegia/lumio:latest` and starts `db`, `web`, and `worker`. Th
 `web` and `worker` containers apply database migrations automatically on startup
 (advisory-locked, safe to run together).
 
-The worker then scans `PHOTOS_DIR` and ingests your photos in the background —
-large libraries take a while. Watch progress with:
+Then open the app at `http://<host>:3000` (or your `PORT`). On first launch it
+redirects to `/setup`:
+
+1. **Create the admin account** — the single owner login.
+2. **Create your first catalog** (required to continue). Give it a name and use
+   the built-in **folder browser** to pick the folder it indexes — the browser is
+   bounded to `/media` (your `MEDIA_DIR`), so choose `/media` itself or any
+   subfolder of it.
+
+Once the catalog exists, the worker scans that folder and ingests your photos in
+the background — large libraries take a while. Watch progress with:
 
 ```bash
 docker compose logs -f worker
 ```
 
-Then open the app at `http://<host>:3000` (or your `PORT`). On first launch it
-redirects to `/setup` to create the single admin account.
+You can add, switch, and manage more catalogs later: the sidebar logo is a
+catalog switcher, and the `/catalogs` page manages them. Each catalog's
+upload-folder template lives in its own **Settings**; sound effects are per-user
+in your **Profile**.
 
 ## Ingest performance
 
-The worker scans `PHOTOS_DIR` on startup and whenever files change.
+The worker scans each catalog's folder (under `/media`) on startup and whenever files change.
 
 - **Incremental scan:** files already indexed with an unchanged size + mod/time
   (and an intact cache) are skipped, so restarts are near-instant. Only new or
@@ -129,11 +146,12 @@ Migrations run automatically on the new containers' startup.
 - **`{"code":"INVALID_ORIGIN"}` on login** — `BETTER_AUTH_URL` doesn't match the
   origin you're actually loading the app from. Set it to the exact public HTTPS
   hostname (no trailing slash) and run `docker compose up -d` again.
-- **No photos appear** — check `docker compose logs worker`. Confirm `PHOTOS_DIR`
-  is an absolute path that exists on the host and contains images. The directory
-  is mounted read-write so the web app can save uploads into it; the worker only
-  reads and ingests, it never modifies your existing originals.
-- **Uploads fail / `ENOENT` writing to `/data/photos`** — `PHOTOS_DIR` must be
+- **No photos appear** — check `docker compose logs worker`, and confirm you
+  created a catalog in the app pointing at a folder under `/media` that actually
+  contains images. Confirm `MEDIA_DIR` is an absolute host path that exists and
+  holds your library. It's bind-mounted read-write at `/media` so uploads and a
+  catalog's "delete originals" can write there.
+- **Uploads fail / `ENOENT` writing under `/media`** — `MEDIA_DIR` must be
   writable by the container. Check host permissions on that path.
 - **Large uploads fail to parse** — raise `MAX_UPLOAD_SIZE` (default `200mb`) and
   run `docker compose up -d`. If you're behind Cloudflare, note the free plan caps

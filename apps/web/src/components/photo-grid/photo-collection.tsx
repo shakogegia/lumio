@@ -15,6 +15,8 @@ import { photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
 
@@ -57,7 +59,7 @@ export function usePhotoCollection(): PhotoCollectionValue {
 
 export function PhotoCollectionProvider({
   scope,
-  endpoint = "/api/photos",
+  endpoint,
   params,
   urlForId,
   baseUrl,
@@ -82,11 +84,12 @@ export function PhotoCollectionProvider({
   initialPhoto?: PhotoDTO | null;
   children: React.ReactNode;
 }) {
+  const { slug } = useCatalog();
   // Seeded from a Server Component? Derive the store source + URLs from `scope` on
   // the client (collectionForScope is pure/client-safe). Otherwise use the
   // explicit props the client grid views pass.
-  const derived = useMemo(() => (scope ? collectionForScope(scope) : null), [scope]);
-  const resolvedEndpoint = derived?.endpoint ?? endpoint;
+  const derived = useMemo(() => (scope ? collectionForScope(slug, scope) : null), [slug, scope]);
+  const resolvedEndpoint = derived?.endpoint ?? endpoint ?? catalogApiUrl(slug, "/photos");
   const resolvedParams = derived?.params ?? params;
   const resolvedBaseUrl = derived?.baseUrl ?? baseUrl;
   const resolvedUrlForId = derived?.urlForId ?? urlForId;
@@ -98,8 +101,8 @@ export function PhotoCollectionProvider({
   // close() can pop it (restoring grid scroll) rather than replacing the URL.
   const pushed = useRef(false);
   const url = useCallback(
-    (id: string) => (resolvedUrlForId ? resolvedUrlForId(id) : `/photo/${id}`),
-    [resolvedUrlForId],
+    (id: string) => (resolvedUrlForId ? resolvedUrlForId(id) : catalogPath(slug, `/photo/${id}`)),
+    [resolvedUrlForId, slug],
   );
 
   // Destructure the stable members of the store. usePhotoPages returns a fresh
@@ -146,7 +149,7 @@ export function PhotoCollectionProvider({
         const p = photoForIndex(i);
         if (p) {
           const img = new Image();
-          img.src = displayUrl(p);
+          img.src = displayUrl(slug, p);
         }
       }
     }
@@ -238,13 +241,13 @@ export function PhotoCollectionProvider({
         return;
       }
       const epoch = ++popEpoch.current;
-      void fetchLocateIndex(url, id).then((idx) => {
+      void fetchLocateIndex(slug, url, id).then((idx) => {
         if (idx !== null && popEpoch.current === epoch) setOpenIndex(idx);
       });
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [enableLightbox, url]);
+  }, [enableLightbox, slug, url]);
 
   const value = useMemo<PhotoCollectionValue>(
     () => ({
@@ -291,11 +294,17 @@ export function PhotoCollectionProvider({
 
 /** Resolve an unloaded photo's index via the locate endpoint. `url(id)` gives the
  *  detail URL whose query string carries the scope, which locate also accepts. */
-async function fetchLocateIndex(url: (id: string) => string, id: string): Promise<number | null> {
+async function fetchLocateIndex(
+  slug: string,
+  url: (id: string) => string,
+  id: string,
+): Promise<number | null> {
   const detail = url(id); // e.g. /photo/<id>?album=..&sort=..
   const qs = detail.includes("?") ? `&${detail.split("?")[1]}` : "";
   try {
-    const res = await fetch(`/api/photos/locate?id=${encodeURIComponent(id)}${qs}`);
+    const res = await fetch(
+      catalogApiUrl(slug, `/photos/locate?id=${encodeURIComponent(id)}${qs}`),
+    );
     if (!res.ok) return null;
     const data = (await res.json()) as { index: number };
     return data.index;

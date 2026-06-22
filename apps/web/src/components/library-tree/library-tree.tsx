@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { AlbumSummaryDTO, FolderDTO } from "@lumio/shared";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 export interface LibraryTree {
   folders: FolderDTO[];
@@ -29,6 +31,7 @@ export function invalidateLibraryTree() {
  * and shares it via context, so the many album/folder pickers reuse one cached copy.
  */
 export function LibraryTreeProvider({ children }: { children: React.ReactNode }) {
+  const { slug } = useCatalog();
   const [folders, setFolders] = useState<FolderDTO[]>([]);
   const [albums, setAlbums] = useState<AlbumSummaryDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +39,7 @@ export function LibraryTreeProvider({ children }: { children: React.ReactNode })
 
   const reload = useCallback(() => {
     setLoading(true);
-    fetch("/api/library/tree")
+    fetch(catalogApiUrl(slug, "/library/tree"))
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((data: { folders: FolderDTO[]; albums: AlbumSummaryDTO[] }) => {
         setFolders(data.folders);
@@ -45,7 +48,7 @@ export function LibraryTreeProvider({ children }: { children: React.ReactNode })
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
     reload();

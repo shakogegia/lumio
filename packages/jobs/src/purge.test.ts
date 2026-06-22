@@ -14,7 +14,7 @@ async function photoDirs() {
 }
 
 describe("purgeAllPhotos", () => {
-  it("removes originals + renditions then deletes every row", async () => {
+  it("removes originals + renditions then deletes every row in the catalog", async () => {
     const { photosDir, cacheDir } = await photoDirs();
     await writeFile(path.join(photosDir, "a.jpg"), "orig");
     await writeFile(path.join(cacheDir, "thumbnails", "a.webp"), "t");
@@ -27,12 +27,13 @@ describe("purgeAllPhotos", () => {
       },
     };
 
-    const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
+    const result = await purgeAllPhotos({ db: db as never, catalogId: "cat1", photosDir, cacheDir });
 
     expect(result).toEqual({ deleted: 1 });
     expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(false);
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(false);
-    expect(db.photo.deleteMany).toHaveBeenCalledWith({});
+    expect(db.photo.findMany).toHaveBeenCalledWith({ where: { catalogId: "cat1" }, select: { id: true, path: true } });
+    expect(db.photo.deleteMany).toHaveBeenCalledWith({ where: { catalogId: "cat1" } });
   });
 
   it("tolerates already-missing files", async () => {
@@ -43,13 +44,13 @@ describe("purgeAllPhotos", () => {
         deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    const result = await purgeAllPhotos({ db: db as never, photosDir, cacheDir });
+    const result = await purgeAllPhotos({ db: db as never, catalogId: "cat1", photosDir, cacheDir });
     expect(result).toEqual({ deleted: 1 });
   });
 });
 
 describe("purgeTrash", () => {
-  it("removes trashed files (all) and deletes the rows", async () => {
+  it("removes trashed files (all) and deletes the rows scoped to the catalog", async () => {
     const trashDir = await mkdtemp(path.join(tmpdir(), "lumio-trash-"));
     await mkdir(path.join(trashDir, "originals"), { recursive: true });
     await mkdir(path.join(trashDir, "thumbnails"), { recursive: true });
@@ -64,14 +65,15 @@ describe("purgeTrash", () => {
       },
     };
 
-    const result = await purgeTrash(undefined, { db: db as never, trashDir });
+    const result = await purgeTrash(undefined, { db: db as never, catalogId: "cat1", trashDir });
 
     expect(result).toEqual({ deleted: 1 });
     expect(await readdir(path.join(trashDir, "originals"))).toEqual([]);
-    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: {} });
+    expect(db.trashedPhoto.findMany).toHaveBeenCalledWith({ where: { catalogId: "cat1" }, select: { id: true, originalPath: true } });
+    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { catalogId: "cat1" } });
   });
 
-  it("purges only the given ids", async () => {
+  it("purges only the given ids within the catalog", async () => {
     const trashDir = await mkdtemp(path.join(tmpdir(), "lumio-trash-"));
     await mkdir(path.join(trashDir, "originals"), { recursive: true });
     await mkdir(path.join(trashDir, "thumbnails"), { recursive: true });
@@ -82,8 +84,9 @@ describe("purgeTrash", () => {
         deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    const result = await purgeTrash(["a"], { db: db as never, trashDir });
+    const result = await purgeTrash(["a"], { db: db as never, catalogId: "cat1", trashDir });
     expect(result).toEqual({ deleted: 1 });
-    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ["a"] } } });
+    expect(db.trashedPhoto.findMany).toHaveBeenCalledWith({ where: { catalogId: "cat1", id: { in: ["a"] } }, select: { id: true, originalPath: true } });
+    expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { catalogId: "cat1", id: { in: ["a"] } } });
   });
 });

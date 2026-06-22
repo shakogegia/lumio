@@ -32,7 +32,10 @@ export function SetupForm({ className }: { className?: string }) {
         setError(error.message ?? "Could not create the account.");
         return;
       }
-      router.replace("/photos");
+      // Advance to step 2 of setup. The signup set the session cookie, so the
+      // re-rendered /setup gate sees a user + no catalog + a session and shows
+      // the first-catalog form.
+      router.replace("/setup");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

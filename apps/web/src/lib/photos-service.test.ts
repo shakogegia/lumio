@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getNeighborsForWhere,
+  getPhoto,
   getPhotoNeighbors,
   listPhotos,
+  listPhotosForDownload,
   setPhotoColorLabel,
   setPhotoFavorite,
 } from "./photos-service.js";
+
+const CAT = "cat1";
 
 function row(id: string) {
   return {
@@ -43,7 +47,7 @@ function fakeDb(rows: ReturnType<typeof row>[]) {
 describe("listPhotos", () => {
   it("returns the page slice and the full total", async () => {
     const db = fakeDb([row("a"), row("b"), row("c")]);
-    const page = await listPhotos({ limit: 2, offset: 0 }, db as never);
+    const page = await listPhotos(CAT, { limit: 2, offset: 0 }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
     expect(page.total).toBe(3);
     expect(db.calls[0]).toMatchObject({ skip: 0, take: 2 });
@@ -52,7 +56,7 @@ describe("listPhotos", () => {
 
   it("applies offset for a later page", async () => {
     const db = fakeDb([row("a"), row("b"), row("c")]);
-    const page = await listPhotos({ limit: 2, offset: 2 }, db as never);
+    const page = await listPhotos(CAT, { limit: 2, offset: 2 }, db as never);
     expect(page.items.map((p) => p.id)).toEqual(["c"]);
     expect(page.total).toBe(3);
     expect(db.calls[0]).toMatchObject({ skip: 2, take: 2 });
@@ -60,14 +64,21 @@ describe("listPhotos", () => {
 
   it("orders by createdAt desc when sort is imported-desc", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 2, offset: 0, sort: "imported-desc" }, db as never);
+    await listPhotos(CAT, { limit: 2, offset: 0, sort: "imported-desc" }, db as never);
     expect(db.calls[0]?.orderBy).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
   });
 
-  it("filters by a UTC sortDate range when month is set", async () => {
+  it("always includes catalogId in the where clause", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 50, offset: 0, month: "2026-06" }, db as never);
+    await listPhotos(CAT, { limit: 50, offset: 0 }, db as never);
+    expect(db.calls[0]?.where).toMatchObject({ catalogId: CAT });
+  });
+
+  it("filters by a UTC sortDate range AND catalogId when month is set", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos(CAT, { limit: 50, offset: 0, month: "2026-06" }, db as never);
     expect(db.calls[0]?.where).toEqual({
+      catalogId: CAT,
       sortDate: {
         gte: new Date("2026-06-01T00:00:00.000Z"),
         lt: new Date("2026-07-01T00:00:00.000Z"),
@@ -75,22 +86,62 @@ describe("listPhotos", () => {
     });
   });
 
-  it("uses an empty where when no month is set", async () => {
+  it("uses only catalogId where when no month is set", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 50, offset: 0 }, db as never);
-    expect(db.calls[0]?.where).toEqual({});
+    await listPhotos(CAT, { limit: 50, offset: 0 }, db as never);
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
   });
 
-  it("filters by isFavorite when favorite is true", async () => {
+  it("filters by isFavorite AND catalogId when favorite is true", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 50, offset: 0, favorite: true }, db as never);
-    expect(db.calls[0]?.where).toEqual({ isFavorite: true });
+    await listPhotos(CAT, { limit: 50, offset: 0, favorite: true }, db as never);
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, isFavorite: true });
   });
 
-  it("uses an empty where when favorite is false", async () => {
+  it("uses only catalogId where when favorite is false", async () => {
     const db = fakeDb([row("a")]);
-    await listPhotos({ limit: 50, offset: 0, favorite: false }, db as never);
-    expect(db.calls[0]?.where).toEqual({});
+    await listPhotos(CAT, { limit: 50, offset: 0, favorite: false }, db as never);
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+  });
+});
+
+describe("listPhotosForDownload", () => {
+  it("scopes the download list by catalogId", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const db = { photo: { findMany } };
+    await listPhotosForDownload(CAT, ["p1", "p2"], db as never);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { catalogId: CAT, id: { in: ["p1", "p2"] } } }),
+    );
+  });
+});
+
+describe("getPhoto", () => {
+  it("returns null for a photo that exists in a different catalog", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const db = { photo: { findFirst } };
+    const result = await getPhoto(CAT, "foreign-id", db as never);
+    expect(result).toBeNull();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "foreign-id", catalogId: CAT } }),
+    );
+  });
+
+  it("returns the photo when it belongs to the given catalog", async () => {
+    const photoRow = {
+      ...row("p1"),
+      catalogId: CAT,
+      albums: [],
+      colorLabel: null,
+      isFavorite: false,
+      thumbhash: null,
+      edits: null,
+    };
+    const findFirst = vi.fn().mockResolvedValue(photoRow);
+    const db = { photo: { findFirst } };
+    const result = await getPhoto(CAT, "p1", db as never);
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe("p1");
   });
 });
 
@@ -115,17 +166,21 @@ function keysetDb(ordered: Array<{ id: string; path: string }>) {
   };
 }
 
-// Wraps keysetDb so the same ordered set also answers album.findUnique with a
-// regular (non-smart) album — exercises the albumId != null / albumPhotoWhere path.
+// Wraps keysetDb so the same ordered set also answers album.findFirst with a
+// regular (non-smart) album for the catalog-scoped lookup
+// (where: { id, catalogId }) — exercises the albumId != null / albumPhotoWhere path.
 function albumKeysetDb(albumId: string, ordered: Array<{ id: string; path: string }>) {
   return {
     ...keysetDb(ordered),
     album: {
-      findUnique: async () => ({
+      findFirst: async () => ({
         id: albumId,
         name: "Scoped",
         isSmart: false,
         rules: null,
+        catalogId: CAT,
+        folderId: null,
+        coverPhotoId: null,
         createdAt: new Date("2024-01-01T00:00:00.000Z"),
         updatedAt: new Date("2024-01-01T00:00:00.000Z"),
       }),
@@ -140,7 +195,7 @@ describe("getPhotoNeighbors", () => {
   it("returns the immediate prev/next and a centered strip (library scope)", async () => {
     const ordered = strip(5); // p0 (newest) .. p4 (oldest), already in PHOTO_ORDER
     const db = keysetDb(ordered);
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
@@ -149,10 +204,10 @@ describe("getPhotoNeighbors", () => {
   it("nulls prevId at the start and nextId at the end", async () => {
     const ordered = strip(3);
     const db = keysetDb(ordered);
-    const first = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
+    const first = await getPhotoNeighbors(CAT, { id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
     expect(first.prevId).toBeNull();
     expect(first.nextId).toBe("p1");
-    const last = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
+    const last = await getPhotoNeighbors(CAT, { id: "p2", path: "p2.jpg" }, null, "taken-desc", 10, db as never);
     expect(last.prevId).toBe("p1");
     expect(last.nextId).toBeNull();
   });
@@ -160,7 +215,7 @@ describe("getPhotoNeighbors", () => {
   it("clamps the window near an edge", async () => {
     const ordered = strip(10);
     const db = keysetDb(ordered);
-    const n = await getPhotoNeighbors({ id: "p1", path: "p1.jpg" }, null, "taken-desc", 2, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p1", path: "p1.jpg" }, null, "taken-desc", 2, db as never);
     // window=2: before is clamped to [p0], after is [p2, p3]
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3"]);
     expect(n.prevId).toBe("p0");
@@ -169,7 +224,7 @@ describe("getPhotoNeighbors", () => {
 
   it("returns a single-item strip with no neighbors when the photo is alone", async () => {
     const db = keysetDb(strip(1));
-    const n = await getPhotoNeighbors({ id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p0", path: "p0.jpg" }, null, "taken-desc", 10, db as never);
     expect(n.prevId).toBeNull();
     expect(n.nextId).toBeNull();
     expect(n.strip.map((s) => s.id)).toEqual(["p0"]);
@@ -177,21 +232,21 @@ describe("getPhotoNeighbors", () => {
 
   it("degrades to a single-item strip when the album is missing", async () => {
     const db = {
-      album: { findUnique: async () => null },
+      album: { findFirst: async () => null },
       photo: {
         findMany: async () => {
           throw new Error("should not query photos");
         },
       },
     };
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "ghost", "taken-desc", 10, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p2", path: "p2.jpg" }, "ghost", "taken-desc", 10, db as never);
     expect(n).toEqual({ prevId: null, nextId: null, strip: [{ id: "p2", path: "p2.jpg" }] });
   });
 
   it("scopes neighbors to an album (regular album)", async () => {
     const ordered = strip(5); // the album's photos, already in PHOTO_ORDER
     const db = albumKeysetDb("alb1", ordered);
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "alb1", "taken-desc", 10, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p2", path: "p2.jpg" }, "alb1", "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
@@ -202,7 +257,7 @@ describe("getPhotoNeighbors", () => {
     const db = {
       ...keysetDb(ordered),
       album: {
-        findUnique: async () => ({
+        findFirst: async () => ({
           id: "smart1",
           name: "Smart",
           isSmart: true,
@@ -210,26 +265,45 @@ describe("getPhotoNeighbors", () => {
             match: "all",
             rules: [{ field: "exif.cameraModel", op: "eq", value: "TestCam" }],
           },
+          catalogId: CAT,
+          folderId: null,
+          coverPhotoId: null,
           createdAt: new Date("2024-01-01T00:00:00.000Z"),
           updatedAt: new Date("2024-01-01T00:00:00.000Z"),
         }),
       },
     };
-    const n = await getPhotoNeighbors({ id: "p2", path: "p2.jpg" }, "smart1", "taken-desc", 10, db as never);
+    const n = await getPhotoNeighbors(CAT, { id: "p2", path: "p2.jpg" }, "smart1", "taken-desc", 10, db as never);
     expect(n.prevId).toBe("p1");
     expect(n.nextId).toBe("p3");
     expect(n.strip.map((s) => s.id)).toEqual(["p0", "p1", "p2", "p3", "p4"]);
   });
+
+  it("includes catalogId in the neighbor where clause (library scope)", async () => {
+    const wheres: unknown[] = [];
+    const db = {
+      photo: {
+        findMany: async (args: { where?: unknown; cursor?: unknown; skip?: number; take: number }) => {
+          wheres.push(args.where);
+          return [];
+        },
+      },
+    };
+    await getPhotoNeighbors(CAT, { id: "p0", path: "p0.jpg" }, null, "taken-desc", 5, db as never);
+    for (const w of wheres) {
+      expect(w).toMatchObject({ catalogId: CAT });
+    }
+  });
 });
 
 describe("setPhotoColorLabel", () => {
-  it("sets a label on the given photos and returns the count", async () => {
+  it("sets a label on the given photos scoped to catalogId and returns the count", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 3 });
     const db = { photo: { updateMany } };
-    const count = await setPhotoColorLabel(["p1", "p2", "p3"], "green", db as never);
+    const count = await setPhotoColorLabel(CAT, ["p1", "p2", "p3"], "green", db as never);
     expect(count).toBe(3);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["p1", "p2", "p3"] } },
+      where: { catalogId: CAT, id: { in: ["p1", "p2", "p3"] } },
       data: { colorLabel: "green" },
     });
   });
@@ -237,23 +311,23 @@ describe("setPhotoColorLabel", () => {
   it("clears the label when given null", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const db = { photo: { updateMany } };
-    const count = await setPhotoColorLabel(["p1"], null, db as never);
+    const count = await setPhotoColorLabel(CAT, ["p1"], null, db as never);
     expect(count).toBe(1);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["p1"] } },
+      where: { catalogId: CAT, id: { in: ["p1"] } },
       data: { colorLabel: null },
     });
   });
 });
 
 describe("setPhotoFavorite", () => {
-  it("sets isFavorite on the given photos and returns the count", async () => {
+  it("sets isFavorite on the given photos scoped to catalogId and returns the count", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 2 });
     const db = { photo: { updateMany } };
-    const count = await setPhotoFavorite(["p1", "p2"], true, db as never);
+    const count = await setPhotoFavorite(CAT, ["p1", "p2"], true, db as never);
     expect(count).toBe(2);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["p1", "p2"] } },
+      where: { catalogId: CAT, id: { in: ["p1", "p2"] } },
       data: { isFavorite: true },
     });
   });
@@ -261,9 +335,9 @@ describe("setPhotoFavorite", () => {
   it("clears isFavorite when given false", async () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const db = { photo: { updateMany } };
-    await setPhotoFavorite(["p1"], false, db as never);
+    await setPhotoFavorite(CAT, ["p1"], false, db as never);
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["p1"] } },
+      where: { catalogId: CAT, id: { in: ["p1"] } },
       data: { isFavorite: false },
     });
   });
@@ -282,7 +356,7 @@ describe("getNeighborsForWhere ordering", () => {
     };
     await getNeighborsForWhere(
       { id: "p0", path: "p0.jpg" },
-      {},
+      { catalogId: CAT },
       "imported-asc",
       5,
       db as never,

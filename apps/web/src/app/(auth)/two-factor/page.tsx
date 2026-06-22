@@ -12,7 +12,7 @@ export default async function TwoFactorPage() {
   // already exists, there's nothing to verify — go to the app.
   const session = await getServerSession();
   if (session) {
-    redirect("/photos");
+    redirect("/");
   }
   return <TwoFactorVerifyForm />;
 }

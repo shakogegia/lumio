@@ -10,8 +10,8 @@ if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
     && git -C "$CONDUCTOR_ROOT_PATH" pull --ff-only || true
 fi
 
-# Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, PHOTOS_DIR and
-# CACHE_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
+# Ensure a workspace-local .env exists so DATABASE_URL, DB_PORT, MEDIA_ROOT,
+# CACHE_DIR and TRASH_DIR resolve out of the box. Conductor's "Files to copy" already pulls a
 # real .env from the root checkout when one is present; this is the fallback for
 # fresh setups (no root .env), initialized from the committed .env.example. We never
 # clobber an existing .env.
@@ -33,21 +33,22 @@ if ! grep -qE '^BETTER_AUTH_SECRET=' .env || grep -qE '^BETTER_AUTH_SECRET=.*cha
   echo "setup: generated BETTER_AUTH_SECRET"
 fi
 
-# Shared media: point PHOTOS_DIR/CACHE_DIR/TRASH_DIR at the root checkout's data/
-# dir so every workspace reads/writes one library + cache + trash (mirrors the
-# shared Postgres). Only under Conductor; manual/CI runs keep the workspace-local
-# ./photos|./cache|./trash. These lines are derived, not user-authored, so we
-# always overwrite them (idempotent on re-run). Same grep -v / .env.tmp / mv
-# pattern as the secret block.
+# Shared media: point MEDIA_ROOT/CACHE_DIR/TRASH_DIR at the root checkout's data/
+# dir so every workspace browses + reads/writes one media tree + cache + trash on
+# disk. MEDIA_ROOT bounds the in-app folder browser; catalogs are folders under it
+# (e.g. data/photos), so a workspace's catalog can target the shared photos. Only
+# under Conductor; manual/CI runs keep the workspace-local ./media|./cache|./trash.
+# Derived, not user-authored, so we always overwrite them (idempotent). Same
+# grep -v / .env.tmp / mv pattern as above.
 if [ -n "${CONDUCTOR_ROOT_PATH:-}" ]; then
   data_root="$CONDUCTOR_ROOT_PATH/data"
   mkdir -p "$data_root/photos" "$data_root/cache" "$data_root/trash"
-  grep -vE '^(PHOTOS_DIR|CACHE_DIR|TRASH_DIR)=' .env > .env.tmp || true
-  { printf 'PHOTOS_DIR="%s"\n' "$data_root/photos"
+  grep -vE '^(MEDIA_ROOT|CACHE_DIR|TRASH_DIR)=' .env > .env.tmp || true
+  { printf 'MEDIA_ROOT="%s"\n' "$data_root"
     printf 'CACHE_DIR="%s"\n'  "$data_root/cache"
     printf 'TRASH_DIR="%s"\n'  "$data_root/trash"; } >> .env.tmp
   mv .env.tmp .env
-  echo "setup: pointed PHOTOS_DIR/CACHE_DIR/TRASH_DIR at shared $data_root"
+  echo "setup: pointed MEDIA_ROOT/CACHE_DIR/TRASH_DIR at shared $data_root"
 fi
 
 # Install dependencies and generate the Prisma client so typecheck/build/tests

@@ -2,6 +2,8 @@
 
 import { Folder as FolderIcon, Images, Plus } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildAlbumTree, type AlbumTreeNode } from "@/lib/library-tree-rows";
 
@@ -23,12 +25,13 @@ export interface AlbumPickerMenu {
 /** The square album cover thumbnail (or a fallback icon), shared by the picker
  *  rows and the lightbox "Appears in" list. */
 export function AlbumThumb({ coverPhotoId }: { coverPhotoId: string | null }) {
+  const { slug } = useCatalog();
   return (
     <span className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
       {coverPhotoId ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/thumbnails/${coverPhotoId}`}
+          src={catalogApiUrl(slug, `/photos/${coverPhotoId}/thumbnail`)}
           alt=""
           className="h-full w-full object-cover"
         />

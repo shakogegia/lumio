@@ -11,14 +11,14 @@ import { thumbnailPath } from "./config.js";
 async function main(): Promise<void> {
   const rows = await prisma.photo.findMany({
     where: { thumbhash: null },
-    select: { id: true },
+    select: { id: true, catalogId: true },
   });
   console.log(`Backfilling thumbhash for ${rows.length} photos…`);
   let done = 0;
   let skipped = 0;
-  for (const { id } of rows) {
+  for (const { id, catalogId } of rows) {
     try {
-      const buf = await readFile(thumbnailPath(id));
+      const buf = await readFile(thumbnailPath(catalogId, id));
       const thumbhash = await computeThumbhash(buf);
       await prisma.photo.update({ where: { id }, data: { thumbhash } });
       done++;

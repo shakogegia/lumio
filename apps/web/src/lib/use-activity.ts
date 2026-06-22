@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ActivitySnapshot } from "@lumio/shared";
 import { pollInterval } from "@/lib/poll-interval";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const EMPTY: ActivitySnapshot = { worker: { online: false, activity: "offline" }, jobs: [] };
 
@@ -12,6 +14,7 @@ const EMPTY: ActivitySnapshot = { worker: { online: false, activity: "offline" }
  * to later swap for an SSE/LISTEN-NOTIFY stream without touching consumers.
  */
 export function useActivity(): ActivitySnapshot {
+  const { slug } = useCatalog();
   const [snapshot, setSnapshot] = useState<ActivitySnapshot>(EMPTY);
   // Keep the latest snapshot in a ref so the scheduler can read it without
   // re-subscribing the effect on every poll.
@@ -24,10 +27,10 @@ export function useActivity(): ActivitySnapshot {
 
     const tick = async () => {
       try {
-        const res = await fetch("/api/activity", { cache: "no-store" });
+        const res = await fetch(catalogApiUrl(slug, "/activity"), { cache: "no-store" });
         if (!cancelled) {
           if (res.ok) setSnapshot(await res.json());
-          else console.warn(`/api/activity returned ${res.status}`);
+          else console.warn(`activity returned ${res.status}`);
         }
       } catch {
         // transient — keep the last snapshot, try again next tick
@@ -57,7 +60,7 @@ export function useActivity(): ActivitySnapshot {
       if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [slug]);
 
   return snapshot;
 }

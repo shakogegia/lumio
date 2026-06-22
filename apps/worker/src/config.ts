@@ -14,17 +14,8 @@ function resolveFromRoot(value: string | undefined, fallback: string): string {
   return path.resolve(REPO_ROOT, value ?? fallback);
 }
 
-/** Absolute path to the source-of-truth originals directory. */
-export const PHOTOS_DIR = resolveFromRoot(process.env.PHOTOS_DIR, "./photos");
-
 /** Absolute path to the regenerable cache root. */
 export const CACHE_DIR = resolveFromRoot(process.env.CACHE_DIR, "./cache");
-
-export const THUMBNAILS_DIR = path.join(CACHE_DIR, "thumbnails");
-
-export const DISPLAYS_DIR = path.join(CACHE_DIR, "displays");
-
-export const EDITED_DISPLAYS_DIR = path.join(CACHE_DIR, "displays-edited");
 
 /** Absolute path to the trash root (mirrors the cache layout). */
 export const TRASH_DIR = resolveFromRoot(process.env.TRASH_DIR, "./trash");
@@ -54,17 +45,33 @@ export const INGEST_CONCURRENCY = resolveConcurrency(
   os.cpus().length,
 );
 
-/** Absolute path of a photo's thumbnail file. */
-export function thumbnailPath(id: string): string {
-  return path.join(THUMBNAILS_DIR, `${id}.webp`);
+export interface CatalogCacheDirs {
+  thumbnailsDir: string;
+  displaysDir: string;
+  editedDisplaysDir: string;
 }
 
-/** Absolute path of a photo's display rendition. */
-export function displayPath(id: string): string {
-  return path.join(DISPLAYS_DIR, `${id}.webp`);
+/** Per-catalog cache directory paths nested under the shared CACHE_DIR. */
+export function catalogCacheDirs(catalogId: string): CatalogCacheDirs {
+  const base = path.join(CACHE_DIR, catalogId);
+  return {
+    thumbnailsDir: path.join(base, "thumbnails"),
+    displaysDir: path.join(base, "displays"),
+    editedDisplaysDir: path.join(base, "displays-edited"),
+  };
 }
 
-/** Absolute path of a photo's edited display rendition. */
-export function editedDisplayPath(id: string): string {
-  return path.join(EDITED_DISPLAYS_DIR, `${id}.webp`);
+/** Absolute path of a photo's thumbnail file within a catalog's cache. */
+export function thumbnailPath(catalogId: string, id: string): string {
+  return path.join(CACHE_DIR, catalogId, "thumbnails", `${id}.webp`);
+}
+
+/** Absolute path of a photo's display rendition within a catalog's cache. */
+export function displayPath(catalogId: string, id: string): string {
+  return path.join(CACHE_DIR, catalogId, "displays", `${id}.webp`);
+}
+
+/** Absolute path of a photo's edited display rendition within a catalog's cache. */
+export function editedDisplayPath(catalogId: string, id: string): string {
+  return path.join(CACHE_DIR, catalogId, "displays-edited", `${id}.webp`);
 }

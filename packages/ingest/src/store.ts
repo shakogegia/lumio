@@ -5,7 +5,8 @@ import type { PhotoSource } from "@lumio/shared";
 import type { ProcessedPhoto } from "./process.js";
 
 export interface StoreInput {
-  path: string; // path relative to PHOTOS_DIR
+  catalogId: string;
+  path: string; // path relative to the catalog root
   source: PhotoSource;
   processed: ProcessedPhoto;
   fileSize: number; // bytes, from fs.stat
@@ -27,7 +28,7 @@ export async function storePhoto(
   input: StoreInput,
   deps: StoreDeps,
 ): Promise<{ id: string }> {
-  const { path: relPath, source, processed, fileSize, fileMtimeMs, fileBirthtimeMs } = input;
+  const { catalogId, path: relPath, source, processed, fileSize, fileMtimeMs, fileBirthtimeMs } = input;
 
   // Readable mirrors of the raw stat stamps. mtime and birthtime are both
   // POSIX-provided numbers, so these are always valid Dates.
@@ -61,8 +62,8 @@ export async function storePhoto(
   };
 
   const row = await deps.db.photo.upsert({
-    where: { path: relPath },
-    create: { path: relPath, source, ...data },
+    where: { catalogId_path: { catalogId, path: relPath } },
+    create: { catalogId, path: relPath, source, ...data },
     // A re-import means the file's bytes changed (the scan/watch only calls this
     // on a genuine hash change); the old edit recipe no longer applies to the
     // new pixels, so clear it. `create` leaves edits at its column default.

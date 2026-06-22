@@ -16,11 +16,12 @@ type Db = Pick<PrismaClient, "photo">;
 type NeighborDb = Pick<PrismaClient, "photo" | "album">;
 
 export async function listPhotos(
+  catalogId: string,
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset, sort, month, favorite } = params;
-  const where: Prisma.PhotoWhereInput = {};
+  const where: Prisma.PhotoWhereInput = { catalogId };
   if (month) where.sortDate = monthRange(month);
   if (favorite) where.isFavorite = true;
   const [rows, total] = await Promise.all([
@@ -32,11 +33,12 @@ export async function listPhotos(
 
 /** Minimal {id, path, edits} for a set of photo ids, in canonical order, for zipping. */
 export async function listPhotosForDownload(
+  catalogId: string,
   ids: string[],
   db: Db = prisma,
 ): Promise<{ id: string; path: string; edits: unknown }[]> {
   return db.photo.findMany({
-    where: { id: { in: ids } },
+    where: { catalogId, id: { in: ids } },
     orderBy: PHOTO_ORDER,
     select: { id: true, path: true, edits: true },
   });
@@ -47,12 +49,13 @@ export async function listPhotosForDownload(
  * Returns the number of rows updated.
  */
 export async function setPhotoColorLabel(
+  catalogId: string,
   photoIds: string[],
   label: ColorLabel | null,
   db: Db = prisma,
 ): Promise<number> {
   const { count } = await db.photo.updateMany({
-    where: { id: { in: photoIds } },
+    where: { catalogId, id: { in: photoIds } },
     data: { colorLabel: label },
   });
   return count;
@@ -62,19 +65,20 @@ export async function setPhotoColorLabel(
  * Set the favorite flag on a batch of photos. Returns the number of rows updated.
  */
 export async function setPhotoFavorite(
+  catalogId: string,
   photoIds: string[],
   isFavorite: boolean,
   db: Db = prisma,
 ): Promise<number> {
   const { count } = await db.photo.updateMany({
-    where: { id: { in: photoIds } },
+    where: { catalogId, id: { in: photoIds } },
     data: { isFavorite },
   });
   return count;
 }
 
-export async function getPhoto(id: string, db: Db = prisma) {
-  const row = await db.photo.findUnique({ where: { id }, include: { albums: { select: { albumId: true } } } });
+export async function getPhoto(catalogId: string, id: string, db: Db = prisma) {
+  const row = await db.photo.findFirst({ where: { id, catalogId }, include: { albums: { select: { albumId: true } } } });
   if (!row) return null;
   return { ...toPhotoDTO(row), albumIds: row.albums.map((a) => a.albumId) };
 }
@@ -88,17 +92,19 @@ export async function getPhoto(id: string, db: Db = prisma) {
  * left-to-right as the grid does. Selects only id+path to keep the window cheap.
  */
 export async function getPhotoNeighbors(
+  catalogId: string,
   current: PhotoStripItem,
   albumId: string | null,
   sort: PhotoSort,
   window = 25,
   db: NeighborDb = prisma,
 ): Promise<PhotoNeighbors> {
-  const where = albumId ? await albumPhotoWhere(albumId, db) : {};
-  if (where === null) {
+  const baseWhere = albumId ? await albumPhotoWhere(catalogId, albumId, db) : {};
+  if (baseWhere === null) {
     // Album no longer exists — degrade to no navigation rather than throwing.
     return { prevId: null, nextId: null, strip: [current] };
   }
+  const where: Prisma.PhotoWhereInput = { catalogId, ...baseWhere };
   return getNeighborsForWhere(current, where, sort, window, db);
 }
 

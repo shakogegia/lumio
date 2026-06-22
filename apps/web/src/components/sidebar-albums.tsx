@@ -12,11 +12,14 @@ import {
 import { NavLink, type NavItem } from "@/components/sidebar-nav-link";
 import { useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildAlbumTree, type AlbumTreeNode } from "@/lib/library-tree-rows";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
+  const { slug } = useCatalog();
   return (
     <Link
-      href={`/albums/${album.id}`}
+      href={catalogPath(slug, `/albums/${album.id}`)}
       prefetch={false}
       className="flex items-center gap-2 rounded-md p-1.5 text-sm transition-colors hover:bg-muted"
     >
@@ -24,7 +27,7 @@ function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
         {album.coverPhotoId ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/thumbnails/${album.coverPhotoId}`}
+            src={catalogApiUrl(slug, `/photos/${album.coverPhotoId}/thumbnail`)}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover"
@@ -40,10 +43,11 @@ function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
 
 /** A folder row; if it has children it nests its contents in a hover submenu. */
 function FolderNode({ node }: { node: AlbumTreeNode }) {
+  const { slug } = useCatalog();
   const hasChildren = node.folders.length > 0 || node.albums.length > 0;
   const row = (
     <Link
-      href={`/albums/folder/${node.id}/photos`}
+      href={catalogPath(slug, `/albums/folder/${node.id}/photos`)}
       prefetch={false}
       className="flex items-center gap-2 rounded-md p-1.5 text-sm transition-colors hover:bg-muted"
     >

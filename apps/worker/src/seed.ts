@@ -1,27 +1,30 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { PHOTOS_DIR } from "./config.js";
 import { runPool } from "./pool.js";
 
 /**
  * Dev seeder: multiply a handful of Unsplash photos into N varied JPEGs under
- * PHOTOS_DIR/<subdir>/ so the library has realistic bulk to test the grid,
- * timeline, paging, albums, etc. Each output is a random crop + resize + colour
- * tweak of a random base (so every file has distinct pixels → a distinct
- * content hash, no dedup collisions, no 5000 identical thumbnails) and carries a
- * random EXIF capture date so photos spread out across the timeline.
+ * <dir>/seed/ so the library has realistic bulk to test the grid, timeline,
+ * paging, albums, etc. Each output is a random crop + resize + colour tweak of
+ * a random base (so every file has distinct pixels → a distinct content hash,
+ * no dedup collisions, no 5000 identical thumbnails) and carries a random EXIF
+ * capture date so photos spread out across the timeline.
  *
  * It only writes files — run `pnpm ingest` afterwards (or keep `pnpm watch`
  * running) to index them. `--clean` empties the seed subdir first; pair it with
  * `pnpm ingest` (which reconciles on-disk deletions) for a clean reset.
  *
+ * The target directory is taken from the first CLI argument (default: ./photos).
+ *
  * Usage:
- *   pnpm seed                       # 5000 files into PHOTOS_DIR/seed/
- *   pnpm seed --count 200           # fewer
- *   pnpm seed --clean               # wipe seed/ first, then regenerate
- *   pnpm seed --count 50 --clean
+ *   pnpm seed <dir>                       # 5000 files into <dir>/seed/
+ *   pnpm seed <dir> --count 200           # fewer
+ *   pnpm seed <dir> --clean               # wipe seed/ first, then regenerate
+ *   pnpm seed <dir> --count 50 --clean
  */
+
+const TARGET_DIR = process.argv[2] ?? path.resolve(process.cwd(), "photos");
 
 /** The 9 IDs the login page cycles through (auth-photo-stack.tsx) + 1 to make 10. */
 const BASE_IDS = [
@@ -138,8 +141,8 @@ async function makeVariant(base: Base, outPath: string, now: Date): Promise<void
 }
 
 async function main(): Promise<void> {
-  const { count, clean } = parseArgs(process.argv.slice(2));
-  const outDir = path.join(PHOTOS_DIR, SUBDIR);
+  const { count, clean } = parseArgs(process.argv.slice(3));
+  const outDir = path.join(TARGET_DIR, SUBDIR);
   const now = new Date();
 
   if (clean) {

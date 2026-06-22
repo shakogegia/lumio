@@ -1,4 +1,5 @@
 import type { DownloadVariant } from "@lumio/shared";
+import { catalogApiUrl } from "@/lib/catalog-api";
 
 /** Trigger a browser download of a same-origin URL via a transient anchor.
  *  The server's Content-Disposition supplies the filename. */
@@ -19,16 +20,17 @@ export function downloadFromUrl(url: string): void {
  * failed request so callers can surface an error.
  */
 export async function downloadSelection(
+  slug: string,
   ids: string[],
   variant: DownloadVariant = "original",
 ): Promise<void> {
   if (ids.length === 0) return;
   if (ids.length === 1) {
     const path = variant === "edited" ? "edited" : "original";
-    downloadFromUrl(`/api/photos/${ids[0]}/${path}?download=1`);
+    downloadFromUrl(catalogApiUrl(slug, `/photos/${ids[0]}/${path}?download=1`));
     return;
   }
-  const res = await fetch("/api/photos/download", {
+  const res = await fetch(catalogApiUrl(slug, "/photos/download"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ids, variant }),

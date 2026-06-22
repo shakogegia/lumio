@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
@@ -69,6 +71,7 @@ export function usePhotoActions({
   dropOnUnfavorite?: boolean;
 }): PhotoActions {
   const router = useRouter();
+  const { slug } = useCatalog();
   const { confirm, confirmDialog } = useConfirm();
   const [downloading, setDownloading] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
@@ -83,7 +86,7 @@ export function usePhotoActions({
       if (ids.length === 0 || downloading) return;
       setDownloading(true);
       try {
-        await downloadSelection(ids, opts?.variant);
+        await downloadSelection(slug, ids, opts?.variant);
         opts?.onSuccess?.();
       } catch {
         toast.error("Failed to download photos.");
@@ -91,7 +94,7 @@ export function usePhotoActions({
         setDownloading(false);
       }
     },
-    [downloading],
+    [downloading, slug],
   );
 
   const applyLabel = useCallback(
@@ -99,7 +102,7 @@ export function usePhotoActions({
       if (ids.length === 0 || labelPending) return;
       setLabelPending(true);
       try {
-        const res = await fetch("/api/photos/color-label", {
+        const res = await fetch(catalogApiUrl(slug, "/photos/color-label"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ photoIds: ids, label }),
@@ -113,7 +116,7 @@ export function usePhotoActions({
         setLabelPending(false);
       }
     },
-    [labelPending, gridRef],
+    [labelPending, gridRef, slug],
   );
 
   const favorite = useCallback(
@@ -121,7 +124,7 @@ export function usePhotoActions({
       if (ids.length === 0 || favoritePending) return;
       setFavoritePending(true);
       try {
-        const res = await fetch("/api/photos/favorite", {
+        const res = await fetch(catalogApiUrl(slug, "/photos/favorite"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ photoIds: ids, isFavorite }),
@@ -139,7 +142,7 @@ export function usePhotoActions({
         setFavoritePending(false);
       }
     },
-    [favoritePending, gridRef, dropOnUnfavorite],
+    [favoritePending, gridRef, dropOnUnfavorite, slug],
   );
 
   const trash = useCallback(
@@ -155,7 +158,7 @@ export function usePhotoActions({
       if (!ok) return;
       setDeleting(true);
       try {
-        const res = await fetch("/api/photos/trash", {
+        const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ ids }),
@@ -171,14 +174,14 @@ export function usePhotoActions({
         setDeleting(false);
       }
     },
-    [deleting, confirm, trashDescription, gridRef, onTrashed],
+    [deleting, confirm, trashDescription, gridRef, onTrashed, slug],
   );
 
   const setAlbumCover = useCallback(
     async (photoId: string, opts?: ActionOpts) => {
       if (!albumCover) return;
       try {
-        const res = await fetch(`/api/albums/${albumCover.albumId}`, {
+        const res = await fetch(catalogApiUrl(slug, `/albums/${albumCover.albumId}`), {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ coverPhotoId: photoId }),
@@ -193,7 +196,7 @@ export function usePhotoActions({
         toast.error("Failed to set the album cover.");
       }
     },
-    [albumCover, router],
+    [albumCover, router, slug],
   );
 
   const element = (

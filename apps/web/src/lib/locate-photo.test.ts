@@ -64,13 +64,15 @@ describe("beforeCursorWhere", () => {
   });
 });
 
+const CAT = "cat1";
+
 describe("locatePhoto", () => {
   function db(opts: { row: typeof cursor | null; before: number; inScope: number }) {
     const counts: Array<Record<string, unknown>> = [];
     return {
       counts,
       photo: {
-        findUnique: vi.fn(async () => opts.row),
+        findFirst: vi.fn(async () => opts.row),
         count: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
           counts.push(where);
           return JSON.stringify(where).includes('"OR"') ? opts.before : opts.inScope;
@@ -81,20 +83,36 @@ describe("locatePhoto", () => {
 
   it("returns the before-count as the index when the photo is in scope", async () => {
     const fake = db({ row: cursor, before: 7, inScope: 1 });
-    const idx = await locatePhoto("p5", { kind: "library", sort: "taken-desc" }, fake as never);
+    const idx = await locatePhoto(CAT, "p5", { kind: "library", sort: "taken-desc" }, fake as never);
     expect(idx).toBe(7);
   });
 
   it("returns null when the photo does not exist", async () => {
     const fake = db({ row: null, before: 0, inScope: 0 });
-    const idx = await locatePhoto("missing", { kind: "library", sort: "taken-desc" }, fake as never);
+    const idx = await locatePhoto(CAT, "missing", { kind: "library", sort: "taken-desc" }, fake as never);
     expect(idx).toBeNull();
     expect(fake.photo.count).not.toHaveBeenCalled();
   });
 
   it("returns null when the photo is outside the scope", async () => {
     const fake = db({ row: cursor, before: 3, inScope: 0 });
-    const idx = await locatePhoto("p5", { kind: "library", sort: "taken-desc" }, fake as never);
+    const idx = await locatePhoto(CAT, "p5", { kind: "library", sort: "taken-desc" }, fake as never);
     expect(idx).toBeNull();
+  });
+
+  it("scopes the photo lookup to catalogId", async () => {
+    const fake = db({ row: cursor, before: 2, inScope: 1 });
+    await locatePhoto(CAT, "p5", { kind: "library", sort: "taken-desc" }, fake as never);
+    expect(fake.photo.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "p5", catalogId: CAT } }),
+    );
+  });
+
+  it("includes catalogId in the count where clauses", async () => {
+    const fake = db({ row: cursor, before: 2, inScope: 1 });
+    await locatePhoto(CAT, "p5", { kind: "library", sort: "taken-desc" }, fake as never);
+    for (const w of fake.counts) {
+      expect(JSON.stringify(w)).toContain(CAT);
+    }
   });
 });

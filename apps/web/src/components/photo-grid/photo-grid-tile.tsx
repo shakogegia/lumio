@@ -2,6 +2,7 @@
 
 import { colorLabelHex, type PhotoDTO, type PhotoSort } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
+import { useCatalog } from "@/lib/catalog-context";
 import type { GridViewMode } from "@/lib/use-grid-view";
 import { cn } from "@/lib/utils";
 import { resolveTargets } from "@/lib/resolve-targets";
@@ -50,6 +51,7 @@ export function PhotoGridTile({
   /** Drop these ids from the selection after a menu-driven trash. */
   onTrash?: (ids: string[]) => void;
 }) {
+  const { slug } = useCatalog();
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
   const actions = usePhotoActionsContext();
 
@@ -66,7 +68,7 @@ export function PhotoGridTile({
   const href = onOpen
     ? urlForId
       ? urlForId(photo.id)
-      : photoHref(photo.id, albumId, sort)
+      : photoHref(slug, photo.id, albumId, sort)
     : undefined;
 
   const targetIds = resolveTargets(selectedIds, photo.id);

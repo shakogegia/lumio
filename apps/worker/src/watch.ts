@@ -2,53 +2,58 @@ import path from "node:path";
 import type { FSWatcher } from "chokidar";
 import chokidar from "chokidar";
 import { SUPPORTED_EXTENSIONS, removePath } from "@lumio/ingest";
-import { prisma } from "@lumio/db";
+import { listCatalogs, prisma } from "@lumio/db";
 import { activity } from "./activity.js";
-import { PHOTOS_DIR } from "./config.js";
-import { removeDeps } from "./deps.js";
-import { SCAN_SELECT, reconcileFile, scanAndIngest, type ScanSummary } from "./scan.js";
+import { removeDepsFor } from "./deps.js";
+import { SCAN_SELECT, reconcileFile, scanCatalog, type ScanSummary } from "./scan.js";
+import { catalogForPath } from "./catalog-routing.js";
 
 const isSupported = (p: string): boolean =>
   SUPPORTED_EXTENSIONS.has(path.extname(p).toLowerCase());
 
+const emptySummary = (): ScanSummary => ({
+  processed: 0,
+  skipped: 0,
+  skippedUnchanged: 0,
+  healed: 0,
+  restamped: 0,
+  removed: 0,
+});
+
 /**
- * Initial scan + continuous watch. Bumps `activity.importing` while ingesting
- * new files so the heartbeat can surface steady-state import activity. Returns
- * the watcher so the caller owns shutdown; never calls process.exit itself.
+ * Initial scan of all catalogs + continuous watch. Watches ALL catalog roots,
+ * routes fs events to the right catalog via longest-prefix matching, and
+ * reconciles the watch set against the Catalog table every 5 s.
  */
 export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
-  const initial = await scanAndIngest();
-  console.log(
-    `Initial scan — processed ${initial.processed}, unchanged ${initial.skippedUnchanged}, healed ${initial.healed}, restamped ${initial.restamped}, removed ${initial.removed}`,
+  let catalogs = await listCatalogs();
+
+  for (const c of catalogs) {
+    const result = await scanCatalog(c);
+    console.log(
+      `Initial scan [${c.path}] — processed ${result.processed}, unchanged ${result.skippedUnchanged}, healed ${result.healed}, restamped ${result.restamped}, removed ${result.removed}`,
+    );
+  }
+
+  const watcher = chokidar.watch(
+    catalogs.map((c) => c.path),
+    { ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 } },
   );
 
-  const watcher = chokidar.watch(PHOTOS_DIR, {
-    ignoreInitial: true,
-    awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 },
-  });
-
-  const emptySummary = (): ScanSummary => ({
-    processed: 0,
-    skipped: 0,
-    skippedUnchanged: 0,
-    healed: 0,
-    restamped: 0,
-    removed: 0,
-  });
-
-  // Reconcile a single touched file. A `change` on an already-ingested photo
-  // only triggers a full re-import when its content hash actually changed, so
-  // editing EXIF or a backup touching the mtime can no longer revert user edits.
+  // Reconcile a single touched file.
   const upsert = async (abs: string): Promise<void> => {
     if (!isSupported(abs)) return;
-    const rel = path.relative(PHOTOS_DIR, abs);
+    const catalog = catalogForPath(catalogs, abs);
+    if (!catalog) return;
+    const rel = path.relative(catalog.path, abs);
     activity.importing++;
     try {
-      const row = await prisma.photo.findUnique({ where: { path: rel }, select: SCAN_SELECT });
+      const row = await prisma.photo.findUnique({
+        where: { catalogId_path: { catalogId: catalog.id, path: rel } },
+        select: SCAN_SELECT,
+      });
       const summary = emptySummary();
-      await reconcileFile(rel, row ?? undefined, summary);
-      // reconcileFile already logs genuine (re-)ingests; surface the quieter
-      // outcomes so a fired guard is visible. skippedUnchanged stays silent.
+      await reconcileFile(catalog, rel, row ?? undefined, summary);
       if (summary.healed) console.log(`healed ${rel}`);
       else if (summary.restamped) console.log(`restamped ${rel}`);
     } catch (err) {
@@ -63,9 +68,11 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
     .on("change", upsert)
     .on("unlink", async (abs: string) => {
       if (!isSupported(abs)) return;
-      const rel = path.relative(PHOTOS_DIR, abs);
+      const catalog = catalogForPath(catalogs, abs);
+      if (!catalog) return;
+      const rel = path.relative(catalog.path, abs);
       try {
-        await removePath(rel, removeDeps);
+        await removePath(rel, removeDepsFor(catalog));
         console.log(`- ${rel}`);
       } catch (err) {
         console.warn(`remove failed ${rel}: ${(err as Error).message}`);
@@ -73,7 +80,45 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
     })
     .on("error", (err) => console.error(`watcher error: ${String(err)}`));
 
-  console.log(`Watching ${PHOTOS_DIR} …`);
-  signal.addEventListener("abort", () => void watcher.close(), { once: true });
+  console.log(`Watching ${catalogs.map((c) => c.path).join(", ")} …`);
+
+  // Reconcile watch set against DB every 5 s so added/removed catalogs are
+  // picked up without a restart. The upsert/unlink closures close over `catalogs`
+  // (a let binding) so reassignment here is immediately visible to them.
+  const reconcile = setInterval(async () => {
+    try {
+      const next = await listCatalogs();
+      const prevPaths = new Set(catalogs.map((c) => c.path));
+      const nextPaths = new Set(next.map((c) => c.path));
+
+      for (const c of next) {
+        if (!prevPaths.has(c.path)) {
+          await scanCatalog(c);
+          watcher.add(c.path);
+          console.log(`Catalog added, now watching ${c.path}`);
+        }
+      }
+      for (const c of catalogs) {
+        if (!nextPaths.has(c.path)) {
+          watcher.unwatch(c.path);
+          console.log(`Catalog removed, stopped watching ${c.path}`);
+        }
+      }
+
+      catalogs = next;
+    } catch (err) {
+      console.warn(`catalog reconcile error: ${(err as Error).message}`);
+    }
+  }, 5000);
+
+  signal.addEventListener(
+    "abort",
+    () => {
+      clearInterval(reconcile);
+      void watcher.close();
+    },
+    { once: true },
+  );
+
   return watcher;
 }

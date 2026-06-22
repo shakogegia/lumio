@@ -1,18 +1,14 @@
 import { prisma } from "@lumio/db";
 import type { IngestDeps, RegenerateDeps, RemoveDeps } from "@lumio/ingest";
-import { DISPLAYS_DIR, EDITED_DISPLAYS_DIR, PHOTOS_DIR, THUMBNAILS_DIR } from "./config.js";
+import { catalogCacheDirs } from "./config.js";
 
-export const ingestDeps: IngestDeps & RegenerateDeps = {
-  db: prisma,
-  photosDir: PHOTOS_DIR,
-  thumbnailsDir: THUMBNAILS_DIR,
-  displaysDir: DISPLAYS_DIR,
-  editedDisplaysDir: EDITED_DISPLAYS_DIR,
-};
+/** Ingest/regenerate deps for one catalog: per-catalog cache dirs + the catalog root. */
+export function ingestDepsFor(catalog: { id: string; path: string }): IngestDeps & RegenerateDeps {
+  const { thumbnailsDir, displaysDir, editedDisplaysDir } = catalogCacheDirs(catalog.id);
+  return { db: prisma, catalogId: catalog.id, photosDir: catalog.path, thumbnailsDir, displaysDir, editedDisplaysDir };
+}
 
-export const removeDeps: RemoveDeps = {
-  db: prisma,
-  thumbnailsDir: THUMBNAILS_DIR,
-  displaysDir: DISPLAYS_DIR,
-  editedDisplaysDir: EDITED_DISPLAYS_DIR,
-};
+export function removeDepsFor(catalog: { id: string }): RemoveDeps {
+  const { thumbnailsDir, displaysDir, editedDisplaysDir } = catalogCacheDirs(catalog.id);
+  return { db: prisma, catalogId: catalog.id, thumbnailsDir, displaysDir, editedDisplaysDir };
+}

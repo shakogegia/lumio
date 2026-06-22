@@ -4,20 +4,20 @@ import { ACTIVE_JOB_STATUSES, JobStatus, type JobType } from "@lumio/shared";
 /** The slice of Prisma the queue helpers need (so tests can pass a mock). */
 export type JobDb = Pick<PrismaClient, "job" | "$queryRaw">;
 
-/** The oldest in-flight (queued or running) job of a type, if any. */
-export function findActiveJob(db: JobDb, type: JobType): Promise<Job | null> {
+/** The oldest in-flight (queued or running) job of a type + catalog, if any. */
+export function findActiveJob(db: JobDb, type: JobType, catalogId: string): Promise<Job | null> {
   return db.job.findFirst({
-    where: { type, status: { in: [...ACTIVE_JOB_STATUSES] } },
+    where: { type, catalogId, status: { in: [...ACTIVE_JOB_STATUSES] } },
     orderBy: { createdAt: "asc" },
   });
 }
 
-/** Enqueue a job, de-duping against an already-active job of the same type. */
-export async function enqueueJob(db: JobDb, type: JobType): Promise<Job> {
+/** Enqueue a job, de-duping against an already-active job of the same type + catalog. */
+export async function enqueueJob(db: JobDb, type: JobType, catalogId: string): Promise<Job> {
   // Single-host: the read-then-create window is negligible. With multiple web replicas, swap for an INSERT ... WHERE NOT EXISTS or a unique partial index.
-  const active = await findActiveJob(db, type);
+  const active = await findActiveJob(db, type, catalogId);
   if (active) return active;
-  return db.job.create({ data: { type } });
+  return db.job.create({ data: { type, catalogId } });
 }
 
 /** All in-flight jobs, oldest first — for the activity endpoint. */

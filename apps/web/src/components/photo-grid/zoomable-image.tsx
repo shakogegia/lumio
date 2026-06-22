@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/use-image-loaded";
 import { baseDisplayUrl, displayUrl, renditionVersion } from "@/lib/rendition-url";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
@@ -38,14 +40,15 @@ export function ZoomableImage({
   step: (delta: 1 | -1) => void;
   onTrashed: () => void;
 }) {
+  const { slug } = useCatalog();
   const { working, editing, cropMode, orientedBase, setBaseSize } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
-  const displaySrc = displayUrl(photo);
-  const originalSrc = `/api/photos/${photo.id}/original`;
-  const baseSrc = baseDisplayUrl(photo);
+  const displaySrc = displayUrl(slug, photo);
+  const originalSrc = catalogApiUrl(slug, `/photos/${photo.id}/original`);
+  const baseSrc = baseDisplayUrl(slug, photo);
   const hiResSrc = hasEdits(photo.edits)
-    ? `/api/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`
+    ? catalogApiUrl(slug, `/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`)
     : originalSrc;
 
   // Double-buffer the display rendition: when an Apply changes the rendition

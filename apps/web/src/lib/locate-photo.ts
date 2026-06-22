@@ -36,10 +36,11 @@ export function beforeCursorWhere(
 }
 
 async function scopeWhereFor(
+  catalogId: string,
   scope: DetailScope,
   db: LocateDb,
 ): Promise<Prisma.PhotoWhereInput | null> {
-  if (scope.kind === "album") return albumPhotoWhere(scope.albumId, db);
+  if (scope.kind === "album") return albumPhotoWhere(catalogId, scope.albumId, db);
   if (scope.kind === "search") return buildSearchWhere({ album: scope.albums, q: scope.q });
   return {};
 }
@@ -50,22 +51,27 @@ async function scopeWhereFor(
  * deep link. Returns null when the photo is missing or outside the scope. Reuses
  * the SAME `where` + order (`photoOrderBy`) as the grid list endpoints and the
  * neighbor query, so the index aligns with the grid's offset pagination.
+ *
+ * `catalogId` scopes the Photo lookup so photos from other catalogs are never
+ * found even if the id collides.
  */
 export async function locatePhoto(
+  catalogId: string,
   id: string,
   scope: DetailScope,
   db: LocateDb = prisma,
 ): Promise<number | null> {
-  const row = await db.photo.findUnique({
-    where: { id },
+  const row = await db.photo.findFirst({
+    where: { id, catalogId },
     select: { id: true, sortDate: true, createdAt: true, fileCreatedAt: true },
   });
   if (!row) return null;
-  const scopeWhere = await scopeWhereFor(scope, db);
+  const scopeWhere = await scopeWhereFor(catalogId, scope, db);
   if (scopeWhere === null) return null;
+  const catalogScoped = { catalogId, ...scopeWhere };
   const [index, inScope] = await Promise.all([
-    db.photo.count({ where: { AND: [scopeWhere, beforeCursorWhere(scope.sort, row)] } }),
-    db.photo.count({ where: { AND: [scopeWhere, { id }] } }),
+    db.photo.count({ where: { AND: [catalogScoped, beforeCursorWhere(scope.sort, row)] } }),
+    db.photo.count({ where: { AND: [catalogScoped, { id }] } }),
   ]);
   return inScope > 0 ? index : null;
 }

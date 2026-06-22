@@ -23,7 +23,9 @@ fi
 
 # Bring up the shared dev Postgres. Idempotent: every workspace shares the one
 # Docker Compose project "infra" (host port from .env), so this is a no-op when
-# the container is already running.
+# the container is already running. Migrations are applied out-of-band against the
+# shared DB (pnpm db:migrate), not here — so a destructive schema change is a
+# deliberate, coordinated step, never an automatic one on dev-server start.
 pnpm db:up
 
 # Register a stable, named URL for this workspace with the shared portless proxy

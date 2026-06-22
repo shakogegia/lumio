@@ -1,17 +1,11 @@
 import { access, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { prisma } from "@lumio/db";
-import {
-  SUPPORTED_EXTENSIONS,
-  hashFile,
-  ingestPath,
-  regenerateRenditions,
-  removePath,
-} from "@lumio/ingest";
+import { listCatalogs, prisma } from "@lumio/db";
+import { SUPPORTED_EXTENSIONS, hashFile, ingestPath, regenerateRenditions, removePath } from "@lumio/ingest";
 import { coercePhotoEdits, hasEdits } from "@lumio/shared";
-import { INGEST_CONCURRENCY, PHOTOS_DIR, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
-import { ingestDeps, removeDeps } from "./deps.js";
+import { INGEST_CONCURRENCY, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
+import { ingestDepsFor, removeDepsFor } from "./deps.js";
 import { timedLine } from "./format.js";
 import { runPool } from "./pool.js";
 
@@ -29,12 +23,12 @@ export function reconcileDeletions(dbPaths: string[], onDisk: Set<string>): stri
   return dbPaths.filter((p) => !onDisk.has(p));
 }
 
-/** Recursively list supported image files as paths relative to PHOTOS_DIR. */
-async function listImages(): Promise<string[]> {
-  const entries = await readdir(PHOTOS_DIR, { recursive: true, withFileTypes: true });
+/** Recursively list supported image files as paths relative to rootDir. */
+async function listImages(rootDir: string): Promise<string[]> {
+  const entries = await readdir(rootDir, { recursive: true, withFileTypes: true });
   return entries
     .filter((e) => e.isFile() && SUPPORTED_EXTENSIONS.has(path.extname(e.name).toLowerCase()))
-    .map((e) => path.relative(PHOTOS_DIR, path.join(e.parentPath, e.name)));
+    .map((e) => path.relative(rootDir, path.join(e.parentPath, e.name)));
 }
 
 export type ScanPlan = "new" | "skip" | "heal" | "check-hash";
@@ -81,6 +75,7 @@ async function fileExists(p: string): Promise<boolean> {
 /** Columns the per-file reconcile needs. */
 export const SCAN_SELECT = {
   id: true,
+  catalogId: true,
   path: true,
   fileSize: true,
   fileMtimeMs: true,
@@ -90,6 +85,7 @@ export const SCAN_SELECT = {
 
 export interface ScanRow {
   id: string;
+  catalogId: string;
   path: string;
   fileSize: number;
   fileMtimeMs: number;
@@ -97,9 +93,9 @@ export interface ScanRow {
   edits: unknown;
 }
 
-async function cachePresent(id: string, edited: boolean): Promise<boolean> {
-  if (!(await fileExists(thumbnailPath(id))) || !(await fileExists(displayPath(id)))) return false;
-  if (edited && !(await fileExists(editedDisplayPath(id)))) return false;
+async function cachePresent(catalogId: string, id: string, edited: boolean): Promise<boolean> {
+  if (!(await fileExists(thumbnailPath(catalogId, id))) || !(await fileExists(displayPath(catalogId, id)))) return false;
+  if (edited && !(await fileExists(editedDisplayPath(catalogId, id)))) return false;
   return true;
 }
 
@@ -107,8 +103,8 @@ async function cachePresent(id: string, edited: boolean): Promise<boolean> {
  *  thumbhash/width/height are intentionally discarded: same source + recipe +
  *  pipeline make them deterministically equal to the values already stored, so
  *  there is nothing to persist (and persisting would needlessly bump updatedAt). */
-async function heal(row: ScanRow, absPath: string): Promise<void> {
-  await regenerateRenditions(absPath, coercePhotoEdits(row.edits), row.id, ingestDeps);
+async function heal(catalog: { id: string; path: string }, row: ScanRow, absPath: string): Promise<void> {
+  await regenerateRenditions(absPath, coercePhotoEdits(row.edits), row.id, ingestDepsFor(catalog));
 }
 
 /**
@@ -139,14 +135,15 @@ async function refreshStamp(
  * per event). Never clobbers edits/sort/renditions for an unchanged file.
  */
 export async function reconcileFile(
+  catalog: { id: string; path: string },
   relPath: string,
   row: ScanRow | undefined,
   summary: ScanSummary,
 ): Promise<void> {
-  const absPath = path.join(PHOTOS_DIR, relPath);
+  const absPath = path.join(catalog.path, relPath);
   const st = await stat(absPath);
   const recipe = row ? coercePhotoEdits(row.edits) : null;
-  const cacheExists = row ? await cachePresent(row.id, hasEdits(recipe)) : false;
+  const cacheExists = row ? await cachePresent(catalog.id, row.id, hasEdits(recipe)) : false;
 
   let plan = planScan(row, st, cacheExists);
   if (plan === "check-hash") {
@@ -158,7 +155,7 @@ export async function reconcileFile(
       return;
     }
     if (after === "heal") {
-      await heal(row!, absPath);
+      await heal(catalog, row!, absPath);
       await refreshStamp(row!.id, st);
       summary.healed++;
       return;
@@ -171,22 +168,23 @@ export async function reconcileFile(
     return;
   }
   if (plan === "heal") {
-    await heal(row!, absPath);
+    await heal(catalog, row!, absPath);
     summary.healed++;
     return;
   }
 
   const start = performance.now();
-  await ingestPath(relPath, ingestDeps);
+  await ingestPath(relPath, ingestDepsFor(catalog));
   summary.processed++;
   console.log(`processed ${timedLine(relPath, performance.now() - start)}`);
 }
 
-/** One-shot scan: ingest new/changed images concurrently, skip unchanged, reconcile deletions. */
-export async function scanAndIngest(
+/** Scan one catalog: ingest new/changed images concurrently, skip unchanged, reconcile deletions. */
+export async function scanCatalog(
+  catalog: { id: string; path: string },
   onProgress?: (done: number, total: number) => void,
 ): Promise<ScanSummary> {
-  const relPaths = await listImages();
+  const relPaths = await listImages(catalog.path);
   const summary: ScanSummary = {
     processed: 0,
     skipped: 0,
@@ -196,14 +194,14 @@ export async function scanAndIngest(
     removed: 0,
   };
 
-  const existing = await prisma.photo.findMany({ select: SCAN_SELECT });
+  const existing = await prisma.photo.findMany({ where: { catalogId: catalog.id }, select: SCAN_SELECT });
   const byPath = new Map(existing.map((p) => [p.path, p]));
   let done = 0;
 
   await runPool(relPaths.length, INGEST_CONCURRENCY, async (i) => {
     const relPath = relPaths[i]!;
     try {
-      await reconcileFile(relPath, byPath.get(relPath), summary);
+      await reconcileFile(catalog, relPath, byPath.get(relPath), summary);
     } catch (err) {
       summary.skipped++;
       console.warn(`skip ${relPath}: ${(err as Error).message}`);
@@ -218,7 +216,7 @@ export async function scanAndIngest(
   await runPool(deleteRows.length, INGEST_CONCURRENCY, async (i) => {
     const row = deleteRows[i]!;
     try {
-      await removePath(row.path, removeDeps);
+      await removePath(row.path, removeDepsFor(catalog));
       summary.removed++;
     } catch (err) {
       console.warn(`remove failed ${row.path}: ${(err as Error).message}`);
@@ -226,4 +224,31 @@ export async function scanAndIngest(
   });
 
   return summary;
+}
+
+/** Scan all catalogs sequentially and return the summed ScanSummary. */
+export async function scanAllCatalogs(
+  onProgress?: (done: number, total: number) => void,
+): Promise<ScanSummary> {
+  const catalogs = await listCatalogs();
+  const total: ScanSummary = {
+    processed: 0,
+    skipped: 0,
+    skippedUnchanged: 0,
+    healed: 0,
+    restamped: 0,
+    removed: 0,
+  };
+
+  for (const catalog of catalogs) {
+    const result = await scanCatalog(catalog, onProgress);
+    total.processed += result.processed;
+    total.skipped += result.skipped;
+    total.skippedUnchanged += result.skippedUnchanged;
+    total.healed += result.healed;
+    total.restamped += result.restamped;
+    total.removed += result.removed;
+  }
+
+  return total;
 }

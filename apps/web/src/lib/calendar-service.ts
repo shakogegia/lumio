@@ -20,13 +20,18 @@ interface YearAcc {
  * Scope-agnostic by design: callers pass the same `where` the list endpoints use
  * (library `{}`, album membership / smart-rule, search), so facets can never
  * drift from what the grid shows. Mirrors `getNeighborsForWhere`.
+ *
+ * `catalogId` is ANDed with the caller-supplied `where` so photos from other
+ * catalogs can never appear in the facets.
  */
 export async function buildCalendarFacets(
+  catalogId: string,
   where: Prisma.PhotoWhereInput,
   db: Db = prisma,
 ): Promise<CalendarFacets> {
+  const scopedWhere: Prisma.PhotoWhereInput = { catalogId, ...where };
   const rows = await db.photo.findMany({
-    where,
+    where: scopedWhere,
     select: { id: true, sortDate: true },
     orderBy: [{ sortDate: "desc" }, { id: "desc" }],
   });
