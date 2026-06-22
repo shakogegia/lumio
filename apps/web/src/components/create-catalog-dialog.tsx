@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { FolderBrowserDialog } from "@/components/folder-browser-dialog";
+import { FolderBrowser } from "@/components/folder-browser";
 
 interface CreatedCatalog {
   id: string;
@@ -23,10 +23,12 @@ interface CreatedCatalog {
 }
 
 /**
- * Pairs a name field with the {@link FolderBrowserDialog} and POSTs to
- * `/api/catalogs`. Catalog-agnostic: it does NOT read `useCatalog()` so it can
- * be used from first-run setup, the catalog switcher, and the `/catalogs`
- * manager. `onCreated` is the seam those callers hook into.
+ * Pairs a name field with an inline {@link FolderBrowser} and POSTs to
+ * `/api/catalogs`. The dialog swaps between the form and the browser in place
+ * (no nested modal), so Cancelling the browse returns to the form without
+ * closing the whole dialog. Catalog-agnostic: it does NOT read `useCatalog()`
+ * so it can be used from first-run setup, the catalog switcher, and the
+ * `/catalogs` manager. `onCreated` is the seam those callers hook into.
  */
 export function CreateCatalogDialog({
   open,
@@ -42,21 +44,22 @@ export function CreateCatalogDialog({
   const [path, setPath] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The nested folder browser owns its own open state.
-  const [browserOpen, setBrowserOpen] = useState(false);
+  // Whether the inline folder browser is showing instead of the form.
+  const [browsing, setBrowsing] = useState(false);
 
-  const disabled = pending || name.trim() === "" || path === null;
-
-  function reset() {
+  // Reset the form when the dialog OPENS (not when it closes) so the content
+  // stays intact through the close/exit animation instead of blanking out
+  // mid-transition.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setName("");
     setPath(null);
     setError(null);
-  }
+    setBrowsing(false);
+  }, [open]);
 
-  function handleOpenChange(value: boolean) {
-    onOpenChange(value);
-    if (!value) reset();
-  }
+  const disabled = pending || name.trim() === "" || path === null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,7 +86,6 @@ export function CreateCatalogDialog({
       const data = (await res.json()) as { catalog: CreatedCatalog };
       onCreated(data.catalog);
       onOpenChange(false);
-      reset();
     } catch {
       setError("Failed to create catalog");
     } finally {
@@ -92,13 +94,26 @@ export function CreateCatalogDialog({
   }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New catalog</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{browsing ? "Choose a folder" : "New catalog"}</DialogTitle>
+        </DialogHeader>
+
+        {browsing ? (
+          <FolderBrowser
+            initialPath={path ?? undefined}
+            onPick={(picked) => {
+              setPath(picked);
+              setBrowsing(false);
+            }}
+            onCancel={() => setBrowsing(false)}
+          />
+        ) : (
+          <form
+            onSubmit={(e) => void handleSubmit(e)}
+            className="min-w-0 space-y-4"
+          >
             <div className="space-y-1.5">
               <Label htmlFor="catalog-name">Name</Label>
               <Input
@@ -112,7 +127,7 @@ export function CreateCatalogDialog({
 
             <div className="space-y-1.5">
               <Label htmlFor="catalog-folder">Folder</Label>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <code
                   id="catalog-folder"
                   className={cn(
@@ -126,7 +141,7 @@ export function CreateCatalogDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setBrowserOpen(true)}
+                  onClick={() => setBrowsing(true)}
                 >
                   <FolderOpen />
                   Browse…
@@ -146,15 +161,8 @@ export function CreateCatalogDialog({
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <FolderBrowserDialog
-        open={browserOpen}
-        onOpenChange={setBrowserOpen}
-        onPick={(picked) => setPath(picked)}
-        initialPath={path ?? undefined}
-      />
-    </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
