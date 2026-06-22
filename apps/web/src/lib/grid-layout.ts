@@ -26,11 +26,8 @@ export const ALBUM_COLUMNS_STORAGE_KEY = "lumio:album-columns";
 // columns. (Photos keep their own DEFAULT_COLUMNS.)
 export const ALBUM_DEFAULT_COLUMNS = 10;
 
-// localStorage key for the /folders disk-explorer density. Separate from the
-// photo and album grids so resizing folder/file tiles never changes either.
-export const FOLDERS_COLUMNS_STORAGE_KEY = "lumio:folders-columns";
-
-// Default folder/file tile density for the disk explorer.
+// Default folder/file tile density for the disk explorer. (Persisted per-user in
+// the folder-prefs cookie, not a column-store, so there's no SSR flicker.)
 export const FOLDERS_DEFAULT_COLUMNS = 6;
 
 export function rowCount(itemCount: number, columns: number): number {

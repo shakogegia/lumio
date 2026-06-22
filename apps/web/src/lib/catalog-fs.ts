@@ -127,11 +127,10 @@ export function sortFolderItems<T extends { name: string; mtimeMs: number }>(
   });
 }
 
-/** Case-insensitive substring filter on `name`; a blank query returns all. Pure. */
-export function filterByName<T extends { name: string }>(items: T[], query: string): T[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return items;
-  return items.filter((i) => i.name.toLowerCase().includes(q));
+/** The parent directory of a catalog-relative path ("" if it is top-level). Pure. */
+export function relDirname(rel: string): string {
+  const i = rel.lastIndexOf("/");
+  return i < 0 ? "" : rel.slice(0, i);
 }
 
 /** Human label for a folder's immediate children, e.g. "3 folders, 12 files"

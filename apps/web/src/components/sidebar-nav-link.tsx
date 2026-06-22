@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Images } from "lucide-react";
+import type { FeatureKey } from "@lumio/shared";
 import { cn } from "@/lib/utils";
 
 export type NavItem = {
@@ -10,6 +11,8 @@ export type NavItem = {
   icon: typeof Images;
   /** match when the pathname starts with one of these segments */
   match: string[];
+  /** when set, the item only renders if this feature is enabled */
+  feature?: FeatureKey;
 };
 
 export function isActive(pathname: string, item: NavItem) {

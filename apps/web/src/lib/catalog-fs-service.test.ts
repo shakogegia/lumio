@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readCatalogDir, type CatalogDirDeps } from "./catalog-fs-service.js";
+import { readCatalogDir, searchCatalogTree, type CatalogDirDeps } from "./catalog-fs-service.js";
 
 function dirent(name: string, isDir: boolean) {
   return { name, isDirectory: () => isDir };
@@ -44,5 +44,43 @@ describe("readCatalogDir", () => {
 
   it("blocks path traversal outside the catalog", async () => {
     await expect(readCatalogDir(catalog, "../secrets", deps())).rejects.toThrow();
+  });
+});
+
+describe("searchCatalogTree", () => {
+  function treeDeps(): CatalogDirDeps {
+    const tree: Record<string, { name: string; isDirectory: () => boolean }[]> = {
+      "/media/fam": [dirent("2024", true), dirent("readme.txt", false)],
+      "/media/fam/2024": [dirent("trip", true), dirent("a.jpg", false)],
+      "/media/fam/2024/trip": [dirent("trip-photo.jpg", false), dirent("notes.txt", false)],
+    };
+    return {
+      readdir: async (p: string) => tree[p] ?? [],
+      stat: async () => ({ size: 1, mtimeMs: 1 }),
+      findIndexedPhotos: async (_catalogId, rels) =>
+        rels.includes("2024/trip/trip-photo.jpg")
+          ? [{ id: "p1", path: "2024/trip/trip-photo.jpg" }]
+          : [],
+    };
+  }
+
+  it("finds matches nested in subfolders and links indexed photos", async () => {
+    const res = await searchCatalogTree(catalog, "", "trip", treeDeps());
+    expect(res.dirs.map((d) => d.rel)).toEqual(["2024/trip"]);
+    expect(res.files.map((f) => f.rel)).toEqual(["2024/trip/trip-photo.jpg"]);
+    expect(res.files[0]).toMatchObject({ photoId: "p1", isImage: true });
+    expect(res.dirs[0]).toMatchObject({ folderCount: 0, fileCount: 2 });
+  });
+
+  it("returns nothing for a blank query", async () => {
+    expect(await searchCatalogTree(catalog, "", "  ", treeDeps())).toEqual({
+      dirs: [],
+      files: [],
+      truncated: false,
+    });
+  });
+
+  it("blocks path traversal outside the catalog", async () => {
+    await expect(searchCatalogTree(catalog, "../x", "trip", treeDeps())).rejects.toThrow();
   });
 });

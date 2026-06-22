@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderSearch } from "lucide-react";
 import { FeatureKey } from "@lumio/shared";
-import { useFeature } from "@/components/features/features-provider";
+import { FeatureGate } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
@@ -13,33 +13,21 @@ import { useCatalog } from "@/lib/catalog-context";
 
 // Hrefs/match segments are catalog-relative; the sidebar scopes them to the
 // active catalog (`/c/<slug>/…`) at render and strips that prefix before
-// matching the active route.
+// matching the active route. Items with a `feature` only render when that
+// feature is enabled (gated via <FeatureGate> below).
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
+  { href: "/folders", label: "Folders", icon: FolderSearch, match: ["/folders"], feature: FeatureKey.DiskExplorer },
   { href: "/favorites", label: "Favorites", icon: Heart, match: ["/favorites"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
-
-const FOLDERS_ITEM: NavItem = {
-  href: "/folders",
-  label: "Folders",
-  icon: FolderSearch,
-  match: ["/folders"],
-};
 
 export function AppSidebar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const { slug } = useCatalog();
-  const showFolders = useFeature(FeatureKey.DiskExplorer);
-  // Insert Folders after Albums when enabled (Photos, Search, Albums, Folders, …).
-  const albumsIdx = PRIMARY.findIndex((i) => i.href === "/albums");
-  const insertAt = albumsIdx >= 0 ? albumsIdx + 1 : PRIMARY.length;
-  const items = showFolders
-    ? [...PRIMARY.slice(0, insertAt), FOLDERS_ITEM, ...PRIMARY.slice(insertAt)]
-    : PRIMARY;
 
   // The nav items match against catalog-relative paths, so strip the active
   // catalog's `/c/<slug>` prefix from the current pathname before matching.
@@ -83,20 +71,20 @@ export function AppSidebar() {
         {/* Albums gets the hover flyout; the others are plain nav links. Each
             item's href is scoped to the active catalog; active state matches
             the catalog-relative pathname. */}
-        {items.map((item) => {
+        {PRIMARY.map((item) => {
           const scoped = { ...item, href: catalogPath(slug, item.href) };
-          return item.href === "/albums" ? (
-            <SidebarAlbums
-              key={item.href}
-              item={scoped}
-              active={isActive(scopedPath, item)}
-            />
+          const node =
+            item.href === "/albums" ? (
+              <SidebarAlbums key={item.href} item={scoped} active={isActive(scopedPath, item)} />
+            ) : (
+              <NavLink key={item.href} item={scoped} active={isActive(scopedPath, item)} />
+            );
+          return item.feature ? (
+            <FeatureGate key={item.href} feature={item.feature}>
+              {node}
+            </FeatureGate>
           ) : (
-            <NavLink
-              key={item.href}
-              item={scoped}
-              active={isActive(scopedPath, item)}
-            />
+            node
           );
         })}
       </nav>

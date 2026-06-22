@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildCatalogListing,
   catalogBreadcrumbs,
-  filterByName,
   folderCountLabel,
   joinRel,
+  relDirname,
   sortFolderItems,
 } from "./catalog-fs.js";
 
@@ -101,15 +101,11 @@ describe("sortFolderItems", () => {
   });
 });
 
-describe("filterByName", () => {
-  const items = [{ name: "Trip.jpg" }, { name: "notes.txt" }, { name: "TRAVEL" }];
-  it("matches case-insensitive substrings", () => {
-    expect(filterByName(items, "tr").map((i) => i.name)).toEqual(["Trip.jpg", "TRAVEL"]);
-    expect(filterByName(items, "TXT").map((i) => i.name)).toEqual(["notes.txt"]);
-  });
-  it("returns all items for a blank query", () => {
-    expect(filterByName(items, "")).toHaveLength(3);
-    expect(filterByName(items, "   ")).toHaveLength(3);
+describe("relDirname", () => {
+  it("returns the parent path", () => {
+    expect(relDirname("2024/trip/a.jpg")).toBe("2024/trip");
+    expect(relDirname("2024")).toBe("");
+    expect(relDirname("")).toBe("");
   });
 });
 

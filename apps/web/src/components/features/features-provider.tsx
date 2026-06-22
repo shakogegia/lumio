@@ -26,3 +26,18 @@ export function useFeature(key: FeatureKey): boolean {
   const ctx = useContext(FeaturesContext);
   return ctx ? ctx[key] : false;
 }
+
+/**
+ * Declarative gate: renders `children` only when `feature` is enabled in the
+ * active catalog, otherwise nothing. Use anywhere a chunk of UI should appear
+ * only when a feature is on (sidebar items, buttons, sections).
+ */
+export function FeatureGate({
+  feature,
+  children,
+}: {
+  feature: FeatureKey;
+  children: React.ReactNode;
+}) {
+  return useFeature(feature) ? <>{children}</> : null;
+}

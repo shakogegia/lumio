@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownUp, ChevronRight, File as FileIcon, Folder as FolderIcon, LayoutGrid, List, Search } from "lucide-react";
+import { ArrowDownUp, ChevronRight, File as FileIcon, Folder as FolderIcon, LayoutGrid, List, Search, SearchX } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,28 +26,40 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Spinner } from "@/components/ui/spinner";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import {
   catalogBreadcrumbs,
-  filterByName,
   folderCountLabel,
+  relDirname,
   sortFolderItems,
   type CatalogDirChild,
   type CatalogFileChild,
   type CatalogListing,
   type FolderSort,
 } from "@/lib/catalog-fs";
+import type { CatalogSearchResult } from "@/lib/catalog-fs-service";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { useFolderColumns } from "@/lib/use-folder-columns";
-import { useFolderSort } from "@/lib/use-folder-sort";
-import { useFolderView, type FolderViewMode } from "@/lib/use-folder-view";
+import { useFolderPrefs, type FolderPrefs, type FolderViewMode } from "@/lib/folder-prefs";
 
 /** Build the /folders page href for a catalog-relative path ("" = root). */
 function folderHref(slug: string, rel: string): string {
   const base = catalogPath(slug, "/folders");
   return rel ? `${base}?path=${encodeURIComponent(rel)}` : base;
+}
+
+/** Where a (possibly nested) entry lives, for search results: its parent path or "Library". */
+function locationLabel(rel: string): string {
+  return relDirname(rel) || "Library";
 }
 
 /** Segmented grid/list switch for the explorer layout. */
@@ -125,17 +137,21 @@ function FolderSortMenu({
   );
 }
 
-/** Tile grid: folders + files as cards, density driven by `columns`. */
+/** Tile grid: folders + files as cards, density driven by `columns`. When
+ *  `showPath` (search results), each tile's subtitle is its location. */
 function GridItems({
   slug,
   dirs,
   files,
+  columns,
+  showPath,
 }: {
   slug: string;
   dirs: CatalogDirChild[];
   files: CatalogFileChild[];
+  columns: number;
+  showPath?: boolean;
 }) {
-  const { columns } = useFolderColumns();
   return (
     <div
       className="grid gap-3"
@@ -150,7 +166,7 @@ function GridItems({
           <FolderIcon className="size-10 text-muted-foreground" aria-hidden />
           <span className="w-full truncate text-xs font-medium">{d.name}</span>
           <span className="w-full truncate text-[11px] text-muted-foreground">
-            {folderCountLabel(d.folderCount, d.fileCount)}
+            {showPath ? locationLabel(d.rel) : folderCountLabel(d.folderCount, d.fileCount)}
           </span>
         </Link>
       ))}
@@ -172,6 +188,11 @@ function GridItems({
               />
             </span>
             <span className="w-full truncate text-xs">{f.name}</span>
+            {showPath && (
+              <span className="w-full truncate text-[11px] text-muted-foreground">
+                {locationLabel(f.rel)}
+              </span>
+            )}
           </Link>
         ) : (
           <div
@@ -180,7 +201,9 @@ function GridItems({
           >
             <FileIcon className="size-10 text-muted-foreground" aria-hidden />
             <span className="w-full truncate text-xs">{f.name}</span>
-            <span className="text-xs text-muted-foreground">{formatBytes(f.size)}</span>
+            <span className="w-full truncate text-xs text-muted-foreground">
+              {showPath ? locationLabel(f.rel) : formatBytes(f.size)}
+            </span>
           </div>
         ),
       )}
@@ -193,10 +216,12 @@ function ListItems({
   slug,
   dirs,
   files,
+  showPath,
 }: {
   slug: string;
   dirs: CatalogDirChild[];
   files: CatalogFileChild[];
+  showPath?: boolean;
 }) {
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
@@ -209,7 +234,7 @@ function ListItems({
             <FolderIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <span className="truncate font-medium">{d.name}</span>
             <span className="ml-auto shrink-0 text-muted-foreground">
-              {folderCountLabel(d.folderCount, d.fileCount)}
+              {showPath ? locationLabel(d.rel) : folderCountLabel(d.folderCount, d.fileCount)}
             </span>
             <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           </Link>
@@ -233,13 +258,17 @@ function ListItems({
                 />
               </span>
               <span className="truncate">{f.name}</span>
-              <span className="ml-auto shrink-0 text-muted-foreground">{formatBytes(f.size)}</span>
+              <span className="ml-auto shrink-0 text-muted-foreground">
+                {showPath ? locationLabel(f.rel) : formatBytes(f.size)}
+              </span>
             </Link>
           ) : (
             <div className="flex items-center gap-3 px-3 py-2 text-xs opacity-70">
               <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <span className="truncate">{f.name}</span>
-              <span className="ml-auto shrink-0 text-muted-foreground">{formatBytes(f.size)}</span>
+              <span className="ml-auto shrink-0 text-muted-foreground">
+                {showPath ? locationLabel(f.rel) : formatBytes(f.size)}
+              </span>
             </div>
           )}
         </li>
@@ -249,26 +278,69 @@ function ListItems({
 }
 
 /**
- * Disk-explorer view: a shadcn breadcrumb + a toolbar (grid-size in grid mode,
- * plus a grid/list switch) over the folder/file listing. Indexed photos render
- * a thumbnail and open in the lightbox; other files are non-openable.
+ * Disk-explorer view: a shadcn breadcrumb + a toolbar (search, sort, grid-size,
+ * grid/list switch) over the folder/file listing. Toolbar prefs are seeded from
+ * a cookie (server-rendered) so there's no hydration flicker. Search recurses
+ * into nested subfolders via the /fs/search endpoint. Indexed photos open in the
+ * lightbox; other files are non-openable.
  */
 export function FolderExplorer({
   slug,
   listing,
+  initialPrefs,
 }: {
   slug: string;
   listing: CatalogListing;
+  initialPrefs: FolderPrefs;
 }) {
   const crumbs = catalogBreadcrumbs(listing.rel);
   const isEmpty = listing.dirs.length === 0 && listing.files.length === 0;
-  const { columns, setColumns } = useFolderColumns();
-  const { view, setView } = useFolderView();
-  const { sort, setSort } = useFolderSort();
+  const { prefs, update } = useFolderPrefs(initialPrefs);
+  const { view, columns, sort } = prefs;
   const [query, setQuery] = useState("");
-  const dirs = filterByName(sortFolderItems(listing.dirs, sort), query);
-  const files = filterByName(sortFolderItems(listing.files, sort), query);
-  const noMatches = !isEmpty && dirs.length === 0 && files.length === 0;
+  const [results, setResults] = useState<CatalogSearchResult | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  const trimmed = query.trim();
+  const searchActive = trimmed !== "";
+
+  // Recursive search (debounced) against the current folder's subtree. Stale
+  // requests are aborted; the display gates on `searching` so old matches never
+  // flash while a newer query is in flight.
+  useEffect(() => {
+    if (trimmed === "") return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearching(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const url = catalogApiUrl(
+        slug,
+        `/fs/search?path=${encodeURIComponent(listing.rel)}&q=${encodeURIComponent(trimmed)}`,
+      );
+      fetch(url, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((data: CatalogSearchResult) => {
+          if (!cancelled) setResults(data);
+        })
+        .catch(() => {
+          if (!cancelled) setResults({ dirs: [], files: [], truncated: false });
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [trimmed, slug, listing.rel]);
+
+  const baseDirs = searchActive ? (results?.dirs ?? []) : listing.dirs;
+  const baseFiles = searchActive ? (results?.files ?? []) : listing.files;
+  const dirs = sortFolderItems(baseDirs, sort);
+  const files = sortFolderItems(baseFiles, sort);
 
   return (
     <div className="space-y-6">
@@ -298,33 +370,74 @@ export function FolderExplorer({
         <div className="flex shrink-0 items-center gap-2">
           <InputGroup className="h-8 w-44 sm:w-56">
             <InputGroupAddon>
-              <Search />
+              {searching ? <Spinner /> : <Search />}
             </InputGroupAddon>
             <InputGroupInput
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search this folder…"
-              aria-label="Search this folder"
+              placeholder="Search folders & files…"
+              aria-label="Search folders and files"
             />
-            {query.trim() !== "" && (
+            {searchActive && (
               <InputGroupAddon align="inline-end" className="text-xs text-muted-foreground">
-                {dirs.length + files.length} found
+                {searching ? "…" : `${dirs.length + files.length} found`}
               </InputGroupAddon>
             )}
           </InputGroup>
-          <FolderSortMenu sort={sort} onSortChange={setSort} />
-          {view === "grid" && <GridSizeMenu columns={columns} onColumnsChange={setColumns} />}
-          <ViewToggle view={view} onViewChange={setView} />
+          <FolderSortMenu sort={sort} onSortChange={(s) => update({ sort: s })} />
+          {view === "grid" && (
+            <GridSizeMenu columns={columns} onColumnsChange={(c) => update({ columns: c })} />
+          )}
+          <ViewToggle view={view} onViewChange={(v) => update({ view: v })} />
         </div>
       </div>
 
-      {isEmpty ? (
-        <p className="text-sm text-muted-foreground">This folder is empty.</p>
-      ) : noMatches ? (
-        <p className="text-sm text-muted-foreground">Nothing here matches “{query}”.</p>
+      {searchActive ? (
+        searching ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Spinner className="size-6" />
+              </EmptyMedia>
+              <EmptyTitle>Searching…</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : dirs.length === 0 && files.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchX />
+              </EmptyMedia>
+              <EmptyTitle>No matches</EmptyTitle>
+              <EmptyDescription>Nothing here matches “{trimmed}”.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <div className="space-y-3">
+            {view === "grid" ? (
+              <GridItems slug={slug} dirs={dirs} files={files} columns={columns} showPath />
+            ) : (
+              <ListItems slug={slug} dirs={dirs} files={files} showPath />
+            )}
+            {results?.truncated && (
+              <p className="text-xs text-muted-foreground">
+                Showing the first {dirs.length + files.length} matches — refine your search.
+              </p>
+            )}
+          </div>
+        )
+      ) : isEmpty ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FolderIcon />
+            </EmptyMedia>
+            <EmptyTitle>This folder is empty</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : view === "grid" ? (
-        <GridItems slug={slug} dirs={dirs} files={files} />
+        <GridItems slug={slug} dirs={dirs} files={files} columns={columns} />
       ) : (
         <ListItems slug={slug} dirs={dirs} files={files} />
       )}
