@@ -6,6 +6,8 @@ import sharp from "sharp";
 import { DEFAULT_UPLOAD_TEMPLATE } from "@lumio/shared";
 import { handleUpload } from "./upload-service.js";
 
+const CAT = "cat-1";
+
 const base = await mkdtemp(path.join(tmpdir(), "lumio-upload-"));
 const photosDir = path.join(base, "photos");
 const thumbnailsDir = path.join(base, "thumbs");
@@ -19,9 +21,14 @@ async function jpeg(): Promise<Buffer> {
 }
 
 function fakeDb(existing: { id: string } | null) {
+  const findFirstCalls: Array<{ where: unknown }> = [];
   return {
+    findFirstCalls,
     photo: {
-      findFirst: async () => existing,
+      findFirst: async (args: { where: unknown }) => {
+        findFirstCalls.push(args);
+        return existing;
+      },
       upsert: async () => ({ id: "newid" }),
     },
   };
@@ -29,10 +36,11 @@ function fakeDb(existing: { id: string } | null) {
 
 const deps = (existing: { id: string } | null) => ({
   db: fakeDb(existing) as never,
+  catalogId: CAT,
   photosDir,
   thumbnailsDir,
   displaysDir,
-  template: DEFAULT_UPLOAD_TEMPLATE,
+  uploadTemplate: DEFAULT_UPLOAD_TEMPLATE,
 });
 
 describe("handleUpload", () => {
@@ -55,16 +63,17 @@ describe("handleUpload", () => {
   it("rejects an invalid template defensively", async () => {
     const result = await handleUpload(
       { bytes: await jpeg(), originalFilename: "IMG_2.jpg" },
-      { ...deps(null), template: "{YYYY}" }, // no {filename}/{ext}
+      { ...deps(null), uploadTemplate: "{YYYY}" }, // no {filename}/{ext}
     );
     expect(result.status).toBe("error");
   });
 
   it("files a new photo using the template (lastModified date) and writes renditions", async () => {
     const lastModified = Date.UTC(2023, 4, 20); // 2023-05-20
+    const db = fakeDb(null);
     const result = await handleUpload(
       { bytes: await jpeg(), originalFilename: "IMG_1.jpg", lastModified },
-      deps(null),
+      { ...deps(null), db: db as never },
     );
     expect(result.status).toBe("added");
     if (result.status !== "added") throw new Error("expected added");
@@ -75,5 +84,10 @@ describe("handleUpload", () => {
     await expect(access(path.join(displaysDir, "newid.webp"))).resolves.toBeUndefined();
     const st = await stat(path.join(photosDir, "2023/2023-05-20/IMG_1.jpg"));
     expect(Math.round(st.mtimeMs)).toBe(lastModified);
+
+    // Scoping assertion: dedup uses catalogId + reads uploadTemplate from deps (not getSettings)
+    expect(db.findFirstCalls[0]?.where).toEqual(
+      expect.objectContaining({ catalogId: CAT }),
+    );
   });
 });

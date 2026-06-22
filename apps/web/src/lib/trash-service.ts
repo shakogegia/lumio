@@ -3,23 +3,19 @@ import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { type PrismaClient, prisma, toTrashedPhotoDTO } from "@lumio/db";
 import type { PhotosPage, PhotosQuery } from "@lumio/shared";
-import { CACHE_DIR, PHOTOS_DIR, TRASH_DIR } from "@/lib/paths";
 
 type Db = Pick<PrismaClient, "photo" | "trashedPhoto" | "album">;
 
 export interface TrashDeps {
   db: Db;
+  catalogId: string;
+  /** Absolute path to the catalog's originals directory (catalog.path). */
   photosDir: string;
+  /** Absolute path to the per-catalog cache dir (e.g. CACHE_DIR/<catalogId>). */
   cacheDir: string;
+  /** Absolute path to the per-catalog trash dir (e.g. TRASH_DIR/<catalogId>). */
   trashDir: string;
 }
-
-const defaultDeps: TrashDeps = {
-  db: prisma,
-  photosDir: PHOTOS_DIR,
-  cacheDir: CACHE_DIR,
-  trashDir: TRASH_DIR,
-};
 
 /** Move a file, tolerating a missing source and cross-device renames. */
 async function moveFile(from: string, to: string): Promise<void> {
@@ -62,7 +58,7 @@ async function existingAlbumIds(db: Db, ids: string[]): Promise<string[]> {
 
 export async function trashPhotos(
   ids: string[],
-  deps: TrashDeps = defaultDeps,
+  deps: TrashDeps,
 ): Promise<{ trashed: number }> {
   let trashed = 0;
   for (const id of ids) {
@@ -76,6 +72,7 @@ export async function trashPhotos(
     await deps.db.trashedPhoto.create({
       data: {
         id: photo.id,
+        catalogId: deps.catalogId,
         originalPath: photo.path,
         source: photo.source,
         takenAt: photo.takenAt,
@@ -114,28 +111,32 @@ export async function trashPhotos(
 }
 
 export async function listTrash(
+  catalogId: string,
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset } = params;
   const [rows, total] = await Promise.all([
     db.trashedPhoto.findMany({
+      where: { catalogId },
       skip: offset,
       take: limit,
       orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
     }),
-    db.trashedPhoto.count(),
+    db.trashedPhoto.count({ where: { catalogId } }),
   ]);
   return { items: rows.map(toTrashedPhotoDTO), total };
 }
 
 export async function restorePhotos(
   ids: string[],
-  deps: TrashDeps = defaultDeps,
+  deps: TrashDeps,
 ): Promise<{ restored: number }> {
   let restored = 0;
   for (const id of ids) {
-    const t = await deps.db.trashedPhoto.findUnique({ where: { id } });
+    const t = await deps.db.trashedPhoto.findUnique({
+      where: { id },
+    });
     if (!t) continue;
 
     const destRel = freePath(deps.photosDir, t.originalPath);
@@ -158,6 +159,7 @@ export async function restorePhotos(
     await deps.db.photo.create({
       data: {
         id: t.id,
+        catalogId: deps.catalogId,
         path: destRel,
         source: t.source,
         takenAt: t.takenAt,
