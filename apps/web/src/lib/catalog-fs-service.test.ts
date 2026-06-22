@@ -33,6 +33,21 @@ describe("listSubfolderSummaries", () => {
     ]);
   });
 
+  it("reports a subfolder with subfolders but no photos as empty (count 0, no previews)", async () => {
+    const tree: Record<string, { name: string; isDirectory: () => boolean }[]> = {
+      "/media/fam/2024": [dirent("empty", true)],
+      "/media/fam/2024/empty": [dirent("child", true)],
+    };
+    const deps: FolderSummaryDeps = {
+      readdir: async (abs) => tree[abs] ?? [],
+      countPhotos: async () => 0,
+      previewPhotoIds: async () => [],
+    };
+    expect(await listSubfolderSummaries(catalog, "2024", deps)).toEqual([
+      { name: "empty", rel: "2024/empty", subfolderCount: 1, photoCount: 0, previewPhotoIds: [] },
+    ]);
+  });
+
   it("blocks path traversal", async () => {
     const deps: FolderSummaryDeps = {
       readdir: async () => [],
