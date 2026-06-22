@@ -5,5 +5,6 @@ export * from "./folders.js";
 export * from "./search.js";
 export * from "./settings.js";
 export * from "./users.js";
+export * from "./catalogs.js";
 export { PhotoSource, Prisma } from "@prisma/client";
 export type { Photo, Album, AlbumPhoto, Folder, TrashedPhoto, Job, WorkerStatus, PrismaClient } from "@prisma/client";
