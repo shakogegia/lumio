@@ -131,13 +131,13 @@ export function SearchInput({
   // Read the active slug from a ref inside the Tribute callbacks / imperative
   // handle so they bind once without the mount effect re-running on a re-render.
   const slugRef = useRef(slug);
-  slugRef.current = slug;
   const [empty, setEmpty] = useState(true);
 
-  // Keep the latest onChange reachable from the debounce timer / Tribute callback
-  // without re-running the mount effect. Synced in an effect (not during render).
+  // Keep the latest onChange + slug reachable from the debounce timer / Tribute
+  // callbacks without re-running the mount effect. Synced in an effect (not render).
   useEffect(() => {
     onChangeRef.current = onChange;
+    slugRef.current = slug;
   });
 
   // Parse the editor and report filters now. Also refreshes the placeholder.

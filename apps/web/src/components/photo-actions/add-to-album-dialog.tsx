@@ -43,11 +43,14 @@ export function AddToAlbumDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset the form each time the dialog opens.
   useEffect(() => {
     if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setNewName("");
     setTarget(null);
     setError(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open]);
 
   const rows = buildFolderPickerRows(folders);
