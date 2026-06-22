@@ -3,7 +3,7 @@
 import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 } from "lucide-react";
 import type { FolderSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import {
   ContextMenu,
@@ -79,7 +79,7 @@ export function FolderCard({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <a
-          href={`/albums/folder/${folder.id}`}
+          href={catalogPath(slug, `/albums/folder/${folder.id}`)}
           data-card-id={folder.id}
           onClick={(e) => {
             if (e.button !== 0) return;

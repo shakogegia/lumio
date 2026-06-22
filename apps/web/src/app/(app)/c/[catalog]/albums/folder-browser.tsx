@@ -34,7 +34,7 @@ import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { partitionAlbums } from "@/lib/partition-albums";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
@@ -77,13 +77,13 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   const gridRef = useRef<HTMLDivElement>(null);
 
   function openFolder(id: string) {
-    router.push(`/albums/folder/${id}`);
+    router.push(catalogPath(slug, `/albums/folder/${id}`));
   }
   function openAlbum(id: string) {
-    router.push(`/albums/${id}`);
+    router.push(catalogPath(slug, `/albums/${id}`));
   }
   function viewFolderPhotos(id: string) {
-    router.push(`/albums/folder/${id}/photos`);
+    router.push(catalogPath(slug, `/albums/folder/${id}/photos`));
   }
 
   function openItem(id: string) {
@@ -211,7 +211,10 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
       "Albums"
     ) : (
       <span className="flex items-center gap-1">
-        <Link href="/albums" className="font-normal text-muted-foreground hover:text-foreground">
+        <Link
+          href={catalogPath(slug, "/albums")}
+          className="font-normal text-muted-foreground hover:text-foreground"
+        >
           Albums
         </Link>
         {contents.breadcrumbs.map((crumb, i) => {
@@ -223,7 +226,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                 <span className="truncate">{crumb.name}</span>
               ) : (
                 <Link
-                  href={`/albums/folder/${crumb.id}`}
+                  href={catalogPath(slug, `/albums/folder/${crumb.id}`)}
                   className="font-normal text-muted-foreground hover:text-foreground"
                 >
                   {crumb.name}

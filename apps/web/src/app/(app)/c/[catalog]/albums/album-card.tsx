@@ -3,7 +3,7 @@
 import { FolderInput, Images, Pencil, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import {
   ContextMenu,
@@ -71,7 +71,7 @@ export function AlbumCard({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <a
-          href={`/albums/${album.id}`}
+          href={catalogPath(slug, `/albums/${album.id}`)}
           data-card-id={album.id}
           onClick={(e) => {
             // Middle/aux click opens the native link (new tab); every left click
