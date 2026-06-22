@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,8 +23,10 @@ interface RenameTarget {
  * the list). Renaming also re-slugs the catalog server-side, but the management
  * page is slug-agnostic so no navigation is needed here.
  *
- * The form lives in a child keyed by catalog id so its state is seeded from the
- * current name on mount — no effect needed to re-sync when the target changes.
+ * We retain the last target (`shown`) and bump `openKey` on each open so the
+ * form keeps rendering through the close animation instead of blanking the
+ * instant `catalog` goes null — yet remounts fresh (reseeded from the name)
+ * whenever the dialog is reopened.
  */
 export function RenameCatalogDialog({
   catalog,
@@ -35,15 +37,24 @@ export function RenameCatalogDialog({
   onOpenChange: (open: boolean) => void;
   onRenamed: () => void;
 }) {
+  const [shown, setShown] = useState<RenameTarget | null>(catalog);
+  const [openKey, setOpenKey] = useState(0);
+
+  useEffect(() => {
+    if (!catalog) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setShown(catalog);
+    setOpenKey((k) => k + 1);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [catalog]);
+
   return (
     <Dialog open={catalog !== null} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Rename catalog</DialogTitle>
         </DialogHeader>
-        {catalog && (
-          <RenameForm key={catalog.id} catalog={catalog} onRenamed={onRenamed} />
-        )}
+        {shown && <RenameForm key={openKey} catalog={shown} onRenamed={onRenamed} />}
       </DialogContent>
     </Dialog>
   );
@@ -91,7 +102,7 @@ function RenameForm({
   }
 
   return (
-    <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(e)} className="min-w-0 space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="rename-catalog-name">Name</Label>
         <Input
