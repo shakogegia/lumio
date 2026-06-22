@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/empty";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const TRASH_EMPTY = (
   <Empty>
@@ -44,6 +46,7 @@ const TRASH_EMPTY = (
  * restored or permanently deleted; "Empty trash" purges everything.
  */
 export function TrashView() {
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { confirm, confirmDialog } = useConfirm();
   const gridRef = useRef<PhotoGridHandle>(null);
@@ -53,7 +56,7 @@ export function TrashView() {
   const [pending, setPending] = useState(false);
   const [total, setTotal] = useState<number | null>(null);
   // "Empty trash" is an async job (worker-driven); restore/purge stay synchronous.
-  const emptyTrash = useAsyncJob(JobType.empty_trash, "/api/trash/empty", {
+  const emptyTrash = useAsyncJob(JobType.empty_trash, catalogApiUrl(slug, "/trash/empty"), {
     onComplete: () => {
       playSound(SoundEffect.EmptyTrash);
       setReloadKey((k) => k + 1);
@@ -123,7 +126,7 @@ export function TrashView() {
                   aria-label="Restore"
                   title="Restore"
                   onClick={() =>
-                    void act("/api/trash/restore", { ids }, null, "Failed to restore photos.", false)
+                    void act(catalogApiUrl(slug, "/trash/restore"), { ids }, null, "Failed to restore photos.", false)
                   }
                 >
                   <ArchiveRestore aria-hidden />
@@ -136,7 +139,7 @@ export function TrashView() {
                   title="Delete permanently"
                   onClick={() =>
                     void act(
-                      "/api/trash/purge",
+                      catalogApiUrl(slug, "/trash/purge"),
                       { ids },
                       {
                         title: `Permanently delete ${label}?`,
@@ -178,7 +181,7 @@ export function TrashView() {
         }
       />
 
-      <PhotoCollectionProvider key={reloadKey} endpoint="/api/trash" enableLightbox={false}>
+      <PhotoCollectionProvider key={reloadKey} endpoint={catalogApiUrl(slug, "/trash")} enableLightbox={false}>
         <CollectionTotalReporter onTotal={setTotal} />
         <PhotoGrid
           apiRef={gridRef}

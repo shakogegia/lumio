@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { SelectionRing } from "@/components/photo-grid/selection-ring";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import type { RowStatus } from "@/lib/upload-rows";
 
 const STATUS_LABEL: Record<RowStatus, string> = {
@@ -49,6 +51,7 @@ export const UploadTile = memo(function UploadTile({
   onTileClick: (index: number, e: React.MouseEvent) => void;
   onRetry: (id: number) => void;
 }) {
+  const { slug } = useCatalog();
   // Ingested rows render the small server thumbnail; in-flight/failed rows show
   // a lightweight badge (decoding originals in-browser blows up memory). Tiles
   // are always cards; the mat is tinted with the applied color label's pastel
@@ -70,7 +73,7 @@ export const UploadTile = memo(function UploadTile({
         {photoId ? (
           // eslint-disable-next-line @next/next/no-img-element -- server thumbnail route, no next/image loader
           <img
-            src={`/api/thumbnails/${photoId}`}
+            src={catalogApiUrl(slug, `/photos/${photoId}/thumbnail`)}
             alt=""
             loading="lazy"
             decoding="async"

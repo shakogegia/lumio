@@ -1,4 +1,5 @@
 import type { AlbumSummaryDTO } from "@lumio/shared";
+import { catalogApiUrl } from "@/lib/catalog-api";
 
 /** One selectable value within a facet (album: value=id, label=name). */
 export interface FacetOption {
@@ -12,8 +13,8 @@ export interface SearchFacet {
   key: string;
   /** Human label shown in the menu group and chip prefix. */
   label: string;
-  /** Fetch the selectable options for this facet. */
-  loadOptions: () => Promise<FacetOption[]>;
+  /** Fetch the selectable options for this facet (scoped to the active catalog). */
+  loadOptions: (slug: string) => Promise<FacetOption[]>;
 }
 
 /** Flattened option as fed to TributeJS — carries its facet identity. */
@@ -27,8 +28,8 @@ export interface TributeFacetItem {
 const albumFacet: SearchFacet = {
   key: "album",
   label: "Album",
-  loadOptions: async () => {
-    const res = await fetch("/api/albums");
+  loadOptions: async (slug) => {
+    const res = await fetch(catalogApiUrl(slug, "/albums"));
     if (!res.ok) throw new Error(`Failed to load albums: ${res.status}`);
     const data: { items: AlbumSummaryDTO[] } = await res.json();
     return data.items.map((a) => ({ value: a.id, label: a.name }));
@@ -38,17 +39,20 @@ const albumFacet: SearchFacet = {
 /** The registry. Future facets (camera, date, …) are added here. */
 export const FACETS: SearchFacet[] = [albumFacet];
 
-let cache: Promise<TributeFacetItem[]> | null = null;
+/** Per-slug option cache so switching catalogs doesn't reuse another's albums. */
+const cache = new Map<string, Promise<TributeFacetItem[]>>();
 
 /**
- * Load every facet's options as one flat list for the Tribute menu. Cached for
- * the lifetime of the page (new albums show after a reload — acceptable for now).
+ * Load every facet's options for the given catalog as one flat list for the
+ * Tribute menu. Cached per slug for the lifetime of the page (new albums show
+ * after a reload — acceptable for now).
  */
-export function loadAllOptions(): Promise<TributeFacetItem[]> {
-  if (!cache) {
-    cache = Promise.all(
+export function loadAllOptions(slug: string): Promise<TributeFacetItem[]> {
+  let cached = cache.get(slug);
+  if (!cached) {
+    cached = Promise.all(
       FACETS.map((facet) =>
-        facet.loadOptions().then((opts) =>
+        facet.loadOptions(slug).then((opts) =>
           opts.map((o) => ({
             facetKey: facet.key,
             facetLabel: facet.label,
@@ -60,9 +64,10 @@ export function loadAllOptions(): Promise<TributeFacetItem[]> {
     )
       .then((groups) => groups.flat())
       .catch((err) => {
-        cache = null; // don't memoize a failure — allow retry on the next trigger
+        cache.delete(slug); // don't memoize a failure — allow retry on the next trigger
         throw err;
       });
+    cache.set(slug, cached);
   }
-  return cache;
+  return cached;
 }

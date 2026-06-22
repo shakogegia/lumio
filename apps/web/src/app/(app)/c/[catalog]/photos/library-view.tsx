@@ -27,8 +27,11 @@ import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function LibraryView() {
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
@@ -103,7 +106,7 @@ export function LibraryView() {
               <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
               <GridSortMenu sort={sort} onSortChange={setSort} />
               <GridCalendarMenu
-                facetsEndpoint="/api/photos/calendar"
+                facetsEndpoint={catalogApiUrl(slug, "/photos/calendar")}
                 value={month}
                 onChange={setMonth}
               />
@@ -114,7 +117,7 @@ export function LibraryView() {
 
       <PhotoCollectionProvider
         key={`${sort}:${month ?? ""}`}
-        endpoint="/api/photos"
+        endpoint={catalogApiUrl(slug, "/photos")}
         params={new URLSearchParams(month ? { sort, month } : { sort })}
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl="/photos"

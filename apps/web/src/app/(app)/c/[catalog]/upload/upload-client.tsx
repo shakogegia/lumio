@@ -15,6 +15,8 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { computeSelection } from "@/lib/grid-selection";
@@ -36,6 +38,7 @@ export function UploadClient({
   targetAlbum?: { id: string; name: string };
 }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { columns, setColumns } = useGridColumns();
   const { confirm, confirmDialog } = useConfirm();
@@ -67,7 +70,7 @@ export function UploadClient({
       body.set("file", file);
       body.set("lastModified", String(file.lastModified));
       try {
-        const res = await fetch("/api/uploads", { method: "POST", body });
+        const res = await fetch(catalogApiUrl(slug, "/uploads"), { method: "POST", body });
         const data: UploadResponse = await res.json();
         if (data.status === "unsupported") {
           // Pre-filtered client-side; a late unsupported is treated as a failure.
@@ -81,7 +84,7 @@ export function UploadClient({
         return { status: "error" };
       }
     },
-    [update],
+    [update, slug],
   );
 
   // Bounded-concurrency worker pool shared by initial uploads and retries.
@@ -104,7 +107,7 @@ export function UploadClient({
         const ids = albumTargetIds(results);
         if (ids.length > 0) {
           try {
-            const res = await fetch(`/api/albums/${targetAlbum.id}/photos`, {
+            const res = await fetch(catalogApiUrl(slug, `/albums/${targetAlbum.id}/photos`), {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ photoIds: ids }),
@@ -120,7 +123,7 @@ export function UploadClient({
       if (results.some((r) => r.status === "added")) playSound(SoundEffect.ActionComplete);
       router.refresh();
     },
-    [router, targetAlbum, uploadOne],
+    [router, targetAlbum, uploadOne, slug],
   );
 
   const addFiles = useCallback(
@@ -199,7 +202,7 @@ export function UploadClient({
       if (labelPending || selectedIds.size === 0) return;
       setLabelPending(true);
       try {
-        const res = await fetch("/api/photos/color-label", {
+        const res = await fetch(catalogApiUrl(slug, "/photos/color-label"), {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ photoIds: [...selectedIds], label }),
@@ -217,21 +220,21 @@ export function UploadClient({
         setLabelPending(false);
       }
     },
-    [labelPending, sel],
+    [labelPending, sel, slug],
   );
 
   const handleDownload = useCallback(async () => {
     if (downloading || sel.selected.size === 0) return;
     setDownloading(true);
     try {
-      await downloadSelection([...sel.selected]);
+      await downloadSelection(slug, [...sel.selected]);
       sel.clear();
     } catch {
       toast.error("Failed to download photos.");
     } finally {
       setDownloading(false);
     }
-  }, [downloading, sel]);
+  }, [downloading, sel, slug]);
 
   const handleDelete = useCallback(async () => {
     const selectedIds = sel.selected;
@@ -246,7 +249,7 @@ export function UploadClient({
     if (!ok) return;
     setDeleting(true);
     try {
-      const res = await fetch("/api/photos/trash", {
+      const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ids: [...selectedIds] }),
@@ -260,7 +263,7 @@ export function UploadClient({
     } finally {
       setDeleting(false);
     }
-  }, [sel, deleting, confirm, router]);
+  }, [sel, deleting, confirm, router, slug]);
 
   const summary = summarizeRows(rows);
   const hasRows = rows.length > 0;

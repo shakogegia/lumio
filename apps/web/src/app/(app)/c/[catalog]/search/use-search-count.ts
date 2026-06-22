@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { SearchCount } from "@lumio/shared";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 import { type SearchFilters, paramsFor, serialize } from "./filters";
 
 /**
@@ -16,6 +18,7 @@ export function useSearchCount(
   enabled: boolean,
   month: string | null = null,
 ) {
+  const { slug } = useCatalog();
   const [count, setCount] = useState<number | null>(null);
   const serialized = serialize(filters);
 
@@ -30,7 +33,7 @@ export function useSearchCount(
     const params = paramsFor(filters);
     if (month) params.set("month", month);
     params.set("count", "1");
-    fetch(`/api/search?${params.toString()}`)
+    fetch(catalogApiUrl(slug, `/search?${params.toString()}`))
       .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error())))
       .then((data) => {
         if (!cancelled) setCount(data.total);
@@ -45,7 +48,7 @@ export function useSearchCount(
     // or `enabled` changes. `filters`/`paramsFor` are excluded — they'd refetch
     // every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serialized, enabled, month]);
+  }, [serialized, enabled, month, slug]);
 
   return [count, setCount] as const;
 }

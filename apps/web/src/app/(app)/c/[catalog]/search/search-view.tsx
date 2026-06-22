@@ -28,6 +28,8 @@ import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent
 import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
 import { useSearchCount } from "./use-search-count";
 import { countLabel } from "@/lib/count-label";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 
@@ -36,6 +38,7 @@ function isEmptyFilters(f: SearchFilters): boolean {
 }
 
 export function SearchView() {
+  const { slug } = useCatalog();
   // `active` flips on first focus: the box rises to the top and the panel shows.
   const [active, setActive] = useState(false);
   // Live filters, updated (debounced) as the user types / tags.
@@ -201,7 +204,7 @@ export function SearchView() {
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
                       <GridCalendarMenu
-                        facetsEndpoint={`/api/search/calendar?${paramsFor(filters).toString()}`}
+                        facetsEndpoint={catalogApiUrl(slug, `/search/calendar?${paramsFor(filters).toString()}`)}
                         value={month}
                         onChange={setMonth}
                       />
@@ -211,7 +214,7 @@ export function SearchView() {
               </div>
               <PhotoCollectionProvider
                 key={`${serialized}:${sort}:${month ?? ""}`}
-                endpoint="/api/search"
+                endpoint={catalogApiUrl(slug, "/search")}
                 params={(() => {
                   const p = paramsFor(filters, sort);
                   if (month) p.set("month", month);

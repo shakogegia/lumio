@@ -33,9 +33,12 @@ import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
+import { catalogApiUrl } from "@/lib/catalog-api";
+import { useCatalog } from "@/lib/catalog-context";
 
 export function FolderPhotosView({ folderId, folderName }: { folderId: string; folderName: string }) {
   const router = useRouter();
+  const { slug } = useCatalog();
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
@@ -110,7 +113,7 @@ export function FolderPhotosView({ folderId, folderName }: { folderId: string; f
 
       <PhotoCollectionProvider
         key={sort}
-        endpoint={`/api/folders/${folderId}/photos`}
+        endpoint={catalogApiUrl(slug, `/folders/${folderId}/photos`)}
         params={new URLSearchParams({ sort })}
         urlForId={(id) => photoHref(id, undefined, sort)}
         baseUrl={`/albums/folder/${folderId}/photos`}

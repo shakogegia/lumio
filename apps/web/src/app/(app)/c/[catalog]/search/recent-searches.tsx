@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
+import { useCatalog } from "@/lib/catalog-context";
 import { loadAllOptions } from "./facets";
 import { type SearchFilters, serialize } from "./filters";
 
@@ -60,11 +61,12 @@ export function RecentSearches({
   items: SearchFilters[];
   onPick: (filters: SearchFilters) => void;
 }) {
+  const { slug } = useCatalog();
   const [albumNames, setAlbumNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let active = true;
-    void loadAllOptions()
+    void loadAllOptions(slug)
       .then((opts) => {
         if (!active) return;
         const map = new Map<string, string>();
@@ -75,7 +77,7 @@ export function RecentSearches({
     return () => {
       active = false;
     };
-  }, []);
+  }, [slug]);
 
   if (items.length === 0) {
     return (

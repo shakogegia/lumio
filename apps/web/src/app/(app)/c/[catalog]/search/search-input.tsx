@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type Tribute from "tributejs";
 import { cn } from "@/lib/utils";
+import { useCatalog } from "@/lib/catalog-context";
 import { type TributeFacetItem, loadAllOptions } from "./facets";
 import { type SearchFilters, buildFilters } from "./filters";
 
@@ -122,10 +123,15 @@ export function SearchInput({
   /** Fired when focus leaves the box, with the settled filters (for recording recents). */
   onCommit?: (filters: SearchFilters) => void;
 }) {
+  const { slug } = useCatalog();
   const editorRef = useRef<HTMLDivElement>(null);
   const tributeRef = useRef<Tribute<TributeFacetItem> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChangeRef = useRef(onChange);
+  // Read the active slug from a ref inside the Tribute callbacks / imperative
+  // handle so they bind once without the mount effect re-running on a re-render.
+  const slugRef = useRef(slug);
+  slugRef.current = slug;
   const [empty, setEmpty] = useState(true);
 
   // Keep the latest onChange reachable from the debounce timer / Tribute callback
@@ -157,7 +163,7 @@ export function SearchInput({
       applyFilters(filters: SearchFilters) {
         const el = editorRef.current;
         if (!el) return;
-        void loadAllOptions()
+        void loadAllOptions(slugRef.current)
           .catch(() => [] as TributeFacetItem[])
           .then((opts) => {
             const labelFor = (id: string) =>
@@ -197,7 +203,7 @@ export function SearchInput({
         // default \xA0 suffix so a selected chip isn't followed by two spaces.
         replaceTextSuffix: "",
         values: (_text, cb) => {
-          loadAllOptions()
+          loadAllOptions(slugRef.current)
             .then((opts) => cb(opts))
             .catch((err) => {
               // Non-blocking: show an empty menu this time; loadAllOptions has
