@@ -438,16 +438,33 @@ describe("removePhotoFromAlbum", () => {
     const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const fakeDb = {
-      album: { updateMany },
+      album: { findFirst: async () => ({ id: "alb1" }), updateMany },
       albumPhoto: { deleteMany },
       photo: {},
     };
-    await removePhotoFromAlbum("alb1", "p1", fakeDb as never);
+    await removePhotoFromAlbum(CAT, "alb1", "p1", fakeDb as never);
     expect(deleteMany).toHaveBeenCalledWith({ where: { albumId: "alb1", photoId: "p1" } });
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: "alb1", coverPhotoId: "p1" },
       data: { coverPhotoId: null },
     });
+  });
+
+  it("scopes the album gate by catalogId and no-ops when album not in catalog", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const deleteMany = vi.fn();
+    const updateMany = vi.fn();
+    const fakeDb = {
+      album: { findFirst, updateMany },
+      albumPhoto: { deleteMany },
+      photo: {},
+    };
+    await removePhotoFromAlbum(CAT, "alb1", "p1", fakeDb as never);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "alb1", catalogId: CAT }) }),
+    );
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
 

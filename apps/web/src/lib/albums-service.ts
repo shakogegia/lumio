@@ -158,7 +158,9 @@ export class AlbumNotFoundError extends Error {}
 
 export class PhotoNotInAlbumError extends Error {}
 
-export async function removePhotoFromAlbum(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+export async function removePhotoFromAlbum(catalogId: string, albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { id: true } });
+  if (!album) return;
   await db.albumPhoto.deleteMany({ where: { albumId, photoId } });
   // If the removed photo was the pinned cover, drop the pin so the cover defaults
   // back to the derived most-recent member.

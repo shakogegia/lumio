@@ -133,6 +133,7 @@ export async function listFolderContents(
 }
 
 export async function moveItems(
+  catalogId: string,
   input: { folderIds?: string[]; albumIds?: string[]; targetFolderId: string | null },
   db: Db = prisma,
 ): Promise<number> {
@@ -140,7 +141,7 @@ export async function moveItems(
   const albumIds = input.albumIds ?? [];
   const target = input.targetFolderId;
 
-  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  const allFolders = await db.folder.findMany({ where: { catalogId }, select: { id: true, parentId: true } });
   const known = new Set(allFolders.map((f) => f.id));
 
   if (target !== null && !known.has(target)) throw new FolderNotFoundError();
@@ -155,10 +156,10 @@ export async function moveItems(
 
   const ops: Prisma.PrismaPromise<{ count: number }>[] = [];
   if (folderIds.length > 0) {
-    ops.push(db.folder.updateMany({ where: { id: { in: folderIds } }, data: { parentId: target } }));
+    ops.push(db.folder.updateMany({ where: { catalogId, id: { in: folderIds } }, data: { parentId: target } }));
   }
   if (albumIds.length > 0) {
-    ops.push(db.album.updateMany({ where: { id: { in: albumIds } }, data: { folderId: target } }));
+    ops.push(db.album.updateMany({ where: { catalogId, id: { in: albumIds } }, data: { folderId: target } }));
   }
   if (ops.length === 0) return 0;
   const results = await db.$transaction(ops);
@@ -166,12 +167,13 @@ export async function moveItems(
 }
 
 export async function deleteFolder(
+  catalogId: string,
   id: string,
   mode: "reparent" | "cascade",
   db: Db = prisma,
 ): Promise<void> {
   if (mode === "reparent") {
-    const folder = await db.folder.findFirst({ where: { id }, select: { parentId: true } });
+    const folder = await db.folder.findFirst({ where: { id, catalogId }, select: { parentId: true } });
     if (!folder) throw new FolderNotFoundError();
     await db.$transaction([
       db.folder.updateMany({ where: { parentId: id }, data: { parentId: folder.parentId } }),
@@ -181,12 +183,12 @@ export async function deleteFolder(
     return;
   }
   // cascade: delete the whole subtree (albums first so the FK allows the folder deletes).
-  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  const allFolders = await db.folder.findMany({ where: { catalogId }, select: { id: true, parentId: true } });
   if (!allFolders.some((f) => f.id === id)) throw new FolderNotFoundError();
   const ids = collectDescendantFolderIds(allFolders, id);
   await db.$transaction([
-    db.album.deleteMany({ where: { folderId: { in: ids } } }),
-    db.folder.deleteMany({ where: { id: { in: ids } } }),
+    db.album.deleteMany({ where: { catalogId, folderId: { in: ids } } }),
+    db.folder.deleteMany({ where: { catalogId, id: { in: ids } } }),
   ]);
 }
 

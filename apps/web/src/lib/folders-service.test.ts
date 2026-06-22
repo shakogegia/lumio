@@ -183,7 +183,7 @@ describe("deleteFolder reparent", () => {
       photo: {},
       $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
     };
-    await deleteFolder("italy", "reparent", db as never);
+    await deleteFolder(CAT, "italy", "reparent", db as never);
     expect(folderUpdateMany).toHaveBeenCalledWith({
       where: { parentId: "italy" }, data: { parentId: "grandparent" },
     });
@@ -193,12 +193,27 @@ describe("deleteFolder reparent", () => {
     expect(folderDelete).toHaveBeenCalledWith({ where: { id: "italy" } });
   });
 
+  it("scopes the reparent findFirst by catalogId", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const db = {
+      folder: { findFirst },
+      album: {},
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await expect(deleteFolder(CAT, "italy", "reparent", db as never)).rejects.toBeInstanceOf(FolderNotFoundError);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: "italy", catalogId: CAT }) }),
+    );
+  });
+
   it("throws when the folder is missing", async () => {
     const db = {
       folder: { findFirst: async () => null }, album: {}, albumPhoto: {}, photo: {},
       $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
     };
-    await expect(deleteFolder("x", "reparent", db as never)).rejects.toBeInstanceOf(
+    await expect(deleteFolder(CAT, "x", "reparent", db as never)).rejects.toBeInstanceOf(
       FolderNotFoundError,
     );
   });
@@ -219,11 +234,38 @@ describe("deleteFolder cascade", () => {
       photo: {},
       $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
     };
-    await deleteFolder("europe", "cascade", db as never);
+    await deleteFolder(CAT, "europe", "cascade", db as never);
     const albumArg = albumDeleteMany.mock.calls[0][0].where.folderId.in.sort();
     const folderArg = folderDeleteMany.mock.calls[0][0].where.id.in.sort();
     expect(albumArg).toEqual(["europe", "italy"]);
     expect(folderArg).toEqual(["europe", "italy"]);
+  });
+
+  it("scopes cascade findMany and deleteMany by catalogId", async () => {
+    const allFolders = [
+      { id: "europe", parentId: null },
+      { id: "italy", parentId: "europe" },
+    ];
+    const folderFindMany = vi.fn().mockResolvedValue(allFolders);
+    const albumDeleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const folderDeleteMany = vi.fn().mockResolvedValue({ count: 0 });
+    const db = {
+      folder: { findMany: folderFindMany, deleteMany: folderDeleteMany },
+      album: { deleteMany: albumDeleteMany },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await deleteFolder(CAT, "europe", "cascade", db as never);
+    expect(folderFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
+    expect(albumDeleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
+    expect(folderDeleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
   });
 
   it("throws when the folder is missing", async () => {
@@ -232,7 +274,7 @@ describe("deleteFolder cascade", () => {
       album: {}, albumPhoto: {}, photo: {},
       $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
     };
-    await expect(deleteFolder("ghost", "cascade", db as never)).rejects.toBeInstanceOf(
+    await expect(deleteFolder(CAT, "ghost", "cascade", db as never)).rejects.toBeInstanceOf(
       FolderNotFoundError,
     );
   });
@@ -257,33 +299,56 @@ describe("moveItems", () => {
 
   it("moves an album into a folder", async () => {
     const albumUpdate = vi.fn().mockResolvedValue({ count: 1 });
-    const count = await moveItems({ albumIds: ["a1"], targetFolderId: "italy" }, db(undefined, albumUpdate) as never);
-    expect(albumUpdate).toHaveBeenCalledWith({ where: { id: { in: ["a1"] } }, data: { folderId: "italy" } });
+    const count = await moveItems(CAT, { albumIds: ["a1"], targetFolderId: "italy" }, db(undefined, albumUpdate) as never);
+    expect(albumUpdate).toHaveBeenCalledWith({ where: { catalogId: CAT, id: { in: ["a1"] } }, data: { folderId: "italy" } });
     expect(count).toBe(1);
   });
 
   it("moves a folder to top level (null target)", async () => {
     const folderUpdate = vi.fn().mockResolvedValue({ count: 1 });
-    await moveItems({ folderIds: ["italy"], targetFolderId: null }, db(folderUpdate) as never);
-    expect(folderUpdate).toHaveBeenCalledWith({ where: { id: { in: ["italy"] } }, data: { parentId: null } });
+    await moveItems(CAT, { folderIds: ["italy"], targetFolderId: null }, db(folderUpdate) as never);
+    expect(folderUpdate).toHaveBeenCalledWith({ where: { catalogId: CAT, id: { in: ["italy"] } }, data: { parentId: null } });
   });
 
   it("rejects moving a folder into its own descendant", async () => {
     await expect(
-      moveItems({ folderIds: ["europe"], targetFolderId: "italy" }, db() as never),
+      moveItems(CAT, { folderIds: ["europe"], targetFolderId: "italy" }, db() as never),
     ).rejects.toBeInstanceOf(FolderCycleError);
   });
 
   it("rejects moving a folder into itself", async () => {
     await expect(
-      moveItems({ folderIds: ["europe"], targetFolderId: "europe" }, db() as never),
+      moveItems(CAT, { folderIds: ["europe"], targetFolderId: "europe" }, db() as never),
     ).rejects.toBeInstanceOf(FolderCycleError);
   });
 
   it("throws when the target folder does not exist", async () => {
     await expect(
-      moveItems({ albumIds: ["a1"], targetFolderId: "ghost" }, db() as never),
+      moveItems(CAT, { albumIds: ["a1"], targetFolderId: "ghost" }, db() as never),
     ).rejects.toBeInstanceOf(FolderNotFoundError);
+  });
+
+  it("scopes cycle-detection findMany and updateMany by catalogId", async () => {
+    const folderFindMany = vi.fn().mockResolvedValue(allFolders);
+    const folderUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const albumUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const fakeDb = {
+      folder: { findMany: folderFindMany, updateMany: folderUpdateMany },
+      album: { updateMany: albumUpdateMany },
+      albumPhoto: {},
+      photo: {},
+      $transaction: async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[]),
+    };
+    await moveItems(CAT, { folderIds: ["italy"], albumIds: ["a1"], targetFolderId: null }, fakeDb as never);
+    expect(folderFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
+    expect(folderUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
+    expect(albumUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT }) }),
+    );
   });
 });
 
