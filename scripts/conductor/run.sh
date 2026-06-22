@@ -26,6 +26,22 @@ fi
 # the container is already running.
 pnpm db:up
 
+# Per-workspace database (see setup.sh): the multi-catalog schema migration is
+# destructive, so each workspace owns a separate DB on the shared Postgres — a
+# migrate here can never wipe another running workspace. Create the DB if absent,
+# then apply pending migrations. Idempotent (no-op once created + up to date).
+# Only under Conductor; manual/CI runs use the .env DATABASE_URL as-is. We talk to
+# Postgres via `docker compose exec` so we don't hardcode the container name.
+if [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ]; then
+  ws_db="lumio_$(printf '%s' "$CONDUCTOR_WORKSPACE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '_')"
+  compose_psql() { docker compose --env-file .env -f infra/docker-compose.yml exec -T db psql -U lumio "$@"; }
+  if ! compose_psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$ws_db'" | grep -q 1; then
+    compose_psql -d postgres -c "CREATE DATABASE \"$ws_db\""
+    echo "run: created per-workspace DB $ws_db"
+  fi
+  pnpm --filter @lumio/db exec dotenv -e ../../.env -- prisma migrate deploy
+fi
+
 # Register a stable, named URL for this workspace with the shared portless proxy
 # (https://<workspace>.lumio.localhost:1355 -> the dev server on $PORT). We only
 # add the alias against the already-running proxy; we never start or restart it,
