@@ -34,12 +34,15 @@ export function FavoritesView() {
       title="Favorites"
       empty={FAVORITES_EMPTY}
       actionOptions={{ dropOnUnfavorite: true }}
-      collection={({ sort }) => ({
+      calendar={{ facetsEndpoint: catalogApiUrl(slug, "/photos/calendar?favorite=true") }}
+      collection={({ sort, month }) => ({
         endpoint: catalogApiUrl(slug, "/photos"),
-        params: new URLSearchParams({ sort, favorite: "true" }),
+        params: new URLSearchParams(
+          month ? { sort, favorite: "true", month } : { sort, favorite: "true" },
+        ),
         urlForId: (id) => photoHref(slug, id, undefined, sort),
         baseUrl: catalogPath(slug, "/favorites"),
-        key: `fav:${sort}`,
+        key: `fav:${sort}:${month ?? ""}`,
       })}
     />
   );
