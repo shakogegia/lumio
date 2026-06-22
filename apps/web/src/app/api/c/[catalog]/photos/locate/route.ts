@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // Resolve a photo id to its absolute index within a navigation scope, so the
 // client can open the lightbox at the right grid position. Read-only.
-export const GET = withCatalog(async (request, _context, { catalog: _catalog }) => {
+export const GET = withCatalog(async (request, _context, { catalog }) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) {
@@ -20,7 +20,7 @@ export const GET = withCatalog(async (request, _context, { catalog: _catalog }) 
     s: searchParams.get("s") ?? undefined,
     sort: searchParams.get("sort") ?? undefined,
   });
-  const index = await locatePhoto(id, scope);
+  const index = await locatePhoto(catalog.id, id, scope);
   if (index === null) {
     return NextResponse.json({ error: "Not found in scope" }, { status: 404 });
   }
