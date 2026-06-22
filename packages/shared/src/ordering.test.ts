@@ -38,6 +38,7 @@ describe("computeReorder (already-keyed list)", () => {
   it("is a no-op-equivalent when moved after its current predecessor", () => {
     const updates = computeReorder(keyed, "b", "a"); // b already after a
     expect(orderAfter(keyed, updates)).toEqual(["a", "b", "c"]);
+    expect(updates.length).toBe(0);
   });
 });
 
@@ -66,6 +67,17 @@ describe("computeReorder (backfills null positions)", () => {
     const updates = computeReorder(partial, "a", "b"); // a after b
     expect(orderAfter(partial, updates)).toEqual(["b", "a"]);
   });
+
+  it("keeps the moved row's update on a no-op move within an all-null list", () => {
+    const allNull: OrderedItem[] = [
+      { id: "a", position: null },
+      { id: "b", position: null },
+      { id: "c", position: null },
+    ];
+    const updates = computeReorder(allNull, "b", "a"); // b stays after a
+    expect(new Set(updates.map((u) => u.id))).toEqual(new Set(["a", "b", "c"]));
+    expect(orderAfter(allNull, updates)).toEqual(["a", "b", "c"]);
+  });
 });
 
 describe("computeReorder (edge cases)", () => {
@@ -74,6 +86,14 @@ describe("computeReorder (edge cases)", () => {
   });
 
   it("throws when movedId is not in the list", () => {
-    expect(() => computeReorder(keyed, "zzz", null)).toThrow();
+    expect(() => computeReorder(keyed, "zzz", null)).toThrow(/movedId/);
+  });
+
+  it("throws when afterId is not in the list", () => {
+    expect(() => computeReorder(keyed, "a", "zzz")).toThrow(/afterId/);
+  });
+
+  it("throws when afterId equals movedId", () => {
+    expect(() => computeReorder(keyed, "a", "a")).toThrow(/afterId/);
   });
 });

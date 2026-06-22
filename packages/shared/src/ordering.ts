@@ -45,6 +45,9 @@ export function computeReorder(
   if (afterId !== null && !items.some((i) => i.id === afterId)) {
     throw new Error(`computeReorder: afterId "${afterId}" not found`);
   }
+  if (afterId === movedId) {
+    throw new Error(`computeReorder: afterId cannot equal movedId`);
+  }
 
   // 1) Materialize a fully-keyed view in display order, recording backfills.
   const updates: PositionUpdate[] = [];
@@ -78,8 +81,11 @@ export function computeReorder(
   const newKey = generateKeyBetween(beforeKey, afterKey);
 
   // 3) Emit the moved row's update (overriding any backfill it may have gotten),
-  //    unless the key is unchanged (single-item / already-in-place).
-  if (newKey !== keyBy[movedId]) {
+  //    unless the key is unchanged vs. its ORIGINAL position (single-item /
+  //    already-in-place). Comparing against the original (not the backfill key)
+  //    ensures a null-positioned moved row always gets persisted.
+  const origPosition = items.find((it) => it.id === movedId)!.position;
+  if (newKey !== origPosition) {
     const without = updates.filter((u) => u.id !== movedId);
     without.push({ id: movedId, position: newKey });
     return without;
