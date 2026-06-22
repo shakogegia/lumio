@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { computeSelection } from "@/lib/grid-selection";
 import { catalogPath } from "@/lib/catalog-api";
+import { countLabel } from "@/lib/count-label";
 import type { FolderSummary } from "@/lib/catalog-fs-service";
 import { DiskFolderCard } from "./disk-folder-card";
 
@@ -59,7 +60,7 @@ export function FoldersSection({ slug, folders }: { slug: string; folders: Folde
     <section className="mb-8">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">
-          {sel.count > 0 ? `${sel.count} selected` : "Folders"}
+          {sel.count > 0 ? `${sel.count} selected` : countLabel(folders.length, "folder", "folders")}
         </h2>
         {sel.count > 0 && (
           <Button variant="ghost" size="sm" onClick={sel.clear}>
