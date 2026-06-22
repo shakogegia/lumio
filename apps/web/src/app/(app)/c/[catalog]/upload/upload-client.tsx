@@ -15,7 +15,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
@@ -50,8 +50,8 @@ export function UploadClient({
   const [targetAlbum, setTargetAlbum] = useState(initialTargetAlbum);
   const clearTargetAlbum = useCallback(() => {
     setTargetAlbum(undefined);
-    window.history.replaceState(null, "", "/upload");
-  }, []);
+    window.history.replaceState(null, "", catalogPath(slug, "/upload"));
+  }, [slug]);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [unsupportedCount, setUnsupportedCount] = useState(0);

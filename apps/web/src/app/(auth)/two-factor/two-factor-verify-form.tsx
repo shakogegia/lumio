@@ -29,7 +29,7 @@ export function TwoFactorVerifyForm() {
         setError(error.message ?? "That code didn’t work. Try again.");
         return;
       }
-      router.replace("/photos");
+      router.replace("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

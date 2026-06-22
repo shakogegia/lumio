@@ -32,7 +32,7 @@ export function SetupForm({ className }: { className?: string }) {
         setError(error.message ?? "Could not create the account.");
         return;
       }
-      router.replace("/photos");
+      router.replace("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

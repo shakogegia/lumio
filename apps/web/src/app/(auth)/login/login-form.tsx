@@ -32,7 +32,7 @@ export function LoginForm({ className }: { className?: string }) {
         router.replace("/two-factor");
         return;
       }
-      router.replace("/photos");
+      router.replace("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

@@ -6,7 +6,7 @@ export default function NotFound() {
       code="404"
       title="Nothing developed here."
       description="The page you're looking for doesn't exist. Let's get you back to your photos."
-      actions={[{ label: "Back to library", href: "/photos" }]}
+      actions={[{ label: "Back to library", href: "/" }]}
     />
   );
 }

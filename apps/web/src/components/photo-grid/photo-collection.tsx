@@ -15,7 +15,7 @@ import { photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
-import { catalogApiUrl } from "@/lib/catalog-api";
+import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
@@ -101,8 +101,8 @@ export function PhotoCollectionProvider({
   // close() can pop it (restoring grid scroll) rather than replacing the URL.
   const pushed = useRef(false);
   const url = useCallback(
-    (id: string) => (resolvedUrlForId ? resolvedUrlForId(id) : `/photo/${id}`),
-    [resolvedUrlForId],
+    (id: string) => (resolvedUrlForId ? resolvedUrlForId(id) : catalogPath(slug, `/photo/${id}`)),
+    [resolvedUrlForId, slug],
   );
 
   // Destructure the stable members of the store. usePhotoPages returns a fresh

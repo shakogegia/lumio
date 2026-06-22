@@ -22,7 +22,7 @@ export default function AppError({
       description="An unexpected error interrupted this page. You can try again, or head back to your library."
       actions={[
         { label: "Try again", onClick: reset },
-        { label: "Back to library", href: "/photos", variant: "outline" },
+        { label: "Back to library", href: "/", variant: "outline" },
       ]}
     />
   );
