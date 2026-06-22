@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HeaderBar } from "@/components/header-bar";
 import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
-import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
+import { usePhotoActions, type PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 
 /** The paginated source + lightbox URLs for the current sort/month. */
@@ -51,6 +51,17 @@ export interface PhotoLibraryViewProps {
   };
   /** Rendered between the toolbar and the grid (e.g. the folders section). */
   aboveGrid?: React.ReactNode;
+  /** Extra view-specific buttons appended to the header toolbar (after the grid
+   *  menus), e.g. an album's "Upload to album" / "Download album". */
+  headerActions?: React.ReactNode;
+  /** Extra view-specific buttons appended to the selection toolbar (after the
+   *  standard bulk actions), wired to the grid internals — e.g. an album's
+   *  "Set as cover" / "Remove from album". */
+  selectionActions?: (ctx: {
+    actions: PhotoActions;
+    selectedIds: Set<string>;
+    clearSelection: () => void;
+  }) => React.ReactNode;
 }
 
 export function PhotoLibraryView({
@@ -61,6 +72,8 @@ export function PhotoLibraryView({
   calendar,
   actionOptions,
   aboveGrid,
+  headerActions,
+  selectionActions,
 }: PhotoLibraryViewProps) {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
@@ -85,12 +98,19 @@ export function PhotoLibraryView({
           totalLabel={totalLabel}
           onCancel={sel.clear}
           actions={
-            <SelectionActions
-              actions={actions}
-              selectedIds={sel.selected}
-              gridRef={gridRef}
-              clearSelection={sel.clear}
-            />
+            <>
+              <SelectionActions
+                actions={actions}
+                selectedIds={sel.selected}
+                gridRef={gridRef}
+                clearSelection={sel.clear}
+              />
+              {selectionActions?.({
+                actions,
+                selectedIds: sel.selected,
+                clearSelection: sel.clear,
+              })}
+            </>
           }
         />
       ) : (
@@ -109,6 +129,7 @@ export function PhotoLibraryView({
                   onChange={setMonth}
                 />
               )}
+              {headerActions}
             </>
           }
         />
