@@ -4,7 +4,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import sharp from "sharp";
 import { processImage, SUPPORTED_EXTENSIONS } from "@lumio/ingest";
-import { INGEST_CONCURRENCY, PHOTOS_DIR } from "./config.js";
+import { INGEST_CONCURRENCY } from "./config.js";
 import { runPool } from "./pool.js";
 
 // Measures the dominant per-image cost (processImage: decode + 2× resize + hash).
@@ -15,12 +15,15 @@ import { runPool } from "./pool.js";
 // ~N cores (no oversubscription). The "← default" row is the current
 // INGEST_CONCURRENCY default (half the cores).
 //
+// The target directory is taken from the first CLI argument (default: ./photos).
 // Run against your real library:
-//   pnpm bench
-//   INGEST_CONCURRENCY=4 pnpm bench   # measure a specific pool size
+//   pnpm bench <dir>
+//   INGEST_CONCURRENCY=4 pnpm bench <dir>   # measure a specific pool size
+
+const TARGET_DIR = process.argv[2] ?? path.resolve(process.cwd(), "photos");
 
 async function listImages(): Promise<string[]> {
-  const entries = await readdir(PHOTOS_DIR, { recursive: true, withFileTypes: true });
+  const entries = await readdir(TARGET_DIR, { recursive: true, withFileTypes: true });
   return entries
     .filter((e) => e.isFile() && SUPPORTED_EXTENSIONS.has(path.extname(e.name).toLowerCase()))
     .map((e) => path.join(e.parentPath, e.name));
@@ -70,7 +73,7 @@ async function main(): Promise<void> {
 
   const all = await listImages();
   if (all.length === 0) {
-    console.error(`No images under PHOTOS_DIR=${PHOTOS_DIR}`);
+    console.error(`No images under TARGET_DIR=${TARGET_DIR}`);
     process.exit(1);
   }
   const sample = all.slice(0, Math.min(60, all.length));
