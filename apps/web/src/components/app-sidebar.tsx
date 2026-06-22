@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderTree } from "lucide-react";
+import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, SquareMousePointer } from "lucide-react";
 import { FeatureKey } from "@lumio/shared";
 import { useFeature } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
@@ -25,7 +25,7 @@ const PRIMARY: NavItem[] = [
 const FOLDERS_ITEM: NavItem = {
   href: "/folders",
   label: "Folders",
-  icon: FolderTree,
+  icon: SquareMousePointer,
   match: ["/folders"],
 };
 
