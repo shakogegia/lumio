@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS } from "@lumio/shared";
-import { CACHE_DIR, PHOTOS_DIR, TRASH_DIR } from "@/lib/paths";
+import { CACHE_DIR, TRASH_DIR } from "@/lib/paths";
 
 /**
  * Sum the bytes of every file under `dir` (recursively); 0 if the dir is absent.
@@ -58,17 +58,17 @@ export async function countImageFiles(dir: string): Promise<number> {
 }
 
 /** Catalog facts that are cheap to read from the DB (indexed count + latest row). */
-export async function getCatalogStats() {
+export async function getCatalogStats(catalogId: string) {
   const [photoCount, latest] = await Promise.all([
-    prisma.photo.count(),
+    prisma.photo.count({ where: { catalogId } }),
     prisma.photo.findFirst({
+      where: { catalogId },
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
   ]);
 
   return {
-    photosDir: PHOTOS_DIR,
     photoCount,
     lastIndexedAt: latest ? latest.updatedAt.toISOString() : null,
   };
@@ -87,43 +87,54 @@ type StorageSizes = {
   displaysSize: number;
   trashSize: number;
 };
-let storageSizeMemo: { at: number; sizes: StorageSizes } | null = null;
+const storageSizeMemos = new Map<string, { at: number; sizes: StorageSizes }>();
 
-export async function getStorageSizes(): Promise<StorageSizes> {
+export async function getStorageSizes(catalog: {
+  id: string;
+  path: string;
+}): Promise<StorageSizes> {
   const now = Date.now();
-  if (storageSizeMemo && now - storageSizeMemo.at < STORAGE_SIZE_TTL_MS) {
-    return storageSizeMemo.sizes;
+  const memo = storageSizeMemos.get(catalog.id);
+  if (memo && now - memo.at < STORAGE_SIZE_TTL_MS) {
+    return memo.sizes;
   }
   const [photosSize, thumbnailsSize, displaysSize, trashSize] = await Promise.all([
-    dirSize(PHOTOS_DIR),
-    dirSize(path.join(CACHE_DIR, "thumbnails")),
-    dirSize(path.join(CACHE_DIR, "displays")),
-    dirSize(TRASH_DIR),
+    dirSize(catalog.path),
+    dirSize(path.join(CACHE_DIR, catalog.id, "thumbnails")),
+    dirSize(path.join(CACHE_DIR, catalog.id, "displays")),
+    dirSize(path.join(TRASH_DIR, catalog.id)),
   ]);
   const sizes = { photosSize, thumbnailsSize, displaysSize, trashSize };
-  storageSizeMemo = { at: now, sizes };
+  storageSizeMemos.set(catalog.id, { at: now, sizes });
   return sizes;
 }
 
-// Image files actually on disk under PHOTOS_DIR. Compared against the DB photo
+// Image files actually on disk under catalog.path. Compared against the DB photo
 // count on the Settings page to reveal drift. Just a directory listing (no
 // stats), but still memoized + streamed so it never blocks the page. Its own
 // memo so the cheap count streams in independently of the slower size walk.
 const FILE_COUNT_TTL_MS = 60_000;
-let fileCountMemo: { at: number; count: number } | null = null;
+const fileCountMemos = new Map<string, { at: number; count: number }>();
 
-export async function getPhotoFileCount(): Promise<number> {
+export async function getPhotoFileCount(catalog: { id: string; path: string }): Promise<number> {
   const now = Date.now();
-  if (fileCountMemo && now - fileCountMemo.at < FILE_COUNT_TTL_MS) {
-    return fileCountMemo.count;
+  const memo = fileCountMemos.get(catalog.id);
+  if (memo && now - memo.at < FILE_COUNT_TTL_MS) {
+    return memo.count;
   }
-  const count = await countImageFiles(PHOTOS_DIR);
-  fileCountMemo = { at: now, count };
+  const count = await countImageFiles(catalog.path);
+  fileCountMemos.set(catalog.id, { at: now, count });
   return count;
 }
 
-/** Drop the memoized filesystem figures so the next read re-walks (manual recalc). */
-export function invalidateStorageStats(): void {
-  storageSizeMemo = null;
-  fileCountMemo = null;
+/** Drop the memoized filesystem figures so the next read re-walks (manual recalc).
+ *  Pass a catalogId to clear only that catalog, or omit to clear all. */
+export function invalidateStorageStats(catalogId?: string): void {
+  if (catalogId !== undefined) {
+    storageSizeMemos.delete(catalogId);
+    fileCountMemos.delete(catalogId);
+  } else {
+    storageSizeMemos.clear();
+    fileCountMemos.clear();
+  }
 }
