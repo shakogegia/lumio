@@ -38,7 +38,6 @@ export default async function PhotoPage({
     s?: string;
     sort?: string;
     folder?: string;
-    fsort?: string;
   }>;
 }) {
   const { catalog: slug, id } = await params;
