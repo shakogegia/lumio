@@ -59,7 +59,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-          <Toaster position="bottom-center" richColors />
+          <Toaster position="bottom-center" />
         </ThemeProvider>
       </body>
     </html>
