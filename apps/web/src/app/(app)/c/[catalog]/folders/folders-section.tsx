@@ -57,7 +57,7 @@ export function FoldersSection({ slug, folders }: { slug: string; folders: Folde
 
   return (
     <section className="mb-8">
-      <div className="mb-3 flex h-7 items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-muted-foreground">
           {sel.count > 0 ? `${sel.count} selected` : "Folders"}
         </h2>
