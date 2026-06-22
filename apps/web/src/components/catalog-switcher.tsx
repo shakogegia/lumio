@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Library, Plus } from "lucide-react";
+import { Check, Library, Plus, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
+import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,8 @@ export function CatalogSwitcher() {
   const [catalogs, setCatalogs] = useState<CatalogOption[]>([
     { id: current.id, slug: current.slug, name: current.name },
   ]);
+  // The create dialog owns its open state; the switcher just toggles it.
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,13 +93,23 @@ export function CatalogSwitcher() {
           );
         })}
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => setCreateOpen(true)}>
+          <Plus aria-hidden />
+          New catalog…
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/catalogs">
-            <Plus aria-hidden />
+            <Settings2 aria-hidden />
             Manage catalogs
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <CreateCatalogDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(catalog) => router.push(catalogPath(catalog.slug, "/photos"))}
+      />
     </DropdownMenu>
   );
 }
