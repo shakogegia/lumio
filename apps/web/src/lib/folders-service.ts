@@ -44,6 +44,7 @@ function albumsForSubtree(
 
 /** Recursive summary (counts + preview ids) for one folder. */
 async function folderSummary(
+  catalogId: string,
   folder: Folder,
   allFolders: Folder[],
   allAlbums: AlbumLite[],
@@ -53,7 +54,8 @@ async function folderSummary(
   const descendantIds = new Set(collectDescendantFolderIds(allFolders, folder.id));
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums, descendantIds);
   const childFolderCount = allFolders.filter((f) => f.parentId === folder.id).length;
-  const where = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const where = { catalogId, ...scopedWhere };
   const [totalPhotoCount, previews] = await Promise.all([
     db.photo.count({ where }),
     db.photo.findMany({ where, orderBy: PHOTO_ORDER, take: 4, select: { id: true } }),
@@ -67,33 +69,37 @@ async function folderSummary(
   };
 }
 
-export async function createFolder(input: CreateFolderInput, db: Db = prisma): Promise<FolderDTO> {
+export async function createFolder(catalogId: string, input: CreateFolderInput, db: Db = prisma): Promise<FolderDTO> {
   if (input.parentId) {
-    const parent = await db.folder.findUnique({ where: { id: input.parentId }, select: { id: true } });
+    const parent = await db.folder.findFirst({ where: { id: input.parentId, catalogId }, select: { id: true } });
     if (!parent) throw new FolderNotFoundError();
   }
-  const row = await db.folder.create({ data: { name: input.name, parentId: input.parentId ?? null } });
+  const row = await db.folder.create({ data: { name: input.name, parentId: input.parentId ?? null, catalogId } });
   return toFolderDTO(row);
 }
 
-export async function getFolder(id: string, db: Db = prisma): Promise<FolderDTO | null> {
-  const row = await db.folder.findUnique({ where: { id } });
+export async function getFolder(catalogId: string, id: string, db: Db = prisma): Promise<FolderDTO | null> {
+  const row = await db.folder.findFirst({ where: { id, catalogId } });
   return row ? toFolderDTO(row) : null;
 }
 
-export async function renameFolder(id: string, name: string, db: Db = prisma): Promise<FolderDTO> {
-  const found = await db.folder.findUnique({ where: { id }, select: { id: true } });
+export async function renameFolder(catalogId: string, id: string, name: string, db: Db = prisma): Promise<FolderDTO> {
+  const found = await db.folder.findFirst({ where: { id, catalogId }, select: { id: true } });
   if (!found) throw new FolderNotFoundError();
   const row = await db.folder.update({ where: { id }, data: { name } });
   return toFolderDTO(row);
 }
 
 export async function listFolderContents(
+  catalogId: string,
   folderId: string | null,
   db: Db = prisma,
 ): Promise<FolderContentsDTO | null> {
   const now = new Date();
-  const [allFolders, allAlbums] = await Promise.all([db.folder.findMany(), db.album.findMany()]);
+  const [allFolders, allAlbums] = await Promise.all([
+    db.folder.findMany({ where: { catalogId } }),
+    db.album.findMany({ where: { catalogId } }),
+  ]);
 
   let folder: FolderDTO | null = null;
   let breadcrumbs: FolderDTO[] = [];
@@ -107,19 +113,20 @@ export async function listFolderContents(
 
   const directChildFolders = allFolders.filter((f) => f.parentId === folderId);
   const subfolders = await Promise.all(
-    directChildFolders.map((child) => folderSummary(child, allFolders, allAlbums as AlbumLite[], now, db)),
+    directChildFolders.map((child) => folderSummary(catalogId, child, allFolders, allAlbums as AlbumLite[], now, db)),
   );
   subfolders.sort((a, b) => a.name.localeCompare(b.name));
 
   const directAlbums = allAlbums.filter((a) => a.folderId === folderId);
-  const albums: AlbumSummaryDTO[] = await Promise.all(directAlbums.map((a) => albumSummary(a, db, now)));
+  const albums: AlbumSummaryDTO[] = await Promise.all(directAlbums.map((a) => albumSummary(catalogId, a, db, now)));
 
   // Recursive deduplicated photo count of the viewed folder (for the header subtitle).
   let currentPhotoCount: number | null = null;
   if (folderId !== null) {
     const descendantIds = new Set(collectDescendantFolderIds(allFolders, folderId));
     const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
-    currentPhotoCount = await db.photo.count({ where: folderPhotoWhere({ regularAlbumIds, smartAlbums }, now) });
+    const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+    currentPhotoCount = await db.photo.count({ where: { catalogId, ...scopedWhere } });
   }
 
   return { folder, breadcrumbs, subfolders, albums, currentPhotoCount };
@@ -164,7 +171,7 @@ export async function deleteFolder(
   db: Db = prisma,
 ): Promise<void> {
   if (mode === "reparent") {
-    const folder = await db.folder.findUnique({ where: { id }, select: { parentId: true } });
+    const folder = await db.folder.findFirst({ where: { id }, select: { parentId: true } });
     if (!folder) throw new FolderNotFoundError();
     await db.$transaction([
       db.folder.updateMany({ where: { parentId: id }, data: { parentId: folder.parentId } }),
@@ -183,27 +190,31 @@ export async function deleteFolder(
   ]);
 }
 
-export async function listAllFolders(db: Db = prisma): Promise<FolderDTO[]> {
-  const rows = await db.folder.findMany({ orderBy: { name: "asc" } });
+export async function listAllFolders(catalogId: string, db: Db = prisma): Promise<FolderDTO[]> {
+  const rows = await db.folder.findMany({ where: { catalogId }, orderBy: { name: "asc" } });
   return rows.map(toFolderDTO);
 }
 
 export async function listFolderPhotos(
+  catalogId: string,
   id: string,
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage | null> {
   const now = new Date();
-  const allFolders = await db.folder.findMany({ select: { id: true, parentId: true } });
+  const allFolders = await db.folder.findMany({ where: { catalogId }, select: { id: true, parentId: true } });
   if (!allFolders.some((f) => f.id === id)) return null;
   const descendantIds = new Set(collectDescendantFolderIds(allFolders, id));
   const allAlbums = await db.album.findMany({
+    where: { catalogId },
     select: { id: true, isSmart: true, rules: true, folderId: true },
   });
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
-  const scoped = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
   const { limit, offset, sort, month } = params;
-  const where = month ? { AND: [scoped, { sortDate: monthRange(month) }] } : scoped;
+  const where = month
+    ? { catalogId, AND: [scopedWhere, { sortDate: monthRange(month) }] }
+    : { catalogId, ...scopedWhere };
   const [rows, total] = await Promise.all([
     db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
     db.photo.count({ where }),

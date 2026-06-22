@@ -16,13 +16,15 @@ type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
  *  Exported so the folders service can reuse identical album-card shaping.
  *  `now` is injected for smart-album evaluation. */
 export async function albumSummary(
+  catalogId: string,
   row: Album,
   db: Db = prisma,
   now: Date = new Date(),
 ): Promise<AlbumSummaryDTO> {
   const base = toAlbumDTO(row);
   if (row.isSmart) {
-    const where = smartAlbumWhere(base.rules as SmartAlbumRules, now);
+    const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now);
+    const where = { catalogId, ...smartWhere };
     const [photoCount, cover] = await Promise.all([
       db.photo.count({ where }),
       db.photo.findFirst({ where, orderBy: PHOTO_ORDER, select: { id: true } }),
@@ -51,20 +53,21 @@ export async function albumSummary(
   return { ...base, photoCount, coverPhotoId };
 }
 
-export async function listAlbumSummaries(db: Db = prisma): Promise<AlbumSummaryDTO[]> {
-  const albums = await db.album.findMany({ orderBy: { createdAt: "asc" } });
+export async function listAlbumSummaries(catalogId: string, db: Db = prisma): Promise<AlbumSummaryDTO[]> {
+  const albums = await db.album.findMany({ where: { catalogId }, orderBy: { createdAt: "asc" } });
   const now = new Date();
-  return Promise.all(albums.map((a) => albumSummary(a, db, now)));
+  return Promise.all(albums.map((a) => albumSummary(catalogId, a, db, now)));
 }
 
-export async function getAlbum(id: string, db: Db = prisma): Promise<AlbumDTO | null> {
-  const row = await db.album.findUnique({ where: { id } });
+export async function getAlbum(catalogId: string, id: string, db: Db = prisma): Promise<AlbumDTO | null> {
+  const row = await db.album.findFirst({ where: { id, catalogId } });
   return row ? toAlbumDTO(row) : null;
 }
 
-export async function createAlbum(input: CreateAlbumInput, db: Db = prisma): Promise<AlbumDTO> {
+export async function createAlbum(catalogId: string, input: CreateAlbumInput, db: Db = prisma): Promise<AlbumDTO> {
   const row = await db.album.create({
     data: {
+      catalogId,
       name: input.name,
       isSmart: input.isSmart,
       rules: input.isSmart ? (input.rules as object) : undefined,
@@ -74,8 +77,8 @@ export async function createAlbum(input: CreateAlbumInput, db: Db = prisma): Pro
   return toAlbumDTO(row);
 }
 
-export async function deleteAlbum(id: string, db: Db = prisma): Promise<void> {
-  const found = await db.album.findUnique({ where: { id }, select: { id: true } });
+export async function deleteAlbum(catalogId: string, id: string, db: Db = prisma): Promise<void> {
+  const found = await db.album.findFirst({ where: { id, catalogId }, select: { id: true } });
   if (!found) throw new AlbumNotFoundError();
   await db.album.delete({ where: { id } });
 }
@@ -86,13 +89,13 @@ export async function deleteAlbum(id: string, db: Db = prisma): Promise<void> {
  * cascades to `albumPhoto` membership rows exactly like the single delete.
  * Returns the number of albums actually removed.
  */
-export async function deleteAlbums(ids: string[], db: Db = prisma): Promise<number> {
-  const { count } = await db.album.deleteMany({ where: { id: { in: ids } } });
+export async function deleteAlbums(catalogId: string, ids: string[], db: Db = prisma): Promise<number> {
+  const { count } = await db.album.deleteMany({ where: { catalogId, id: { in: ids } } });
   return count;
 }
 
-export async function renameAlbum(id: string, name: string, db: Db = prisma): Promise<AlbumDTO> {
-  const found = await db.album.findUnique({ where: { id }, select: { id: true } });
+export async function renameAlbum(catalogId: string, id: string, name: string, db: Db = prisma): Promise<AlbumDTO> {
+  const found = await db.album.findFirst({ where: { id, catalogId }, select: { id: true } });
   if (!found) throw new AlbumNotFoundError();
   const row = await db.album.update({ where: { id }, data: { name } });
   return toAlbumDTO(row);
@@ -104,10 +107,11 @@ export async function renameAlbum(id: string, name: string, db: Db = prisma): Pr
  * one. Returns null when the album does not exist.
  */
 export async function albumPhotoWhere(
+  catalogId: string,
   albumId: string,
   db: Pick<PrismaClient, "album"> = prisma,
 ): Promise<Prisma.PhotoWhereInput | null> {
-  const album = await db.album.findUnique({ where: { id: albumId } });
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId } });
   if (!album) return null;
   const dto = toAlbumDTO(album);
   return dto.isSmart
@@ -116,11 +120,12 @@ export async function albumPhotoWhere(
 }
 
 export async function listAlbumPhotos(
+  catalogId: string,
   id: string,
   params: PhotosQuery,
   db: Db = prisma,
 ): Promise<PhotosPage | null> {
-  const scoped = await albumPhotoWhere(id, db);
+  const scoped = await albumPhotoWhere(catalogId, id, db);
   if (scoped === null) return null;
   const { limit, offset, sort, month } = params;
   const where = month ? { AND: [scoped, { sortDate: monthRange(month) }] } : scoped;
@@ -134,10 +139,11 @@ export async function listAlbumPhotos(
 /** Minimal {id, path} for every photo in an album (smart or regular), in
  *  canonical order, for zipping. Returns null when the album does not exist. */
 export async function listAlbumPhotosForDownload(
+  catalogId: string,
   id: string,
   db: Db = prisma,
 ): Promise<{ id: string; path: string }[] | null> {
-  const where = await albumPhotoWhere(id, db);
+  const where = await albumPhotoWhere(catalogId, id, db);
   if (where === null) return null;
   return db.photo.findMany({
     where,
@@ -163,11 +169,12 @@ export async function removePhotoFromAlbum(albumId: string, photoId: string, db:
 }
 
 export async function addPhotosToAlbum(
+  catalogId: string,
   albumId: string,
   photoIds: string[],
   db: Db = prisma,
 ): Promise<number> {
-  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { isSmart: true } });
   if (!album) throw new AlbumNotFoundError();
   if (album.isSmart) throw new SmartAlbumMutationError("cannot add photos to a smart album");
   const result = await db.albumPhoto.createMany({
@@ -182,8 +189,8 @@ export async function addPhotosToAlbum(
  * be a member. The pin is honored by `listAlbumSummaries` only while the photo
  * stays a member (see the membership check there) and is eager-cleared on removal.
  */
-export async function setAlbumCover(albumId: string, photoId: string, db: Db = prisma): Promise<void> {
-  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+export async function setAlbumCover(catalogId: string, albumId: string, photoId: string, db: Db = prisma): Promise<void> {
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { isSmart: true } });
   if (!album) throw new AlbumNotFoundError();
   if (album.isSmart) throw new SmartAlbumMutationError("cannot set a cover on a smart album");
   const member = await db.albumPhoto.findUnique({
@@ -195,11 +202,12 @@ export async function setAlbumCover(albumId: string, photoId: string, db: Db = p
 }
 
 export async function removePhotosFromAlbum(
+  catalogId: string,
   albumId: string,
   photoIds: string[],
   db: Db = prisma,
 ): Promise<number> {
-  const album = await db.album.findUnique({ where: { id: albumId }, select: { isSmart: true } });
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { isSmart: true } });
   if (!album) throw new AlbumNotFoundError();
   if (album.isSmart) throw new SmartAlbumMutationError("cannot remove photos from a smart album");
   const result = await db.albumPhoto.deleteMany({
