@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
-import { WorkerActivity } from "@/components/worker-activity";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
@@ -44,7 +42,8 @@ export function AppSidebar() {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex h-dvh w-[76px] flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
-      {/* Brand — becomes a back button on the photo detail page */}
+      {/* Brand logo doubles as the catalog switcher; on the photo detail page it
+          becomes a back button instead. */}
       {onPhotoDetail ? (
         <button
           type="button"
@@ -60,20 +59,8 @@ export function AppSidebar() {
           <span className="sr-only">Back</span>
         </button>
       ) : (
-        <Link
-          href={catalogPath(slug, "/photos")}
-          title="Lumio"
-          className="group mt-5 flex h-11 w-11 items-center justify-center rounded-2xl text-foreground"
-        >
-          <WorkerActivity />
-          <span className="sr-only">Lumio</span>
-        </Link>
-      )}
-
-      {/* Catalog switcher, just under the brand */}
-      <div className="mt-3 flex flex-col items-center">
         <CatalogSwitcher />
-      </div>
+      )}
 
       {/* Primary nav — vertically centered in the rail */}
       <nav className="flex flex-1 flex-col items-center justify-center gap-1">
