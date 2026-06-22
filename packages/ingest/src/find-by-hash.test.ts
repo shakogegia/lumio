@@ -17,13 +17,13 @@ function fakeDb(result: { id: string } | null) {
 describe("findPhotoByHash", () => {
   it("returns the existing photo when the hash matches", async () => {
     const db = fakeDb({ id: "p1" });
-    const found = await findPhotoByHash("abc", db as never);
+    const found = await findPhotoByHash("cat1", "abc", db as never);
     expect(found).toEqual({ id: "p1" });
-    expect(db.calls[0]).toEqual({ where: { hash: "abc" }, select: { id: true } });
+    expect(db.calls[0]).toEqual({ where: { catalogId: "cat1", hash: "abc" }, select: { id: true } });
   });
 
   it("returns null when no photo matches", async () => {
     const db = fakeDb(null);
-    expect(await findPhotoByHash("missing", db as never)).toBeNull();
+    expect(await findPhotoByHash("cat1", "missing", db as never)).toBeNull();
   });
 });

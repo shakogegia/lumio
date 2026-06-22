@@ -7,6 +7,7 @@ import { storePhoto } from "./store.js";
 
 export interface IngestDeps {
   db: Pick<PrismaClient, "photo">;
+  catalogId: string;
   thumbnailsDir: string;
   displaysDir: string;
   photosDir: string;
@@ -23,6 +24,7 @@ export async function ingestPath(
   const processed = await processImage(absPath);
   return storePhoto(
     {
+      catalogId: deps.catalogId,
       path: relPath,
       source,
       processed,
@@ -36,13 +38,17 @@ export async function ingestPath(
 
 export interface RemoveDeps {
   db: Pick<PrismaClient, "photo">;
+  catalogId: string;
   thumbnailsDir: string;
   displaysDir: string;
   editedDisplaysDir: string;
 }
 
 export async function removePath(relPath: string, deps: RemoveDeps): Promise<void> {
-  const found = await deps.db.photo.findUnique({ where: { path: relPath }, select: { id: true } });
+  const found = await deps.db.photo.findUnique({
+    where: { catalogId_path: { catalogId: deps.catalogId, path: relPath } },
+    select: { id: true },
+  });
   if (!found) return;
   await deps.db.photo.delete({ where: { id: found.id } });
   await rm(path.join(deps.thumbnailsDir, `${found.id}.webp`), { force: true });

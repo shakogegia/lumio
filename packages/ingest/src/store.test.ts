@@ -42,6 +42,7 @@ describe("storePhoto", () => {
 
     const result = await storePhoto(
       {
+        catalogId: "cat1",
         path: "vacation/img.jpg",
         source: PhotoSource.filesystem,
         processed,
@@ -60,9 +61,11 @@ describe("storePhoto", () => {
     expect(db.calls).toHaveLength(1);
 
     const args = db.calls[0] as {
+      where: Record<string, unknown>;
       create: Record<string, unknown>;
       update: Record<string, unknown>;
     };
+    expect(args.where).toEqual({ catalogId_path: { catalogId: "cat1", path: "vacation/img.jpg" } });
     expect(args.create.fileSize).toBe(12345);
     expect(args.create.fileMtimeMs).toBe(1710408413000.5);
     expect(args.update.fileSize).toBe(12345);
@@ -73,6 +76,7 @@ describe("storePhoto", () => {
     const db = fakeDb("photo123");
     await storePhoto(
       {
+        catalogId: "cat1",
         path: "vacation/img.jpg",
         source: PhotoSource.upload,
         processed,
@@ -95,6 +99,7 @@ describe("storePhoto", () => {
     const db = fakeDb("photo123");
     await storePhoto(
       {
+        catalogId: "cat1",
         path: "vacation/img.jpg",
         source: PhotoSource.filesystem,
         processed,
@@ -118,6 +123,7 @@ describe("storePhoto", () => {
     const db = fakeDb("p");
     await storePhoto(
       {
+        catalogId: "cat1",
         path: "with-exif.jpg",
         source: PhotoSource.filesystem,
         processed, // processed.takenAt = 2024-03-14T09:26:53.000Z
@@ -145,6 +151,7 @@ describe("storePhoto", () => {
     const db = fakeDb("p");
     await storePhoto(
       {
+        catalogId: "cat1",
         path: "no-exif-a.png",
         source: PhotoSource.filesystem,
         processed: { ...processed, takenAt: null },
@@ -164,6 +171,7 @@ describe("storePhoto", () => {
     const db = fakeDb("p");
     await storePhoto(
       {
+        catalogId: "cat1",
         path: "no-exif-b.png",
         source: PhotoSource.filesystem,
         processed: { ...processed, takenAt: null },
@@ -177,5 +185,16 @@ describe("storePhoto", () => {
     expect(args.create.fileCreatedAt).toEqual(new Date(1710408413000)); // created later
     expect(args.create.fileModifiedAt).toEqual(new Date(1700000000000)); // modified earlier
     expect(args.create.sortDate).toEqual(new Date(1700000000000)); // earliest (modified) wins
+  });
+
+  it("upserts by (catalogId, path) and stores catalogId on create", async () => {
+    const calls: any[] = [];
+    const db = { photo: { upsert: async (args: any) => { calls.push(args); return { id: "p1" }; } } };
+    await storePhoto(
+      { catalogId: "cat1", path: "2024/a.jpg", source: PhotoSource.filesystem, processed, fileSize: 1, fileMtimeMs: 2, fileBirthtimeMs: 3 },
+      { db: db as never, thumbnailsDir: path.join(dir, "tc"), displaysDir: path.join(dir, "dc") },
+    );
+    expect(calls[0].where).toEqual({ catalogId_path: { catalogId: "cat1", path: "2024/a.jpg" } });
+    expect(calls[0].create.catalogId).toBe("cat1");
   });
 });

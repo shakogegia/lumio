@@ -44,6 +44,7 @@ describe("ingestPath", () => {
 
     const result = await ingestPath("sub/img.jpg", {
       db: fakeDb as never,
+      catalogId: "cat1",
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
       photosDir: tmpPhotos,
@@ -51,7 +52,7 @@ describe("ingestPath", () => {
 
     expect(result).toEqual({ id: "pX" });
     expect(calls).toHaveLength(1);
-    expect((calls[0] as { where: { path: string } }).where).toEqual({ path: "sub/img.jpg" });
+    expect((calls[0] as { where: { catalogId_path: { catalogId: string; path: string } } }).where).toEqual({ catalogId_path: { catalogId: "cat1", path: "sub/img.jpg" } });
 
     const payload = calls[0] as {
       create: { fileSize: unknown; fileMtimeMs: unknown };
@@ -94,6 +95,7 @@ describe("removePath", () => {
 
     await removePath("sub/img.jpg", {
       db: fakeDb as never,
+      catalogId: "cat1",
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
       editedDisplaysDir: tmpEditedDisplays,
@@ -122,6 +124,7 @@ describe("removePath", () => {
 
     await removePath("nonexistent/img.jpg", {
       db: fakeDb as never,
+      catalogId: "cat1",
       thumbnailsDir: tmpThumbs,
       displaysDir: tmpDisplays,
       editedDisplaysDir: tmpEditedDisplays,
