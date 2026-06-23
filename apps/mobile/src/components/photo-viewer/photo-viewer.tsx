@@ -229,7 +229,6 @@ export function PhotoViewer({
               <ViewerChrome
                 photo={activePhoto}
                 topInset={insets.top}
-                bottomInset={insets.bottom}
                 isFavorite={isFavorite}
                 onClose={flyToTile}
                 onShare={share}

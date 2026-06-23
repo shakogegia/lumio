@@ -18,7 +18,6 @@ const FAVORITE_RED = "#FF375F";
 export function ViewerChrome({
   photo,
   topInset,
-  bottomInset,
   isFavorite,
   onClose,
   onShare,
@@ -27,7 +26,6 @@ export function ViewerChrome({
 }: {
   photo: PhotoDTO;
   topInset: number;
-  bottomInset: number;
   isFavorite: boolean;
   onClose: () => void;
   onShare: () => void;
@@ -47,7 +45,7 @@ export function ViewerChrome({
         <GlassCircle onPress={onClose} label="Close" solid={solid}>
           <Icon name="chevron.backward" fallback="‹" tint={fg} />
         </GlassCircle>
-        <GlassContainer solid={solid} style={styles.titlePill} radius={20}>
+        <GlassContainer solid={solid} style={styles.titlePill} radius={21}>
           <Text style={[styles.title, { color: fg }]} numberOfLines={1}>
             {title}
           </Text>
@@ -60,12 +58,12 @@ export function ViewerChrome({
         <View style={styles.side} />
       </View>
 
-      <View style={[styles.bottom, { paddingBottom: Math.max(bottomInset, 10) }]} pointerEvents="box-none">
+      <View style={[styles.bottom, styles.bottomPad]} pointerEvents="box-none">
         <GlassCircle onPress={onShare} label="Share" solid={solid}>
           <Icon name="square.and.arrow.up" fallback="⤴" tint={fg} />
         </GlassCircle>
 
-        <GlassContainer solid={solid} style={styles.pill} radius={22} interactive>
+        <GlassContainer solid={solid} style={styles.pill} radius={21} interactive>
           <PillButton onPress={onToggleFavorite} label="Favorite">
             <Icon
               name={isFavorite ? "heart.fill" : "heart"}
@@ -148,7 +146,7 @@ function GlassCircle({
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6}>
-      <GlassContainer solid={solid} style={styles.circle} radius={22} interactive>
+      <GlassContainer solid={solid} style={styles.circle} radius={21} interactive>
         {children}
       </GlassContainer>
     </Pressable>
@@ -191,15 +189,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
   },
-  side: { width: 44 },
+  side: { width: 42 },
   titlePill: {
-    height: 44, // match the back-arrow circle so the header row is even
+    height: 42, // match the back-arrow capsule so the header row is even
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
-    borderRadius: 20,
+    paddingHorizontal: 28,
+    borderRadius: 21,
     overflow: "hidden",
-    maxWidth: "62%",
+    minWidth: 200,
+    maxWidth: "78%",
   },
   title: { fontSize: 15, fontWeight: "600", lineHeight: 18 },
   subtitle: { fontSize: 11, lineHeight: 13, opacity: 0.6 },
@@ -213,16 +212,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
   },
+  // Sit near the very bottom (tab-bar level), not lifted by the safe-area inset.
+  bottomPad: { paddingBottom: 16 },
   circle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  pill: { height: 44, borderRadius: 22, flexDirection: "row", alignItems: "center", overflow: "hidden" },
-  pillButton: { paddingHorizontal: 16, height: 44, alignItems: "center", justifyContent: "center" },
+  pill: { height: 42, borderRadius: 21, flexDirection: "row", alignItems: "center", overflow: "hidden" },
+  pillButton: { paddingHorizontal: 16, height: 42, alignItems: "center", justifyContent: "center" },
   dim: { opacity: 0.4 },
   fallback: { fontSize: 20 },
   // Elevation shadow on the (unclipped) wrapper so the glass lifts off the photo.
