@@ -52,7 +52,7 @@ export function ZoomableImage({
   step: (delta: 1 | -1) => void;
   /** Renders the header above the stage from the stage's live zoom state. Injected
    *  by the lightbox so the editor never imports lightbox chrome. */
-  renderHeader: (zoom: ZoomHeaderProps) => ReactNode;
+  renderHeader: (zoomHeader: ZoomHeaderProps) => ReactNode;
 }) {
   const { slug } = useCatalog();
   const { working, editing, cropMode, orientedBase, setBaseSize } = useEditSession();
