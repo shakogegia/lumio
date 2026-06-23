@@ -258,3 +258,16 @@ model WorkerStatus {
   activity   String   @default("idle") // "idle" | "watching" | "importing N" | "running: <type>"
   jobId      String?
 }
+
+model WorkerLog {
+  id        String   @id @default(cuid())
+  level     String // "error" | "warn" | "info" | "debug"
+  scope     String? // "scan" | "watch" | "consumer" | "heartbeat" | "startup"
+  message   String
+  catalogId String?
+  jobId     String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([level, createdAt])
+}

@@ -8,4 +8,4 @@ export * from "./catalogs.js";
 export * from "./user-settings.js";
 export * from "./features.js";
 export { PhotoSource, Prisma } from "@prisma/client";
-export type { Photo, Album, AlbumPhoto, Folder, TrashedPhoto, Job, WorkerStatus, Catalog, UserSettings, PrismaClient } from "@prisma/client";
+export type { Photo, Album, AlbumPhoto, Folder, TrashedPhoto, Job, WorkerStatus, WorkerLog, Catalog, UserSettings, PrismaClient } from "@prisma/client";
