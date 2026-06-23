@@ -10,7 +10,7 @@ import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mut
 import { useCatalog } from "@/lib/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
-import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import type { PhotoGridHandle } from "@/features/photo-grid";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 

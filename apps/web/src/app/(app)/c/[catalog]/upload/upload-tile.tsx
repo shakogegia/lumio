@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Loader2, RotateCw } from "lucide-react";
 import { colorLabelHex, type ColorLabel } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
-import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { SelectionRing } from "@/features/photo-grid";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
 import { catalogApiUrl } from "@/lib/catalog-api";

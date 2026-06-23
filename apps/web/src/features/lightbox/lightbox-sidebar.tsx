@@ -31,8 +31,8 @@ import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { removePhotoFromAlbum } from "@/lib/photo-mutations";
-import { usePhotoCollection } from "./photo-collection";
-import { LightboxEditPanel } from "./lightbox-edit-panel";
+import { usePhotoCollection } from "@/features/photo-grid";
+import { LightboxEditPanel } from "@/features/photo-editor";
 import { LightboxTab } from "@/lib/lightbox-tab";
 
 export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {

@@ -18,7 +18,7 @@ import { useImageLoaded } from "@/lib/use-image-loaded";
 import { baseDisplayUrl, displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
-import { MAX_ZOOM } from "@/lib/zoom-math";
+import { MAX_ZOOM } from "./zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
 import { useEditSession } from "./use-edit-session";

@@ -13,7 +13,7 @@ import {
   zoomToward,
   type Offset,
   type Size,
-} from "@/lib/zoom-math";
+} from "./zoom-math";
 
 /** Below this margin above fit we treat the image as "not zoomed". */
 const ZOOM_EPSILON = 0.5;

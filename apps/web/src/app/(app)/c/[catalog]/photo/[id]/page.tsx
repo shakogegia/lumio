@@ -5,9 +5,8 @@ import { parseDetailScope } from "@/lib/photo-detail-loader";
 import { getPhoto } from "@/lib/photos-service";
 import { locatePhoto } from "@/lib/locate-photo";
 import { getCatalogForSlug } from "@/lib/active-catalog";
-import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
-import { PhotoGrid } from "@/components/photo-grid/photo-grid";
-import { Lightbox } from "@/components/photo-grid/lightbox";
+import { PhotoCollectionProvider, PhotoGrid } from "@/features/photo-grid";
+import { Lightbox } from "@/features/lightbox";
 
 export const dynamic = "force-dynamic";
 

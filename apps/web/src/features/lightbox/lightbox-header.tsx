@@ -1,7 +1,7 @@
 "use client";
 
 import type { PhotoDTO } from "@lumio/shared";
-import { ZoomControls } from "./zoom-controls";
+import { ZoomControls } from "@/features/photo-editor";
 import { LightboxActions } from "./lightbox-actions";
 
 /**

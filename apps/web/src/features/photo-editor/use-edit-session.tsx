@@ -24,7 +24,7 @@ import {
 import { useConfirm } from "@/components/confirm-dialog";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
-import { usePhotoCollection } from "./photo-collection";
+import { usePhotoCollection } from "@/features/photo-grid";
 
 interface EditSessionValue {
   /** The recipe being previewed (may differ from what's saved on the photo). */

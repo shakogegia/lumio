@@ -4,14 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PhotoDTO } from "@lumio/shared";
 import { renditionVersion } from "@/lib/rendition-url";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
-import { usePhotoCollection } from "./photo-collection";
-import { EditSessionProvider, useEditSession } from "./use-edit-session";
+import { usePhotoCollection } from "@/features/photo-grid";
+import { EditSessionProvider, useEditSession } from "@/features/photo-editor";
+import { ZoomableImage } from "@/features/photo-editor";
 import { useLightboxKeyboard } from "./use-lightbox-keyboard";
-import { useToggleFavorite } from "./use-favorite";
+import { useToggleFavorite } from "@/features/photo-grid";
 import { LightboxHeader } from "./lightbox-header";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
-import { ZoomableImage } from "./zoomable-image";
 
 type StripItem = { id: string; index: number; v: number };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Folder as FolderIcon } from "lucide-react";
-import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { folderSubtitle } from "@/lib/folder-subtitle";
 import type { FolderSummary } from "@/lib/catalog-fs-service";

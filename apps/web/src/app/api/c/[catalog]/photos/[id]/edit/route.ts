@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { editPhotoSchema } from "@lumio/shared";
-import { applyPhotoEdits } from "@/lib/photo-edits-service";
+import { applyPhotoEdits } from "@/features/photo-editor/server/photo-edits-service";
 import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";

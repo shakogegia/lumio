@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MAX_ZOOM } from "@/lib/zoom-math";
+import { MAX_ZOOM } from "./zoom-math";
 import { ZoomSlider } from "./zoom-slider";
 
 export function ZoomControls({

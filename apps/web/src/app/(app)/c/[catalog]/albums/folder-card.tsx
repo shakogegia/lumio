@@ -2,7 +2,7 @@
 
 import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 } from "lucide-react";
 import type { FolderSummaryDTO } from "@lumio/shared";
-import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import {

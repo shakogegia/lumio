@@ -21,9 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useConfirm } from "@/components/confirm-dialog";
-import { usePhotoCollection } from "./photo-collection";
-import { useEditSession } from "./use-edit-session";
-import { useToggleFavorite } from "./use-favorite";
+import { usePhotoCollection, useToggleFavorite } from "@/features/photo-grid";
+import { useEditSession } from "@/features/photo-editor";
 
 /** Icon-button row for the lightbox header: reset edits (when edited),
  *  favorite, download, move to trash. */
