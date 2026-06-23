@@ -131,17 +131,36 @@ export function aspectCrop(e: PhotoEdits, preset: AspectPreset, wo: number, ho: 
   return { ...e, crop: centeredAspectCrop(ratio, wo, ho, deg) };
 }
 
+/** The crop actually applied when previewing/baking `e` against an oriented base of
+ *  `ow×oh` (post coarse-rotate). Explicit crop wins; else a straighten auto-fills a
+ *  centered inscribed crop; else the full frame. Normalized to the straightened (O′)
+ *  box. Single source for the 3 sites that used to inline this. */
+export function effectiveCrop(e: PhotoEdits | null, ow: number, oh: number): CropRect {
+  if (e?.crop) return e.crop;
+  const deg = e?.straighten ?? 0;
+  if (deg !== 0) return centeredAspectCrop(ow / oh, ow, oh, deg);
+  return { x: 0, y: 0, w: 1, h: 1 };
+}
+
+/** Output { w, h } of the recipe applied to an oriented `ow×oh` base: straighten
+ *  expands to the O′ box, then the effective crop selects a sub-rect. */
+export function outputSize(e: PhotoEdits | null, ow: number, oh: number): { w: number; h: number } {
+  const deg = e?.straighten ?? 0;
+  const op = straightenedSize(ow, oh, deg);
+  const crop = effectiveCrop(e, ow, oh);
+  return {
+    w: Math.max(1, Math.round(crop.w * op.w)),
+    h: Math.max(1, Math.round(crop.h * op.h)),
+  };
+}
+
 /** Predicted [width, height] after the recipe, for optimistic store patching.
- *  Mirrors the bake: straighten with no explicit crop auto-fills an inscribed crop. */
+ *  Thin wrapper over outputSize that first applies the coarse-rotate axis swap. */
 export function orientedSize(w: number, h: number, e: PhotoEdits | null): [number, number] {
   if (!e) return [w, h];
   const [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [h, w] : [w, h];
-  const deg = e.straighten ?? 0;
-  const op = straightenedSize(ow, oh, deg);
-  const crop = e.crop ?? (deg !== 0 ? centeredAspectCrop(ow / oh, ow, oh, deg) : null);
-  const W = crop ? Math.round(crop.w * op.w) : Math.round(op.w);
-  const H = crop ? Math.round(crop.h * op.h) : Math.round(op.h);
-  return [Math.max(1, W), Math.max(1, H)];
+  const { w: W, h: H } = outputSize(e, ow, oh);
+  return [W, H];
 }
 
 function coerceCrop(value: unknown): CropRect | null {

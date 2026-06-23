@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PhotoEdits } from "./types.js";
 import {
   NO_EDITS,
   EDITS_VERSION,
@@ -16,6 +17,8 @@ import {
   setStraighten,
   setCrop,
   aspectCrop,
+  effectiveCrop,
+  outputSize,
 } from "./photo-edits.js";
 
 const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotate, flipH, flipV });
@@ -221,5 +224,39 @@ describe("edits schema version", () => {
 
   it("sameEdits ignores version (it is metadata, not a visual field)", () => {
     expect(sameEdits({ ...NO_EDITS, version: 1 }, { ...NO_EDITS, version: 99 })).toBe(true);
+  });
+});
+
+describe("effectiveCrop / outputSize", () => {
+  it("effectiveCrop returns the explicit crop when present", () => {
+    const c = { x: 0.1, y: 0.1, w: 0.5, h: 0.5 };
+    expect(effectiveCrop({ ...NO_EDITS, crop: c }, 400, 200)).toEqual(c);
+  });
+
+  it("effectiveCrop is the full frame with no crop and no straighten", () => {
+    expect(effectiveCrop(NO_EDITS, 400, 200)).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+    expect(effectiveCrop(null, 400, 200)).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+  });
+
+  it("effectiveCrop auto-fills an inscribed crop when straightened with no explicit crop", () => {
+    const c = effectiveCrop({ ...NO_EDITS, straighten: 10 }, 400, 200);
+    expect(c.w).toBeLessThan(1);
+    expect(c.h).toBeLessThan(1);
+    expect(c.x).toBeGreaterThan(0);
+  });
+
+  it("outputSize equals orientedSize across the rotate × straighten × crop matrix", () => {
+    const cases: PhotoEdits[] = [
+      NO_EDITS,
+      { ...NO_EDITS, rotate: 90 },
+      { ...NO_EDITS, straighten: 12 },
+      { ...NO_EDITS, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } },
+      { ...NO_EDITS, rotate: 270, crop: { x: 0.1, y: 0.1, w: 0.4, h: 0.4 } },
+    ];
+    for (const e of cases) {
+      const [W, H] = orientedSize(400, 200, e);
+      const [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [200, 400] : [400, 200];
+      expect(outputSize(e, ow, oh)).toEqual({ w: W, h: H });
+    }
   });
 });
