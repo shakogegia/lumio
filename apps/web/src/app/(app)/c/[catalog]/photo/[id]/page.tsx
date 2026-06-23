@@ -1,10 +1,10 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { parseDetailScope } from "@/lib/photo-detail-loader";
-import { getPhoto } from "@/lib/photos-service";
-import { locatePhoto } from "@/lib/locate-photo";
-import { getCatalogForSlug } from "@/lib/active-catalog";
+import { parseDetailScope } from "@/lib/server/photo-detail-loader";
+import { getPhoto } from "@/lib/server/photos-service";
+import { locatePhoto } from "@/lib/server/locate-photo";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
 import { PhotoCollectionProvider, PhotoGrid } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
 

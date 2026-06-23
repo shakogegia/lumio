@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
-import { getPhoto } from "@/lib/photos-service";
-import { originalPath } from "@/lib/paths";
-import { attachmentDisposition, jpegName } from "@/lib/download-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { getPhoto } from "@/lib/server/photos-service";
+import { originalPath } from "@/lib/server/server-paths";
+import { attachmentDisposition, jpegName } from "@/lib/server/download-archive";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

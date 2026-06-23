@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/server/auth";
 
 /** Current session (or null) from request cookies — for server components. */
 export async function getServerSession() {

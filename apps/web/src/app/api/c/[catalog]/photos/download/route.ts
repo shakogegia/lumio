@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { downloadRequestSchema } from "@lumio/shared";
-import { listPhotosForDownload } from "@/lib/photos-service";
-import { originalPath } from "@/lib/paths";
-import { streamPhotosZip } from "@/lib/download-service";
-import { parseJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { listPhotosForDownload } from "@/lib/server/photos-service";
+import { originalPath } from "@/lib/server/server-paths";
+import { streamPhotosZip } from "@/lib/server/download-archive";
+import { parseJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

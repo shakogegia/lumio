@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getDefaultCatalogSlug } from "@/lib/active-catalog";
+import { getDefaultCatalogSlug } from "@/lib/server/active-catalog";
 
 export default async function Home() {
   const slug = await getDefaultCatalogSlug();

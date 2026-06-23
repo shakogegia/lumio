@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { listAlbumSummaries } from "@/lib/albums-service";
-import { listAllFolders } from "@/lib/folders-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { listAlbumSummaries } from "@/lib/server/albums-service";
+import { listAllFolders } from "@/lib/server/folders-service";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

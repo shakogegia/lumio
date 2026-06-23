@@ -4,7 +4,7 @@ import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 }
 import type { FolderSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import {
   ContextMenu,
   ContextMenuContent,

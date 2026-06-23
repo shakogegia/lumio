@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { listCatalogs } from "@lumio/db";
-import { getCatalogStats } from "@/lib/status-service";
+import { getCatalogStats } from "@/lib/server/status-service";
 import { CatalogsList, type CatalogRow } from "./catalogs-list";
 
 export const dynamic = "force-dynamic";

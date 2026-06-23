@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const MONTH_ABBR = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

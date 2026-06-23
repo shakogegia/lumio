@@ -11,9 +11,9 @@ import {
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
-import { albumSummary } from "@/lib/albums-service";
+import { albumSummary } from "@/lib/server/albums-service";
 import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree";
-import { listPhotosForWhere } from "@/lib/photos-service";
+import { listPhotosForWhere } from "@/lib/server/photos-service";
 
 type Db = Pick<PrismaClient, "folder" | "album" | "albumPhoto" | "photo" | "$transaction">;
 

@@ -6,7 +6,7 @@ import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { trashPhotos } from "@/lib/photo-mutations";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import {

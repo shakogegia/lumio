@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { useGridColumns } from "@/lib/use-grid-columns";
-import { useGridSort } from "@/lib/use-grid-sort";
-import { useGridView } from "@/lib/use-grid-view";
-import { useGridSelection } from "@/lib/use-grid-selection";
+import { useGridColumns } from "@/lib/hooks/use-grid-columns";
+import { useGridSort } from "@/lib/hooks/use-grid-sort";
+import { useGridView } from "@/lib/hooks/use-grid-view";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
@@ -24,7 +24,7 @@ import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters"
 import { useSearchCount } from "./use-search-count";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 

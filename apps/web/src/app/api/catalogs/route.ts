@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { listCatalogs } from "@lumio/db";
 import { createCatalogSchema } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
-import { createCatalogChecked } from "@/lib/catalog-service";
-import { parseJson } from "@/lib/route-helpers";
+import { withAuth } from "@/lib/server/with-auth";
+import { createCatalogChecked } from "@/lib/server/catalog-service";
+import { parseJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

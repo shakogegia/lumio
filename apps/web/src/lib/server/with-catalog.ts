@@ -1,5 +1,5 @@
 import { getCatalogBySlug, type Catalog } from "@lumio/db";
-import { withAuth } from "@/lib/with-auth";
+import { withAuth } from "@/lib/server/with-auth";
 
 // The authenticated session type, derived from withAuth's handler parameter.
 type AuthedSession = Parameters<Parameters<typeof withAuth>[0]>[2];

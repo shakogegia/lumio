@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
+import { useGridSelectionNav } from "@/lib/hooks/use-grid-selection-nav";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Download, Loader2, Trash2, X } from "lucide-react";
@@ -13,12 +13,12 @@ import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { useConfirm } from "@/components/confirm-dialog";
-import { useGridSelection } from "@/lib/use-grid-selection";
-import { useGridColumns } from "@/lib/use-grid-columns";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
+import { useGridColumns } from "@/lib/hooks/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
 import { setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { playSound } from "@/lib/sound/player";

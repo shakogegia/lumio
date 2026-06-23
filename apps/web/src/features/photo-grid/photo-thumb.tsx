@@ -2,10 +2,10 @@
 import { useMemo, useState } from "react";
 import { FilePenLine } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
-import type { GridViewMode } from "@/lib/use-grid-view";
+import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { thumbUrl } from "@/lib/rendition-url";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an

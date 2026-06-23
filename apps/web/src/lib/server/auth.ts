@@ -3,7 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins";
 import { prisma, hasAnyUser } from "@lumio/db";
-import { assertSignupAllowed } from "./signup-gate.js";
+import { assertSignupAllowed } from "@/lib/signup-gate";
 
 const baseURL = process.env.BETTER_AUTH_URL;
 

@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS } from "@lumio/shared";
-import { CACHE_DIR, TRASH_DIR } from "@/lib/paths";
+import { CACHE_DIR, TRASH_DIR } from "@/lib/server/server-paths";
 
 /**
  * Sum the bytes of every file under `dir` (recursively); 0 if the dir is absent.

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { photoIdsSchema } from "@lumio/shared";
-import { restorePhotos } from "@/lib/trash-service";
-import { catalogCacheDir, catalogTrashDir } from "@/lib/paths";
-import { parseJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { restorePhotos } from "@/lib/server/trash-service";
+import { catalogCacheDir, catalogTrashDir } from "@/lib/server/server-paths";
+import { parseJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

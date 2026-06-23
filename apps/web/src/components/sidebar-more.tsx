@@ -7,7 +7,7 @@ import { LogOut, Monitor, MoreHorizontal, Moon, Settings, Sun, Trash2, User } fr
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import { catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import {
   DropdownMenu,
   DropdownMenuContent,

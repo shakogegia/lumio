@@ -1,4 +1,4 @@
-import { requireSession } from "@/lib/server-session";
+import { requireSession } from "@/lib/server/server-session";
 
 // The authenticated session type, derived from requireSession's success branch.
 type AuthedSession = Extract<

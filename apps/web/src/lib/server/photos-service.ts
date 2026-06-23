@@ -8,7 +8,7 @@ import type {
   PhotoStripItem,
 } from "@lumio/shared";
 import { monthRange } from "@lumio/shared";
-import { albumPhotoWhere } from "@/lib/albums-service";
+import { albumPhotoWhere } from "@/lib/server/albums-service";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 
 type Db = Pick<PrismaClient, "photo">;

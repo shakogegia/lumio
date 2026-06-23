@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type Tribute from "tributejs";
 import { cn } from "@/lib/utils";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { type TributeFacetItem, loadAllOptions } from "./facets";
 import { type SearchFilters, buildFilters } from "./filters";
 

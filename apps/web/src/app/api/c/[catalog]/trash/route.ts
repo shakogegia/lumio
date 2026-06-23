@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { photosQuerySchema } from "@lumio/shared";
-import { listTrash } from "@/lib/trash-service";
-import { parseQuery } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { listTrash } from "@/lib/server/trash-service";
+import { parseQuery } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { setUploadTemplate } from "@lumio/db";
 import { updateCatalogSettingsSchema, validateTemplate } from "@lumio/shared";
-import { withCatalog } from "@/lib/with-catalog";
-import { parseJson } from "@/lib/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { parseJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

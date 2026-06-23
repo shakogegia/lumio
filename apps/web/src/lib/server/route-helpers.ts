@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { FeatureScopeError, UnknownFeatureError } from "@lumio/db";
-import { AlbumNotFoundError, PhotoNotInAlbumError, SmartAlbumMutationError } from "@/lib/albums-service";
-import { FolderCycleError, FolderNotFoundError } from "@/lib/folders-service";
+import { AlbumNotFoundError, PhotoNotInAlbumError, SmartAlbumMutationError } from "@/lib/server/albums-service";
+import { FolderCycleError, FolderNotFoundError } from "@/lib/server/folders-service";
 
 /** The single error-response shape for every API route. */
 export interface ApiError {

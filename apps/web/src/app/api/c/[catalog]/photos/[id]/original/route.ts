@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { originalPath } from "@/lib/paths";
-import { attachmentDisposition } from "@/lib/download-service";
-import { withCatalog } from "@/lib/with-catalog";
-import { binaryResponse, errorJson } from "@/lib/route-helpers";
-import { getPhotoFile } from "@/lib/photos-service";
+import { originalPath } from "@/lib/server/server-paths";
+import { attachmentDisposition } from "@/lib/server/download-archive";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { binaryResponse, errorJson } from "@/lib/server/route-helpers";
+import { getPhotoFile } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

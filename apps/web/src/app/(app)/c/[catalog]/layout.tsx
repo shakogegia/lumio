@@ -4,9 +4,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { LibraryTreeProvider } from "@/components/library-tree/library-tree";
 import { SoundSettingsProvider } from "@/components/sound-settings-provider";
 import { FeaturesProvider } from "@/components/features/features-provider";
-import { CatalogProvider } from "@/lib/catalog-context";
-import { getCatalogForSlug } from "@/lib/active-catalog";
-import { getServerSession } from "@/lib/server-session";
+import { CatalogProvider } from "@/components/providers/catalog-context";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
+import { getServerSession } from "@/lib/server/server-session";
 import { RememberCatalog } from "./remember-catalog";
 
 export default async function CatalogLayout({

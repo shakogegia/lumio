@@ -24,9 +24,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
-import { useGridSelection } from "@/lib/use-grid-selection";
-import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
-import { useAlbumColumns } from "@/lib/use-album-columns";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
+import { useGridSelectionNav } from "@/lib/hooks/use-grid-selection-nav";
+import { useAlbumColumns } from "@/lib/hooks/use-album-columns";
 import { ALBUM_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import { countLabel } from "@/lib/count-label";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -35,7 +35,7 @@ import { partitionAlbums } from "@/lib/partition-albums";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
 import { FolderCard } from "./folder-card";

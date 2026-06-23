@@ -1,6 +1,6 @@
 import { type PrismaClient, buildSearchWhere, prisma } from "@lumio/db";
 import { type PhotosPage, type SearchQuery, monthRange } from "@lumio/shared";
-import { listPhotosForWhere } from "@/lib/photos-service";
+import { listPhotosForWhere } from "@/lib/server/photos-service";
 
 type Db = Pick<PrismaClient, "photo">;
 

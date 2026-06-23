@@ -14,10 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
-import { useImageLoaded } from "@/lib/use-image-loaded";
+import { useImageLoaded } from "@/lib/hooks/use-image-loaded";
 import { baseDisplayUrl, displayUrl, renditionVersion } from "@/lib/rendition-url";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { MAX_ZOOM } from "./zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";

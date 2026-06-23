@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAlbumSchema, deleteAlbumsSchema } from "@lumio/shared";
-import { createAlbum, deleteAlbums, listAlbumSummaries } from "@/lib/albums-service";
-import { parseJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { createAlbum, deleteAlbums, listAlbumSummaries } from "@/lib/server/albums-service";
+import { parseJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,8 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getAlbum } from "@/lib/albums-service";
-import { getCatalogForSlug } from "@/lib/active-catalog";
+import { getAlbum } from "@/lib/server/albums-service";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
 import { AlbumView } from "./album-view";
 
 export const dynamic = "force-dynamic";

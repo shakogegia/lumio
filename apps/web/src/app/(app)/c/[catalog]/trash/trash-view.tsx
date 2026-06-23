@@ -5,8 +5,8 @@ import { ArchiveRestore, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
-import { useAsyncJob } from "@/lib/use-async-job";
-import { useGridSelection } from "@/lib/use-grid-selection";
+import { useAsyncJob } from "@/lib/hooks/use-async-job";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter } from "@/features/photo-grid";
 import { HeaderBar } from "@/components/header-bar";
 import { countLabel } from "@/lib/count-label";
@@ -22,7 +22,7 @@ import {
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const TRASH_EMPTY = (
   <Empty>

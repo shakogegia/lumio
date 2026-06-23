@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createFolderSchema } from "@lumio/shared";
-import { createFolder, listFolderContents } from "@/lib/folders-service";
-import { parseJson, mapServiceError } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { createFolder, listFolderContents } from "@/lib/server/folders-service";
+import { parseJson, mapServiceError } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

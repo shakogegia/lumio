@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { thumbnailPath, trashThumbnailPath } from "@/lib/paths";
-import { withCatalog } from "@/lib/with-catalog";
-import { binaryResponse, errorJson } from "@/lib/route-helpers";
-import { photoOrTrashedExistsInCatalog } from "@/lib/photos-service";
+import { thumbnailPath, trashThumbnailPath } from "@/lib/server/server-paths";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { binaryResponse, errorJson } from "@/lib/server/route-helpers";
+import { photoOrTrashedExistsInCatalog } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
 

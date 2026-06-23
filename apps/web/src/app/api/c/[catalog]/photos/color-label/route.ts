@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { setColorLabelSchema } from "@lumio/shared";
-import { setPhotoColorLabel } from "@/lib/photos-service";
-import { parseJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { setPhotoColorLabel } from "@/lib/server/photos-service";
+import { parseJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

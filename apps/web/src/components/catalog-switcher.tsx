@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, Plus, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { WorkerActivity } from "@/components/worker-activity";
 import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import {

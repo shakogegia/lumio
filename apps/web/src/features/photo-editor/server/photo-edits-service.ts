@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
 import { hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
 import { regenerateRenditions } from "@lumio/ingest";
-import { catalogCacheDirs, originalPath } from "@/lib/paths";
+import { catalogCacheDirs, originalPath } from "@/lib/server/server-paths";
 
 type Db = Pick<PrismaClient, "photo">;
 

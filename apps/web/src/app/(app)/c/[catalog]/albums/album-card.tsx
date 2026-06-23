@@ -4,7 +4,7 @@ import { FolderInput, Images, Pencil, SquareArrowOutUpRight, Trash2 } from "luci
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import {
   ContextMenu,
   ContextMenuContent,

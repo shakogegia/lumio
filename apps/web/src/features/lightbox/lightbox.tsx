@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PhotoDTO } from "@lumio/shared";
 import { renditionVersion } from "@/lib/rendition-url";
-import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
+import { useBodyScrollLock } from "@/lib/hooks/use-body-scroll-lock";
 import { usePhotoCollection } from "@/features/photo-grid";
 import { EditSessionProvider, useEditSession } from "@/features/photo-editor";
 import { ZoomableImage } from "@/features/photo-editor";

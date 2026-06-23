@@ -23,7 +23,7 @@ import {
 } from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { usePhotoCollection } from "@/features/photo-grid";
 
 interface EditSessionValue {

@@ -9,7 +9,7 @@ import {
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
-import { listPhotosForWhere } from "@/lib/photos-service";
+import { listPhotosForWhere } from "@/lib/server/photos-service";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 

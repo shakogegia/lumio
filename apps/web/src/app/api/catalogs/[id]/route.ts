@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { applyCatalogPositions, listCatalogs, renameCatalog } from "@lumio/db";
 import { computeReorder, updateCatalogSchema } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
-import { deleteCatalogWithMode, type DeleteMode } from "@/lib/catalog-service";
-import { parseJson } from "@/lib/route-helpers";
+import { withAuth } from "@/lib/server/with-auth";
+import { deleteCatalogWithMode, type DeleteMode } from "@/lib/server/catalog-service";
+import { parseJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getFolder } from "@/lib/folders-service";
-import { getCatalogForSlug } from "@/lib/active-catalog";
+import { getFolder } from "@/lib/server/folders-service";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
 import { FolderPhotosView } from "./folder-photos-view";
 
 export const dynamic = "force-dynamic";

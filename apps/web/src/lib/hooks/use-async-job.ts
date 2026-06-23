@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { JobType } from "@lumio/shared";
-import { useActivity } from "@/lib/use-activity";
+import { useActivity } from "@/lib/hooks/use-activity";
 
 export type AsyncJobPhase = "idle" | "pending" | "error";
 

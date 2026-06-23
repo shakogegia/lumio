@@ -4,7 +4,7 @@ import { Folder as FolderIcon } from "lucide-react";
 import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { folderSubtitle } from "@/lib/folder-subtitle";
-import type { FolderSummary } from "@/lib/catalog-fs-service";
+import type { FolderSummary } from "@/lib/server/catalog-fs-service";
 
 /**
  * One disk folder in the /folders listing — album-style: a 2×2 cover mosaic (or a

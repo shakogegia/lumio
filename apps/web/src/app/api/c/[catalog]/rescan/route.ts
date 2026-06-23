@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { enqueueJob } from "@lumio/jobs";
 import { JobType } from "@lumio/shared";
-import { withCatalog } from "@/lib/with-catalog";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

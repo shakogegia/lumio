@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useGridSelection } from "@/lib/use-grid-selection";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { computeSelection } from "@/lib/grid-selection";
 import { catalogPath } from "@/lib/catalog-api";
 import { countLabel } from "@/lib/count-label";
-import type { FolderSummary } from "@/lib/catalog-fs-service";
+import type { FolderSummary } from "@/lib/server/catalog-fs-service";
 import { DiskFolderCard } from "./disk-folder-card";
 
 function folderHref(slug: string, rel: string): string {

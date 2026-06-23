@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { FolderBrowser } from "@/components/folder-browser";
+import { FolderBrowser } from "@/components/directory-picker";
 
 interface CreatedCatalog {
   id: string;

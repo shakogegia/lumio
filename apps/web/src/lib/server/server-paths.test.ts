@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { catalogCacheDir, catalogTrashDir, isInsideMediaRoot, originalPath } from "./paths.js";
+import { catalogCacheDir, catalogTrashDir, isInsideMediaRoot, originalPath } from "./server-paths.js";
 
 // MEDIA_ROOT defaults to /media (process.env.MEDIA_ROOT is not set in test env)
 

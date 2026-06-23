@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { listFolderContents } from "@/lib/folders-service";
-import { getCatalogForSlug } from "@/lib/active-catalog";
-import { FolderBrowser } from "./folder-browser";
+import { listFolderContents } from "@/lib/server/folders-service";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
+import { FolderBrowser } from "./album-folder-view";
 
 export const dynamic = "force-dynamic";
 

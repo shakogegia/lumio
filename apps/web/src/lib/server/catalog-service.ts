@@ -10,7 +10,7 @@ import {
 } from "@lumio/db";
 import { createCatalogSchema, type CreateCatalogInput } from "@lumio/shared";
 import { purgeAllPhotos } from "@lumio/jobs";
-import { MEDIA_ROOT, CACHE_DIR, TRASH_DIR, isInsideMediaRoot } from "@/lib/paths";
+import { MEDIA_ROOT, CACHE_DIR, TRASH_DIR, isInsideMediaRoot } from "@/lib/server/server-paths";
 
 /**
  * A new catalog path must be inside MEDIA_ROOT and must not equal, contain,

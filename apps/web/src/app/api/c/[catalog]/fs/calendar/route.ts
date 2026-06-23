@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { isFeatureEnabled } from "@lumio/db";
 import { FeatureKey } from "@lumio/shared";
-import { buildCalendarFacets } from "@/lib/calendar-service";
-import { errorJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { buildCalendarFacets } from "@/lib/server/calendar-service";
+import { errorJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -7,7 +7,7 @@ import {
   dedupeEntryName,
   sanitizeZipName,
   streamPhotosZip,
-} from "./download-service.js";
+} from "./download-archive.js";
 
 // vi.mock is hoisted to the top of the file by vitest, so these apply to EVERY
 // test here — the original-variant tests just never exercise the mocked symbols

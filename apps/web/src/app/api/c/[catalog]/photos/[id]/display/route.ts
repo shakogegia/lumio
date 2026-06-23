@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { displayPath, editedDisplayPath } from "@/lib/paths";
-import { withCatalog } from "@/lib/with-catalog";
-import { binaryResponse, errorJson } from "@/lib/route-helpers";
-import { photoExistsInCatalog } from "@/lib/photos-service";
+import { displayPath, editedDisplayPath } from "@/lib/server/server-paths";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { binaryResponse, errorJson } from "@/lib/server/route-helpers";
+import { photoExistsInCatalog } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
 

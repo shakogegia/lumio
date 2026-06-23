@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getPhoto } from "@/lib/photos-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { getPhoto } from "@/lib/server/photos-service";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

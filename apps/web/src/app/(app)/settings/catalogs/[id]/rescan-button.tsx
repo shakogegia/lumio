@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
-import { useAsyncJob } from "@/lib/use-async-job";
+import { useAsyncJob } from "@/lib/hooks/use-async-job";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 export function RescanButton() {
   const router = useRouter();

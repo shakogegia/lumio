@@ -8,7 +8,7 @@ import { SelectionRing } from "@/features/photo-grid";
 import { cn } from "@/lib/utils";
 import { formatBadge } from "@/lib/upload-preview";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import type { RowStatus } from "@/lib/upload-rows";
 
 const STATUS_LABEL: Record<RowStatus, string> = {

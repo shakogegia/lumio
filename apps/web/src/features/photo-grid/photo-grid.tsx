@@ -4,9 +4,9 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "r
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Images } from "lucide-react";
 import { rowCount, GRID_GAP, DEFAULT_COLUMNS, PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
-import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
+import { useGridSelectionNav } from "@/lib/hooks/use-grid-selection-nav";
 import type { PhotoDTO } from "@lumio/shared";
-import type { GridViewMode } from "@/lib/use-grid-view";
+import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import {
   Empty,
   EmptyDescription,

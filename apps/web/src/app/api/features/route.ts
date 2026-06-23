@@ -4,8 +4,8 @@ import {
   setFeature,
 } from "@lumio/db";
 import { featureToggleSchema } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
-import { parseJson, mapServiceError } from "@/lib/route-helpers";
+import { withAuth } from "@/lib/server/with-auth";
+import { parseJson, mapServiceError } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAlbum, listAlbumPhotosForDownload } from "@/lib/albums-service";
-import { originalPath } from "@/lib/paths";
-import { sanitizeZipName, streamPhotosZip } from "@/lib/download-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { getAlbum, listAlbumPhotosForDownload } from "@/lib/server/albums-service";
+import { originalPath } from "@/lib/server/server-paths";
+import { sanitizeZipName, streamPhotosZip } from "@/lib/server/download-archive";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

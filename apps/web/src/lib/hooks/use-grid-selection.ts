@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { keyboardTargetBlocked } from "./grid-key-guard";
+import { keyboardTargetBlocked } from "@/lib/grid-key-guard";
 
 /** Owns the selected photo-id set. Selection is always available (no mode). */
 export function useGridSelection() {

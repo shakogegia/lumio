@@ -2,10 +2,10 @@
 
 import { useRef, useState } from "react";
 import type { PhotoSort } from "@lumio/shared";
-import { useGridSelection } from "@/lib/use-grid-selection";
-import { useGridView } from "@/lib/use-grid-view";
-import { useGridColumns } from "@/lib/use-grid-columns";
-import { useGridSort } from "@/lib/use-grid-sort";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
+import { useGridView } from "@/lib/hooks/use-grid-view";
+import { useGridColumns } from "@/lib/hooks/use-grid-columns";
+import { useGridSort } from "@/lib/hooks/use-grid-sort";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridSortMenu } from "@/components/grid-sort-menu";

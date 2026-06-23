@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import type { PhotoDTO } from "@lumio/shared";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { favoritePhotos } from "@/lib/photo-mutations";
 import { usePhotoCollection } from "./photo-collection";
 

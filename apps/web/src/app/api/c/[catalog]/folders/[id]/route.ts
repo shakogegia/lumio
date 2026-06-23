@@ -4,9 +4,9 @@ import {
   deleteFolder,
   listFolderContents,
   renameFolder,
-} from "@/lib/folders-service";
-import { parseJson, parseQuery, mapServiceError } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+} from "@/lib/server/folders-service";
+import { parseJson, parseQuery, mapServiceError } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

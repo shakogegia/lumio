@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { searchQuerySchema } from "@lumio/shared";
-import { countSearchPhotos, searchPhotos } from "@/lib/search-service";
-import { errorJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { countSearchPhotos, searchPhotos } from "@/lib/server/search-service";
+import { errorJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

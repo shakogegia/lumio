@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { withAuth } from "@/lib/with-auth";
-import { MEDIA_ROOT, browseDir } from "@/lib/paths";
-import { errorJson } from "@/lib/route-helpers";
+import { withAuth } from "@/lib/server/with-auth";
+import { MEDIA_ROOT, browseDir } from "@/lib/server/server-paths";
+import { errorJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

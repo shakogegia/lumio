@@ -8,9 +8,9 @@ import {
   getCatalogStats,
   getPhotoFileCount,
   getStorageSizes,
-} from "@/lib/status-service";
+} from "@/lib/server/status-service";
 import { formatBytes } from "@/lib/format";
-import { CatalogProvider } from "@/lib/catalog-context";
+import { CatalogProvider } from "@/components/providers/catalog-context";
 import {
   Card,
   CardContent,

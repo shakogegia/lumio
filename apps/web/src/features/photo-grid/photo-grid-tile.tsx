@@ -2,8 +2,8 @@
 
 import { colorLabelHex, type PhotoDTO, type PhotoSort } from "@lumio/shared";
 import { photoHref } from "@/lib/photo-href";
-import { useCatalog } from "@/lib/catalog-context";
-import type { GridViewMode } from "@/lib/use-grid-view";
+import { useCatalog } from "@/components/providers/catalog-context";
+import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import { cn } from "@/lib/utils";
 import { resolveTargets } from "@/lib/resolve-targets";
 import { cellVariants } from "./cell-variants";

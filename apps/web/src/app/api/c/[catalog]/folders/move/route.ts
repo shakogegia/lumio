@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { moveItemsSchema } from "@lumio/shared";
-import { moveItems } from "@/lib/folders-service";
-import { parseJson, mapServiceError } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { moveItems } from "@/lib/server/folders-service";
+import { parseJson, mapServiceError } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { editPhotoSchema } from "@lumio/shared";
 import { applyPhotoEdits } from "@/features/photo-editor/server/photo-edits-service";
-import { parseJson } from "@/lib/route-helpers";
-import { withCatalog } from "@/lib/with-catalog";
+import { parseJson } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

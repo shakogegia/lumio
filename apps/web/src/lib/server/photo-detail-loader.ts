@@ -1,14 +1,14 @@
 import { buildSearchWhere } from "@lumio/db";
-import { listAlbumSummaries } from "@/lib/albums-service";
-import { getNeighborsForWhere, getPhoto, getPhotoNeighbors } from "@/lib/photos-service";
-import type { DetailScope } from "./detail-scope";
+import { listAlbumSummaries } from "@/lib/server/albums-service";
+import { getNeighborsForWhere, getPhoto, getPhotoNeighbors } from "@/lib/server/photos-service";
+import type { DetailScope } from "@/lib/detail-scope";
 
 // The scope type + parse/serialize helpers moved to the client-safe
-// `./detail-scope` module (so Client Components can import them without pulling
+// `@/lib/detail-scope` module (so Client Components can import them without pulling
 // in this file's server-only @lumio/db dependency). Re-exported here so existing
-// server-side callers keep importing them from `@/lib/photo-detail-loader`.
-export { parseDetailScope, detailScopeQuery } from "./detail-scope";
-export type { DetailScope } from "./detail-scope";
+// server-side callers keep importing them from `@/lib/server/photo-detail-loader`.
+export { parseDetailScope, detailScopeQuery } from "@/lib/detail-scope";
+export type { DetailScope } from "@/lib/detail-scope";
 
 export interface PhotoDetailData {
   photo: NonNullable<Awaited<ReturnType<typeof getPhoto>>>;

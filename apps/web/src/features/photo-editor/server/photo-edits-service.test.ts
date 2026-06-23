@@ -5,7 +5,7 @@ vi.mock("@lumio/ingest", () => ({
   regenerateRenditions: vi.fn(async () => ({ thumbhash: "hash", width: 100, height: 100 })),
 }));
 
-vi.mock("@/lib/paths", () => ({
+vi.mock("@/lib/server/server-paths", () => ({
   catalogCacheDirs: vi.fn((catalogId: string) => ({
     thumbnailsDir: `/cache/${catalogId}/thumbnails`,
     displaysDir: `/cache/${catalogId}/displays`,

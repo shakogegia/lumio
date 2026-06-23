@@ -7,8 +7,8 @@ import {
   computeSelection,
   nextGridIndex,
   type ArrowKey,
-} from "./grid-selection";
-import { keyboardTargetBlocked } from "./grid-key-guard";
+} from "@/lib/grid-selection";
+import { keyboardTargetBlocked } from "@/lib/grid-key-guard";
 
 const ARROW_KEYS = new Set<string>(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
 

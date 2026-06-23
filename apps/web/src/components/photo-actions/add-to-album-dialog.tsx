@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { addPhotosToAlbum } from "@/lib/photo-mutations";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildFolderPickerRows } from "@/lib/library-tree-rows";

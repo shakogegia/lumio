@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { updateProfileSchema } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
-import { getProfile, updateProfile } from "@/lib/profile-service";
-import { parseJson } from "@/lib/route-helpers";
+import { withAuth } from "@/lib/server/with-auth";
+import { getProfile, updateProfile } from "@/lib/server/profile-service";
+import { parseJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

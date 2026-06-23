@@ -7,7 +7,7 @@ import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import type { PhotoGridHandle } from "@/features/photo-grid";

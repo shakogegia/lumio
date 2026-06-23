@@ -1,7 +1,7 @@
 import { buildSearchWhere, type Prisma, type PrismaClient, prisma } from "@lumio/db";
 import type { PhotoSort } from "@lumio/shared";
-import { albumPhotoWhere } from "@/lib/albums-service";
-import type { DetailScope } from "@/lib/photo-detail-loader";
+import { albumPhotoWhere } from "@/lib/server/albums-service";
+import type { DetailScope } from "@/lib/server/photo-detail-loader";
 
 export interface PhotoCursor {
   id: string;

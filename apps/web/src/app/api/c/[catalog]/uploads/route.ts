@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
-import { handleUpload } from "@/lib/upload-service";
-import { catalogCacheDirs } from "@/lib/paths";
-import { withCatalog } from "@/lib/with-catalog";
+import { handleUpload } from "@/lib/server/upload-service";
+import { catalogCacheDirs } from "@/lib/server/server-paths";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

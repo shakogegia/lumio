@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createWheelStepper } from "@/lib/wheel-step-nav";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 // Width of the soft fade applied at a scrollable edge, in px.
 const FADE = 28;

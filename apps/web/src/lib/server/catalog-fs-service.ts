@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { originalPath } from "@/lib/paths";
+import { originalPath } from "@/lib/server/server-paths";
 import { joinRel } from "@/lib/catalog-fs";
 import { type Prisma, prisma } from "@lumio/db";
 import { PHOTO_ORDER } from "@/lib/photo-order";

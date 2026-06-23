@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import path from "node:path";
 
-// ── mock @/lib/paths ─────────────────────────────────────────────────────────
+// ── mock @/lib/server/server-paths ─────────────────────────────────────────────────────────
 // Use vi.hoisted so the constant is available inside the hoisted vi.mock factory.
 const { FAKE_MEDIA_ROOT } = vi.hoisted(() => ({ FAKE_MEDIA_ROOT: "/media" }));
 
-vi.mock("@/lib/paths", () => ({
+vi.mock("@/lib/server/server-paths", () => ({
   MEDIA_ROOT: FAKE_MEDIA_ROOT,
   CACHE_DIR: "/cache",
   TRASH_DIR: "/trash",

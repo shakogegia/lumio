@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SearchCount } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { type SearchFilters, paramsFor, serialize } from "./filters";
 
 /**

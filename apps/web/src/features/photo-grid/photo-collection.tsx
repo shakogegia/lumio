@@ -16,7 +16,7 @@ import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
 

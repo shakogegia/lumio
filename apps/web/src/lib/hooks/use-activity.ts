@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ActivitySnapshot } from "@lumio/shared";
 import { pollInterval } from "@/lib/poll-interval";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const EMPTY: ActivitySnapshot = { worker: { online: false, activity: "offline" }, jobs: [] };
 
