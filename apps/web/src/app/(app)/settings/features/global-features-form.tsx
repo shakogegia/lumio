@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { FeatureKey } from "@lumio/shared";
 import type { GlobalFeatureState } from "@lumio/db";
 import { postJson } from "@/lib/http";
+import { apiPaths } from "@/lib/api-paths";
 import { Switch } from "@/components/ui/switch";
 import {
   Field,
@@ -25,7 +26,7 @@ export function GlobalFeaturesForm({ initial }: { initial: GlobalFeatureState[] 
     setErrorKey(null);
     setSavingKey(key);
     try {
-      await postJson("/api/features", { key, catalogId: null, enabled: next }, "PUT");
+      await postJson(apiPaths.features, { key, catalogId: null, enabled: next }, "PUT");
       router.refresh();
     } catch {
       setStates((s) => s.map((f) => (f.key === key ? { ...f, enabled: !next } : f)));

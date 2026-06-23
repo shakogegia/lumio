@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FolderBrowser } from "@/components/directory-picker";
+import { apiPaths } from "@/lib/api-paths";
 
 interface CreatedCatalog {
   id: string;
@@ -40,7 +41,7 @@ export function FirstCatalogForm({ className }: { className?: string }) {
     setError(null);
     setPending(true);
     try {
-      const res = await fetch("/api/catalogs", {
+      const res = await fetch(apiPaths.catalogs, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: name.trim(), path }),
