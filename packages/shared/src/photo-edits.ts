@@ -178,7 +178,7 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
     const v = e[f.key];
     if (typeof v === "number" && Number.isFinite(v)) {
       const clamped = Math.max(f.min, Math.min(f.max, v));
-      if (clamped !== f.neutral) (out as unknown as Record<string, unknown>)[f.key] = clamped;
+      if (clamped !== f.neutral) out[f.key] = clamped;
     }
   }
   return out;

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { colorLabelSchema } from "./color-labels.js";
+import { COLOR_FIELDS } from "./photo-color.js";
 import type { PhotoDTO } from "./types.js";
 
 /** The six photo sort orderings, single source of truth. */
@@ -72,6 +73,12 @@ export const cropRectSchema = z
   });
 export type CropRectInput = z.infer<typeof cropRectSchema>;
 
+/** The color half of the edit schema, derived so COLOR_FIELDS is the single source
+ *  of truth for every adjustment's range (see photo-color.ts). */
+const colorFieldSchemas = Object.fromEntries(
+  COLOR_FIELDS.map((f) => [f.key, z.number().min(f.min).max(f.max).optional()]),
+) as { [K in (typeof COLOR_FIELDS)[number]["key"]]: z.ZodOptional<z.ZodNumber> };
+
 /** Edit recipe payload. Used by POST /api/photos/[id]/edit (null = reset). */
 export const photoEditsSchema = z.object({
   version: z.number().int().min(1).optional(),
@@ -80,14 +87,7 @@ export const photoEditsSchema = z.object({
   flipV: z.boolean(),
   straighten: z.number().min(-45).max(45).optional(),
   crop: cropRectSchema.nullable().optional(),
-  exposure: z.number().min(-100).max(100).optional(),
-  brightness: z.number().min(-100).max(100).optional(),
-  contrast: z.number().min(-100).max(100).optional(),
-  saturation: z.number().min(-100).max(100).optional(),
-  temperature: z.number().min(-100).max(100).optional(),
-  hue: z.number().min(-180).max(180).optional(),
-  fade: z.number().min(-100).max(100).optional(),
-  vignette: z.number().min(0).max(100).optional(),
+  ...colorFieldSchemas,
 });
 export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });
 export type EditPhotoInput = z.infer<typeof editPhotoSchema>;

@@ -9,6 +9,7 @@ import {
   setColorLabelSchema,
   setFavoriteSchema,
 } from "./api.js";
+import { COLOR_FIELDS } from "./photo-color.js";
 
 describe("photosQuerySchema", () => {
   it("defaults limit to 50 and offset to 0 when absent", () => {
@@ -219,6 +220,18 @@ describe("photoEditsSchema color fields", () => {
     const r = photoEditsSchema.parse({ ...base, contrast: -20 });
     expect(r.contrast).toBe(-20);
   });
+});
+
+describe("photoEditsSchema color fields derive from COLOR_FIELDS", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+  for (const f of COLOR_FIELDS) {
+    it(`${f.key} accepts [${f.min}, ${f.max}] and rejects out-of-range`, () => {
+      expect(photoEditsSchema.safeParse({ ...base, [f.key]: f.min }).success).toBe(true);
+      expect(photoEditsSchema.safeParse({ ...base, [f.key]: f.max }).success).toBe(true);
+      expect(photoEditsSchema.safeParse({ ...base, [f.key]: f.min - 1 }).success).toBe(false);
+      expect(photoEditsSchema.safeParse({ ...base, [f.key]: f.max + 1 }).success).toBe(false);
+    });
+  }
 });
 
 describe("photoEditsSchema (crop & straighten)", () => {
