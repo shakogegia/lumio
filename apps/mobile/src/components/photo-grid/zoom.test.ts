@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextZoomLevel } from "./zoom";
+import { nextZoomLevel, stepInColumns } from "./zoom";
 
 const LEVELS = [1, 3, 5, 8]; // ascending column counts; lower index = bigger tiles
 
@@ -18,5 +18,16 @@ describe("nextZoomLevel", () => {
   });
   it("clamps at the most-columns end (last index)", () => {
     expect(nextZoomLevel(LEVELS, 3, 0.2)).toBe(3);
+  });
+});
+
+describe("stepInColumns", () => {
+  it("steps to the next-fewer column count", () => {
+    expect(stepInColumns(LEVELS, 8)).toBe(5);
+    expect(stepInColumns(LEVELS, 5)).toBe(3);
+    expect(stepInColumns(LEVELS, 3)).toBe(1);
+  });
+  it("stays at the fewest-columns level", () => {
+    expect(stepInColumns(LEVELS, 1)).toBe(1);
   });
 });

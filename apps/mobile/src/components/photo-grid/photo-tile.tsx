@@ -1,39 +1,51 @@
-import { memo } from "react";
-import { StyleSheet, View } from "react-native";
+import { memo, useRef } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import type { PhotoDTO } from "@lumio/shared";
 import { thumbnailUrl } from "@/lib/photos-api";
+import type { Rect } from "@/lib/rect";
 
 /**
- * One square, cover-cropped grid tile (iOS Photos look). The base64 ThumbHash is
- * shown as a blur placeholder while the authenticated WebP thumbnail loads
- * (expo-image decodes ThumbHash natively). The session cookie is sent as a
- * request header because the thumbnail endpoint is auth-gated. `recyclingKey`
- * tells expo-image to drop the previous image when a cell is recycled by
- * FlashList, preventing a flash of the wrong photo.
+ * One grid tile. The base64 ThumbHash is shown as a blur placeholder while the
+ * authenticated WebP thumbnail loads (expo-image decodes ThumbHash natively).
+ * The session cookie is sent as a request header because the thumbnail endpoint
+ * is auth-gated. `fit` toggles cover (square crop) vs contain (whole photo,
+ * letterboxed) — the iOS aspect toggle. `onPress` reports the tile's window rect
+ * so the viewer can animate open from it.
  */
 export const PhotoTile = memo(function PhotoTile({
   photo,
   baseURL,
   slug,
   cookie,
+  fit = "cover",
+  onPress,
 }: {
   photo: PhotoDTO;
   baseURL: string;
   slug: string;
   cookie: string;
+  fit?: "cover" | "contain";
+  onPress?: (rect: Rect) => void;
 }) {
+  const ref = useRef<View>(null);
+
+  const handlePress = () => {
+    if (!onPress) return;
+    ref.current?.measureInWindow((x, y, width, height) => onPress({ x, y, width, height }));
+  };
+
   return (
-    <View style={styles.cell}>
+    <Pressable ref={ref} style={styles.cell} onPress={handlePress} disabled={!onPress}>
       <Image
         style={styles.image}
         source={{ uri: thumbnailUrl(baseURL, slug, photo), headers: { Cookie: cookie } }}
         placeholder={photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined}
-        contentFit="cover"
+        contentFit={fit}
         transition={150}
         recyclingKey={photo.id}
       />
-    </View>
+    </Pressable>
   );
 });
 

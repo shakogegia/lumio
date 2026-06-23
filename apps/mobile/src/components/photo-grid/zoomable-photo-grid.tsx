@@ -33,8 +33,9 @@ import Animated, {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { FlashList } from "@shopify/flash-list";
 import type { PhotoDTO } from "@lumio/shared";
+import type { Rect } from "@/lib/rect";
 import { PhotoTile } from "./photo-tile";
-import { ZOOM_IN_THRESHOLD, ZOOM_OUT_THRESHOLD } from "./zoom";
+import { ZOOM_IN_THRESHOLD, ZOOM_OUT_THRESHOLD, stepInColumns } from "./zoom";
 
 export const DEFAULT_ZOOM_LEVELS = [1, 3, 5, 8];
 
@@ -69,7 +70,10 @@ export function ZoomablePhotoGrid({
   cookie,
   zoomLevels = DEFAULT_ZOOM_LEVELS,
   initialColumns = 3,
+  fit = "cover",
+  openThreshold = 3,
   onColumnsChange,
+  onOpenPhoto,
   onEndReached,
   onScroll,
   contentInset,
@@ -82,7 +86,12 @@ export function ZoomablePhotoGrid({
   cookie: string;
   zoomLevels?: number[];
   initialColumns?: number;
+  fit?: "cover" | "contain";
+  /** At or below this column count a tap opens the viewer; above it, a tap zooms
+   *  one step in. */
+  openThreshold?: number;
   onColumnsChange?: (columns: number) => void;
+  onOpenPhoto?: (index: number, rect: Rect) => void;
   onEndReached?: () => void;
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   contentInset?: { top: number; bottom: number };
@@ -207,6 +216,41 @@ export function ZoomablePhotoGrid({
     [activeScrollOffset, activeColsShared, savedScale, scale, onColumnsChange],
   );
 
+  // Tap a tile: at a dense zoom, step one level in (focal-anchored on the tile,
+  // reusing the pinch commit path); at openThreshold or below, open the viewer.
+  const handleTilePress = useCallback(
+    (index: number, rect: Rect) => {
+      if (activeColumns > openThreshold) {
+        const nextCols = stepInColumns(zoomLevels, activeColumns);
+        if (nextCols === activeColumns) return;
+        const cx = rect.x + rect.width / 2;
+        const cy = rect.y + rect.height / 2;
+        focalX.value = cx;
+        focalY.value = cy;
+        savedScale.value = 1;
+        scale.value = 1;
+        prepareZoom(cx, cy);
+        scale.value = withTiming(activeColumns / nextCols, { duration: 250 }, (finished) => {
+          if (finished) runOnJS(handleZoomFinish)(nextCols);
+        });
+      } else {
+        onOpenPhoto?.(index, rect);
+      }
+    },
+    [
+      activeColumns,
+      openThreshold,
+      zoomLevels,
+      focalX,
+      focalY,
+      savedScale,
+      scale,
+      prepareZoom,
+      handleZoomFinish,
+      onOpenPhoto,
+    ],
+  );
+
   // Inline gesture (recreated each render) so onEnd reads the current
   // activeColumns. onStart/onUpdate/onEnd are reanimated worklets (UI thread);
   // only the JS handoffs use runOnJS.
@@ -274,6 +318,8 @@ export function ZoomablePhotoGrid({
             setListRef={setListRef}
             onActiveScroll={onActiveScroll}
             onEndReached={onEndReached}
+            fit={fit}
+            onTilePress={cols === activeColumns ? handleTilePress : undefined}
             ListEmptyComponent={ListEmptyComponent}
             ListFooterComponent={ListFooterComponent}
           />
@@ -306,6 +352,8 @@ const GridLayer = memo(function GridLayer({
   setListRef,
   onActiveScroll,
   onEndReached,
+  fit,
+  onTilePress,
   ListEmptyComponent,
   ListFooterComponent,
 }: {
@@ -331,6 +379,8 @@ const GridLayer = memo(function GridLayer({
   setListRef: (cols: number, ref: Scrollable | null) => void;
   onActiveScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onEndReached?: () => void;
+  fit: "cover" | "contain";
+  onTilePress?: (index: number, rect: Rect) => void;
   ListEmptyComponent?: ReactElement | null;
   ListFooterComponent?: ReactElement | null;
 }) {
@@ -403,11 +453,20 @@ const GridLayer = memo(function GridLayer({
         numColumns={cols}
         scrollEnabled={interactive}
         keyExtractor={(item: Cell, index: number) => (isEmpty(item) ? `empty-${cols}-${index}` : item.id)}
-        renderItem={({ item }: { item: Cell }) =>
+        renderItem={({ item, index }: { item: Cell; index: number }) =>
           isEmpty(item) ? (
             <View style={styles.emptyCell} />
           ) : (
-            <PhotoTile photo={item} baseURL={baseURL} slug={slug} cookie={cookie} />
+            <PhotoTile
+              photo={item}
+              baseURL={baseURL}
+              slug={slug}
+              cookie={cookie}
+              fit={fit}
+              // `data` prepends config.padding blank cells, so the photo's real
+              // index is the list index minus that padding.
+              onPress={onTilePress ? (rect) => onTilePress(index - config.padding, rect) : undefined}
+            />
           )
         }
         onScroll={isActive ? onActiveScroll : undefined}
