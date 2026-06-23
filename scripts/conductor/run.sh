@@ -21,12 +21,14 @@ else
   export BETTER_AUTH_URL="http://localhost:${PORT}"
 fi
 
-# Mobile dev convenience: pre-fill the Expo app's "Connect" screen with this
-# workspace's web URL so you don't retype it. The iOS Simulator reaches the
-# host's localhost; the portless .localhost:1355 subdomain can't be TLS-trusted
-# from the simulator, so we use the direct port. apps/mobile/.env is gitignored
-# and per-workspace; same grep -v / .tmp / mv idempotent pattern as setup.sh.
-if [ -f apps/mobile/package.json ]; then
+# Mobile dev convenience (Conductor only): pre-fill the Expo app's "Connect"
+# screen with this workspace's web URL so you don't retype it. The iOS Simulator
+# reaches the host's localhost; the portless .localhost:1355 subdomain can't be
+# TLS-trusted from the simulator, so we use the direct port. apps/mobile/.env is
+# gitignored and per-workspace; same grep -v / .tmp / mv idempotent pattern as
+# setup.sh. Gated on Conductor so a plain local run.sh doesn't clobber a
+# hand-set EXPO_PUBLIC_API_URL (e.g. a LAN IP for physical-device testing).
+if [ -n "${CONDUCTOR_WORKSPACE_NAME:-}" ] && [ -f apps/mobile/package.json ]; then
   { [ -f apps/mobile/.env ] && grep -v '^EXPO_PUBLIC_API_URL=' apps/mobile/.env || true; } > apps/mobile/.env.tmp
   printf 'EXPO_PUBLIC_API_URL="http://localhost:%s"\n' "$PORT" >> apps/mobile/.env.tmp
   mv apps/mobile/.env.tmp apps/mobile/.env

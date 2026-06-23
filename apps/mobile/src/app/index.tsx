@@ -3,12 +3,14 @@ import { Redirect, router } from "expo-router";
 import { useAuth } from "../lib/auth-context";
 
 export default function Home() {
-  const { serverUrl, isLoading, session, isPending, disconnect } = useAuth();
+  const { serverUrl, isLoading, session, isPending, signOut, disconnect } = useAuth();
 
   if (isLoading || isPending) return <View style={styles.center}><ActivityIndicator /></View>;
   if (!serverUrl) return <Redirect href="/connect" />;
   if (!session) return <Redirect href="/login" />;
 
+  // Sign out ends the session but keeps the server (the `!session` guard above
+  // then routes to /login). Change server forgets the server entirely.
   const handleChangeServer = async () => {
     await disconnect();
     router.replace("/connect");
@@ -19,7 +21,7 @@ export default function Home() {
       <Text style={styles.heading}>You're signed in</Text>
       <Text style={styles.sub}>{session.user.email}</Text>
       <Text style={styles.server}>{serverUrl}</Text>
-      <Pressable style={styles.button} onPress={() => disconnect()}>
+      <Pressable style={styles.button} onPress={() => signOut()}>
         <Text style={styles.buttonText}>Sign out</Text>
       </Pressable>
       <Pressable onPress={handleChangeServer}>

@@ -26,8 +26,9 @@ type AuthContextValue = {
   session: ReturnType<LumioAuthClient["useSession"]>["data"];
   isPending: boolean; // session resolving
   signIn: LumioAuthClient["signIn"];
+  signOut: LumioAuthClient["signOut"]; // end session, keep the server
   connect: (input: string) => Promise<void>;
-  disconnect: () => Promise<void>;
+  disconnect: () => Promise<void>; // end session AND forget the server
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       isPending,
       signIn: client.signIn,
+      signOut: client.signOut,
       connect: async (input: string) => {
         const url = normalizeServerUrl(input);
         await pingLumioServer(url);
