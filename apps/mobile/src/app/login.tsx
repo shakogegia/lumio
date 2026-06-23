@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Redirect, router } from "expo-router";
-import { useAuth } from "../lib/auth-context";
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme, weight } from "../lib/theme";
 import { Brand } from "../components/logo";
 import { Screen, Card, Separator, Loading } from "../components/ui/layout";

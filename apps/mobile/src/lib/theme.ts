@@ -61,6 +61,7 @@ export const weight = {
   regular: "400",
   medium: "500",
   semibold: "600",
+  bold: "700",
 } as const;
 
 export type Theme = { colors: ThemeColors; scheme: "light" | "dark" };

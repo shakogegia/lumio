@@ -8,7 +8,8 @@
     "scheme": "lumio",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.shakogegia.lumio-mobile"
     },
     "android": {
       "adaptiveIcon": {

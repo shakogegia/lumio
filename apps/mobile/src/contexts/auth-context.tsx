@@ -6,14 +6,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createLumioAuthClient, type LumioAuthClient } from "./auth-client";
-import { normalizeServerUrl } from "./api";
-import { pingLumioServer } from "./server-check";
+import { createLumioAuthClient, type LumioAuthClient } from "@/lib/auth-client";
+import { normalizeServerUrl } from "@/lib/api";
+import { pingLumioServer } from "@/lib/server-check";
 import {
   getStoredServerUrl,
   setStoredServerUrl,
   clearStoredServerUrl,
-} from "./server-url-store";
+} from "@/lib/server-url-store";
 
 // Placeholder so a client always exists (Better Auth needs a baseURL and hooks
 // must be unconditional). Used only before a real server URL is chosen; its
@@ -29,6 +29,8 @@ type AuthContextValue = {
   signOut: LumioAuthClient["signOut"]; // end session, keep the server
   connect: (input: string) => Promise<void>;
   disconnect: () => Promise<void>; // end session AND forget the server
+  /** Cookie header for authenticating custom (non-Better-Auth) API calls. */
+  getCookie: () => string;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPending,
       signIn: client.signIn,
       signOut: client.signOut,
+      getCookie: () => client.getCookie(),
       connect: async (input: string) => {
         const url = normalizeServerUrl(input);
         await pingLumioServer(url);

@@ -1,8 +1,8 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { AuthProvider } from "../lib/auth-context";
-import { AnimatedSplash } from "../components/animated-splash";
+import { AuthProvider } from "@/contexts/auth-context";
+import { AnimatedSplash } from "@/components/animated-splash";
 
 export default function RootLayout() {
   return (
