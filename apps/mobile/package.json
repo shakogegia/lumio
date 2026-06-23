@@ -5,8 +5,10 @@
   "dependencies": {
     "@better-auth/expo": "1.6.19",
     "@expo/ui": "~56.0.18",
+    "@lumio/shared": "workspace:*",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-menu/menu": "^2.0.0",
+    "@shopify/flash-list": "2.0.2",
     "better-auth": "1.6.19",
     "expo": "~56.0.12",
     "expo-blur": "~56.0.3",
