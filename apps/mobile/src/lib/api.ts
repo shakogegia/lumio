@@ -1,24 +1,16 @@
 /**
- * Resolve and validate the Lumio backend base URL for the mobile app.
+ * Validate and normalize a user-entered Lumio server URL.
  *
- * Reads from EXPO_PUBLIC_API_URL (see .env.example). Fails fast with a clear
- * message so a misconfigured device doesn't produce confusing network errors.
- * Returns the URL with any trailing slash removed.
+ * Returns the URL with surrounding whitespace and any trailing slash removed.
+ * Throws a user-facing message when the input is empty or not an http(s) URL.
  */
-export function resolveApiBaseUrl(
-  raw: string | undefined = process.env.EXPO_PUBLIC_API_URL,
-): string {
-  const value = raw?.trim();
+export function normalizeServerUrl(input: string): string {
+  const value = input.trim();
   if (!value) {
-    throw new Error(
-      "EXPO_PUBLIC_API_URL is not set. Copy apps/mobile/.env.example to " +
-        "apps/mobile/.env and point it at your running Lumio backend.",
-    );
+    throw new Error("Please enter your Lumio server URL.");
   }
-  if (!/^https?:\/\//.test(value)) {
-    throw new Error(
-      `EXPO_PUBLIC_API_URL must be an http(s) URL, got: ${value}`,
-    );
+  if (!/^https?:\/\//i.test(value)) {
+    throw new Error("Server URL must start with http:// or https://");
   }
   return value.replace(/\/+$/, "");
 }
