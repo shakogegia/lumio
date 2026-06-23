@@ -22,11 +22,16 @@ MEDIA_DIR   ?= $(CURDIR)/media
 
 export PORT MEDIA_DIR
 
-.PHONY: dev build push up down logs shell migrate clean
+.PHONY: dev ios build push up down logs shell migrate clean
 
 # Local dev (Next dev server; run `pnpm db:up` first for Postgres).
 dev:
 	pnpm dev
+
+# Launch the mobile app in the iOS Simulator (Expo Go; needs Xcode + a running
+# backend — enter your server URL on the app's connect screen).
+ios:
+	cd apps/mobile && npx expo start --ios
 
 # Build the image for the local platform.
 build:

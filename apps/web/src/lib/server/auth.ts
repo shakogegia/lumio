@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { prisma, hasAnyUser } from "@lumio/db";
 import { assertSignupAllowed } from "@/lib/signup-gate";
 
@@ -18,8 +19,21 @@ const extraTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// The mobile app authenticates from the `lumio://` scheme; in dev, Expo Go
+// serves the app over `exp://<lan-ip>:<port>`. Trust both so Better Auth's
+// origin check accepts requests from the Expo client.
+const mobileOrigins = [
+  "lumio://",
+  "lumio://*",
+  ...(process.env.NODE_ENV === "development" ? ["exp://", "exp://**"] : []),
+];
+
 const trustedOrigins = [
-  ...new Set([...(baseURL ? [baseURL] : []), ...extraTrustedOrigins]),
+  ...new Set([
+    ...(baseURL ? [baseURL] : []),
+    ...extraTrustedOrigins,
+    ...mobileOrigins,
+  ]),
 ];
 
 // Secure cookies only travel over HTTPS. Set USE_SECURE_COOKIES=false to keep
@@ -44,7 +58,7 @@ export const auth = betterAuth({
   ...(secureCookiesEnv !== undefined && {
     advanced: { useSecureCookies: secureCookiesEnv !== "false" },
   }),
-  plugins: [twoFactor()],
+  plugins: [twoFactor(), expo()],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
