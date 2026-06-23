@@ -5,6 +5,8 @@ import {
   getPhotoNeighbors,
   listPhotos,
   listPhotosForDownload,
+  photoExistsInCatalog,
+  photoOrTrashedExistsInCatalog,
   setPhotoColorLabel,
   setPhotoFavorite,
 } from "./photos-service.js";
@@ -340,6 +342,23 @@ describe("setPhotoFavorite", () => {
       where: { catalogId: CAT, id: { in: ["p1"] } },
       data: { isFavorite: false },
     });
+  });
+});
+
+describe("photoExistsInCatalog", () => {
+  it("is true only when the photo is in the catalog", async () => {
+    const findFirst = vi.fn().mockResolvedValueOnce({ id: "p1" }).mockResolvedValueOnce(null);
+    const db = { photo: { findFirst } } as never;
+    expect(await photoExistsInCatalog("c1", "p1", db)).toBe(true);
+    expect(await photoExistsInCatalog("c1", "nope", db)).toBe(false);
+  });
+});
+
+describe("photoOrTrashedExistsInCatalog", () => {
+  it("is true if either the live or trashed photo matches", async () => {
+    const db = { photo: { findFirst: vi.fn().mockResolvedValue(null) },
+                 trashedPhoto: { findFirst: vi.fn().mockResolvedValue({ id: "p1" }) } } as never;
+    expect(await photoOrTrashedExistsInCatalog("c1", "p1", db)).toBe(true);
   });
 });
 

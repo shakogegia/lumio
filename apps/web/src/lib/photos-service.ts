@@ -101,6 +101,22 @@ export async function setPhotoFavorite(
   return count;
 }
 
+export async function photoExistsInCatalog(catalogId: string, id: string, db: Db = prisma): Promise<boolean> {
+  return (await db.photo.findFirst({ where: { id, catalogId }, select: { id: true } })) !== null;
+}
+
+export async function photoOrTrashedExistsInCatalog(
+  catalogId: string,
+  id: string,
+  db: Pick<PrismaClient, "photo" | "trashedPhoto"> = prisma,
+): Promise<boolean> {
+  const [photo, trashed] = await Promise.all([
+    db.photo.findFirst({ where: { id, catalogId }, select: { id: true } }),
+    db.trashedPhoto.findFirst({ where: { id, catalogId }, select: { id: true } }),
+  ]);
+  return photo !== null || trashed !== null;
+}
+
 export async function getPhoto(catalogId: string, id: string, db: Db = prisma) {
   const row = await db.photo.findFirst({ where: { id, catalogId }, include: { albums: { select: { albumId: true } } } });
   if (!row) return null;

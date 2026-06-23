@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { errorJson, mapServiceError, parseJson, parseQuery } from "./route-helpers.js";
+import { binaryResponse, errorJson, mapServiceError, parseJson, parseQuery } from "./route-helpers.js";
 import { AlbumNotFoundError, SmartAlbumMutationError } from "./albums-service.js";
 import { FolderNotFoundError } from "./folders-service.js";
 
@@ -53,5 +53,15 @@ describe("mapServiceError", () => {
     expect(mapServiceError(new FolderNotFoundError("x"))?.status).toBe(404);
     expect(mapServiceError(new SmartAlbumMutationError("x"))?.status).toBe(400);
     expect(mapServiceError(new Error("generic"))).toBeNull();
+  });
+});
+
+describe("binaryResponse", () => {
+  it("sets content-type, immutable cache, and optional attachment disposition", () => {
+    const r = binaryResponse(Buffer.from("x"), { contentType: "image/webp" });
+    expect(r.headers.get("Content-Type")).toBe("image/webp");
+    expect(r.headers.get("Cache-Control")).toContain("immutable");
+    const d = binaryResponse(Buffer.from("x"), { contentType: "image/jpeg", downloadAs: "p.jpg" });
+    expect(d.headers.get("Content-Disposition")).toBe('attachment; filename="p.jpg"');
   });
 });

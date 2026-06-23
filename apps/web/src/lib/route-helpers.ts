@@ -55,3 +55,16 @@ export function mapServiceError(err: unknown): NextResponse<ApiError> | null {
   }
   return null;
 }
+
+/** A binary (image) response with immutable caching and an optional download filename. */
+export function binaryResponse(
+  file: Buffer,
+  opts: { contentType: string; cacheControl?: string; downloadAs?: string },
+): NextResponse {
+  const headers: Record<string, string> = {
+    "Content-Type": opts.contentType,
+    "Cache-Control": opts.cacheControl ?? "public, max-age=31536000, immutable",
+  };
+  if (opts.downloadAs) headers["Content-Disposition"] = `attachment; filename="${opts.downloadAs}"`;
+  return new NextResponse(new Uint8Array(file), { headers });
+}
