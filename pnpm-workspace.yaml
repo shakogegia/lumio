@@ -2,6 +2,12 @@ packages:
   - "packages/*"
   - "apps/*"
 
+# Expo / React Native need a flat node_modules layout: Metro resolves transitive
+# deps (e.g. expo-router's @expo/metro-runtime) from a single tree, which pnpm's
+# default isolated/.pnpm layout breaks. Hoisted linker fixes the mobile bundle.
+# (pnpm v10+ reads this here, not from .npmrc.)
+nodeLinker: hoisted
+
 onlyBuiltDependencies:
   - esbuild
   - "@prisma/client"

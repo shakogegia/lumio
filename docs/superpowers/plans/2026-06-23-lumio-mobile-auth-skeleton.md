@@ -23,6 +23,14 @@ Task 1 ran `create-expo-app@latest`, which installed **Expo SDK 56** (not 55) wi
 - **SDK 56 API note:** Expo Router 6 still exports `Stack`, `Redirect`, `router`, `useRouter`. React 19.2.3. Better Auth's Expo plugin requires Metro package-exports, which are on by default in SDK 53+ (so SDK 56 is fine).
 - Template meta-cruft (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `LICENSE`, `.vscode/`) and a dangling `reset-project` script were removed during Task 1 finalization.
 
+### Required: hoisted node-linker (the plan's "fallback" turned out to be mandatory)
+
+A post-implementation `expo export --platform ios` bundle smoke caught a real pnpm resolution failure: `expo-router/entry-classic.js` imports `@expo/metro-runtime` (a nested **peer** dep) which pnpm's default isolated `.pnpm` layout does not place where Metro looks (`tsc` cannot catch this — only a real bundle does). The fix from Task 2's troubleshooting note was needed — with one correction:
+
+- **On pnpm v11, `node-linker=hoisted` in `.npmrc` is ignored.** The setting must go in **`pnpm-workspace.yaml`** as `nodeLinker: hoisted` (pnpm v10+ reads config there; this repo already uses camelCase keys like `onlyBuiltDependencies`). Verify with `pnpm config get node-linker` → `hoisted`.
+- Applying it requires a clean relink: `rm -rf node_modules apps/*/node_modules packages/*/node_modules && pnpm install`, then `pnpm db:generate` (the wipe removes the generated Prisma client).
+- **Verified safe repo-wide:** after the change, `apps/web` tests stay at **422 passed** (identical to baseline), `apps/mobile` at **5 passed**, and the iOS bundle exports cleanly. The lockfile is unchanged (hoisting only alters on-disk layout, not resolution).
+
 ---
 
 ## Context for the implementer (read first)
