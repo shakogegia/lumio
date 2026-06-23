@@ -3,7 +3,7 @@ import { originalPath } from "@/lib/paths";
 import { attachmentDisposition } from "@/lib/download-service";
 import { withCatalog } from "@/lib/with-catalog";
 import { binaryResponse, errorJson } from "@/lib/route-helpers";
-import { getPhoto } from "@/lib/photos-service";
+import { getPhotoFile } from "@/lib/photos-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ const CONTENT_TYPES: Record<string, string> = {
 
 export const GET = withCatalog<{ id: string }>(async (request, context, { catalog }) => {
   const { id } = await context.params;
-  const photo = await getPhoto(catalog.id, id);
+  const photo = await getPhotoFile(catalog.id, id);
   if (!photo) {
     return errorJson("Photo not found", 404);
   }

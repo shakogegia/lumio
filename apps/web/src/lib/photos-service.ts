@@ -101,6 +101,15 @@ export async function photoExistsInCatalog(catalogId: string, id: string, db: Db
   return (await db.photo.findFirst({ where: { id, catalogId }, select: { id: true } })) !== null;
 }
 
+/** Minimal select for serving the original file: just the path needed to locate it on disk. */
+export async function getPhotoFile(
+  catalogId: string,
+  id: string,
+  db: Db = prisma,
+): Promise<{ path: string } | null> {
+  return db.photo.findFirst({ where: { id, catalogId }, select: { path: true } });
+}
+
 export async function photoOrTrashedExistsInCatalog(
   catalogId: string,
   id: string,

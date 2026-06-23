@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   getNeighborsForWhere,
   getPhoto,
+  getPhotoFile,
   getPhotoNeighbors,
   listPhotos,
   listPhotosForDownload,
@@ -351,6 +352,24 @@ describe("photoExistsInCatalog", () => {
     const db = { photo: { findFirst } } as never;
     expect(await photoExistsInCatalog("c1", "p1", db)).toBe(true);
     expect(await photoExistsInCatalog("c1", "nope", db)).toBe(false);
+  });
+});
+
+describe("getPhotoFile", () => {
+  it("returns {path} when the photo is in the catalog", async () => {
+    const findFirst = vi.fn().mockResolvedValue({ path: "foo.jpg" });
+    const db = { photo: { findFirst } } as never;
+    const result = await getPhotoFile("c1", "p1", db);
+    expect(result).toEqual({ path: "foo.jpg" });
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "p1", catalogId: "c1" }, select: { path: true } }),
+    );
+  });
+
+  it("returns null when the photo is not found", async () => {
+    const findFirst = vi.fn().mockResolvedValue(null);
+    const db = { photo: { findFirst } } as never;
+    expect(await getPhotoFile("c1", "missing", db)).toBeNull();
   });
 });
 
