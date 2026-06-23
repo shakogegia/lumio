@@ -159,9 +159,17 @@ export async function listAlbumPhotosForDownload(
 
 export class SmartAlbumMutationError extends Error {}
 
-export class AlbumNotFoundError extends Error {}
+export class AlbumNotFoundError extends Error {
+  constructor(message = "Album not found") {
+    super(message);
+  }
+}
 
-export class PhotoNotInAlbumError extends Error {}
+export class PhotoNotInAlbumError extends Error {
+  constructor(message = "Photo is not in this album") {
+    super(message);
+  }
+}
 
 export async function removePhotoFromAlbum(catalogId: string, albumId: string, photoId: string, db: Db = prisma): Promise<void> {
   const album = await db.album.findFirst({ where: { id: albumId, catalogId }, select: { id: true } });

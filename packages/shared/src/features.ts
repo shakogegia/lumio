@@ -9,6 +9,8 @@
  *   effective = global && (scopes includes catalog ? catalog : true)
  */
 
+import { z } from "zod";
+
 export enum FeatureKey {
   DiskExplorer = "diskExplorer",
 }
@@ -42,8 +44,6 @@ export type FeatureMap = Record<FeatureKey, boolean>;
 
 /** All feature keys, in registry order. */
 export const ALL_FEATURE_KEYS = Object.values(FeatureKey);
-
-import { z } from "zod";
 
 /** Body for PUT /api/features — toggle one feature. */
 export const featureToggleSchema = z.object({

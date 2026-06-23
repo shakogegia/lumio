@@ -24,8 +24,16 @@ type AlbumLite = {
   folderId: string | null;
 };
 
-export class FolderNotFoundError extends Error {}
-export class FolderCycleError extends Error {}
+export class FolderNotFoundError extends Error {
+  constructor(message = "Folder not found") {
+    super(message);
+  }
+}
+export class FolderCycleError extends Error {
+  constructor(message = "Cannot move a folder into itself or a descendant") {
+    super(message);
+  }
+}
 
 /** Partition the albums whose folder is in `descendantIds` into regular ids and smart rule-sets. */
 function albumsForSubtree(
