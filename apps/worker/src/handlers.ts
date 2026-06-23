@@ -3,6 +3,7 @@ import { getCatalogById, prisma } from "@lumio/db";
 import { type JobHandlers, purgeAllPhotos, purgeTrash } from "@lumio/jobs";
 import { JobType } from "@lumio/shared";
 import { CACHE_DIR, TRASH_DIR } from "./config.js";
+import { log } from "./log.js";
 import { scanCatalog } from "./scan.js";
 
 export interface HandlerDeps {
@@ -37,7 +38,7 @@ export function buildHandlers(makeDeps: (catalogId: string) => HandlerDeps = dep
         // Progress writes are best-effort telemetry: never block or fail the scan,
         // but don't silently swallow a write error either.
         void report(done, total, "Scanning…").catch((err) => {
-          console.warn(`progress write failed: ${err instanceof Error ? err.message : String(err)}`);
+          log.warn(`progress write failed: ${err instanceof Error ? err.message : String(err)}`, { scope: "consumer", jobId: job.id });
         });
       });
     },

@@ -8,6 +8,7 @@ import { activity } from "./activity.js";
 import { removeDepsFor } from "./deps.js";
 import { SCAN_SELECT, reconcileFile, scanCatalog, type ScanSummary } from "./scan.js";
 import { catalogForPath } from "./catalog-routing.js";
+import { log } from "./log.js";
 
 const isSupported = (p: string): boolean =>
   SUPPORTED_EXTENSIONS.has(path.extname(p).toLowerCase());
@@ -34,8 +35,9 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
 
   for (const c of catalogs) {
     const result = await scanCatalog(c);
-    console.log(
+    log.info(
       `Initial scan [${c.path}] — processed ${result.processed}, unchanged ${result.skippedUnchanged}, healed ${result.healed}, restamped ${result.restamped}, removed ${result.removed}`,
+      { scope: "scan", catalogId: c.id },
     );
   }
 
@@ -58,10 +60,10 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
       });
       const summary = emptySummary();
       await reconcileFile(catalog, rel, row ?? undefined, summary);
-      if (summary.healed) console.log(`healed ${rel}`);
-      else if (summary.restamped) console.log(`restamped ${rel}`);
+      if (summary.healed) log.info(`healed ${rel}`, { scope: "watch", catalogId: catalog.id });
+      else if (summary.restamped) log.info(`restamped ${rel}`, { scope: "watch", catalogId: catalog.id });
     } catch (err) {
-      console.warn(`skip ${rel}: ${errorMessage(err)}`);
+      log.warn(`skip ${rel}: ${errorMessage(err)}`, { scope: "watch", catalogId: catalog.id });
     } finally {
       activity.importing--;
     }
@@ -77,14 +79,14 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
       const rel = path.relative(catalog.path, abs);
       try {
         await removePath(rel, removeDepsFor(catalog));
-        console.log(`- ${rel}`);
+        log.info(`removed ${rel}`, { scope: "watch", catalogId: catalog.id });
       } catch (err) {
-        console.warn(`remove failed ${rel}: ${errorMessage(err)}`);
+        log.warn(`remove failed ${rel}: ${errorMessage(err)}`, { scope: "watch", catalogId: catalog.id });
       }
     })
-    .on("error", (err) => console.error(`watcher error: ${String(err)}`));
+    .on("error", (err) => log.error(`watcher error: ${String(err)}`, { scope: "watch" }));
 
-  console.log(`Watching ${catalogs.map((c) => c.path).join(", ")} …`);
+  log.info(`Watching ${catalogs.map((c) => c.path).join(", ")} …`, { scope: "watch" });
 
   // Reconcile watch set against DB every 5 s so added/removed catalogs are
   // picked up without a restart. The upsert/unlink closures close over `catalogs`
@@ -99,19 +101,19 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
         if (!prevPaths.has(c.path)) {
           await scanCatalog(c);
           watcher.add(c.path);
-          console.log(`Catalog added, now watching ${c.path}`);
+          log.info(`Catalog added, now watching ${c.path}`, { scope: "watch", catalogId: c.id });
         }
       }
       for (const c of catalogs) {
         if (!nextPaths.has(c.path)) {
           watcher.unwatch(c.path);
-          console.log(`Catalog removed, stopped watching ${c.path}`);
+          log.info(`Catalog removed, stopped watching ${c.path}`, { scope: "watch", catalogId: c.id });
         }
       }
 
       catalogs = next;
     } catch (err) {
-      console.warn(`catalog reconcile error: ${errorMessage(err)}`);
+      log.warn(`catalog reconcile error: ${errorMessage(err)}`, { scope: "watch" });
     }
   }, RECONCILE_DEBOUNCE_MS);
 
