@@ -277,9 +277,12 @@ describe("listAlbumPhotos", () => {
       },
     };
     await listAlbumPhotos(CAT, "alb1", { limit: 2, offset: 0, month: "2026-06" }, fakeDb as never);
+    // catalogId is at the top level (added by listPhotosForWhere); the album scope
+    // and sortDate range are AND-combined alongside it.
     expect(calls[0]?.where).toEqual({
+      catalogId: CAT,
       AND: [
-        { catalogId: CAT, albums: { some: { albumId: "alb1" } } },
+        { albums: { some: { albumId: "alb1" } } },
         {
           sortDate: {
             gte: new Date("2026-06-01T00:00:00.000Z"),

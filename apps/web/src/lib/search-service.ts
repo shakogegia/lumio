@@ -1,10 +1,23 @@
-import { type PrismaClient, buildSearchWhere, prisma, toPhotoDTO } from "@lumio/db";
+import { type PrismaClient, buildSearchWhere, prisma } from "@lumio/db";
 import { type PhotosPage, type SearchQuery, monthRange } from "@lumio/shared";
-import { photoOrderBy } from "@/lib/photo-order";
+import { listPhotosForWhere } from "@/lib/photos-service";
 
 type Db = Pick<PrismaClient, "photo">;
 
-/** Catalog-scoped search where + the optional month range, AND-combined. */
+/**
+ * Inner (catalog-free) search where for `listPhotosForWhere` delegation. Returns
+ * the search filter predicate without the `catalogId` constraint — that is added by
+ * `listPhotosForWhere` itself. buildSearchWhere returns either {} or { AND: [...] };
+ * the month range is ANDed in alongside it.
+ */
+function searchInnerWhere(params: SearchQuery) {
+  const base = buildSearchWhere(params);
+  if (!params.month) return base;
+  return { AND: [base, { sortDate: monthRange(params.month) }] };
+}
+
+/** Catalog-scoped search where + the optional month range, AND-combined.
+ *  Used only by countSearchPhotos which cannot delegate to listPhotosForWhere. */
 function searchWhere(catalogId: string, params: SearchQuery) {
   // Merge catalogId into the base where (spread is safe: buildSearchWhere returns
   // either {} or { AND: [...] }, so catalogId just adds a key).
@@ -25,12 +38,7 @@ export async function searchPhotos(
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset, sort } = params;
-  const where = searchWhere(catalogId, params);
-  const [rows, total] = await Promise.all([
-    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
-    db.photo.count({ where }),
-  ]);
-  return { items: rows.map(toPhotoDTO), total };
+  return listPhotosForWhere(catalogId, searchInnerWhere(params), { limit, offset, sort }, db);
 }
 
 /**

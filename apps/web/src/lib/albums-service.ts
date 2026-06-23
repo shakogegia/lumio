@@ -1,4 +1,4 @@
-import { type Album, type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO, toPhotoDTO } from "@lumio/db";
+import { type Album, type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
 import {
   monthRange,
   type AlbumDTO,
@@ -8,7 +8,8 @@ import {
   type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
-import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
+import { PHOTO_ORDER } from "@/lib/photo-order";
+import { listPhotosForWhere } from "@/lib/photos-service";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 
@@ -130,13 +131,11 @@ export async function listAlbumPhotos(
   const { limit, offset, sort, month } = params;
   // Scope by catalog: a SMART album's where is just its rule predicate (no
   // catalog constraint), so without this it would match photos in EVERY catalog.
-  const base: Prisma.PhotoWhereInput = { catalogId, ...scoped };
-  const where = month ? { AND: [base, { sortDate: monthRange(month) }] } : base;
-  const [rows, total] = await Promise.all([
-    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
-    db.photo.count({ where }),
-  ]);
-  return { items: rows.map(toPhotoDTO), total };
+  // listPhotosForWhere adds catalogId at the top level; AND the month range in alongside scoped.
+  const innerWhere: Prisma.PhotoWhereInput = month
+    ? { AND: [scoped, { sortDate: monthRange(month) }] }
+    : scoped;
+  return listPhotosForWhere(catalogId, innerWhere, { limit, offset, sort }, db);
 }
 
 /** Minimal {id, path} for every photo in an album (smart or regular), in

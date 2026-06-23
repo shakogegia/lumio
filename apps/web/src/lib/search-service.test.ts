@@ -68,9 +68,12 @@ describe("searchPhotos", () => {
   it("ANDs a UTC sortDate range into the search where when month is set", async () => {
     const db = fakeDb([row("a")]);
     await searchPhotos(CAT, { limit: 50, offset: 0, album: [], month: "2026-06" }, db as never);
+    // catalogId is at the top level (added by listPhotosForWhere); the search base
+    // filter and sortDate range are AND-combined alongside it.
     expect(db.calls[0]?.where).toEqual({
+      catalogId: CAT,
       AND: [
-        { catalogId: CAT },
+        {},
         {
           sortDate: {
             gte: new Date("2026-06-01T00:00:00.000Z"),

@@ -21,14 +21,10 @@ export async function listPhotos(
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset, sort, month, favorite } = params;
-  const where: Prisma.PhotoWhereInput = { catalogId };
+  const where: Prisma.PhotoWhereInput = {};
   if (month) where.sortDate = monthRange(month);
   if (favorite) where.isFavorite = true;
-  const [rows, total] = await Promise.all([
-    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
-    db.photo.count({ where }),
-  ]);
-  return { items: rows.map(toPhotoDTO), total };
+  return listPhotosForWhere(catalogId, where, { limit, offset, sort }, db);
 }
 
 /**

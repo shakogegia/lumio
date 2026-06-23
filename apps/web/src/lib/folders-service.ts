@@ -1,4 +1,4 @@
-import { type Prisma, type PrismaClient, type Folder, prisma, folderPhotoWhere, toFolderDTO, toPhotoDTO } from "@lumio/db";
+import { type Prisma, type PrismaClient, type Folder, prisma, folderPhotoWhere, toFolderDTO } from "@lumio/db";
 import {
   monthRange,
   type AlbumSummaryDTO,
@@ -10,9 +10,10 @@ import {
   type PhotosQuery,
   type SmartAlbumRules,
 } from "@lumio/shared";
-import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
+import { PHOTO_ORDER } from "@/lib/photo-order";
 import { albumSummary } from "@/lib/albums-service";
 import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree";
+import { listPhotosForWhere } from "@/lib/photos-service";
 
 type Db = Pick<PrismaClient, "folder" | "album" | "albumPhoto" | "photo" | "$transaction">;
 
@@ -222,12 +223,9 @@ export async function listFolderPhotos(
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
   const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
   const { limit, offset, sort, month } = params;
-  const where = month
-    ? { catalogId, AND: [scopedWhere, { sortDate: monthRange(month) }] }
-    : { catalogId, ...scopedWhere };
-  const [rows, total] = await Promise.all([
-    db.photo.findMany({ where, skip: offset, take: limit, orderBy: photoOrderBy(sort) }),
-    db.photo.count({ where }),
-  ]);
-  return { items: rows.map(toPhotoDTO), total };
+  // listPhotosForWhere adds catalogId at the top level; AND the month range alongside scopedWhere.
+  const innerWhere: Prisma.PhotoWhereInput = month
+    ? { AND: [scopedWhere, { sortDate: monthRange(month) }] }
+    : scopedWhere;
+  return listPhotosForWhere(catalogId, innerWhere, { limit, offset, sort }, db);
 }
