@@ -28,10 +28,14 @@ export PORT MEDIA_DIR
 dev:
 	pnpm dev
 
-# Launch the mobile app in the iOS Simulator (Expo Go; needs Xcode + a running
-# backend — enter your server URL on the app's connect screen).
+# Build + launch the mobile app in the iOS Simulator as a dev build (custom dev
+# client — needed for native modules not in Expo Go, e.g. @react-native-menu/menu
+# and full Liquid Glass). Prebuilds the native project on demand (ios/ is
+# gitignored). First build is slow; afterwards `expo start` reconnects to it.
+# Needs Xcode 26 (for iOS 26 Liquid Glass) + a running backend — enter the
+# server URL on the connect screen.
 ios:
-	cd apps/mobile && npx expo start --ios
+	cd apps/mobile && npx expo run:ios
 
 # Build the image for the local platform.
 build:
