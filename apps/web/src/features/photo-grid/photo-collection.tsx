@@ -9,9 +9,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { PhotoDTO } from "@lumio/shared";
 import { PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
-import { photoIdFromPathname } from "@/lib/pathname-photo-id";
+import { isPhotoDetailPath, photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
 import { displayUrl } from "@/lib/rendition-url";
@@ -85,6 +86,7 @@ export function PhotoCollectionProvider({
   children: React.ReactNode;
 }) {
   const { slug } = useCatalog();
+  const pathname = usePathname() ?? "/";
   // Seeded from a Server Component? Derive the store source + URLs from `scope` on
   // the client (collectionForScope is pure/client-safe). Otherwise use the
   // explicit props the client grid views pass.
@@ -248,6 +250,31 @@ export function PhotoCollectionProvider({
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [enableLightbox, slug, url]);
+
+  // Close the overlay when the user navigates off the detail URL via the router
+  // (e.g. a sidebar <Link> to /photos). The lightbox shares the GRID route — it
+  // only "opens" by pushing /photo/<id> through history.pushState (Next syncs
+  // usePathname to it), so a <Link> back to a grid route does NOT change Next's
+  // route tree and never unmounts this provider; without this, openIndex would
+  // stay set and the overlay would linger with only the URL changed. Keyed off
+  // the detail→non-detail transition rather than bare equality: open() sets
+  // openIndex urgently while Next applies the pushed pathname inside a transition,
+  // so there's an interim commit with openIndex set but pathname still the grid —
+  // bare equality would misread that as a navigation-away and close the
+  // just-opened overlay.
+  const wasDetailRef = useRef(isPhotoDetailPath(pathname, slug));
+  useEffect(() => {
+    const isDetail = isPhotoDetailPath(pathname, slug);
+    // Wrap the state update so it isn't a direct setState call in the effect body.
+    const dropOverlay = () => {
+      // The pushed /photo entry is now buried behind the new route, so a later
+      // close() must not history.back() into it.
+      pushed.current = false;
+      setOpenIndex(null);
+    };
+    if (wasDetailRef.current && !isDetail && openIndex !== null) dropOverlay();
+    wasDetailRef.current = isDetail;
+  }, [pathname, slug, openIndex]);
 
   const value = useMemo<PhotoCollectionValue>(
     () => ({
