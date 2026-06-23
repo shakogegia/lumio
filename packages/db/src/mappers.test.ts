@@ -56,7 +56,7 @@ describe("toPhotoDTO", () => {
     const dto = toPhotoDTO({ ...baseRow, edits: { rotate: 90, flipH: true, flipV: false } } as any);
     // coercePhotoEdits normalizes to the full recipe shape, defaulting the
     // crop/straighten fields added by the crop & straighten feature.
-    expect(dto.edits).toEqual({ rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(dto.edits).toEqual({ version: 1, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
   });
   it("maps null edits to null", () => {
     const dto = toPhotoDTO({ ...baseRow, edits: null } as any);
@@ -73,7 +73,7 @@ describe("toPhotoDTO", () => {
       edits: { rotate: 0, flipH: false, flipV: false, brightness: 40, vignette: 0 },
     } as any);
     expect(dto.edits).toEqual({
-      rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, brightness: 40,
+      version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, brightness: 40,
     });
   });
 
@@ -83,7 +83,7 @@ describe("toPhotoDTO", () => {
       edits: { rotate: 0, flipH: false, flipV: false, contrast: 9999 },
     } as any);
     expect(dto.edits).toEqual({
-      rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 100,
+      version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 100,
     });
   });
 });

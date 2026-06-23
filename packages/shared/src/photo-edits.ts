@@ -134,7 +134,8 @@ export function aspectCrop(e: PhotoEdits, preset: AspectPreset, wo: number, ho: 
 /** The crop actually applied when previewing/baking `e` against an oriented base of
  *  `ow×oh` (post coarse-rotate). Explicit crop wins; else a straighten auto-fills a
  *  centered inscribed crop; else the full frame. Normalized to the straightened (O′)
- *  box. Single source for the 3 sites that used to inline this. */
+ *  box — which equals the oriented frame (O) when straighten is 0. Single source for
+ *  the 3 sites that used to inline this. */
 export function effectiveCrop(e: PhotoEdits | null, ow: number, oh: number): CropRect {
   if (e?.crop) return e.crop;
   const deg = e?.straighten ?? 0;
