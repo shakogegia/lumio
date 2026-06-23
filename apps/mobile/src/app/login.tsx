@@ -1,18 +1,28 @@
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { Redirect, router } from "expo-router";
 import { useAuth } from "../lib/auth-context";
+import { useTheme, weight } from "../lib/theme";
+import { Brand } from "../components/logo";
+import { Screen, Card, Separator, Loading } from "../components/ui/layout";
+import { FieldRow } from "../components/ui/field";
+import { Button, TextLink } from "../components/ui/button";
 
 export default function Login() {
   const { serverUrl, isLoading, session, signIn, disconnect } = useAuth();
+  const { colors } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (isLoading) return <View style={styles.center}><ActivityIndicator /></View>;
+  if (isLoading) return <Loading />;
   if (!serverUrl) return <Redirect href="/connect" />;
   if (session) return <Redirect href="/" />;
+
+  const clearError = () => {
+    if (error) setError(null);
+  };
 
   const handleLogin = async () => {
     setError(null);
@@ -40,45 +50,69 @@ export default function Login() {
     router.replace("/connect");
   };
 
+  const canSubmit = !!email.trim() && !!password;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Lumio</Text>
-      <Text style={styles.server}>{serverUrl}</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        autoComplete="email"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable style={styles.button} onPress={handleLogin} disabled={submitting || !email || !password}>
-        <Text style={styles.buttonText}>{submitting ? "Signing in…" : "Sign in"}</Text>
-      </Pressable>
-      <Pressable onPress={handleChangeServer}>
-        <Text style={styles.link}>Change server</Text>
-      </Pressable>
-    </View>
+    <Screen>
+      <View style={styles.header}>
+        <Brand />
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>Sign in to your Lumio library.</Text>
+        </View>
+      </View>
+
+      <View>
+        <Card>
+          <FieldRow
+            placeholder="Email"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="username"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              clearError();
+            }}
+          />
+          <Separator />
+          <FieldRow
+            placeholder="Password"
+            secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
+            returnKeyType="go"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              clearError();
+            }}
+            onSubmitEditing={canSubmit ? handleLogin : undefined}
+          />
+        </Card>
+        {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
+      </View>
+
+      <Button label="Login" onPress={handleLogin} loading={submitting} disabled={!canSubmit} />
+
+      <View style={styles.footer}>
+        <Text style={[styles.server, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {serverUrl}
+        </Text>
+        <TextLink label="Change server" onPress={handleChangeServer} />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12 },
-  title: { fontSize: 32, fontWeight: "700", textAlign: "center" },
-  server: { fontSize: 13, color: "#888", textAlign: "center", marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16 },
-  button: { backgroundColor: "#111", borderRadius: 8, padding: 14, alignItems: "center", marginTop: 8 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  link: { color: "#2563eb", textAlign: "center", marginTop: 12, fontSize: 14 },
-  error: { color: "#c00" },
+  header: { alignItems: "center", gap: 20 },
+  headerText: { alignItems: "center", gap: 4 },
+  title: { fontSize: 24, fontWeight: weight.semibold, letterSpacing: -0.3 },
+  sub: { fontSize: 14 },
+  error: { fontSize: 13, marginTop: 8, marginHorizontal: 16 },
+  footer: { alignItems: "center", gap: 10 },
+  server: { fontSize: 12, maxWidth: "90%" },
 });
