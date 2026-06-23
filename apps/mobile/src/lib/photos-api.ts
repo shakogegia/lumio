@@ -42,3 +42,43 @@ export function thumbnailUrl(
 ): string {
   return `${baseURL}/api/c/${slug}/photos/${photo.id}/thumbnail?v=${Date.parse(photo.updatedAt)}`;
 }
+
+/** Authenticated full-size display rendition (edited-or-base WebP) for the
+ *  fullscreen viewer. Cache-busted by updatedAt, like the thumbnail. */
+export function displayUrl(
+  baseURL: string,
+  slug: string,
+  photo: Pick<PhotoDTO, "id" | "updatedAt">,
+): string {
+  return `${baseURL}/api/c/${slug}/photos/${photo.id}/display?v=${Date.parse(photo.updatedAt)}`;
+}
+
+/** The original uploaded bytes — used when sharing the file. */
+export function originalUrl(baseURL: string, slug: string, photo: Pick<PhotoDTO, "id">): string {
+  return `${baseURL}/api/c/${slug}/photos/${photo.id}/original`;
+}
+
+/** Toggle a photo's favorite flag. POST /photos/favorite { photoIds, isFavorite }. */
+export async function setFavorite(
+  baseURL: string,
+  slug: string,
+  cookie: string,
+  id: string,
+  isFavorite: boolean,
+): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${baseURL}/api/c/${slug}/photos/favorite`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ photoIds: [id], isFavorite }),
+    });
+  } catch {
+    throw new Error("Couldn't reach the server.");
+  }
+  if (!res.ok) throw new Error(`Couldn't update favorite (${res.status}).`);
+}
