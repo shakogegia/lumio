@@ -6,6 +6,7 @@ import { LargeHeaderOverlay, useScrollEdgeHeader } from "@/components/large-head
 import { SettingsMenuButton } from "@/components/settings-menu-button";
 import { ZoomablePhotoGrid } from "@/components/photo-grid";
 import { AspectToggle } from "@/components/photo-grid/aspect-toggle";
+import { PhotoViewer } from "@/components/photo-viewer";
 import { usePhotoPages } from "@/hooks/use-photo-pages";
 import { fetchPhotos } from "@/lib/photos-api";
 import { useAuth } from "@/contexts/auth-context";
@@ -54,6 +55,9 @@ export default function Photos() {
     });
   }, []);
 
+  // Index of the photo open in the fullscreen viewer (null = closed).
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
   // Memoized per data source so usePhotoPages reloads only when the source
   // changes. cookie is captured by value (a stable string per session).
   const fetchPage = useMemo(
@@ -94,6 +98,7 @@ export default function Photos() {
           initialColumns={initialColumns}
           fit={fit}
           onColumnsChange={onColumnsChange}
+          onOpenPhoto={(i) => setViewerIndex(i)}
           onEndReached={loadMore}
           onScroll={onScroll}
           contentInset={{ top: headerHeight + 8, bottom: insets.bottom + 96 }}
@@ -122,6 +127,15 @@ export default function Photos() {
         scrolled={scrolled}
         anim={anim}
         headerHeight={headerHeight}
+      />
+      <PhotoViewer
+        photos={photos}
+        index={viewerIndex}
+        baseURL={serverUrl ?? ""}
+        slug={slug ?? ""}
+        cookie={cookie}
+        onClose={() => setViewerIndex(null)}
+        onLoadMore={loadMore}
       />
     </View>
   );
