@@ -74,6 +74,7 @@ export type CropRectInput = z.infer<typeof cropRectSchema>;
 
 /** Edit recipe payload. Used by POST /api/photos/[id]/edit (null = reset). */
 export const photoEditsSchema = z.object({
+  version: z.number().int().min(1).optional(),
   rotate: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]),
   flipH: z.boolean(),
   flipV: z.boolean(),

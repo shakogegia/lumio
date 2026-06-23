@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   NO_EDITS,
+  EDITS_VERSION,
   hasEdits,
   hasGeometry,
   hasColor,
@@ -21,7 +22,7 @@ const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotat
 
 describe("photo-edits", () => {
   it("NO_EDITS is the identity recipe", () => {
-    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is false for null and identity, true otherwise", () => {
@@ -59,7 +60,7 @@ describe("photo-edits", () => {
   });
 
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
-    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 1, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();
     expect(coercePhotoEdits({ rotate: 45, flipH: false, flipV: false })).toBeNull();
     expect(coercePhotoEdits({ rotate: 90 })).toBeNull();
@@ -99,7 +100,7 @@ describe("photo-edits crop & straighten", () => {
   const base = { rotate: 0, flipH: false, flipV: false } as const;
 
   it("NO_EDITS includes straighten 0 and crop null", () => {
-    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is true when only straighten or only crop is set", () => {
@@ -200,5 +201,25 @@ describe("photo-edits color", () => {
     expect(out.contrast).toBe(100);
     expect(out).not.toHaveProperty("exposure");
     expect(out).not.toHaveProperty("vignette");
+  });
+});
+
+describe("edits schema version", () => {
+  it("NO_EDITS carries the current schema version", () => {
+    expect(NO_EDITS.version).toBe(EDITS_VERSION);
+    expect(EDITS_VERSION).toBe(1);
+  });
+
+  it("coercePhotoEdits stamps the current version on a legacy row that lacks one", () => {
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false })?.version).toBe(EDITS_VERSION);
+  });
+
+  it("coercePhotoEdits normalizes any input version to the schema this code emits", () => {
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, version: 99 })?.version).toBe(EDITS_VERSION);
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, version: "x" })?.version).toBe(EDITS_VERSION);
+  });
+
+  it("sameEdits ignores version (it is metadata, not a visual field)", () => {
+    expect(sameEdits({ ...NO_EDITS, version: 1 }, { ...NO_EDITS, version: 99 })).toBe(true);
   });
 });

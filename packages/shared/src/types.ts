@@ -14,6 +14,10 @@ export interface CropRect {
 /** Non-destructive edit recipe applied on top of EXIF auto-orientation.
  *  Canonical order: flipH → flipV → coarse rotate → straighten(θ) → crop. */
 export interface PhotoEdits {
+  /** Recipe schema version (see EDITS_VERSION in photo-edits.ts). Absent in legacy
+   *  rows → treated as v1. Stamped on every coerced/saved recipe; metadata only,
+   *  not a visual field (sameEdits ignores it). */
+  version?: number;
   rotate: 0 | 90 | 180 | 270;
   flipH: boolean;
   flipV: boolean;

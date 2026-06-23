@@ -2,7 +2,19 @@ import type { CropRect, PhotoEdits } from "./types.js";
 import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
 import { COLOR_FIELDS, hasColor } from "./photo-color.js";
 
-export const NO_EDITS: PhotoEdits = { rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null };
+/** Current edit-recipe schema version. Stamped on every coerced/saved recipe so a
+ *  future shape change can branch on it at the read boundary. Zero migration:
+ *  legacy rows lack the field and are read as v1. */
+export const EDITS_VERSION = 1;
+
+export const NO_EDITS: PhotoEdits = {
+  version: EDITS_VERSION,
+  rotate: 0,
+  flipH: false,
+  flipV: false,
+  straighten: 0,
+  crop: null,
+};
 
 /** True when the recipe applies any geometry change (flip/rotate/straighten/crop). */
 export function hasGeometry(e: PhotoEdits | null): boolean {
@@ -154,7 +166,14 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
       ? e.straighten
       : 0;
   const crop = coerceCrop(e.crop);
-  const out: PhotoEdits = { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV, straighten, crop };
+  const out: PhotoEdits = {
+    version: EDITS_VERSION,
+    rotate: e.rotate as PhotoEdits["rotate"],
+    flipH: e.flipH,
+    flipV: e.flipV,
+    straighten,
+    crop,
+  };
   for (const f of COLOR_FIELDS) {
     const v = e[f.key];
     if (typeof v === "number" && Number.isFinite(v)) {
