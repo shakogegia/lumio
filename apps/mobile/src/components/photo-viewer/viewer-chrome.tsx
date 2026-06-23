@@ -193,16 +193,16 @@ const styles = StyleSheet.create({
   },
   side: { width: 44 },
   titlePill: {
+    height: 44, // match the back-arrow circle so the header row is even
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 18,
-    paddingVertical: 7,
     borderRadius: 20,
     overflow: "hidden",
     maxWidth: "62%",
   },
-  title: { fontSize: 16, fontWeight: "600" },
-  subtitle: { fontSize: 12, marginTop: 1, opacity: 0.6 },
+  title: { fontSize: 15, fontWeight: "600", lineHeight: 18 },
+  subtitle: { fontSize: 11, lineHeight: 13, opacity: 0.6 },
   bottom: {
     position: "absolute",
     bottom: 0,
