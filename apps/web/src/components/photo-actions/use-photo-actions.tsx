@@ -9,6 +9,7 @@ import { catalogApiUrl } from "@/lib/catalog-api";
 import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
+import { countLabel } from "@/lib/count-label";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import type { PhotoGridHandle } from "@/features/photo-grid";
 import { playSound } from "@/lib/sound/player";
@@ -139,7 +140,7 @@ export function usePhotoActions({
   const trash = useCallback(
     async (ids: string[], opts?: ActionOpts) => {
       if (ids.length === 0 || deleting) return;
-      const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
+      const label = countLabel(ids.length, "photo", "photos");
       const ok = await confirm({
         title: `Move ${label} to Trash?`,
         description: trashDescription,

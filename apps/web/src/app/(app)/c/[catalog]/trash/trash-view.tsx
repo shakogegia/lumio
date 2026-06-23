@@ -117,7 +117,7 @@ export function TrashView() {
   }
 
   const count = sel.count;
-  const label = `${count} ${count === 1 ? "photo" : "photos"}`;
+  const label = countLabel(count, "photo", "photos");
   const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
   // Show a skeleton in the subtitle slot while the count loads (keeps the line reserved).
   const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;

@@ -194,7 +194,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
       return;
     }
     const ok = await confirm({
-      title: `Delete ${count} ${count === 1 ? "item" : "items"}?`,
+      title: `Delete ${countLabel(count, "item", "items")}?`,
       description: "This can't be undone. Your photos stay in the library.",
       confirmLabel: "Delete",
       destructive: true,

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { countLabel } from "@/lib/count-label";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { addPhotosToAlbum } from "@/lib/photo-mutations";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
@@ -90,7 +91,7 @@ export function AddToAlbumDialog({
     }
   }
 
-  const photoLabel = `${photoIds.length} ${photoIds.length === 1 ? "photo" : "photos"}`;
+  const photoLabel = countLabel(photoIds.length, "photo", "photos");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

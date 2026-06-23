@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Download, Loader2, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { errorMessage } from "@lumio/shared";
+import { countLabel } from "@/lib/count-label";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
@@ -226,7 +227,7 @@ export function UploadClient({
   const handleDelete = useCallback(async () => {
     const selectedIds = sel.selected;
     if (selectedIds.size === 0 || deleting) return;
-    const label = `${selectedIds.size} ${selectedIds.size === 1 ? "photo" : "photos"}`;
+    const label = countLabel(selectedIds.size, "photo", "photos");
     const ok = await confirm({
       title: `Move ${label} to Trash?`,
       description: "They'll be moved to Trash. You can restore them later.",

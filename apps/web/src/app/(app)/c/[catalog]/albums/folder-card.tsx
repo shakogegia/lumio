@@ -2,6 +2,7 @@
 
 import { Folder as FolderIcon, FolderInput, FolderOpen, Images, Pencil, Trash2 } from "lucide-react";
 import type { FolderSummaryDTO } from "@lumio/shared";
+import { countLabel } from "@/lib/count-label";
 import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
@@ -70,9 +71,9 @@ export function FolderCard({
     </div>
   );
 
-  const parts = [`${folder.albumCount} ${folder.albumCount === 1 ? "album" : "albums"}`];
+  const parts = [countLabel(folder.albumCount, "album", "albums")];
   if (folder.totalPhotoCount > 0) {
-    parts.push(`${folder.totalPhotoCount} ${folder.totalPhotoCount === 1 ? "photo" : "photos"}`);
+    parts.push(countLabel(folder.totalPhotoCount, "photo", "photos"));
   }
 
   return (

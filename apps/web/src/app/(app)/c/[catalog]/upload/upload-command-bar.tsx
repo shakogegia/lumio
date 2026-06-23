@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { RowSummary } from "@/lib/upload-rows";
+import { countLabel } from "@/lib/count-label";
 
 /**
  * Batch status callout. While files are in flight it shows a progress bar; once
@@ -49,7 +50,7 @@ export function UploadCommandBar({
               {summary.duplicate > 0 ? (
                 <Count
                   dot="bg-amber-500"
-                  label={`${summary.duplicate} ${summary.duplicate === 1 ? "duplicate" : "duplicates"}`}
+                  label={countLabel(summary.duplicate, "duplicate", "duplicates")}
                 />
               ) : null}
               {hasFailures ? <Count dot="bg-destructive" label={`${summary.error} failed`} /> : null}
