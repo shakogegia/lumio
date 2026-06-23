@@ -3,15 +3,7 @@
    gesture/effect callbacks; the React Compiler lint flags these as false
    positives (see components/photo-grid/zoomable-photo-grid.tsx + [[lumio-react-compiler-lint]]). */
 import { useEffect, useMemo, useState } from "react";
-import {
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { FlatList, Modal, StyleSheet, useWindowDimensions } from "react-native";
 import { GestureDetector, GestureHandlerRootView, Gesture } from "react-native-gesture-handler";
 import Animated, {
   Extrapolation,
@@ -22,13 +14,14 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SymbolView } from "expo-symbols";
-import { GlassView } from "expo-glass-effect";
 import type { PhotoDTO } from "@lumio/shared";
 import type { Rect } from "@/lib/rect";
-import { GLASS } from "@/lib/glass";
 import { useTheme } from "@/lib/theme";
+import { setFavorite } from "@/lib/photos-api";
 import { ViewerPage } from "./viewer-page";
+import { ViewerChrome } from "./viewer-chrome";
+import { ViewerInfoSheet } from "./viewer-info-sheet";
+import { shareOriginal } from "./viewer-actions";
 import { shouldLoadMore } from "./pager";
 
 const DISMISS_THRESHOLD = 120;
@@ -75,6 +68,17 @@ export function PhotoViewer({
   // True while the active page is pinch/double-tap zoomed — paging + swipe-down
   // dismiss are disabled so the page's pan owns the gesture.
   const [zoomed, setZoomed] = useState(false);
+  // The page currently centered (null until first paged → falls back to `index`).
+  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+  // Optimistic favorite flips, keyed by photo id (server call may lag).
+  const [favOverride, setFavOverride] = useState<Record<string, boolean>>({});
+  const [infoVisible, setInfoVisible] = useState(false);
+
+  const activeIndex = currentIndex ?? index ?? 0;
+  const activePhoto: PhotoDTO | undefined = photos[activeIndex];
+  const isFavorite = activePhoto
+    ? (favOverride[activePhoto.id] ?? activePhoto.isFavorite)
+    : false;
 
   // The collapsed transform that maps the fullscreen content onto the tile:
   // uniform scale (tile width / screen width) + translate to the tile center.
@@ -95,12 +99,34 @@ export function PhotoViewer({
     }
   }, [index, progress, ty]);
 
+  // Reset transient state and tell the parent to unmount.
+  const handleClosed = () => {
+    setCurrentIndex(null);
+    setZoomed(false);
+    setInfoVisible(false);
+    onClose();
+  };
+
   // Reverse the open animation back to the tile, then unmount.
   const close = () => {
     setZoomed(false);
     progress.value = withTiming(0, { duration: CLOSE_MS }, (finished) => {
-      if (finished) runOnJS(onClose)();
+      if (finished) runOnJS(handleClosed)();
     });
+  };
+
+  const toggleFavorite = () => {
+    if (!activePhoto) return;
+    const id = activePhoto.id;
+    const next = !isFavorite;
+    setFavOverride((prev) => ({ ...prev, [id]: next }));
+    setFavorite(baseURL, slug, cookie, id, next).catch(() =>
+      setFavOverride((prev) => ({ ...prev, [id]: !next })),
+    );
+  };
+
+  const share = () => {
+    if (activePhoto) void shareOriginal(baseURL, slug, cookie, activePhoto).catch(() => {});
   };
 
   const dismiss = Gesture.Pan()
@@ -114,7 +140,7 @@ export function PhotoViewer({
       if (Math.abs(e.translationY) > DISMISS_THRESHOLD) {
         const dir = e.translationY > 0 ? 1 : -1;
         ty.value = withTiming(dir * height, { duration: 220 }, (finished) => {
-          if (finished) runOnJS(onClose)();
+          if (finished) runOnJS(handleClosed)();
         });
       } else {
         ty.value = withTiming(0);
@@ -136,8 +162,9 @@ export function PhotoViewer({
   const chromeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={close}>
-      <GestureHandlerRootView style={styles.flex}>
+    <>
+      <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={close}>
+        <GestureHandlerRootView style={styles.flex}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, bgStyle]}
           pointerEvents="none"
@@ -168,6 +195,7 @@ export function PhotoViewer({
                 )}
                 onMomentumScrollEnd={(e) => {
                   const i = Math.round(e.nativeEvent.contentOffset.x / width);
+                  setCurrentIndex(i);
                   if (shouldLoadMore(i, photos.length)) onLoadMore?.();
                 }}
               />
@@ -175,46 +203,32 @@ export function PhotoViewer({
           </GestureDetector>
         )}
 
-        <Animated.View style={[styles.back, { top: insets.top + 8 }, chromeStyle]}>
-          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
-            {GLASS ? (
-              <GlassView glassEffectStyle="regular" isInteractive style={styles.backCapsule}>
-                <BackIcon />
-              </GlassView>
-            ) : (
-              <View style={[styles.backCapsule, styles.backSolid]}>
-                <BackIcon />
-              </View>
-            )}
-          </Pressable>
-        </Animated.View>
-      </GestureHandlerRootView>
-    </Modal>
-  );
-}
+        {visible && !zoomed && activePhoto && (
+          <Animated.View style={[StyleSheet.absoluteFill, chromeStyle]} pointerEvents="box-none">
+            <ViewerChrome
+              photo={activePhoto}
+              topInset={insets.top}
+              bottomInset={insets.bottom}
+              isFavorite={isFavorite}
+              onClose={close}
+              onShare={share}
+              onInfo={() => setInfoVisible(true)}
+              onToggleFavorite={toggleFavorite}
+            />
+          </Animated.View>
+        )}
+        </GestureHandlerRootView>
+      </Modal>
 
-function BackIcon() {
-  return (
-    <SymbolView
-      name="chevron.backward"
-      size={20}
-      tintColor="#FFFFFF"
-      fallback={<Text style={styles.backFallback}>‹</Text>}
-    />
+      <ViewerInfoSheet
+        photo={activePhoto ?? null}
+        visible={infoVisible}
+        onClose={() => setInfoVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  back: { position: "absolute", left: 16 },
-  backCapsule: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  backSolid: { backgroundColor: "rgba(0,0,0,0.4)" },
-  backFallback: { color: "#FFFFFF", fontSize: 24, lineHeight: 24 },
 });
