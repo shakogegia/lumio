@@ -167,14 +167,17 @@ export function UploadClient({
   // key navigation match the photo grid. `getClickIds` returns the row's photoId
   // (or "" for not-yet-ingested rows, which computeSelection skips as falsy);
   // `idAt` returns undefined for those rows so arrow selection skips them too.
-  const { handleItemClick: handleTileClick } = useGridSelectionNav({
-    count: rows.length,
-    columns,
-    idAt: (i) => rowsRef.current[i]?.photoId || undefined,
-    getClickIds: () => rowsRef.current.map((r) => r.photoId ?? ""),
-    selectedIds: sel.selected,
-    onSelectionChange: sel.setSelected,
-  });
+  const { handleItemClick: handleTileClick } = useGridSelectionNav(
+    {
+      count: rows.length,
+      columns,
+      idAt: (i) => rowsRef.current[i]?.photoId || undefined,
+      getClickIds: () => rowsRef.current.map((r) => r.photoId ?? ""),
+      selectedIds: sel.selected,
+      onSelectionChange: sel.setSelected,
+    },
+    { enableKeyboard: false },
+  );
 
   const retryRow = useCallback(
     (rowId: number) => {

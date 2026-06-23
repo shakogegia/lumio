@@ -26,6 +26,15 @@ type NavState = {
   scrollToIndex?: (index: number) => void;
 };
 
+type Options = {
+  /**
+   * When false the document-level `keydown` listener is NOT registered, so
+   * arrow keys fall through to native browser behaviour (e.g. page scroll).
+   * Click selection (plain / ⌘ / shift) is unaffected. Default: `true`.
+   */
+  enableKeyboard?: boolean;
+};
+
 /**
  * Shared mouse + keyboard selection driver for a grid of `count` items laid out
  * in `columns`. Plain click / arrow selects one item; ⌘/Ctrl click toggles;
@@ -35,7 +44,7 @@ type NavState = {
  * here — GridShortcuts / FolderBrowserShortcuts own Enter (and e/f) off the
  * current selection, and a plain arrow leaves exactly one item selected.
  */
-export function useGridSelectionNav(state: NavState) {
+export function useGridSelectionNav(state: NavState, { enableKeyboard = true }: Options = {}) {
   // Latest props for the once-registered keydown listener and the stable click
   // handler. Updated in an effect (never during render) per the refs lint rule.
   const ref = useRef(state);
@@ -73,6 +82,7 @@ export function useGridSelectionNav(state: NavState) {
   }, []);
 
   useEffect(() => {
+    if (!enableKeyboard) return;
     const onKey = (e: KeyboardEvent) => {
       const s = ref.current;
       if (!s.onSelectionChange || s.count <= 0) return;
@@ -96,7 +106,7 @@ export function useGridSelectionNav(state: NavState) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [enableKeyboard]);
 
   return { handleItemClick };
 }
