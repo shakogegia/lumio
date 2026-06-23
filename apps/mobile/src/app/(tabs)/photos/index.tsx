@@ -12,6 +12,7 @@ import { fetchPhotos } from "@/lib/photos-api";
 import { useAuth } from "@/contexts/auth-context";
 import { useCatalogs } from "@/contexts/catalog-context";
 import { useTheme } from "@/lib/theme";
+import type { Rect } from "@/lib/rect";
 
 // Persisted grid prefs (density + cover/contain), like the active catalog persists.
 const ZOOM_KEY = "lumio.photoGridZoom";
@@ -55,8 +56,9 @@ export default function Photos() {
     });
   }, []);
 
-  // Index of the photo open in the fullscreen viewer (null = closed).
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  // The photo open in the fullscreen viewer (null = closed). `rect` is the tapped
+  // tile's window rect, driving the shared-element open/close animation.
+  const [viewer, setViewer] = useState<{ index: number; rect: Rect } | null>(null);
 
   // Memoized per data source so usePhotoPages reloads only when the source
   // changes. cookie is captured by value (a stable string per session).
@@ -98,7 +100,7 @@ export default function Photos() {
           initialColumns={initialColumns}
           fit={fit}
           onColumnsChange={onColumnsChange}
-          onOpenPhoto={(i) => setViewerIndex(i)}
+          onOpenPhoto={(i, rect) => setViewer({ index: i, rect })}
           onEndReached={loadMore}
           onScroll={onScroll}
           contentInset={{ top: headerHeight + 8, bottom: insets.bottom + 96 }}
@@ -130,11 +132,12 @@ export default function Photos() {
       />
       <PhotoViewer
         photos={photos}
-        index={viewerIndex}
+        index={viewer?.index ?? null}
+        originRect={viewer?.rect ?? null}
         baseURL={serverUrl ?? ""}
         slug={slug ?? ""}
         cookie={cookie}
-        onClose={() => setViewerIndex(null)}
+        onClose={() => setViewer(null)}
         onLoadMore={loadMore}
       />
     </View>

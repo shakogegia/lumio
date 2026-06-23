@@ -2,7 +2,7 @@
    reanimated shared values require the `.value` mutation pattern in worklets and
    gesture/effect callbacks; the React Compiler lint flags these as false
    positives (see components/photo-grid/zoomable-photo-grid.tsx + [[lumio-react-compiler-lint]]). */
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   FlatList,
   Modal,
@@ -25,12 +25,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 import { GlassView } from "expo-glass-effect";
 import type { PhotoDTO } from "@lumio/shared";
+import type { Rect } from "@/lib/rect";
 import { GLASS } from "@/lib/glass";
 import { useTheme } from "@/lib/theme";
 import { ViewerPage } from "./viewer-page";
 import { shouldLoadMore } from "./pager";
 
 const DISMISS_THRESHOLD = 120;
+const OPEN_MS = 260;
+const CLOSE_MS = 230;
 
 /**
  * Reusable fullscreen photo viewer. Collection-agnostic: pass an ordered
@@ -38,13 +41,15 @@ const DISMISS_THRESHOLD = 120;
  * a future album screen reuse it with sort intact and paging continued via
  * `onLoadMore`. Rendered as a `Modal` so it covers the native tab bar.
  *
- * Phase 1: horizontal paging (FlatList), theme background, glass back button, and
- * a swipe-down-to-dismiss gesture. Shared-element open, in-photo zoom, and the
- * action bar are added in later phases.
+ * `progress` (0 = collapsed to the tapped tile `originRect`, 1 = fullscreen)
+ * drives an iOS shared-element open/close: the whole viewer scales uniformly
+ * (no distortion) from the tile and back. Swipe-down slides the content off and
+ * dismisses. In-photo zoom + the action bar are added in later phases.
  */
 export function PhotoViewer({
   photos,
   index,
+  originRect,
   baseURL,
   slug,
   cookie,
@@ -53,6 +58,7 @@ export function PhotoViewer({
 }: {
   photos: PhotoDTO[];
   index: number | null;
+  originRect: Rect | null;
   baseURL: string;
   slug: string;
   cookie: string;
@@ -64,19 +70,35 @@ export function PhotoViewer({
   const { colors } = useTheme();
   const visible = index != null;
 
+  const progress = useSharedValue(0);
   const ty = useSharedValue(0);
-  const appear = useSharedValue(0);
+
+  // The collapsed transform that maps the fullscreen content onto the tile:
+  // uniform scale (tile width / screen width) + translate to the tile center.
+  const collapse = useMemo(() => {
+    if (!originRect || width === 0 || height === 0) return { s: 0.9, tx: 0, ty: 0 };
+    return {
+      s: originRect.width / width,
+      tx: originRect.x + originRect.width / 2 - width / 2,
+      ty: originRect.y + originRect.height / 2 - height / 2,
+    };
+  }, [originRect, width, height]);
 
   useEffect(() => {
-    if (visible) {
+    if (index != null) {
       ty.value = 0;
-      appear.value = withTiming(1, { duration: 220 });
-    } else {
-      appear.value = 0;
+      progress.value = 0;
+      progress.value = withTiming(1, { duration: OPEN_MS });
     }
-  }, [visible, ty, appear]);
+  }, [index, progress, ty]);
 
-  // Vertical drag dismisses; horizontal is failed so the FlatList pages instead.
+  // Reverse the open animation back to the tile, then unmount.
+  const close = () => {
+    progress.value = withTiming(0, { duration: CLOSE_MS }, (finished) => {
+      if (finished) runOnJS(onClose)();
+    });
+  };
+
   const dismiss = Gesture.Pan()
     .activeOffsetY([-12, 12])
     .failOffsetX([-12, 12])
@@ -84,29 +106,32 @@ export function PhotoViewer({
       ty.value = e.translationY;
     })
     .onEnd((e) => {
-      if (Math.abs(e.translationY) > DISMISS_THRESHOLD) runOnJS(onClose)();
-      else ty.value = withTiming(0);
+      if (Math.abs(e.translationY) > DISMISS_THRESHOLD) {
+        const dir = e.translationY > 0 ? 1 : -1;
+        ty.value = withTiming(dir * height, { duration: 220 }, (finished) => {
+          if (finished) runOnJS(onClose)();
+        });
+      } else {
+        ty.value = withTiming(0);
+      }
     });
 
   const bgStyle = useAnimatedStyle(() => ({
-    opacity: appear.value * interpolate(Math.abs(ty.value), [0, 400], [1, 0.2], Extrapolation.CLAMP),
+    opacity:
+      progress.value * interpolate(Math.abs(ty.value), [0, 400], [1, 0.15], Extrapolation.CLAMP),
   }));
   const contentStyle = useAnimatedStyle(() => ({
-    opacity: appear.value,
+    opacity: interpolate(progress.value, [0, 1], [0, 1]),
     transform: [
-      { translateY: ty.value },
-      { scale: interpolate(Math.abs(ty.value), [0, 400], [1, 0.86], Extrapolation.CLAMP) },
+      { translateX: interpolate(progress.value, [0, 1], [collapse.tx, 0]) },
+      { translateY: interpolate(progress.value, [0, 1], [collapse.ty, 0]) + ty.value },
+      { scale: interpolate(progress.value, [0, 1], [collapse.s, 1]) },
     ],
   }));
+  const chromeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={close}>
       <GestureHandlerRootView style={styles.flex}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, bgStyle]}
@@ -143,23 +168,19 @@ export function PhotoViewer({
           </GestureDetector>
         )}
 
-        <Pressable
-          onPress={onClose}
-          style={[styles.back, { top: insets.top + 8 }]}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          hitSlop={8}
-        >
-          {GLASS ? (
-            <GlassView glassEffectStyle="regular" isInteractive style={styles.backCapsule}>
-              <BackIcon />
-            </GlassView>
-          ) : (
-            <View style={[styles.backCapsule, styles.backSolid]}>
-              <BackIcon />
-            </View>
-          )}
-        </Pressable>
+        <Animated.View style={[styles.back, { top: insets.top + 8 }, chromeStyle]}>
+          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
+            {GLASS ? (
+              <GlassView glassEffectStyle="regular" isInteractive style={styles.backCapsule}>
+                <BackIcon />
+              </GlassView>
+            ) : (
+              <View style={[styles.backCapsule, styles.backSolid]}>
+                <BackIcon />
+              </View>
+            )}
+          </Pressable>
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );
