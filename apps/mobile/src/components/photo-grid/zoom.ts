@@ -4,8 +4,10 @@
 // index); a pinch-in (scale < 1) -> more columns (higher index). Within the dead
 // zone the level is unchanged. The result index is clamped to the array bounds.
 
-export const ZOOM_IN_THRESHOLD = 1.15;
-export const ZOOM_OUT_THRESHOLD = 0.87;
+// Deliberate thresholds for a continuous pinch (you must pinch ~50% to step a
+// level), matching the reference react-native-zoom-grid feel.
+export const ZOOM_IN_THRESHOLD = 1.5;
+export const ZOOM_OUT_THRESHOLD = 0.6;
 
 export function nextZoomLevel(levels: number[], index: number, scale: number): number {
   if (scale >= ZOOM_IN_THRESHOLD) return Math.max(0, index - 1);
