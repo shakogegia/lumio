@@ -6,7 +6,22 @@
 
 **Architecture:** Expo (SDK 55, TypeScript, Expo Router) inside the existing pnpm monorepo. Auth uses Better Auth's official Expo plugin: an `expoClient` on the device storing the session token in `expo-secure-store`, plus a small additive `expo()` plugin on the existing Next backend (`apps/web/src/lib/auth.ts`). Two screens: a login form and a protected placeholder home, with session-based redirects.
 
-**Tech Stack:** Expo SDK 55 / React Native 0.83 / React 19.2, Expo Router, `better-auth@1.6.19`, `@better-auth/expo@1.6.19`, `expo-secure-store`, `expo-network`, vitest (for the one pure helper).
+**Tech Stack:** Expo SDK 56 / React Native 0.85.3 / React 19.2.3, Expo Router 6, `better-auth@1.6.19`, `@better-auth/expo@1.6.19`, `expo-secure-store`, `expo-network`, vitest (for the one pure helper).
+
+---
+
+## AMENDMENT (post-scaffold, 2026-06-23)
+
+Task 1 ran `create-expo-app@latest`, which installed **Expo SDK 56** (not 55) with these consequences for the remaining tasks:
+
+- **`src/` layout.** Routes live in `apps/mobile/src/app/` and the tsconfig maps `@/*` → `./src/*`. Therefore:
+  - All `app/...` paths below become **`src/app/...`** (e.g. `src/app/login.tsx`, `src/app/_layout.tsx`, `src/app/index.tsx`).
+  - All `lib/...` paths become **`src/lib/...`** (e.g. `src/lib/api.ts`, `src/lib/auth-client.ts`) so screens can import them via the `@/lib/...` alias.
+  - Task 5 vitest `include` becomes `src/lib/**/*.test.ts`.
+  - `metro.config.js` and `vitest.config.ts` stay at the app root (`apps/mobile/`).
+- **Empty `src/app/` after scaffold.** Example routes were removed, so there is no route yet. Expo Router needs at least a root layout to bundle a route. Task 2's verification is therefore limited to "`pnpm install` resolves + Metro **starts**"; full route bundling is verified after Task 8 (and in Task 10).
+- **SDK 56 API note:** Expo Router 6 still exports `Stack`, `Redirect`, `router`, `useRouter`. React 19.2.3. Better Auth's Expo plugin requires Metro package-exports, which are on by default in SDK 53+ (so SDK 56 is fine).
+- Template meta-cruft (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `LICENSE`, `.vscode/`) and a dangling `reset-project` script were removed during Task 1 finalization.
 
 ---
 
