@@ -1,8 +1,43 @@
 # Lumio Mobile — Auth Walking Skeleton
 
 **Date:** 2026-06-23
-**Status:** Approved design, pending plan
+**Status:** Implemented (skeleton); amended for runtime server URL (see AMENDMENT 2)
 **Scope:** First milestone of the Lumio mobile app — authentication only.
+
+> **AMENDMENT 2 (2026-06-23): runtime server URL (self-hosted model).**
+> Lumio is self-hosted: the server/web is run by each user, but the mobile app is
+> a single shared/published binary. So the backend URL **cannot** be a build-time
+> constant (`EXPO_PUBLIC_API_URL`) — each user must enter *their* server URL at
+> runtime, the same pattern as Immich / Jellyfin / Nextcloud. This amendment
+> supersedes the build-time URL as the product mechanism.
+>
+> **Changes:**
+> - **New first screen `connect`**: user types their server URL; we validate it's
+>   reachable and a Lumio/Better-Auth server via `GET <url>/api/auth/ok` (fallback
+>   `GET <url>/api/auth/get-session`) before saving; the validated base URL is
+>   persisted in `expo-secure-store` (key `lumio.serverUrl`).
+> - **Auth client is no longer a module singleton** (Better Auth's `baseURL` is
+>   fixed at creation). It becomes a factory `createLumioAuthClient(baseURL)` used
+>   by an **`AuthProvider`** that loads the stored URL, builds a memoized client,
+>   and exposes `serverUrl / isLoading / session / isPending / signIn / signOut /
+>   connect / disconnect` via `useAuth()`. The provider owns the single
+>   `client.useSession()` call so screens never call hooks on a possibly-absent
+>   client. While `serverUrl` is unset, the client uses a harmless placeholder URL.
+> - **Flow:** launch → load stored URL → no URL → `connect` → `login` → home.
+>   `login` and home both offer **"Change server"** (= `disconnect`: best-effort
+>   `signOut` + clear stored URL → back to `connect`).
+> - **`resolveApiBaseUrl` is repurposed/renamed `normalizeServerUrl`**: a pure
+>   validator/normalizer for the *user-typed* URL (trim, require http(s), strip
+>   trailing slash). Its vitest tests carry over.
+> - **`EXPO_PUBLIC_API_URL` kept only as a dev convenience** to pre-fill the
+>   `connect` field. Not load-bearing. Under Conductor, `run.sh` writes
+>   `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://localhost:$PORT` (the
+>   simulator can reach the host's localhost; the portless `.localhost:1355`
+>   subdomain can't be trusted from the simulator).
+> - **`make ios`** added to launch the app in the iOS Simulator.
+> - Out of scope (future): per-server token isolation (switching servers requires
+>   re-login — a single `storagePrefix` is fine for the skeleton); server history /
+>   multiple saved servers; QR/auto-discovery.
 
 ## Goal
 
