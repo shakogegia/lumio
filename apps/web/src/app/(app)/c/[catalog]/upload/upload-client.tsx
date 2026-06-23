@@ -8,6 +8,7 @@ import { Download, Loader2, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { errorMessage } from "@lumio/shared";
 import { countLabel } from "@/lib/count-label";
+import { postJson } from "@/lib/http";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
@@ -110,12 +111,7 @@ export function UploadClient({
         const ids = albumTargetIds(results);
         if (ids.length > 0) {
           try {
-            const res = await fetch(catalogApiUrl(slug, `/albums/${targetAlbum.id}/photos`), {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ photoIds: ids }),
-            });
-            if (!res.ok) throw new Error("add failed");
+            await postJson(catalogApiUrl(slug, `/albums/${targetAlbum.id}/photos`), { photoIds: ids });
           } catch {
             toast.error("Failed to add photos to the album.");
           }

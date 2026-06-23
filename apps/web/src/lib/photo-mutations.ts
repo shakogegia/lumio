@@ -1,19 +1,10 @@
 import type { ColorLabel } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { postJson } from "@/lib/http";
 
 // Single source of truth for photo-mutation network calls. Each function issues
 // exactly one request and throws on failure. Callers own optimistic UI, toasts,
 // sounds, and router.refresh — those vary by context, the request does not.
-
-async function postJson(url: string, body: unknown): Promise<Response> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
-  return res;
-}
 
 export async function favoritePhotos(slug: string, photoIds: string[], isFavorite: boolean): Promise<void> {
   await postJson(catalogApiUrl(slug, "/photos/favorite"), { photoIds, isFavorite });

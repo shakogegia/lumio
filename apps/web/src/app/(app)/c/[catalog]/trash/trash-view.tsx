@@ -22,6 +22,7 @@ import {
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { postJson } from "@/lib/http";
 import { useCatalog } from "@/components/providers/catalog-context";
 
 const TRASH_EMPTY = (
@@ -73,12 +74,7 @@ export function TrashView() {
     const selectedIds = sel.selected;
     setPending(true);
     try {
-      const res = await fetch(catalogApiUrl(slug, "/trash/restore"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: [...selectedIds] }),
-      });
-      if (!res.ok) throw new Error("request failed");
+      await postJson(catalogApiUrl(slug, "/trash/restore"), { ids: [...selectedIds] });
       gridRef.current?.removePhotos(selectedIds);
       sel.clear();
     } catch {
@@ -100,12 +96,7 @@ export function TrashView() {
     const selectedIds = sel.selected;
     setPending(true);
     try {
-      const res = await fetch(catalogApiUrl(slug, "/trash/purge"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: [...selectedIds] }),
-      });
-      if (!res.ok) throw new Error("request failed");
+      await postJson(catalogApiUrl(slug, "/trash/purge"), { ids: [...selectedIds] });
       gridRef.current?.removePhotos(selectedIds);
       playSound(SoundEffect.EmptyTrash);
       sel.clear();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setSoundEnabled } from "@/lib/sound/player";
+import { postJson } from "@/lib/http";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 
@@ -19,12 +20,7 @@ export function SoundEffectsForm({ initial }: { initial: boolean }) {
     setError(false);
     setSaving(true);
     try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ soundEffectsEnabled: next }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
+      await postJson("/api/profile", { soundEffectsEnabled: next }, "PUT");
       router.refresh();
     } catch {
       // Revert UI + player on failure.

@@ -35,6 +35,7 @@ import { partitionAlbums } from "@/lib/partition-albums";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
+import { postJson } from "@/lib/http";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { NewItemMenu } from "./new-item-menu";
 import { AlbumCard } from "./album-card";
@@ -133,16 +134,11 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
   async function doMove(targets: Targets, targetFolderId: string | null) {
     if (targets.folderIds.length === 0 && targets.albumIds.length === 0) return;
     try {
-      const res = await fetch(catalogApiUrl(slug, "/folders/move"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          folderIds: targets.folderIds.length ? targets.folderIds : undefined,
-          albumIds: targets.albumIds.length ? targets.albumIds : undefined,
-          targetFolderId,
-        }),
+      await postJson(catalogApiUrl(slug, "/folders/move"), {
+        folderIds: targets.folderIds.length ? targets.folderIds : undefined,
+        albumIds: targets.albumIds.length ? targets.albumIds : undefined,
+        targetFolderId,
       });
-      if (!res.ok) throw new Error(`${res.status} ${res.url}`);
       playSound(SoundEffect.ActionComplete);
       sel.clear();
       invalidateLibraryTree();
