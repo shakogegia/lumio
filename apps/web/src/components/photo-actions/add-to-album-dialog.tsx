@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { countLabel } from "@/lib/count-label";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { addPhotosToAlbum } from "@/lib/photo-mutations";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildFolderPickerRows } from "@/lib/library-tree-rows";
@@ -68,7 +69,7 @@ export function AddToAlbumDialog({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, isSmart: false, folderId: target }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`${res.status} ${res.url}`);
       albumId = ((await res.json()) as { id: string }).id;
     } catch {
       setError("Failed to create the album.");
@@ -90,7 +91,7 @@ export function AddToAlbumDialog({
     }
   }
 
-  const photoLabel = `${photoIds.length} ${photoIds.length === 1 ? "photo" : "photos"}`;
+  const photoLabel = countLabel(photoIds.length, "photo", "photos");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

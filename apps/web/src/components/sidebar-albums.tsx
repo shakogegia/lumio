@@ -13,7 +13,7 @@ import { NavLink, type NavItem } from "@/components/sidebar-nav-link";
 import { useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildAlbumTree, type AlbumTreeNode } from "@/lib/library-tree-rows";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 function AlbumRow({ album }: { album: AlbumSummaryDTO }) {
   const { slug } = useCatalog();

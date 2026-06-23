@@ -9,7 +9,7 @@ import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SidebarAlbums } from "@/components/sidebar-albums";
 import { catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 // Hrefs/match segments are catalog-relative; the sidebar scopes them to the
 // active catalog (`/c/<slug>/…`) at render and strips that prefix before

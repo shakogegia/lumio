@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { SearchCount } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { type SearchFilters, paramsFor, serialize } from "./filters";
 
 /**
@@ -34,7 +34,7 @@ export function useSearchCount(
     if (month) params.set("month", month);
     params.set("count", "1");
     fetch(catalogApiUrl(slug, `/search?${params.toString()}`))
-      .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error())))
+      .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error(`${res.status} ${res.url}`))))
       .then((data) => {
         if (!cancelled) setCount(data.total);
       })

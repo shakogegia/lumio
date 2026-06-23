@@ -6,7 +6,7 @@ import {
   getActiveJobs,
   readWorkerStatus,
 } from "@lumio/jobs";
-import { withCatalog } from "@/lib/with-catalog";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

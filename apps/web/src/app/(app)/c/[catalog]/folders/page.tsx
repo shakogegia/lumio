@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isFeatureEnabled } from "@lumio/db";
 import { FeatureKey } from "@lumio/shared";
-import { getCatalogForSlug } from "@/lib/active-catalog";
-import { listSubfolderSummaries, type FolderSummary } from "@/lib/catalog-fs-service";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
+import { listSubfolderSummaries, type FolderSummary } from "@/lib/server/catalog-fs-service";
 import { FolderExplorer } from "./folder-explorer";
 
 export const dynamic = "force-dynamic";

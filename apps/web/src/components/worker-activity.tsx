@@ -2,7 +2,7 @@
 
 import { Logo } from "@/components/logo";
 import { activityLabel, isBusy } from "@/lib/activity-display";
-import { useActivity } from "@/lib/use-activity";
+import { useActivity } from "@/lib/hooks/use-activity";
 import { cn } from "@/lib/utils";
 
 // The aperture's iris opening is a hexagon (not a circle). The status "pupil"

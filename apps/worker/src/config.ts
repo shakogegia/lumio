@@ -1,6 +1,13 @@
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  catalogCacheDirs as catalogCacheDirsUnder,
+  displayPath as displayPathUnder,
+  editedDisplayPath as editedDisplayPathUnder,
+  thumbnailPath as thumbnailPathUnder,
+  type CatalogCacheDirs,
+} from "@lumio/ingest";
 
 // This file lives at apps/worker/src/config.ts → repo root is three levels up.
 const REPO_ROOT = path.resolve(
@@ -45,33 +52,24 @@ export const INGEST_CONCURRENCY = resolveConcurrency(
   os.cpus().length,
 );
 
-export interface CatalogCacheDirs {
-  thumbnailsDir: string;
-  displaysDir: string;
-  editedDisplaysDir: string;
-}
+export type { CatalogCacheDirs };
 
 /** Per-catalog cache directory paths nested under the shared CACHE_DIR. */
 export function catalogCacheDirs(catalogId: string): CatalogCacheDirs {
-  const base = path.join(CACHE_DIR, catalogId);
-  return {
-    thumbnailsDir: path.join(base, "thumbnails"),
-    displaysDir: path.join(base, "displays"),
-    editedDisplaysDir: path.join(base, "displays-edited"),
-  };
+  return catalogCacheDirsUnder(CACHE_DIR, catalogId);
 }
 
 /** Absolute path of a photo's thumbnail file within a catalog's cache. */
 export function thumbnailPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "thumbnails", `${id}.webp`);
+  return thumbnailPathUnder(CACHE_DIR, catalogId, id);
 }
 
 /** Absolute path of a photo's display rendition within a catalog's cache. */
 export function displayPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "displays", `${id}.webp`);
+  return displayPathUnder(CACHE_DIR, catalogId, id);
 }
 
 /** Absolute path of a photo's edited display rendition within a catalog's cache. */
 export function editedDisplayPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "displays-edited", `${id}.webp`);
+  return editedDisplayPathUnder(CACHE_DIR, catalogId, id);
 }

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Check, Plus, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { apiPaths } from "@/lib/api-paths";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { WorkerActivity } from "@/components/worker-activity";
 import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import {
@@ -44,7 +45,7 @@ export function CatalogSwitcher() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/catalogs");
+        const res = await fetch(apiPaths.catalogs);
         if (!res.ok) return;
         const data: CatalogOption[] = await res.json();
         if (!cancelled && Array.isArray(data) && data.length > 0) setCatalogs(data);

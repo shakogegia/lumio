@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// SINGLE-TENANT NOTE: Catalog has no userId / owner field by design.
+// Lumio is single-admin today (one user, created at first-run setup;
+// signup is then hard-closed). All catalogs are global — any authenticated
+// session can read or mutate any catalog. A per-user ownership model will
+// be added as part of the future multi-user feature. Do not add a half-built
+// Catalog.userId unless the full ownership-scoping logic ships with it.
 model Catalog {
   id             String         @id @default(cuid())
   name           String

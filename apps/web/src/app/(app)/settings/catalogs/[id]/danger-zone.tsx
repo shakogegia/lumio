@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useAsyncJob } from "@/lib/use-async-job";
+import { useAsyncJob } from "@/lib/hooks/use-async-job";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const CONFIRM_WORD = "DELETE";
 

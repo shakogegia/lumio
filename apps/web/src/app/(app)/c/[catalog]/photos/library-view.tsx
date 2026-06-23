@@ -2,7 +2,7 @@
 
 import { photoHref } from "@/lib/photo-href";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { PhotoLibraryView } from "@/components/photo-library/photo-library-view";
 
 export function LibraryView() {

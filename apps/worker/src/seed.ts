@@ -1,6 +1,7 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { errorMessage } from "@lumio/shared";
 import { runPool } from "./pool.js";
 
 /**
@@ -105,7 +106,7 @@ async function fetchBase(id: string): Promise<Base> {
       return { id, buffer, width: meta.width ?? BASE_WIDTH, height: meta.height ?? BASE_WIDTH };
     } catch (err) {
       if (attempt === 2) {
-        throw new Error(`failed to fetch base ${id}: ${(err as Error).message}`);
+        throw new Error(`failed to fetch base ${id}: ${errorMessage(err)}`);
       }
     }
   }

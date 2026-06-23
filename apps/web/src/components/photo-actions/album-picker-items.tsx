@@ -3,7 +3,7 @@
 import { Folder as FolderIcon, Images, Plus } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildAlbumTree, type AlbumTreeNode } from "@/lib/library-tree-rows";
 

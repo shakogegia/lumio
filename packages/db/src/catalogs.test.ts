@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { createCatalog, uniqueSlug } from "./catalogs.js";
+import { describe, expect, it, vi } from "vitest";
+import { createCatalog, setUploadTemplate, uniqueSlug } from "./catalogs.js";
 
 function fakeDb(initial: Array<{ slug: string }> = []) {
   const rows = [...initial];
@@ -16,4 +16,14 @@ describe("uniqueSlug", () => {
 
 describe("createCatalog", () => {
   it("derives a unique slug from the name", async () => { const db = fakeDb([{ slug: "trip" }]); const cat = await createCatalog({ name: "Trip", path: "/media/trip" }, db as never); expect(cat.slug).toBe("trip-2"); expect(cat.path).toBe("/media/trip"); });
+});
+
+describe("setUploadTemplate", () => {
+  it("writes the template and returns the row", async () => {
+    const update = vi.fn().mockResolvedValue({ id: "c1", uploadTemplate: "{YYYY}" });
+    const db = { catalog: { update } } as never;
+    const row = await setUploadTemplate("c1", "{YYYY}", db);
+    expect(update).toHaveBeenCalledWith({ where: { id: "c1" }, data: { uploadTemplate: "{YYYY}" } });
+    expect(row.uploadTemplate).toBe("{YYYY}");
+  });
 });

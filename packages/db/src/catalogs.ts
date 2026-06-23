@@ -44,3 +44,7 @@ export async function renameCatalog(id: string, name: string, db: CatalogDb = pr
 
 /** Delete the catalog row; FK cascade removes its photos/albums/folders/trash. */
 export function deleteCatalog(id: string, db: CatalogDb = prisma) { return db.catalog.delete({ where: { id } }); }
+
+export function setUploadTemplate(id: string, uploadTemplate: string, db: CatalogDb = prisma) {
+  return db.catalog.update({ where: { id }, data: { uploadTemplate } });
+}

@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { postJson } from "@/lib/http";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const PREVIEW_DATE = new Date("2026-06-18T00:00:00.000Z");
 
@@ -34,12 +35,7 @@ export function UploadTemplateForm({ initial }: { initial: string }) {
   async function save() {
     setState("saving");
     try {
-      const res = await fetch(catalogApiUrl(slug, "/settings"), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uploadTemplate: template }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
+      await postJson(catalogApiUrl(slug, "/settings"), { uploadTemplate: template }, "PUT");
       setState("saved");
       router.refresh();
       setTimeout(() => setState("idle"), 1500);

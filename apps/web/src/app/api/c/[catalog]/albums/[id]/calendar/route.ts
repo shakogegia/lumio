@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { albumPhotoWhere } from "@/lib/albums-service";
-import { buildCalendarFacets } from "@/lib/calendar-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { albumPhotoWhere } from "@/lib/server/albums-service";
+import { buildCalendarFacets } from "@/lib/server/calendar-service";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

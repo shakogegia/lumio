@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { removePhotoFromAlbum } from "@/lib/albums-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { removePhotoFromAlbum } from "@/lib/server/albums-service";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -7,10 +7,12 @@ import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import { useConfirm } from "@/components/confirm-dialog";
+import { countLabel } from "@/lib/count-label";
+import { patchJson } from "@/lib/http";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
-import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import type { PhotoGridHandle } from "@/features/photo-grid";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 
@@ -139,7 +141,7 @@ export function usePhotoActions({
   const trash = useCallback(
     async (ids: string[], opts?: ActionOpts) => {
       if (ids.length === 0 || deleting) return;
-      const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
+      const label = countLabel(ids.length, "photo", "photos");
       const ok = await confirm({
         title: `Move ${label} to Trash?`,
         description: trashDescription,
@@ -167,12 +169,7 @@ export function usePhotoActions({
     async (photoId: string, opts?: ActionOpts) => {
       if (!albumCover) return;
       try {
-        const res = await fetch(catalogApiUrl(slug, `/albums/${albumCover.albumId}`), {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ coverPhotoId: photoId }),
-        });
-        if (!res.ok) throw new Error("set cover failed");
+        await patchJson(catalogApiUrl(slug, `/albums/${albumCover.albumId}`), { coverPhotoId: photoId });
         // Refresh so the card/sidebar thumbnails and the "current cover" menu
         // hint (seeded from the server) all update.
         router.refresh();

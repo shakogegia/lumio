@@ -1,38 +1,20 @@
 import { NextResponse } from "next/server";
 import {
-  FeatureScopeError,
-  UnknownFeatureError,
-  setFeature,
   getCatalogById,
+  setFeature,
 } from "@lumio/db";
-import { FeatureKey } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
+import { featureToggleSchema } from "@lumio/shared";
+import { withAuth } from "@/lib/server/with-auth";
+import { parseJson, mapServiceError } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VALID_KEYS = new Set<string>(Object.values(FeatureKey));
-
 /** Toggle one feature. Body: { key, catalogId: string | null, enabled: boolean }. */
 export const PUT = withAuth(async (request) => {
-  const body: unknown = await request.json().catch(() => null);
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-  }
-  const { key, catalogId, enabled } = body as {
-    key?: unknown;
-    catalogId?: unknown;
-    enabled?: unknown;
-  };
-  if (typeof key !== "string" || !VALID_KEYS.has(key)) {
-    return NextResponse.json({ error: "Unknown feature key" }, { status: 400 });
-  }
-  if (!(catalogId === null || typeof catalogId === "string")) {
-    return NextResponse.json({ error: "catalogId must be a string or null" }, { status: 400 });
-  }
-  if (typeof enabled !== "boolean") {
-    return NextResponse.json({ error: "enabled must be a boolean" }, { status: 400 });
-  }
+  const parsed = await parseJson(request, featureToggleSchema);
+  if ("response" in parsed) return parsed.response;
+  const { key, catalogId, enabled } = parsed.data;
   if (catalogId !== null) {
     const catalog = await getCatalogById(catalogId);
     if (!catalog) {
@@ -40,12 +22,11 @@ export const PUT = withAuth(async (request) => {
     }
   }
   try {
-    await setFeature({ key: key as FeatureKey, catalogId, enabled });
-  } catch (e) {
-    if (e instanceof FeatureScopeError || e instanceof UnknownFeatureError) {
-      return NextResponse.json({ error: e.message }, { status: 400 });
-    }
-    throw e;
+    await setFeature({ key, catalogId, enabled });
+  } catch (err) {
+    const mapped = mapServiceError(err);
+    if (mapped) return mapped;
+    throw err;
   }
   return NextResponse.json({ ok: true });
 });

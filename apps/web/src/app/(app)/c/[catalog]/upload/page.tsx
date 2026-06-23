@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { getAlbum } from "@/lib/albums-service";
-import { getCatalogForSlug } from "@/lib/active-catalog";
+import { getAlbum } from "@/lib/server/albums-service";
+import { getCatalogForSlug } from "@/lib/server/active-catalog";
 import { UploadClient } from "./upload-client";
 
 export const metadata: Metadata = { title: "Upload" };

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getServerSession } from "@/lib/server-session";
+import { getServerSession } from "@/lib/server/server-session";
 import { TwoFactorVerifyForm } from "./two-factor-verify-form";
 
 export const dynamic = "force-dynamic";

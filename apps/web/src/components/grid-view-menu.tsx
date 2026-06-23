@@ -9,7 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { GridViewMode } from "@/lib/use-grid-view";
+import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 
 /**
  * Header control to pick the grid view mode. Mirrors the sidebar's theme picker:

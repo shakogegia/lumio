@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { apiPaths } from "@/lib/api-paths";
 
 interface RenameTarget {
   id: string;
@@ -79,7 +80,7 @@ function RenameForm({
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/catalogs/${catalog.id}`, {
+      const res = await fetch(apiPaths.catalog(catalog.id), {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: name.trim() }),

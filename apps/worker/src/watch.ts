@@ -3,6 +3,7 @@ import type { FSWatcher } from "chokidar";
 import chokidar from "chokidar";
 import { SUPPORTED_EXTENSIONS, removePath } from "@lumio/ingest";
 import { listCatalogs, prisma } from "@lumio/db";
+import { errorMessage } from "@lumio/shared";
 import { activity } from "./activity.js";
 import { removeDepsFor } from "./deps.js";
 import { SCAN_SELECT, reconcileFile, scanCatalog, type ScanSummary } from "./scan.js";
@@ -10,6 +11,9 @@ import { catalogForPath } from "./catalog-routing.js";
 
 const isSupported = (p: string): boolean =>
   SUPPORTED_EXTENSIONS.has(path.extname(p).toLowerCase());
+
+/** How often the watcher reconciles its catalog set against the DB (ms). */
+const RECONCILE_DEBOUNCE_MS = 5000;
 
 const emptySummary = (): ScanSummary => ({
   processed: 0,
@@ -57,7 +61,7 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
       if (summary.healed) console.log(`healed ${rel}`);
       else if (summary.restamped) console.log(`restamped ${rel}`);
     } catch (err) {
-      console.warn(`skip ${rel}: ${(err as Error).message}`);
+      console.warn(`skip ${rel}: ${errorMessage(err)}`);
     } finally {
       activity.importing--;
     }
@@ -75,7 +79,7 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
         await removePath(rel, removeDepsFor(catalog));
         console.log(`- ${rel}`);
       } catch (err) {
-        console.warn(`remove failed ${rel}: ${(err as Error).message}`);
+        console.warn(`remove failed ${rel}: ${errorMessage(err)}`);
       }
     })
     .on("error", (err) => console.error(`watcher error: ${String(err)}`));
@@ -107,9 +111,9 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
 
       catalogs = next;
     } catch (err) {
-      console.warn(`catalog reconcile error: ${(err as Error).message}`);
+      console.warn(`catalog reconcile error: ${errorMessage(err)}`);
     }
-  }, 5000);
+  }, RECONCILE_DEBOUNCE_MS);
 
   signal.addEventListener(
     "abort",

@@ -1,5 +1,5 @@
 "use client";
-// Must match LAST_CATALOG_COOKIE in @/lib/active-catalog (server-only module
+// Must match LAST_CATALOG_COOKIE in @/lib/server/active-catalog (server-only module
 // can't be imported here). Keep these two values in sync.
 const LAST_CATALOG_COOKIE = "lumio.lastCatalog";
 

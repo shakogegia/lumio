@@ -1,27 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, Loader2, Trash2, X } from "lucide-react";
-import { useGridColumns } from "@/lib/use-grid-columns";
-import { useGridSort } from "@/lib/use-grid-sort";
-import { useGridView } from "@/lib/use-grid-view";
-import { useGridSelection } from "@/lib/use-grid-selection";
+import { X } from "lucide-react";
+import { useGridColumns } from "@/lib/hooks/use-grid-columns";
+import { useGridSort } from "@/lib/hooks/use-grid-sort";
+import { useGridView } from "@/lib/hooks/use-grid-view";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { Button } from "@/components/ui/button";
-import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
-import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
-import { computeFavoriteTarget } from "@lumio/shared";
-import { FavoriteButton } from "@/components/photo-actions/favorite-button";
+import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
-import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
-import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
-import { Lightbox } from "@/components/photo-grid/lightbox";
-import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
+import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, GridShortcuts } from "@/features/photo-grid";
+import { Lightbox } from "@/features/lightbox";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
@@ -29,7 +24,7 @@ import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters"
 import { useSearchCount } from "./use-search-count";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 const EMPTY: SearchFilters = { albums: [], q: "" };
 
@@ -150,44 +145,12 @@ export function SearchView() {
                 <div className="flex items-center gap-2">
                   {sel.count > 0 ? (
                     <>
-                      <FavoriteButton
-                        disabled={sel.count === 0 || actions.pending.favorite}
-                        pending={actions.pending.favorite}
-                        onClick={() => {
-                          const target = computeFavoriteTarget(gridRef.current?.getPhotos(sel.selected) ?? []);
-                          void actions.favorite([...sel.selected], target);
-                        }}
+                      <SelectionActions
+                        actions={actions}
+                        selectedIds={sel.selected}
+                        gridRef={gridRef}
+                        clearSelection={sel.clear}
                       />
-                      <ColorLabelMenu
-                        disabled={sel.count === 0 || actions.pending.label}
-                        onPick={(label) => void actions.applyLabel([...sel.selected], label)}
-                      />
-                      <AddToAlbumMenu
-                        disabled={sel.count === 0}
-                        excludeAlbumId={actions.excludeAlbumId}
-                        onPick={(albumId) => void actions.addToAlbumDirect([...sel.selected], albumId)}
-                        onCreateNew={() => actions.addToAlbum([...sel.selected])}
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        disabled={sel.count === 0 || actions.pending.download}
-                        onClick={() => void actions.download([...sel.selected], { onSuccess: sel.clear })}
-                        aria-label="Download"
-                        title="Download"
-                      >
-                        {actions.pending.download ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon-sm"
-                        disabled={sel.count === 0 || actions.pending.trash}
-                        onClick={() => void actions.trash([...sel.selected], { onSuccess: sel.clear })}
-                        aria-label="Delete"
-                        title="Delete"
-                      >
-                        {actions.pending.trash ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-                      </Button>
                       <Button
                         variant="outline"
                         size="icon-sm"

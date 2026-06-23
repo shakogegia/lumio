@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Download, FolderMinus, ImageUp, Images, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-dialog";
+import { countLabel } from "@/lib/count-label";
 import {
   Empty,
   EmptyDescription,
@@ -15,7 +16,7 @@ import {
 import { PhotoLibraryView } from "@/components/photo-library/photo-library-view";
 import { photoHref } from "@/lib/photo-href";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 
 export function AlbumView({
   albumId,
@@ -100,7 +101,7 @@ export function AlbumView({
           async function handleRemove() {
             const ids = [...selectedIds];
             if (ids.length === 0 || removing) return;
-            const label = `${ids.length} ${ids.length === 1 ? "photo" : "photos"}`;
+            const label = countLabel(ids.length, "photo", "photos");
             const ok = await confirm({
               title: `Remove ${label} from this album?`,
               description: "The photos stay in your library and Trash is unaffected.",

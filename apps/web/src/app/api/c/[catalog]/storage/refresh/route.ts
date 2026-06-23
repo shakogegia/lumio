@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { invalidateStorageStats } from "@/lib/status-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { invalidateStorageStats } from "@/lib/server/status-service";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 

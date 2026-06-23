@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { applyCatalogPositions, listCatalogs, renameCatalog } from "@lumio/db";
-import { computeReorder } from "@lumio/shared";
-import { withAuth } from "@/lib/with-auth";
-import { deleteCatalogWithMode, type DeleteMode } from "@/lib/catalog-service";
+import { computeReorder, updateCatalogSchema } from "@lumio/shared";
+import { withAuth } from "@/lib/server/with-auth";
+import { deleteCatalogWithMode, type DeleteMode } from "@/lib/server/catalog-service";
+import { parseJson } from "@/lib/server/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const PATCH = withAuth(async (request, context: { params: Promise<{ id: string }> }) => {
   const { id } = await context.params;
-  const body = (await request.json()) as { name?: string; afterId?: string | null };
+  const parsed = await parseJson(request, updateCatalogSchema);
+  if ("response" in parsed) return parsed.response;
+  const body = parsed.data;
 
   // Reorder: present (even when null) `afterId` means "move after this catalog".
   if ("afterId" in body) {
@@ -24,9 +27,7 @@ export const PATCH = withAuth(async (request, context: { params: Promise<{ id: s
   }
 
   // Rename (unchanged).
-  const name = (body.name ?? "").trim();
-  if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  const catalog = await renameCatalog(id, name);
+  const catalog = await renameCatalog(id, body.name);
   return NextResponse.json({ catalog });
 });
 

@@ -3,7 +3,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { listCatalogs, prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS, hashFile, ingestPath, regenerateRenditions, removePath } from "@lumio/ingest";
-import { coercePhotoEdits, hasEdits } from "@lumio/shared";
+import { coercePhotoEdits, errorMessage, hasEdits } from "@lumio/shared";
 import { INGEST_CONCURRENCY, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
 import { ingestDepsFor, removeDepsFor } from "./deps.js";
 import { timedLine } from "./format.js";
@@ -204,7 +204,7 @@ export async function scanCatalog(
       await reconcileFile(catalog, relPath, byPath.get(relPath), summary);
     } catch (err) {
       summary.skipped++;
-      console.warn(`skip ${relPath}: ${(err as Error).message}`);
+      console.warn(`skip ${relPath}: ${errorMessage(err)}`);
     } finally {
       onProgress?.(++done, relPaths.length);
     }
@@ -219,7 +219,7 @@ export async function scanCatalog(
       await removePath(row.path, removeDepsFor(catalog));
       summary.removed++;
     } catch (err) {
-      console.warn(`remove failed ${row.path}: ${(err as Error).message}`);
+      console.warn(`remove failed ${row.path}: ${errorMessage(err)}`);
     }
   });
 

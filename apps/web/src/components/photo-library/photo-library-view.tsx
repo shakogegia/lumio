@@ -2,19 +2,16 @@
 
 import { useRef, useState } from "react";
 import type { PhotoSort } from "@lumio/shared";
-import { useGridSelection } from "@/lib/use-grid-selection";
-import { useGridView } from "@/lib/use-grid-view";
-import { useGridColumns } from "@/lib/use-grid-columns";
-import { useGridSort } from "@/lib/use-grid-sort";
+import { useGridSelection } from "@/lib/hooks/use-grid-selection";
+import { useGridView } from "@/lib/hooks/use-grid-view";
+import { useGridColumns } from "@/lib/hooks/use-grid-columns";
+import { useGridSort } from "@/lib/hooks/use-grid-sort";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
-import { PhotoGrid, type PhotoGridHandle } from "@/components/photo-grid/photo-grid";
-import { PhotoCollectionProvider } from "@/components/photo-grid/photo-collection";
-import { CollectionTotalReporter } from "@/components/photo-grid/collection-total-reporter";
-import { Lightbox } from "@/components/photo-grid/lightbox";
-import { GridShortcuts } from "@/components/photo-grid/grid-shortcuts";
+import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter, GridShortcuts } from "@/features/photo-grid";
+import { Lightbox } from "@/features/lightbox";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HeaderBar } from "@/components/header-bar";

@@ -13,7 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { FolderBrowser } from "@/components/folder-browser";
+import { FolderBrowser } from "@/components/directory-picker";
+import { apiPaths } from "@/lib/api-paths";
 
 interface CreatedCatalog {
   id: string;
@@ -67,7 +68,7 @@ export function CreateCatalogDialog({
     setPending(true);
     setError(null);
     try {
-      const res = await fetch("/api/catalogs", {
+      const res = await fetch(apiPaths.catalogs, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: name.trim(), path }),

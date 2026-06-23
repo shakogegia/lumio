@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { NextResponse } from "next/server";
-import { prisma } from "@lumio/db";
-import { originalPath } from "@/lib/paths";
-import { attachmentDisposition } from "@/lib/download-service";
-import { withCatalog } from "@/lib/with-catalog";
+import { originalPath } from "@/lib/server/server-paths";
+import { attachmentDisposition } from "@/lib/server/download-archive";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { binaryResponse, errorJson } from "@/lib/server/route-helpers";
+import { getPhotoFile } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,27 +17,23 @@ const CONTENT_TYPES: Record<string, string> = {
 
 export const GET = withCatalog<{ id: string }>(async (request, context, { catalog }) => {
   const { id } = await context.params;
-  const photo = await prisma.photo.findFirst({
-    where: { id, catalogId: catalog.id },
-    select: { id: true, path: true },
-  });
+  const photo = await getPhotoFile(catalog.id, id);
   if (!photo) {
-    return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    return errorJson("Photo not found", 404);
   }
   try {
     const file = await readFile(originalPath(catalog, photo.path));
     const ext = photo.path.slice(photo.path.lastIndexOf(".")).toLowerCase();
-    const headers: Record<string, string> = {
-      "Content-Type": CONTENT_TYPES[ext] ?? "application/octet-stream",
-      "Cache-Control": "public, max-age=3600",
-    };
+    const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
     // Opt-in download mode: force a save with the original's filename.
     if (new URL(request.url).searchParams.get("download")) {
       const base = photo.path.split("/").pop() || photo.path;
-      headers["Content-Disposition"] = attachmentDisposition(base);
+      const res = binaryResponse(file, { contentType, cacheControl: "public, max-age=3600" });
+      res.headers.set("Content-Disposition", attachmentDisposition(base));
+      return res;
     }
-    return new NextResponse(new Uint8Array(file), { headers });
+    return binaryResponse(file, { contentType, cacheControl: "public, max-age=3600" });
   } catch {
-    return NextResponse.json({ error: "Original not found" }, { status: 404 });
+    return errorJson("Original not found", 404);
   }
 });

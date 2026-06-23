@@ -1,38 +1,26 @@
 import { readFile } from "node:fs/promises";
-import { NextResponse } from "next/server";
-import { prisma } from "@lumio/db";
-import { thumbnailPath, trashThumbnailPath } from "@/lib/paths";
-import { withCatalog } from "@/lib/with-catalog";
+import { thumbnailPath, trashThumbnailPath } from "@/lib/server/server-paths";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { binaryResponse, errorJson } from "@/lib/server/route-helpers";
+import { photoOrTrashedExistsInCatalog } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
-
-function webp(file: Buffer): NextResponse {
-  return new NextResponse(new Uint8Array(file), {
-    headers: {
-      "Content-Type": "image/webp",
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
-  });
-}
 
 export const GET = withCatalog<{ id: string }>(async (_request, context, { catalog }) => {
   const { id } = await context.params;
   // Verify ownership: photo or trashed photo must belong to this catalog.
-  const [photo, trashed] = await Promise.all([
-    prisma.photo.findFirst({ where: { id, catalogId: catalog.id }, select: { id: true } }),
-    prisma.trashedPhoto.findFirst({ where: { id, catalogId: catalog.id }, select: { id: true } }),
-  ]);
-  if (!photo && !trashed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const owned = await photoOrTrashedExistsInCatalog(catalog.id, id);
+  if (!owned) return errorJson("Not found", 404);
 
   try {
-    return webp(await readFile(thumbnailPath(catalog.id, id)));
+    return binaryResponse(await readFile(thumbnailPath(catalog.id, id)), { contentType: "image/webp" });
   } catch {
     // Trashed photos keep their thumbnail under TRASH_DIR so the Trash grid
     // can render via the same URL.
     try {
-      return webp(await readFile(trashThumbnailPath(catalog.id, id)));
+      return binaryResponse(await readFile(trashThumbnailPath(catalog.id, id)), { contentType: "image/webp" });
     } catch {
-      return NextResponse.json({ error: "Thumbnail not found" }, { status: 404 });
+      return errorJson("Thumbnail not found", 404);
     }
   }
 });

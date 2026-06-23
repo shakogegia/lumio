@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { apiPaths } from "@/lib/api-paths";
 
 interface DeleteTarget {
   id: string;
@@ -84,7 +85,7 @@ function DeleteBody({
     setPending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/catalogs/${catalog.id}?mode=${mode}`, {
+      const res = await fetch(`${apiPaths.catalog(catalog.id)}?mode=${mode}`, {
         method: "DELETE",
       });
       if (!res.ok) {

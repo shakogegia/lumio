@@ -1,4 +1,5 @@
 export * from "./enums.js";
+export * from "./errors.js";
 export * from "./color-labels.js";
 export * from "./favorites.js";
 export * from "./types.js";
@@ -16,3 +17,4 @@ export * from "./catalogs.js";
 export * from "./ordering.js";
 export * from "./features.js";
 export * from "./paths.js";
+export * from "./profile.js";

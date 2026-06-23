@@ -2,9 +2,10 @@
 
 import { FolderInput, Images, Pencil, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import type { AlbumSummaryDTO } from "@lumio/shared";
-import { SelectionRing } from "@/components/photo-grid/selection-ring";
+import { countLabel } from "@/lib/count-label";
+import { SelectionRing } from "@/features/photo-grid";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
-import { useCatalog } from "@/lib/catalog-context";
+import { useCatalog } from "@/components/providers/catalog-context";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -62,7 +63,7 @@ export function AlbumCard({
     <div className="mt-2.5">
       <p className="truncate text-sm font-semibold">{album.name}</p>
       <p className="text-xs text-muted-foreground">
-        {album.photoCount} {album.photoCount === 1 ? "photo" : "photos"}
+        {countLabel(album.photoCount, "photo", "photos")}
       </p>
     </div>
   );

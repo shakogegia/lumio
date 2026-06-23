@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { hasAnyUser, listCatalogs } from "@lumio/db";
-import { getServerSession } from "@/lib/server-session";
+import { getServerSession } from "@/lib/server/server-session";
 import { SetupForm } from "./setup-form";
 import { FirstCatalogForm } from "./first-catalog-form";
 

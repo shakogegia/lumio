@@ -2,7 +2,19 @@ import type { CropRect, PhotoEdits } from "./types.js";
 import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
 import { COLOR_FIELDS, hasColor } from "./photo-color.js";
 
-export const NO_EDITS: PhotoEdits = { rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null };
+/** Current edit-recipe schema version. Stamped on every coerced/saved recipe so a
+ *  future shape change can branch on it at the read boundary. Zero migration:
+ *  legacy rows lack the field and are read as v1. */
+export const EDITS_VERSION = 1;
+
+export const NO_EDITS: PhotoEdits = {
+  version: EDITS_VERSION,
+  rotate: 0,
+  flipH: false,
+  flipV: false,
+  straighten: 0,
+  crop: null,
+};
 
 /** True when the recipe applies any geometry change (flip/rotate/straighten/crop). */
 export function hasGeometry(e: PhotoEdits | null): boolean {
@@ -119,17 +131,37 @@ export function aspectCrop(e: PhotoEdits, preset: AspectPreset, wo: number, ho: 
   return { ...e, crop: centeredAspectCrop(ratio, wo, ho, deg) };
 }
 
+/** The crop actually applied when previewing/baking `e` against an oriented base of
+ *  `ow×oh` (post coarse-rotate). Explicit crop wins; else a straighten auto-fills a
+ *  centered inscribed crop; else the full frame. Normalized to the straightened (O′)
+ *  box — which equals the oriented frame (O) when straighten is 0. Single source for
+ *  the 3 sites that used to inline this. */
+export function effectiveCrop(e: PhotoEdits | null, ow: number, oh: number): CropRect {
+  if (e?.crop) return e.crop;
+  const deg = e?.straighten ?? 0;
+  if (deg !== 0) return centeredAspectCrop(ow / oh, ow, oh, deg);
+  return { x: 0, y: 0, w: 1, h: 1 };
+}
+
+/** Output { w, h } of the recipe applied to an oriented `ow×oh` base: straighten
+ *  expands to the O′ box, then the effective crop selects a sub-rect. */
+export function outputSize(e: PhotoEdits | null, ow: number, oh: number): { w: number; h: number } {
+  const deg = e?.straighten ?? 0;
+  const op = straightenedSize(ow, oh, deg);
+  const crop = effectiveCrop(e, ow, oh);
+  return {
+    w: Math.max(1, Math.round(crop.w * op.w)),
+    h: Math.max(1, Math.round(crop.h * op.h)),
+  };
+}
+
 /** Predicted [width, height] after the recipe, for optimistic store patching.
- *  Mirrors the bake: straighten with no explicit crop auto-fills an inscribed crop. */
+ *  Thin wrapper over outputSize that first applies the coarse-rotate axis swap. */
 export function orientedSize(w: number, h: number, e: PhotoEdits | null): [number, number] {
   if (!e) return [w, h];
   const [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [h, w] : [w, h];
-  const deg = e.straighten ?? 0;
-  const op = straightenedSize(ow, oh, deg);
-  const crop = e.crop ?? (deg !== 0 ? centeredAspectCrop(ow / oh, ow, oh, deg) : null);
-  const W = crop ? Math.round(crop.w * op.w) : Math.round(op.w);
-  const H = crop ? Math.round(crop.h * op.h) : Math.round(op.h);
-  return [Math.max(1, W), Math.max(1, H)];
+  const { w: W, h: H } = outputSize(e, ow, oh);
+  return [W, H];
 }
 
 function coerceCrop(value: unknown): CropRect | null {
@@ -154,12 +186,19 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
       ? e.straighten
       : 0;
   const crop = coerceCrop(e.crop);
-  const out: PhotoEdits = { rotate: e.rotate as PhotoEdits["rotate"], flipH: e.flipH, flipV: e.flipV, straighten, crop };
+  const out: PhotoEdits = {
+    version: EDITS_VERSION,
+    rotate: e.rotate as PhotoEdits["rotate"],
+    flipH: e.flipH,
+    flipV: e.flipV,
+    straighten,
+    crop,
+  };
   for (const f of COLOR_FIELDS) {
     const v = e[f.key];
     if (typeof v === "number" && Number.isFinite(v)) {
       const clamped = Math.max(f.min, Math.min(f.max, v));
-      if (clamped !== f.neutral) (out as unknown as Record<string, unknown>)[f.key] = clamped;
+      if (clamped !== f.neutral) out[f.key] = clamped;
     }
   }
   return out;

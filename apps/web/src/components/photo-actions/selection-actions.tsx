@@ -7,7 +7,7 @@ import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import type { PhotoActions } from "@/components/photo-actions/use-photo-actions";
-import type { PhotoGridHandle } from "@/components/photo-grid/photo-grid";
+import type { PhotoGridHandle } from "@/features/photo-grid";
 
 /**
  * The standard bulk-action button set shared by every photo library view:

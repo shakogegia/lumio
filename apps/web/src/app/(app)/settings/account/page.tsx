@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { getServerSession } from "@/lib/server-session";
-import { getProfile } from "@/lib/profile-service";
+import { auth } from "@/lib/server/auth";
+import { getServerSession } from "@/lib/server/server-session";
+import { getProfile } from "@/lib/server/profile-service";
 import {
   Card,
   CardContent,

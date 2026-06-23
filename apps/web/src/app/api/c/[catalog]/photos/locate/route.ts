@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { withCatalog } from "@/lib/with-catalog";
-import { parseDetailScope } from "@/lib/photo-detail-loader";
-import { locatePhoto } from "@/lib/locate-photo";
+import { withCatalog } from "@/lib/server/with-catalog";
+import { parseDetailScope } from "@/lib/server/photo-detail-loader";
+import { locatePhoto } from "@/lib/server/locate-photo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

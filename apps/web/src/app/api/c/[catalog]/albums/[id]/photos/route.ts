@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { albumPhotosSchema, photosQuerySchema } from "@lumio/shared";
 import {
   addPhotosToAlbum,
-  AlbumNotFoundError,
   listAlbumPhotos,
   removePhotosFromAlbum,
-  SmartAlbumMutationError,
-} from "@/lib/albums-service";
-import { withCatalog } from "@/lib/with-catalog";
+} from "@/lib/server/albums-service";
+import { parseJson, parseQuery, mapServiceError } from "@/lib/server/route-helpers";
+import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,11 +14,8 @@ export const dynamic = "force-dynamic";
 export const GET = withCatalog<{ id: string }>(
   async (request, context, { catalog }) => {
     const { id } = await context.params;
-    const { searchParams } = new URL(request.url);
-    const parsed = photosQuerySchema.safeParse(Object.fromEntries(searchParams));
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    }
+    const parsed = parseQuery(request, photosQuerySchema);
+    if ("response" in parsed) return parsed.response;
     const page = await listAlbumPhotos(catalog.id, id, parsed.data);
     if (!page) {
       return NextResponse.json({ error: "Album not found" }, { status: 404 });
@@ -31,21 +27,14 @@ export const GET = withCatalog<{ id: string }>(
 export const POST = withCatalog<{ id: string }>(
   async (request, context, { catalog }) => {
     const { id } = await context.params;
-    const body: unknown = await request.json();
-    const parsed = albumPhotosSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    }
+    const parsed = await parseJson(request, albumPhotosSchema);
+    if ("response" in parsed) return parsed.response;
     try {
       const count = await addPhotosToAlbum(catalog.id, id, parsed.data.photoIds);
       return NextResponse.json({ status: "added", count }, { status: 201 });
     } catch (err) {
-      if (err instanceof SmartAlbumMutationError) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
-      }
-      if (err instanceof AlbumNotFoundError) {
-        return NextResponse.json({ error: "Album not found" }, { status: 404 });
-      }
+      const mapped = mapServiceError(err);
+      if (mapped) return mapped;
       throw err;
     }
   },
@@ -54,21 +43,14 @@ export const POST = withCatalog<{ id: string }>(
 export const DELETE = withCatalog<{ id: string }>(
   async (request, context, { catalog }) => {
     const { id } = await context.params;
-    const body: unknown = await request.json();
-    const parsed = albumPhotosSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    }
+    const parsed = await parseJson(request, albumPhotosSchema);
+    if ("response" in parsed) return parsed.response;
     try {
       const count = await removePhotosFromAlbum(catalog.id, id, parsed.data.photoIds);
       return NextResponse.json({ status: "removed", count });
     } catch (err) {
-      if (err instanceof SmartAlbumMutationError) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
-      }
-      if (err instanceof AlbumNotFoundError) {
-        return NextResponse.json({ error: "Album not found" }, { status: 404 });
-      }
+      const mapped = mapServiceError(err);
+      if (mapped) return mapped;
       throw err;
     }
   },

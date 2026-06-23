@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/item";
 import { CreateCatalogDialog } from "@/components/create-catalog-dialog";
 import { catalogPath } from "@/lib/catalog-api";
+import { patchJson } from "@/lib/http";
+import { apiPaths } from "@/lib/api-paths";
 import { RenameCatalogDialog } from "./rename-catalog-dialog";
 import { DeleteCatalogDialog } from "./delete-catalog-dialog";
 
@@ -72,12 +74,7 @@ export function CatalogsList({ rows }: { rows: CatalogRow[] }) {
     const idx = next.findIndex((r) => r.id === movedId);
     const afterId = idx > 0 ? next[idx - 1]!.id : null;
     try {
-      const res = await fetch(`/api/catalogs/${movedId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ afterId }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
+      await patchJson(apiPaths.catalog(movedId), { afterId });
       router.refresh();
     } catch {
       setItems(rows); // immediate revert to the last-known server order

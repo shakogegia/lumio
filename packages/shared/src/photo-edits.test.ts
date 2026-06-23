@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { PhotoEdits } from "./types.js";
 import {
   NO_EDITS,
+  EDITS_VERSION,
   hasEdits,
   hasGeometry,
   hasColor,
@@ -15,13 +17,15 @@ import {
   setStraighten,
   setCrop,
   aspectCrop,
+  effectiveCrop,
+  outputSize,
 } from "./photo-edits.js";
 
 const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotate, flipH, flipV });
 
 describe("photo-edits", () => {
   it("NO_EDITS is the identity recipe", () => {
-    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is false for null and identity, true otherwise", () => {
@@ -59,7 +63,7 @@ describe("photo-edits", () => {
   });
 
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
-    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 1, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();
     expect(coercePhotoEdits({ rotate: 45, flipH: false, flipV: false })).toBeNull();
     expect(coercePhotoEdits({ rotate: 90 })).toBeNull();
@@ -99,7 +103,7 @@ describe("photo-edits crop & straighten", () => {
   const base = { rotate: 0, flipH: false, flipV: false } as const;
 
   it("NO_EDITS includes straighten 0 and crop null", () => {
-    expect(NO_EDITS).toEqual({ rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is true when only straighten or only crop is set", () => {
@@ -200,5 +204,59 @@ describe("photo-edits color", () => {
     expect(out.contrast).toBe(100);
     expect(out).not.toHaveProperty("exposure");
     expect(out).not.toHaveProperty("vignette");
+  });
+});
+
+describe("edits schema version", () => {
+  it("NO_EDITS carries the current schema version", () => {
+    expect(NO_EDITS.version).toBe(EDITS_VERSION);
+    expect(EDITS_VERSION).toBe(1);
+  });
+
+  it("coercePhotoEdits stamps the current version on a legacy row that lacks one", () => {
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false })?.version).toBe(EDITS_VERSION);
+  });
+
+  it("coercePhotoEdits normalizes any input version to the schema this code emits", () => {
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, version: 99 })?.version).toBe(EDITS_VERSION);
+    expect(coercePhotoEdits({ rotate: 0, flipH: false, flipV: false, version: "x" })?.version).toBe(EDITS_VERSION);
+  });
+
+  it("sameEdits ignores version (it is metadata, not a visual field)", () => {
+    expect(sameEdits({ ...NO_EDITS, version: 1 }, { ...NO_EDITS, version: 99 })).toBe(true);
+  });
+});
+
+describe("effectiveCrop / outputSize", () => {
+  it("effectiveCrop returns the explicit crop when present", () => {
+    const c = { x: 0.1, y: 0.1, w: 0.5, h: 0.5 };
+    expect(effectiveCrop({ ...NO_EDITS, crop: c }, 400, 200)).toEqual(c);
+  });
+
+  it("effectiveCrop is the full frame with no crop and no straighten", () => {
+    expect(effectiveCrop(NO_EDITS, 400, 200)).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+    expect(effectiveCrop(null, 400, 200)).toEqual({ x: 0, y: 0, w: 1, h: 1 });
+  });
+
+  it("effectiveCrop auto-fills an inscribed crop when straightened with no explicit crop", () => {
+    const c = effectiveCrop({ ...NO_EDITS, straighten: 10 }, 400, 200);
+    expect(c.w).toBeLessThan(1);
+    expect(c.h).toBeLessThan(1);
+    expect(c.x).toBeGreaterThan(0);
+  });
+
+  it("outputSize equals orientedSize across the rotate × straighten × crop matrix", () => {
+    const cases: PhotoEdits[] = [
+      NO_EDITS,
+      { ...NO_EDITS, rotate: 90 },
+      { ...NO_EDITS, straighten: 12 },
+      { ...NO_EDITS, crop: { x: 0, y: 0, w: 0.5, h: 0.5 } },
+      { ...NO_EDITS, rotate: 270, crop: { x: 0.1, y: 0.1, w: 0.4, h: 0.4 } },
+    ];
+    for (const e of cases) {
+      const [W, H] = orientedSize(400, 200, e);
+      const [ow, oh] = e.rotate === 90 || e.rotate === 270 ? [200, 400] : [400, 200];
+      expect(outputSize(e, ow, oh)).toEqual({ w: W, h: H });
+    }
   });
 });

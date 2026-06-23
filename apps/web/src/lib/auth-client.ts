@@ -1,5 +1,5 @@
 "use client";
-// Client-only. Server code reads sessions via @/lib/server-session, not this module.
+// Client-only. Server code reads sessions via @/lib/server/server-session, not this module.
 
 import { createAuthClient } from "better-auth/react";
 import { twoFactorClient } from "better-auth/client/plugins";

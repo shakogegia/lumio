@@ -1,4 +1,4 @@
-import { getDefaultCatalogSlug } from "@/lib/active-catalog";
+import { getDefaultCatalogSlug } from "@/lib/server/active-catalog";
 import { catalogPath } from "@/lib/catalog-api";
 import { SettingsSidebar } from "@/components/settings-sidebar";
 
