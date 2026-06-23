@@ -22,7 +22,7 @@ export function errorJson(message: string, status: number, details?: unknown): N
 export type ParseResult<T> = { data: T } | { response: NextResponse<ApiError> };
 
 /** Parse + validate a JSON request body. Never throws on malformed JSON (→ 400). */
-export async function parseJson<T>(request: Request, schema: z.ZodType<T>): Promise<ParseResult<T>> {
+export async function parseJson<T>(request: Request, schema: z.ZodType<T, z.ZodTypeDef, unknown>): Promise<ParseResult<T>> {
   const body = await request.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) return { response: errorJson("Invalid request body", 400, parsed.error.flatten()) };
@@ -30,7 +30,7 @@ export async function parseJson<T>(request: Request, schema: z.ZodType<T>): Prom
 }
 
 /** Parse + validate the query string (flat params). For repeated params, parse manually. */
-export function parseQuery<T>(request: Request, schema: z.ZodType<T>): ParseResult<T> {
+export function parseQuery<T>(request: Request, schema: z.ZodType<T, z.ZodTypeDef, unknown>): ParseResult<T> {
   const params = new URL(request.url).searchParams;
   const parsed = schema.safeParse(Object.fromEntries(params));
   if (!parsed.success) return { response: errorJson("Invalid query parameters", 400, parsed.error.flatten()) };

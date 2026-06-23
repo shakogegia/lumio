@@ -4,17 +4,15 @@ import { prisma } from "@lumio/db";
 import { photoIdsSchema } from "@lumio/shared";
 import { restorePhotos } from "@/lib/trash-service";
 import { CACHE_DIR, TRASH_DIR } from "@/lib/paths";
+import { parseJson } from "@/lib/route-helpers";
 import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = withCatalog(async (request, _context, { catalog }) => {
-  const body: unknown = await request.json();
-  const parsed = photoIdsSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+  const parsed = await parseJson(request, photoIdsSchema);
+  if ("response" in parsed) return parsed.response;
   const result = await restorePhotos(parsed.data.ids, {
     db: prisma,
     catalogId: catalog.id,

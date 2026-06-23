@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isFeatureEnabled } from "@lumio/db";
 import { FeatureKey } from "@lumio/shared";
 import { buildCalendarFacets } from "@/lib/calendar-service";
+import { errorJson } from "@/lib/route-helpers";
 import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withCatalog(async (request, _context, { catalog }) => {
   if (!(await isFeatureEnabled(catalog.id, FeatureKey.DiskExplorer))) {
-    return new Response("Not found", { status: 404 });
+    return errorJson("Not found", 404);
   }
   const dir = new URL(request.url).searchParams.get("path") ?? "";
   const facets = await buildCalendarFacets(catalog.id, { dirPath: dir });

@@ -16,3 +16,4 @@ export * from "./catalogs.js";
 export * from "./ordering.js";
 export * from "./features.js";
 export * from "./paths.js";
+export * from "./profile.js";

@@ -3,6 +3,7 @@ import { type Prisma, isFeatureEnabled } from "@lumio/db";
 import { coercePhotoSort, FeatureKey, monthParamSchema, monthRange } from "@lumio/shared";
 import { withCatalog } from "@/lib/with-catalog";
 import { listPhotosForWhere } from "@/lib/photos-service";
+import { errorJson } from "@/lib/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withCatalog(async (request, _context, { catalog }) => {
   if (!(await isFeatureEnabled(catalog.id, FeatureKey.DiskExplorer))) {
-    return new Response("Not found", { status: 404 });
+    return errorJson("Not found", 404);
   }
   const { searchParams } = new URL(request.url);
   const dir = searchParams.get("path") ?? "";

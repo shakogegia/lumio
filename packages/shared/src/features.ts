@@ -42,3 +42,13 @@ export type FeatureMap = Record<FeatureKey, boolean>;
 
 /** All feature keys, in registry order. */
 export const ALL_FEATURE_KEYS = Object.values(FeatureKey);
+
+import { z } from "zod";
+
+/** Body for PUT /api/features — toggle one feature. */
+export const featureToggleSchema = z.object({
+  key: z.nativeEnum(FeatureKey),
+  catalogId: z.string().min(1).nullable(),
+  enabled: z.boolean(),
+});
+export type FeatureToggleInput = z.infer<typeof featureToggleSchema>;
