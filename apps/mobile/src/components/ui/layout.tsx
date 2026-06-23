@@ -15,7 +15,7 @@ import { useTheme, radius, weight } from "../../lib/theme";
 export function Loading() {
   const { colors } = useTheme();
   return (
-    <View style={[styles.flex, styles.center, { backgroundColor: colors.groupedBackground }]}>
+    <View style={[styles.flex, styles.center, { backgroundColor: colors.background}]}>
       <ActivityIndicator color={colors.mutedForeground} />
     </View>
   );
@@ -27,7 +27,7 @@ export function Screen({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
   return (
     <KeyboardAvoidingView
-      style={[styles.flex, { backgroundColor: colors.groupedBackground }]}
+      style={[styles.flex, { backgroundColor: colors.background}]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <SafeAreaView style={styles.flex} edges={["top", "bottom"]}>

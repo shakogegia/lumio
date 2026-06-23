@@ -55,7 +55,7 @@ export default function Login() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Brand />
+        <Brand logoSize={68} />
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: colors.foreground }]}>Welcome back</Text>
           <Text style={[styles.sub, { color: colors.mutedForeground }]}>Sign in to your Lumio library.</Text>

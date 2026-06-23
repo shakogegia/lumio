@@ -19,11 +19,11 @@ export function Logo({ size = 32, color }: { size?: number; color?: string }) {
 }
 
 /** Stacked brand lockup (mark + wordmark) shown atop the auth screens. */
-export function Brand() {
+export function Brand({ logoSize = 48 }: { logoSize?: number }) {
   const { colors } = useTheme();
   return (
     <View style={styles.brand}>
-      <Logo size={48} />
+      <Logo size={logoSize} />
       <Text style={[styles.word, { color: colors.foreground }]}>Lumio</Text>
     </View>
   );

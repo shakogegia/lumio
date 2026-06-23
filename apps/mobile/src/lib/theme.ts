@@ -7,8 +7,8 @@ import { useColorScheme } from "react-native";
  * neutrals. Light/dark are switched by the OS color scheme.
  */
 export type ThemeColors = {
-  /** Screen background for grouped-list layouts (iOS systemGroupedBackground analog). */
-  groupedBackground: string;
+  /** App background — plain white (light) / black (dark); cards float above it. */
+  background: string;
   foreground: string;
   /** Card / row surface that floats above the grouped background. */
   card: string;
@@ -24,14 +24,13 @@ export type ThemeColors = {
   destructive: string;
 };
 
-// Web --secondary/--muted (#F5F5F5) reads as the light grouped background, while
-// --card (#FFFFFF) stays the floating surface, so cards sit above the page like
-// iOS grouped lists. In dark, --background (#0A0A0A) is the page and --card
-// (#171717) is lighter, giving the same layered effect.
+// Background is plain white/black; cards sit above it — delineated by their
+// border in light (white card on white) and by being lighter in dark (#171717
+// on #000). Remaining neutrals come from the web's globals.css tokens.
 const light: ThemeColors = {
-  groupedBackground: "#F5F5F5",
+  background: "#FFFFFF",
   foreground: "#0A0A0A",
-  card: "#FFFFFF",
+  card: "#F2F2F7",
   muted: "#F5F5F5",
   mutedForeground: "#737373",
   border: "#E5E5E5",
@@ -41,7 +40,7 @@ const light: ThemeColors = {
 };
 
 const dark: ThemeColors = {
-  groupedBackground: "#0A0A0A",
+  background: "#000000",
   foreground: "#FAFAFA",
   card: "#171717",
   muted: "#262626",

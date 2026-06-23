@@ -57,8 +57,11 @@ async function main() {
   await render(solidSvg({ size: 512, fill: BLACK }), 512, "android-icon-background.png");
   await render(apertureSvg({ size: 432, background: null, stroke: WHITE, coverage: 0.5 }), 432, "android-icon-monochrome.png");
 
-  // Splash mark: transparent so it floats on the black splash background.
-  await render(apertureSvg({ size: 512, background: null, stroke: WHITE, coverage: 0.7 }), 512, "splash-icon.png");
+  // Splash marks: transparent aperture for each theme — black on the white light
+  // splash, white on the black dark splash. (Used by both app.json and the
+  // animated splash overlay, so the native→JS handoff is pixel-identical.)
+  await render(apertureSvg({ size: 512, background: null, stroke: BLACK, coverage: 0.7 }), 512, "splash-icon-light.png");
+  await render(apertureSvg({ size: 512, background: null, stroke: WHITE, coverage: 0.7 }), 512, "splash-icon-dark.png");
 
   // In-app logo: transparent glyph recolored per theme via expo-image tintColor,
   // so the source color is irrelevant (kept white).
