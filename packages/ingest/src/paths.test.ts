@@ -1,5 +1,4 @@
-import { describe, expect, it } from "vitest";
-import { expectTypeOf } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { catalogCacheDirs, displayPath, editedDisplayPath, thumbnailPath } from "./paths.js";
 import type { CatalogCacheDirs } from "./paths.js";
 import type { RegenerateDeps } from "./regenerate.js";
