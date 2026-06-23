@@ -47,7 +47,7 @@ export function ViewerChrome({
         <GlassCircle onPress={onClose} label="Close" solid={solid}>
           <Icon name="chevron.backward" fallback="‹" tint={fg} />
         </GlassCircle>
-        <GlassContainer solid={solid} style={styles.titlePill}>
+        <GlassContainer solid={solid} style={styles.titlePill} radius={20}>
           <Text style={[styles.title, { color: fg }]} numberOfLines={1}>
             {title}
           </Text>
@@ -65,7 +65,7 @@ export function ViewerChrome({
           <Icon name="square.and.arrow.up" fallback="⤴" tint={fg} />
         </GlassCircle>
 
-        <GlassContainer solid={solid} style={styles.pill} interactive>
+        <GlassContainer solid={solid} style={styles.pill} radius={22} interactive>
           <PillButton onPress={onToggleFavorite} label="Favorite">
             <Icon
               name={isFavorite ? "heart.fill" : "heart"}
@@ -112,21 +112,27 @@ function Icon({
 function GlassContainer({
   solid,
   style,
+  radius,
   interactive,
   children,
 }: {
   solid: string;
   style: object;
+  radius: number;
   interactive?: boolean;
   children: ReactNode;
 }) {
-  return GLASS ? (
+  // The glass clips its material with overflow:hidden, which would also clip a
+  // shadow — so the elevation shadow goes on an outer wrapper (matching radius,
+  // no clipping) and the clipped glass sits inside it.
+  const inner = GLASS ? (
     <GlassView glassEffectStyle="regular" isInteractive={interactive} style={style}>
       {children}
     </GlassView>
   ) : (
     <View style={[style, { backgroundColor: solid }]}>{children}</View>
   );
+  return <View style={[styles.shadow, { borderRadius: radius }]}>{inner}</View>;
 }
 
 function GlassCircle({
@@ -142,7 +148,7 @@ function GlassCircle({
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6}>
-      <GlassContainer solid={solid} style={styles.circle} interactive>
+      <GlassContainer solid={solid} style={styles.circle} radius={22} interactive>
         {children}
       </GlassContainer>
     </Pressable>
@@ -219,4 +225,12 @@ const styles = StyleSheet.create({
   pillButton: { paddingHorizontal: 16, height: 44, alignItems: "center", justifyContent: "center" },
   dim: { opacity: 0.4 },
   fallback: { fontSize: 20 },
+  // Elevation shadow on the (unclipped) wrapper so the glass lifts off the photo.
+  shadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
 });
