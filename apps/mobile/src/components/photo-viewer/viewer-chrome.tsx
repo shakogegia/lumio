@@ -60,7 +60,7 @@ export function ViewerChrome({
         <View style={styles.side} />
       </View>
 
-      <View style={[styles.bottom, { paddingBottom: bottomInset + 12 }]} pointerEvents="box-none">
+      <View style={[styles.bottom, { paddingBottom: Math.max(bottomInset, 10) }]} pointerEvents="box-none">
         <GlassCircle onPress={onShare} label="Share" solid={solid}>
           <Icon name="square.and.arrow.up" fallback="⤴" tint={fg} />
         </GlassCircle>
