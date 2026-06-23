@@ -1,14 +1,9 @@
-/* eslint-disable react-hooks/immutability, react-hooks/refs --
-   react-native-reanimated shared values (useSharedValue) REQUIRE the `.value`
-   mutation pattern, in worklets and in gesture/scroll callbacks. The React
-   Compiler lint models shared values as immutable hook returns / refs and flags
-   every `sv.value = …` and the gesture-built-in-render — these are false
-   positives: reanimated 4 is React-Compiler-compatible (its worklets are
-   excluded from compilation). Scoped to this one animation-heavy file. */
 import {
   type ReactElement,
+  forwardRef,
   memo,
   useCallback,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -63,23 +58,11 @@ type Scrollable = { scrollToOffset: (p: { offset: number; animated?: boolean }) 
  * at its natural size) has no visual jump. Renders PhotoTile directly; an album
  * screen reuses it by swapping the data passed in.
  */
-export function ZoomablePhotoGrid({
-  photos,
-  baseURL,
-  slug,
-  cookie,
-  zoomLevels = DEFAULT_ZOOM_LEVELS,
-  initialColumns = 3,
-  fit = "cover",
-  openThreshold = 3,
-  onColumnsChange,
-  onOpenPhoto,
-  onEndReached,
-  onScroll,
-  contentInset,
-  ListEmptyComponent,
-  ListFooterComponent,
-}: {
+/** Imperative handle: scroll so photo `index` is visible and return its tile rect
+ *  (window coords), for the viewer's close-to-current-tile animation. */
+export type PhotoGridHandle = { getTileRect: (index: number) => Rect | null };
+
+type ZoomablePhotoGridProps = {
   photos: PhotoDTO[];
   baseURL: string;
   slug: string;
@@ -97,7 +80,29 @@ export function ZoomablePhotoGrid({
   contentInset?: { top: number; bottom: number };
   ListEmptyComponent?: ReactElement | null;
   ListFooterComponent?: ReactElement | null;
-}) {
+};
+
+export const ZoomablePhotoGrid = forwardRef<PhotoGridHandle, ZoomablePhotoGridProps>(
+  function ZoomablePhotoGrid(
+    {
+      photos,
+      baseURL,
+      slug,
+      cookie,
+      zoomLevels = DEFAULT_ZOOM_LEVELS,
+      initialColumns = 3,
+      fit = "cover",
+      openThreshold = 3,
+      onColumnsChange,
+      onOpenPhoto,
+      onEndReached,
+      onScroll,
+      contentInset,
+      ListEmptyComponent,
+      ListFooterComponent,
+    },
+    ref,
+  ) {
   const { width, height } = useWindowDimensions();
   const topInset = contentInset?.top ?? 0;
   const bottomInset = contentInset?.bottom ?? 0;
@@ -290,6 +295,33 @@ export function ZoomablePhotoGrid({
     [activeScrollOffset, onScroll],
   );
 
+  // Scroll the active layer so photo `index` is comfortably visible, then return
+  // its (deterministically computed) tile rect — the viewer flies the closing
+  // photo back to it, leaving the grid scrolled to where the user ended up.
+  useImperativeHandle(
+    ref,
+    () => ({
+      getTileRect(index: number): Rect | null {
+        const cols = activeColumns;
+        if (cols <= 0 || width <= 0) return null;
+        const tileSize = width / cols;
+        const padding = layerConfigRef.current[cols]?.padding ?? 0;
+        const visualIndex = index + padding;
+        const row = Math.floor(visualIndex / cols);
+        const col = visualIndex % cols;
+        const rowTop = row * tileSize;
+        const totalRows = Math.ceil((photos.length + padding) / cols);
+        const contentH = totalRows * tileSize + topInset + bottomInset;
+        const maxScroll = Math.max(0, contentH - height);
+        const target = Math.max(0, Math.min(rowTop - (height - tileSize) / 2, maxScroll));
+        listRefs.current[cols]?.scrollToOffset({ offset: target, animated: false });
+        activeScrollOffset.value = target;
+        return { x: col * tileSize, y: topInset + rowTop - target, width: tileSize, height: tileSize };
+      },
+    }),
+    [activeColumns, width, height, topInset, bottomInset, photos.length, activeScrollOffset],
+  );
+
   return (
     <GestureDetector gesture={pinch}>
       <View style={styles.container}>
@@ -327,7 +359,8 @@ export function ZoomablePhotoGrid({
       </View>
     </GestureDetector>
   );
-}
+  },
+);
 
 const GridLayer = memo(function GridLayer({
   cols,

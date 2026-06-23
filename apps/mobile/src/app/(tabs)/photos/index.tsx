@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LargeHeaderOverlay, useScrollEdgeHeader } from "@/components/large-header";
 import { SettingsMenuButton } from "@/components/settings-menu-button";
-import { ZoomablePhotoGrid } from "@/components/photo-grid";
+import { ZoomablePhotoGrid, type PhotoGridHandle } from "@/components/photo-grid";
 import { AspectToggle } from "@/components/photo-grid/aspect-toggle";
 import { PhotoViewer } from "@/components/photo-viewer";
 import { usePhotoPages } from "@/hooks/use-photo-pages";
@@ -59,6 +59,7 @@ export default function Photos() {
   // The photo open in the fullscreen viewer (null = closed). `rect` is the tapped
   // tile's window rect, driving the shared-element open/close animation.
   const [viewer, setViewer] = useState<{ index: number; rect: Rect } | null>(null);
+  const gridRef = useRef<PhotoGridHandle>(null);
 
   // Memoized per data source so usePhotoPages reloads only when the source
   // changes. cookie is captured by value (a stable string per session).
@@ -92,6 +93,7 @@ export default function Photos() {
         </View>
       ) : (
         <ZoomablePhotoGrid
+          ref={gridRef}
           photos={photos}
           baseURL={serverUrl ?? ""}
           slug={slug ?? ""}
@@ -139,6 +141,7 @@ export default function Photos() {
         cookie={cookie}
         onClose={() => setViewer(null)}
         onLoadMore={loadMore}
+        onRequestTileRect={(i) => gridRef.current?.getTileRect(i) ?? null}
       />
     </View>
   );

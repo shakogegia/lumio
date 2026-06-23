@@ -4,16 +4,17 @@ import { SymbolView } from "expo-symbols";
 import { GlassView } from "expo-glass-effect";
 import type { PhotoDTO } from "@lumio/shared";
 import { GLASS } from "@/lib/glass";
+import { useTheme } from "@/lib/theme";
 import { formatPhotoTitle } from "./viewer-title";
 
 type SymbolName = ComponentProps<typeof SymbolView>["name"];
 
-// Chrome floats over the photo, so icons/text are white with a soft shadow for
-// legibility on any image (independent of the theme background behind letterbox).
-const ICON = "#FFFFFF";
+const FAVORITE_RED = "#FF375F";
 
 /** The viewer's overlay chrome: back + date/time title (top), and the action bar
- *  (share left, favorite/info/adjust capsule right) from the iOS layout. */
+ *  (share left, favorite/info/adjust capsule right) from the iOS layout. Glass
+ *  + icon/text colors are theme-aware so they're legible on the white light-mode
+ *  background as well as dark. */
 export function ViewerChrome({
   photo,
   topInset,
@@ -33,44 +34,53 @@ export function ViewerChrome({
   onInfo: () => void;
   onToggleFavorite: () => void;
 }) {
+  const { colors, scheme } = useTheme();
   const { title, subtitle } = formatPhotoTitle(photo);
+  // Icons/text follow the theme (dark on light, white on dark); the glass — or
+  // its non-glass fallback — provides the contrasting backing over the photo.
+  const fg = colors.foreground;
+  const solid = scheme === "dark" ? "rgba(30,30,30,0.72)" : "rgba(245,245,245,0.92)";
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <View style={[styles.top, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
-        <GlassButton onPress={onClose} label="Close">
-          <Icon name="chevron.backward" fallback="‹" />
-        </GlassButton>
-        <View style={styles.titleWrap} pointerEvents="none">
-          <Text style={styles.title} numberOfLines={1}>
+        <GlassCircle onPress={onClose} label="Close" solid={solid}>
+          <Icon name="chevron.backward" fallback="‹" tint={fg} />
+        </GlassCircle>
+        <GlassContainer solid={solid} style={styles.titlePill}>
+          <Text style={[styles.title, { color: fg }]} numberOfLines={1}>
             {title}
           </Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        </View>
+          {subtitle ? (
+            <Text style={[styles.subtitle, { color: fg }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </GlassContainer>
         <View style={styles.side} />
       </View>
 
       <View style={[styles.bottom, { paddingBottom: bottomInset + 12 }]} pointerEvents="box-none">
-        <GlassButton onPress={onShare} label="Share">
-          <Icon name="square.and.arrow.up" fallback="⤴" />
-        </GlassButton>
+        <GlassCircle onPress={onShare} label="Share" solid={solid}>
+          <Icon name="square.and.arrow.up" fallback="⤴" tint={fg} />
+        </GlassCircle>
 
-        <GlassPill>
+        <GlassContainer solid={solid} style={styles.pill}>
           <PillButton onPress={onToggleFavorite} label="Favorite">
             <Icon
               name={isFavorite ? "heart.fill" : "heart"}
               fallback={isFavorite ? "♥" : "♡"}
-              tint={isFavorite ? "#FF375F" : ICON}
+              tint={isFavorite ? FAVORITE_RED : fg}
             />
           </PillButton>
           <PillButton onPress={onInfo} label="Info">
-            <Icon name="info.circle" fallback="ⓘ" />
+            <Icon name="info.circle" fallback="ⓘ" tint={fg} />
           </PillButton>
           {/* Adjust/edit — placeholder until a mobile editor exists. */}
           <PillButton onPress={undefined} label="Adjust" disabled>
-            <Icon name="slider.horizontal.3" fallback="≡" tint="rgba(255,255,255,0.4)" />
+            <Icon name="slider.horizontal.3" fallback="≡" tint={fg} dim />
           </PillButton>
-        </GlassPill>
+        </GlassContainer>
       </View>
     </View>
   );
@@ -79,51 +89,61 @@ export function ViewerChrome({
 function Icon({
   name,
   fallback,
-  tint = ICON,
+  tint,
+  dim,
 }: {
   name: SymbolName;
   fallback: string;
-  tint?: string;
+  tint: string;
+  dim?: boolean;
 }) {
   return (
-    <SymbolView
-      name={name}
-      size={22}
-      tintColor={tint}
-      fallback={<Text style={[styles.fallback, { color: tint }]}>{fallback}</Text>}
-    />
+    <View style={dim ? styles.dim : undefined}>
+      <SymbolView
+        name={name}
+        size={22}
+        tintColor={tint}
+        fallback={<Text style={[styles.fallback, { color: tint }]}>{fallback}</Text>}
+      />
+    </View>
   );
 }
 
-function GlassButton({
+function GlassContainer({
+  solid,
+  style,
+  children,
+}: {
+  solid: string;
+  style: object;
+  children: ReactNode;
+}) {
+  return GLASS ? (
+    <GlassView glassEffectStyle="regular" style={style}>
+      {children}
+    </GlassView>
+  ) : (
+    <View style={[style, { backgroundColor: solid }]}>{children}</View>
+  );
+}
+
+function GlassCircle({
   onPress,
   label,
+  solid,
   children,
 }: {
   onPress: () => void;
   label: string;
+  solid: string;
   children: ReactNode;
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6}>
-      {GLASS ? (
-        <GlassView glassEffectStyle="regular" isInteractive style={styles.circle}>
-          {children}
-        </GlassView>
-      ) : (
-        <View style={[styles.circle, styles.solid]}>{children}</View>
-      )}
+      <GlassContainer solid={solid} style={styles.circle}>
+        {children}
+      </GlassContainer>
     </Pressable>
-  );
-}
-
-function GlassPill({ children }: { children: ReactNode }) {
-  return GLASS ? (
-    <GlassView glassEffectStyle="regular" style={styles.pill}>
-      {children}
-    </GlassView>
-  ) : (
-    <View style={[styles.pill, styles.solid]}>{children}</View>
   );
 }
 
@@ -164,21 +184,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   side: { width: 44 },
-  titleWrap: { flex: 1, alignItems: "center", paddingHorizontal: 8 },
-  title: {
-    color: ICON,
-    fontSize: 16,
-    fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowRadius: 4,
+  titlePill: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 20,
+    overflow: "hidden",
+    maxWidth: "62%",
   },
-  subtitle: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 12,
-    marginTop: 1,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowRadius: 4,
-  },
+  title: { fontSize: 16, fontWeight: "600" },
+  subtitle: { fontSize: 12, marginTop: 1, opacity: 0.6 },
   bottom: {
     position: "absolute",
     bottom: 0,
@@ -197,14 +213,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  pill: {
-    height: 44,
-    borderRadius: 22,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
+  pill: { height: 44, borderRadius: 22, flexDirection: "row", alignItems: "center", overflow: "hidden" },
   pillButton: { paddingHorizontal: 16, height: 44, alignItems: "center", justifyContent: "center" },
-  solid: { backgroundColor: "rgba(40,40,40,0.7)" },
+  dim: { opacity: 0.4 },
   fallback: { fontSize: 20 },
 });

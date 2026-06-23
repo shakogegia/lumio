@@ -12,6 +12,9 @@ import type { PhotoDTO } from "@lumio/shared";
 import { displayUrl } from "@/lib/photos-api";
 import { clampOffset, DOUBLE_TAP_ZOOM, MAX_ZOOM } from "./zoom-math";
 
+// Spacing shown between photos while swiping (the iOS Photos pager gap).
+const PAGE_GAP = 24;
+
 /**
  * One full-screen page: the display rendition (edited-or-base WebP), contained,
  * with the ThumbHash blur placeholder and auth Cookie header. Pinch + double-tap
@@ -106,8 +109,10 @@ export const ViewerPage = memo(function ViewerPage({
 
   return (
     <GestureDetector gesture={gesture}>
-      <View style={{ width, height }}>
-        <Animated.View style={[StyleSheet.absoluteFill, imageStyle]}>
+      {/* The page slot is full screen-width; the image is inset by half the gap
+          on each side so adjacent photos show a gap between them while paging. */}
+      <View style={{ width, height, paddingHorizontal: PAGE_GAP / 2 }}>
+        <Animated.View style={[styles.fill, imageStyle]}>
           <Image
             style={StyleSheet.absoluteFill}
             source={{ uri: displayUrl(baseURL, slug, photo), headers: { Cookie: cookie } }}
@@ -120,4 +125,8 @@ export const ViewerPage = memo(function ViewerPage({
       </View>
     </GestureDetector>
   );
+});
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
 });

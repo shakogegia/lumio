@@ -2,10 +2,11 @@
    reanimated shared values require the `.value` mutation pattern in worklets and
    gesture/effect callbacks; the React Compiler lint flags these as false
    positives (see components/photo-grid/zoomable-photo-grid.tsx + [[lumio-react-compiler-lint]]). */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, Modal, StyleSheet, useWindowDimensions } from "react-native";
 import { GestureDetector, GestureHandlerRootView, Gesture } from "react-native-gesture-handler";
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
   runOnJS,
@@ -23,10 +24,10 @@ import { ViewerChrome } from "./viewer-chrome";
 import { ViewerInfoSheet } from "./viewer-info-sheet";
 import { shareOriginal } from "./viewer-actions";
 import { shouldLoadMore } from "./pager";
+import { collapseToRect } from "./transition";
 
-const DISMISS_THRESHOLD = 120;
-const OPEN_MS = 260;
-const CLOSE_MS = 230;
+const DISMISS_THRESHOLD = 110;
+const OPEN_MS = 280;
 
 /**
  * Reusable fullscreen photo viewer. Collection-agnostic: pass an ordered
@@ -34,10 +35,11 @@ const CLOSE_MS = 230;
  * a future album screen reuse it with sort intact and paging continued via
  * `onLoadMore`. Rendered as a `Modal` so it covers the native tab bar.
  *
- * `progress` (0 = collapsed to the tapped tile `originRect`, 1 = fullscreen)
- * drives an iOS shared-element open/close: the whole viewer scales uniformly
- * (no distortion) from the tile and back. Swipe-down slides the content off and
- * dismisses. In-photo zoom + the action bar are added in later phases.
+ * The whole viewer is driven by vTx/vTy/vScale (+ bg opacity): open grows it
+ * from the tapped tile; swipe-down tracks the finger and shrinks it live, and on
+ * release either flies it to the CURRENT photo's grid tile (via onRequestTileRect,
+ * which also scrolls the grid there) or springs back. Per-photo zoom lives inside
+ * each page (paging + dismiss disable while zoomed).
  */
 export function PhotoViewer({
   photos,
@@ -48,6 +50,7 @@ export function PhotoViewer({
   cookie,
   onClose,
   onLoadMore,
+  onRequestTileRect,
 }: {
   photos: PhotoDTO[];
   index: number | null;
@@ -57,49 +60,46 @@ export function PhotoViewer({
   cookie: string;
   onClose: () => void;
   onLoadMore?: () => void;
+  /** Scroll the grid so photo `index` is visible and return its tile rect, so
+   *  close animates back to where the user actually is. */
+  onRequestTileRect?: (index: number) => Rect | null;
 }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const visible = index != null;
 
-  const progress = useSharedValue(0);
-  const ty = useSharedValue(0);
-  // True while the active page is pinch/double-tap zoomed — paging + swipe-down
-  // dismiss are disabled so the page's pan owns the gesture.
+  // Viewer-level transform (distinct from per-page zoom): vScale/vTx/vTy place
+  // the content, bg drives the backdrop opacity.
+  const vScale = useSharedValue(1);
+  const vTx = useSharedValue(0);
+  const vTy = useSharedValue(0);
+  const bg = useSharedValue(0);
+
   const [zoomed, setZoomed] = useState(false);
-  // The page currently centered (null until first paged → falls back to `index`).
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
-  // Optimistic favorite flips, keyed by photo id (server call may lag).
   const [favOverride, setFavOverride] = useState<Record<string, boolean>>({});
   const [infoVisible, setInfoVisible] = useState(false);
 
   const activeIndex = currentIndex ?? index ?? 0;
   const activePhoto: PhotoDTO | undefined = photos[activeIndex];
-  const isFavorite = activePhoto
-    ? (favOverride[activePhoto.id] ?? activePhoto.isFavorite)
-    : false;
+  const isFavorite = activePhoto ? (favOverride[activePhoto.id] ?? activePhoto.isFavorite) : false;
 
-  // The collapsed transform that maps the fullscreen content onto the tile:
-  // uniform scale (tile width / screen width) + translate to the tile center.
-  const collapse = useMemo(() => {
-    if (!originRect || width === 0 || height === 0) return { s: 0.9, tx: 0, ty: 0 };
-    return {
-      s: originRect.width / width,
-      tx: originRect.x + originRect.width / 2 - width / 2,
-      ty: originRect.y + originRect.height / 2 - height / 2,
-    };
-  }, [originRect, width, height]);
-
+  // Grow from the tapped tile on open.
   useEffect(() => {
-    if (index != null) {
-      ty.value = 0;
-      progress.value = 0;
-      progress.value = withTiming(1, { duration: OPEN_MS });
-    }
-  }, [index, progress, ty]);
+    if (index == null) return;
+    const c = collapseToRect(originRect ?? { x: width / 2, y: height / 2, width: 0, height: 0 }, width, height);
+    vScale.value = c.s;
+    vTx.value = c.tx;
+    vTy.value = c.ty;
+    bg.value = 0;
+    const ease = { duration: OPEN_MS, easing: Easing.out(Easing.cubic) } as const;
+    vScale.value = withTiming(1, ease);
+    vTx.value = withTiming(0, ease);
+    vTy.value = withTiming(0, ease);
+    bg.value = withTiming(1, { duration: OPEN_MS });
+  }, [index, originRect, width, height, vScale, vTx, vTy, bg]);
 
-  // Reset transient state and tell the parent to unmount.
   const handleClosed = () => {
     setCurrentIndex(null);
     setZoomed(false);
@@ -107,10 +107,21 @@ export function PhotoViewer({
     onClose();
   };
 
-  // Reverse the open animation back to the tile, then unmount.
-  const close = () => {
-    setZoomed(false);
-    progress.value = withTiming(0, { duration: CLOSE_MS }, (finished) => {
+  // Fly the content to the current photo's grid tile (scrolling the grid there),
+  // then unmount. Falls back to the opened tile, then a shrink-to-center fade.
+  const flyToTile = () => {
+    const rect = onRequestTileRect?.(activeIndex) ?? originRect ?? {
+      x: width / 2,
+      y: height / 2,
+      width: 0,
+      height: 0,
+    };
+    const c = collapseToRect(rect, width, height);
+    const ease = { duration: 240, easing: Easing.out(Easing.cubic) } as const;
+    vScale.value = withTiming(c.s, ease);
+    vTx.value = withTiming(c.tx, ease);
+    bg.value = withTiming(0, ease);
+    vTy.value = withTiming(c.ty, ease, (finished) => {
       if (finished) runOnJS(handleClosed)();
     });
   };
@@ -129,94 +140,93 @@ export function PhotoViewer({
     if (activePhoto) void shareOriginal(baseURL, slug, cookie, activePhoto).catch(() => {});
   };
 
+  // Interactive swipe-down: follow the finger and shrink live; release past the
+  // threshold (or a fast flick) dismisses, else springs back. Horizontal is
+  // failed so the FlatList pages instead.
   const dismiss = Gesture.Pan()
     .enabled(!zoomed)
-    .activeOffsetY([-12, 12])
-    .failOffsetX([-12, 12])
+    .activeOffsetY([-14, 14])
+    .failOffsetX([-14, 14])
     .onUpdate((e) => {
-      ty.value = e.translationY;
+      vTx.value = e.translationX;
+      vTy.value = e.translationY;
+      const d = Math.abs(e.translationY);
+      vScale.value = interpolate(d, [0, height], [1, 0.5], Extrapolation.CLAMP);
+      bg.value = interpolate(d, [0, height * 0.4], [1, 0.25], Extrapolation.CLAMP);
     })
     .onEnd((e) => {
-      if (Math.abs(e.translationY) > DISMISS_THRESHOLD) {
-        const dir = e.translationY > 0 ? 1 : -1;
-        ty.value = withTiming(dir * height, { duration: 220 }, (finished) => {
-          if (finished) runOnJS(handleClosed)();
-        });
+      if (Math.abs(e.translationY) > DISMISS_THRESHOLD || Math.abs(e.velocityY) > 900) {
+        runOnJS(flyToTile)();
       } else {
-        ty.value = withTiming(0);
+        vTx.value = withTiming(0);
+        vTy.value = withTiming(0);
+        vScale.value = withTiming(1);
+        bg.value = withTiming(1);
       }
     });
 
-  const bgStyle = useAnimatedStyle(() => ({
-    opacity:
-      progress.value * interpolate(Math.abs(ty.value), [0, 400], [1, 0.15], Extrapolation.CLAMP),
-  }));
+  const bgStyle = useAnimatedStyle(() => ({ opacity: bg.value }));
   const contentStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0, 1]),
-    transform: [
-      { translateX: interpolate(progress.value, [0, 1], [collapse.tx, 0]) },
-      { translateY: interpolate(progress.value, [0, 1], [collapse.ty, 0]) + ty.value },
-      { scale: interpolate(progress.value, [0, 1], [collapse.s, 1]) },
-    ],
+    transform: [{ translateX: vTx.value }, { translateY: vTy.value }, { scale: vScale.value }],
   }));
-  const chromeStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
+  const chromeStyle = useAnimatedStyle(() => ({ opacity: bg.value }));
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={close}>
+      <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={flyToTile}>
         <GestureHandlerRootView style={styles.flex}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, bgStyle]}
-          pointerEvents="none"
-        />
-        {visible && (
-          <GestureDetector gesture={dismiss}>
-            <Animated.View style={[styles.flex, contentStyle]}>
-              <FlatList
-                key={index}
-                data={photos}
-                horizontal
-                pagingEnabled
-                initialScrollIndex={index}
-                getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-                keyExtractor={(p) => p.id}
-                showsHorizontalScrollIndicator={false}
-                scrollEnabled={!zoomed}
-                renderItem={({ item }) => (
-                  <ViewerPage
-                    photo={item}
-                    baseURL={baseURL}
-                    slug={slug}
-                    cookie={cookie}
-                    width={width}
-                    height={height}
-                    onZoomChange={setZoomed}
-                  />
-                )}
-                onMomentumScrollEnd={(e) => {
-                  const i = Math.round(e.nativeEvent.contentOffset.x / width);
-                  setCurrentIndex(i);
-                  if (shouldLoadMore(i, photos.length)) onLoadMore?.();
-                }}
+          <Animated.View
+            style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }, bgStyle]}
+            pointerEvents="none"
+          />
+          {visible && (
+            <GestureDetector gesture={dismiss}>
+              <Animated.View style={[styles.flex, contentStyle]}>
+                <FlatList
+                  key={index}
+                  data={photos}
+                  horizontal
+                  pagingEnabled
+                  initialScrollIndex={index}
+                  getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+                  keyExtractor={(p) => p.id}
+                  showsHorizontalScrollIndicator={false}
+                  scrollEnabled={!zoomed}
+                  renderItem={({ item }) => (
+                    <ViewerPage
+                      photo={item}
+                      baseURL={baseURL}
+                      slug={slug}
+                      cookie={cookie}
+                      width={width}
+                      height={height}
+                      onZoomChange={setZoomed}
+                    />
+                  )}
+                  onMomentumScrollEnd={(e) => {
+                    const i = Math.round(e.nativeEvent.contentOffset.x / width);
+                    setCurrentIndex(i);
+                    if (shouldLoadMore(i, photos.length)) onLoadMore?.();
+                  }}
+                />
+              </Animated.View>
+            </GestureDetector>
+          )}
+
+          {visible && !zoomed && activePhoto && (
+            <Animated.View style={[StyleSheet.absoluteFill, chromeStyle]} pointerEvents="box-none">
+              <ViewerChrome
+                photo={activePhoto}
+                topInset={insets.top}
+                bottomInset={insets.bottom}
+                isFavorite={isFavorite}
+                onClose={flyToTile}
+                onShare={share}
+                onInfo={() => setInfoVisible(true)}
+                onToggleFavorite={toggleFavorite}
               />
             </Animated.View>
-          </GestureDetector>
-        )}
-
-        {visible && !zoomed && activePhoto && (
-          <Animated.View style={[StyleSheet.absoluteFill, chromeStyle]} pointerEvents="box-none">
-            <ViewerChrome
-              photo={activePhoto}
-              topInset={insets.top}
-              bottomInset={insets.bottom}
-              isFavorite={isFavorite}
-              onClose={close}
-              onShare={share}
-              onInfo={() => setInfoVisible(true)}
-              onToggleFavorite={toggleFavorite}
-            />
-          </Animated.View>
-        )}
+          )}
         </GestureHandlerRootView>
       </Modal>
 
