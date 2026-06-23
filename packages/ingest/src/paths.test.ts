@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { expectTypeOf } from "vitest";
 import { catalogCacheDirs, displayPath, editedDisplayPath, thumbnailPath } from "./paths.js";
+import type { CatalogCacheDirs } from "./paths.js";
+import type { RegenerateDeps } from "./regenerate.js";
 
 describe("catalog cache paths", () => {
   const root = "/cache";
@@ -18,3 +21,8 @@ describe("catalog cache paths", () => {
     expect(editedDisplayPath(root, "cat1", "p1")).toBe("/cache/cat1/displays-edited/p1.webp");
   });
 });
+
+// Compile-time invariant: catalogCacheDirs(...) must be passable straight into
+// regenerateRenditions (see applyPhotoEdits / scan.ts). A field rename on either
+// type fails this (and the package tsc) instead of breaking silently at a call site.
+expectTypeOf<CatalogCacheDirs>().toEqualTypeOf<RegenerateDeps>();
