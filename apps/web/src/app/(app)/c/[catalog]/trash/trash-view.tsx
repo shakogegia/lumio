@@ -11,7 +11,7 @@ import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTot
 import { HeaderBar } from "@/components/header-bar";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useConfirm, type ConfirmOptions } from "@/components/confirm-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   Empty,
   EmptyDescription,
@@ -68,37 +68,54 @@ export function TrashView() {
   });
   const emptying = emptyTrash.phase === "pending" || emptyTrash.isActive;
 
-  async function act(
-    url: string,
-    body: object | null,
-    confirmOpts: ConfirmOptions | null,
-    failMsg: string,
-    remount: boolean,
-    onSuccess?: () => void,
-  ) {
+  async function handleRestore() {
     if (pending) return;
-    if (confirmOpts && !(await confirm(confirmOpts))) return;
     const selectedIds = sel.selected;
     setPending(true);
     try {
-      const res = await fetch(url, {
+      const res = await fetch(catalogApiUrl(slug, "/trash/restore"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: body ? JSON.stringify(body) : undefined,
+        body: JSON.stringify({ ids: [...selectedIds] }),
       });
       if (!res.ok) throw new Error("request failed");
-      if (remount) setReloadKey((k) => k + 1);
-      else gridRef.current?.removePhotos(selectedIds);
-      onSuccess?.();
+      gridRef.current?.removePhotos(selectedIds);
       sel.clear();
     } catch {
-      toast.error(failMsg);
+      toast.error("Failed to restore photos.");
     } finally {
       setPending(false);
     }
   }
 
-  const ids = [...sel.selected];
+  async function handlePurge() {
+    if (pending) return;
+    const ok = await confirm({
+      title: `Permanently delete ${label}?`,
+      description: "This can't be undone — the photos and their files are removed for good.",
+      confirmLabel: "Delete permanently",
+      destructive: true,
+    });
+    if (!ok) return;
+    const selectedIds = sel.selected;
+    setPending(true);
+    try {
+      const res = await fetch(catalogApiUrl(slug, "/trash/purge"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      if (!res.ok) throw new Error("request failed");
+      gridRef.current?.removePhotos(selectedIds);
+      playSound(SoundEffect.EmptyTrash);
+      sel.clear();
+    } catch {
+      toast.error("Failed to delete photos.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const count = sel.count;
   const label = `${count} ${count === 1 ? "photo" : "photos"}`;
   const totalLabel = total !== null ? countLabel(total, "photo", "photos") : undefined;
@@ -123,9 +140,7 @@ export function TrashView() {
                   disabled={pending || emptying}
                   aria-label="Restore"
                   title="Restore"
-                  onClick={() =>
-                    void act(catalogApiUrl(slug, "/trash/restore"), { ids }, null, "Failed to restore photos.", false)
-                  }
+                  onClick={() => void handleRestore()}
                 >
                   <ArchiveRestore aria-hidden />
                 </Button>
@@ -135,21 +150,7 @@ export function TrashView() {
                   disabled={pending || emptying}
                   aria-label="Delete permanently"
                   title="Delete permanently"
-                  onClick={() =>
-                    void act(
-                      catalogApiUrl(slug, "/trash/purge"),
-                      { ids },
-                      {
-                        title: `Permanently delete ${label}?`,
-                        description: "This can't be undone — the photos and their files are removed for good.",
-                        confirmLabel: "Delete permanently",
-                        destructive: true,
-                      },
-                      "Failed to delete photos.",
-                      false,
-                      () => playSound(SoundEffect.EmptyTrash),
-                    )
-                  }
+                  onClick={() => void handlePurge()}
                 >
                   <Trash2 aria-hidden />
                 </Button>
