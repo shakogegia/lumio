@@ -29,11 +29,12 @@
 > - **`resolveApiBaseUrl` is repurposed/renamed `normalizeServerUrl`**: a pure
 >   validator/normalizer for the *user-typed* URL (trim, require http(s), strip
 >   trailing slash). Its vitest tests carry over.
-> - **`EXPO_PUBLIC_API_URL` kept only as a dev convenience** to pre-fill the
->   `connect` field. Not load-bearing. Under Conductor, `run.sh` writes
->   `apps/mobile/.env` with `EXPO_PUBLIC_API_URL=http://localhost:$PORT` (the
->   simulator can reach the host's localhost; the portless `.localhost:1355`
->   subdomain can't be trusted from the simulator).
+> - **No build-time backend URL at all.** There is no `EXPO_PUBLIC_API_URL` and
+>   no `.env` for the mobile app — the user types the server URL on the `connect`
+>   screen every fresh install (iOS Simulator: `http://localhost:3000`). (An
+>   earlier revision pre-filled the field from `EXPO_PUBLIC_API_URL` written by
+>   Conductor's `run.sh`; that was removed as unnecessary once runtime entry
+>   landed.)
 > - **`make ios`** added to launch the app in the iOS Simulator.
 > - Out of scope (future): per-server token isolation (switching servers requires
 >   re-login — a single `storagePrefix` is fine for the skeleton); server history /

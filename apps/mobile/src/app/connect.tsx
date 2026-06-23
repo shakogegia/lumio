@@ -5,8 +5,7 @@ import { useAuth } from "../lib/auth-context";
 
 export default function Connect() {
   const { serverUrl, isLoading, connect } = useAuth();
-  // Dev convenience: pre-fill from EXPO_PUBLIC_API_URL when present.
-  const [url, setUrl] = useState(process.env.EXPO_PUBLIC_API_URL ?? "");
+  const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 

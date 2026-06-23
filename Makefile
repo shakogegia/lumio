@@ -29,8 +29,7 @@ dev:
 	pnpm dev
 
 # Launch the mobile app in the iOS Simulator (Expo Go; needs Xcode + a running
-# backend — enter the server URL on the app's connect screen, or set
-# apps/mobile/.env's EXPO_PUBLIC_API_URL to pre-fill it).
+# backend — enter your server URL on the app's connect screen).
 ios:
 	cd apps/mobile && npx expo start --ios
 
