@@ -1,30 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyPhotoEdits } from "./photo-edits-service.js";
 
-// We mock the heavy I/O modules so the unit test runs without real files or encoders.
-vi.mock("node:fs/promises", () => ({
-  mkdir: vi.fn(async () => undefined),
-  writeFile: vi.fn(async () => undefined),
-  rm: vi.fn(async () => undefined),
-}));
-
 vi.mock("@lumio/ingest", () => ({
-  decodeToSharpInput: vi.fn(async () => ({
-    input: { data: Buffer.from("FAKE") },
-    cleanup: vi.fn(async () => undefined),
-  })),
-  buildRenditions: vi.fn(async () => ({
-    display: Buffer.from("DISPLAY"),
-    thumbnail: Buffer.from("THUMB"),
-    thumbhash: "hash",
-    width: 100,
-    height: 100,
-  })),
+  regenerateRenditions: vi.fn(async () => ({ thumbhash: "hash", width: 100, height: 100 })),
 }));
 
 vi.mock("@/lib/paths", () => ({
-  thumbnailPath: vi.fn((catalogId: string, id: string) => `/cache/${catalogId}/thumbnails/${id}.webp`),
-  editedDisplayPath: vi.fn((catalogId: string, id: string) => `/cache/${catalogId}/displays-edited/${id}.webp`),
+  catalogCacheDirs: vi.fn((catalogId: string) => ({
+    thumbnailsDir: `/cache/${catalogId}/thumbnails`,
+    displaysDir: `/cache/${catalogId}/displays`,
+    editedDisplaysDir: `/cache/${catalogId}/displays-edited`,
+  })),
   originalPath: vi.fn((catalog: { path: string }, relPath: string) => `${catalog.path}/${relPath}`),
 }));
 
@@ -82,6 +68,50 @@ describe("applyPhotoEdits", () => {
 
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: PHOTO_ID, catalogId: CAT_OBJ.id } }),
+    );
+  });
+
+  it("delegates renditions to @lumio/ingest and persists the returned dims/thumbhash", async () => {
+    const { regenerateRenditions } = await import("@lumio/ingest");
+    const photoRow = makePhotoRow();
+    const findFirst = vi.fn().mockResolvedValue(photoRow);
+    const update = vi.fn().mockResolvedValue({ ...photoRow, width: 100, height: 100, thumbhash: "hash" });
+    const db = { photo: { findFirst, update } };
+    const recipe = { rotate: 90 as const, flipH: false, flipV: false };
+
+    await applyPhotoEdits(CAT_OBJ, PHOTO_ID, recipe, db as never);
+
+    expect(regenerateRenditions).toHaveBeenCalledWith(
+      `${CAT_OBJ.path}/2024/photo.jpg`,
+      recipe,
+      PHOTO_ID,
+      {
+        thumbnailsDir: `/cache/${CAT_OBJ.id}/thumbnails`,
+        displaysDir: `/cache/${CAT_OBJ.id}/displays`,
+        editedDisplaysDir: `/cache/${CAT_OBJ.id}/displays-edited`,
+      },
+    );
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: PHOTO_ID, catalogId: CAT_OBJ.id },
+        data: expect.objectContaining({ width: 100, height: 100, thumbhash: "hash" }),
+      }),
+    );
+  });
+
+  it("reset (null edits) passes a null recipe and clears edits with Prisma.JsonNull", async () => {
+    const { regenerateRenditions } = await import("@lumio/ingest");
+    const { Prisma } = await import("@lumio/db");
+    const photoRow = makePhotoRow({ edits: { rotate: 90, flipH: false, flipV: false } });
+    const findFirst = vi.fn().mockResolvedValue(photoRow);
+    const update = vi.fn().mockResolvedValue(photoRow);
+    const db = { photo: { findFirst, update } };
+
+    await applyPhotoEdits(CAT_OBJ, PHOTO_ID, null, db as never);
+
+    expect(regenerateRenditions).toHaveBeenCalledWith(expect.any(String), null, PHOTO_ID, expect.any(Object));
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ edits: Prisma.JsonNull }) }),
     );
   });
 });
