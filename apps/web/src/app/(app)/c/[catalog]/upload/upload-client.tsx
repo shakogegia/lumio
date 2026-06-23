@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Download, Loader2, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
+import { errorMessage } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
@@ -81,7 +82,7 @@ export function UploadClient({
         update(rowId, { status: data.status, message: data.message, photoId: data.id });
         return { status: data.status, photoId: data.id };
       } catch (err) {
-        update(rowId, { status: "error", message: (err as Error).message });
+        update(rowId, { status: "error", message: errorMessage(err) });
         return { status: "error" };
       }
     },

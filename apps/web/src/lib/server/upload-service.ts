@@ -9,7 +9,7 @@ import {
   placeUpload,
   SUPPORTED_EXTENSIONS,
 } from "@lumio/ingest";
-import { PhotoSource, renderTemplate, validateTemplate } from "@lumio/shared";
+import { PhotoSource, errorMessage, renderTemplate, validateTemplate } from "@lumio/shared";
 
 export interface UploadDeps {
   db: Pick<PrismaClient, "photo">;
@@ -60,7 +60,7 @@ export async function handleUpload(input: UploadInput, deps: UploadDeps): Promis
       mtime: date,
     });
   } catch (err) {
-    return { status: "error", message: (err as Error).message };
+    return { status: "error", message: errorMessage(err) };
   }
 
   try {
@@ -79,6 +79,6 @@ export async function handleUpload(input: UploadInput, deps: UploadDeps): Promis
   } catch (err) {
     // Ingestion failed after the original was written — remove the orphan.
     await rm(path.join(deps.photosDir, relPath), { force: true });
-    return { status: "error", message: (err as Error).message };
+    return { status: "error", message: errorMessage(err) };
   }
 }

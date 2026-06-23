@@ -6,6 +6,7 @@ import {
   sleep,
   writeHeartbeat,
 } from "@lumio/jobs";
+import { errorMessage } from "@lumio/shared";
 import { activity } from "./activity.js";
 import { buildHandlers } from "./handlers.js";
 import { startWatcher } from "./watch.js";
@@ -39,7 +40,7 @@ export async function startWorker(): Promise<void> {
         prisma,
         formatActivity(activity),
         activity.currentJob?.id ?? null,
-      ).catch((err) => console.warn(`heartbeat failed: ${(err as Error).message}`));
+      ).catch((err) => console.warn(`heartbeat failed: ${errorMessage(err)}`));
       await sleep(HEARTBEAT_MS, signal);
     }
   })();
