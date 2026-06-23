@@ -32,3 +32,14 @@ trashed originals live in the named `cache`/`trash` volumes, subdivided per cata
 - **Docker Compose (CLI):** follow the **[Docker Compose deployment guide](docs/deployment/docker-compose.md)** —
   download the compose file, set a few env vars in `.env`, `docker compose up -d`.
   From a cloned repo you can instead use the Makefile shortcut:
+
+## Auth model — single-admin by design
+
+Lumio is a **single-admin application**. First-run setup creates one admin account; after
+that, signup is hard-closed (`assertSignupAllowed` rejects all further registrations).
+There is intentionally no catalog-ownership model — any authenticated session can read
+and mutate any catalog. Catalogs are global.
+
+This is a deliberate design choice for a self-hosted, single-user tool. The per-user
+ownership model (and the invite/multi-user system that requires it) is roadmap-deferred.
+See `apps/web/src/lib/server/with-auth.ts` for the full rationale.
