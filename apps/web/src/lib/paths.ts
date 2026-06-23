@@ -1,5 +1,12 @@
 import path from "node:path";
 import { readdir } from "node:fs/promises";
+import {
+  catalogCacheDirs as catalogCacheDirsUnder,
+  displayPath as displayPathUnder,
+  editedDisplayPath as editedDisplayPathUnder,
+  thumbnailPath as thumbnailPathUnder,
+  type CatalogCacheDirs,
+} from "@lumio/ingest";
 
 // Next runs from apps/web; the monorepo root is two levels up.
 export const ROOT = path.resolve(process.cwd(), "..", "..");
@@ -8,16 +15,22 @@ export const MEDIA_ROOT = path.resolve(process.env.MEDIA_ROOT ?? "/media");
 export const CACHE_DIR = path.resolve(ROOT, process.env.CACHE_DIR ?? "./cache");
 export const TRASH_DIR = path.resolve(ROOT, process.env.TRASH_DIR ?? "./trash");
 
+export type { CatalogCacheDirs };
+
+export function catalogCacheDirs(catalogId: string): CatalogCacheDirs {
+  return catalogCacheDirsUnder(CACHE_DIR, catalogId);
+}
+
 export function thumbnailPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "thumbnails", `${id}.webp`);
+  return thumbnailPathUnder(CACHE_DIR, catalogId, id);
 }
 
 export function displayPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "displays", `${id}.webp`);
+  return displayPathUnder(CACHE_DIR, catalogId, id);
 }
 
 export function editedDisplayPath(catalogId: string, id: string): string {
-  return path.join(CACHE_DIR, catalogId, "displays-edited", `${id}.webp`);
+  return editedDisplayPathUnder(CACHE_DIR, catalogId, id);
 }
 
 // The trash mirrors the cache layout under TRASH_DIR. trash-service.ts builds
