@@ -6,7 +6,25 @@
 
 **Architecture:** Three decoupled, reusable layers — a `fetch`-based data client (`photos-api.ts`), a source-agnostic pagination hook (`usePhotoPages`), and presentational components (`PhotoTile` + `ZoomablePhotoGrid` on FlashList + a pinch gesture). The iOS large-title scroll-edge header is extracted from `LargeHeaderScreen` so it can sit over a FlashList. Albums can later reuse the hook + grid by swapping only the fetcher.
 
-**Tech Stack:** Expo SDK 56, React Native 0.85, TypeScript, `@shopify/flash-list` (new), `react-native-gesture-handler` (present), `expo-image` (present, decodes ThumbHash + sends auth header), `expo-secure-store` (zoom persistence), vitest (pure-helper tests).
+**Tech Stack:** Expo SDK 56, React Native 0.85, TypeScript, `@shopify/flash-list` (new — installed **2.0.2**, v2 auto-measures so no `estimatedItemSize`), `react-native-gesture-handler` (present), `expo-image` (present, decodes ThumbHash + sends auth header), `expo-secure-store` (zoom persistence), vitest (pure-helper tests).
+
+> **AS-BUILT (2026-06-23): implemented & verified.** Two React-Compiler-lint
+> adjustments to the code below — the committed source is authoritative:
+> - **Task 4 hook:** `setState` must not be called synchronously in the effect
+>   path. So the effect calls an internal `run()` that touches only refs
+>   synchronously and defers all `setState` to `.then/.catch/.finally`; a separate
+>   event-only `refetch()` does the synchronous spinner/clear. `isLoading` starts
+>   `true` (first-paint spinner). Same public API.
+> - **Task 7 grid:** "Cannot access refs during render" forbids the
+>   `columnsRef`-reading gesture built in render. Replaced the ref with reading
+>   the `columns` *state* via closure inside `commitZoom`, and the pinch gesture
+>   is `useMemo`'d on `[commitZoom]`.
+> - **Task 9 `showSpinner`:** guarded so any error takes precedence and can't be
+>   masked by the spinner.
+>
+> Verified headless: `expo lint` clean, `vitest` 21/21, `tsc --noEmit -p
+> apps/mobile` clean, and `expo export -p ios` bundles (1737 modules, no errors).
+> Simulator acceptance walk (Task 10 Steps 2–3) is the remaining manual step.
 
 **Conventions (match existing code):**
 - Mobile depends on `@lumio/shared` (`workspace:*`) and imports it **type-only** (`import type { … }`). The package exposes a single barrel (`export *` from ~20 modules), so a *value* import would bundle the whole shared graph into the RN app — some modules use Node-only APIs that break under Hermes (the class of bug the better-auth shim in `metro.config.js` guards against). Type imports are erased at build time: zero runtime bundle, zero Hermes risk, and Metro/vitest never resolve them — they just give us the real API-contract types (`PhotoDTO`, `PhotosPage`). The grid needs only types.
