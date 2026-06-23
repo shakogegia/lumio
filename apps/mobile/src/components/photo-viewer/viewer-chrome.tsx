@@ -65,7 +65,7 @@ export function ViewerChrome({
           <Icon name="square.and.arrow.up" fallback="⤴" tint={fg} />
         </GlassCircle>
 
-        <GlassContainer solid={solid} style={styles.pill}>
+        <GlassContainer solid={solid} style={styles.pill} interactive>
           <PillButton onPress={onToggleFavorite} label="Favorite">
             <Icon
               name={isFavorite ? "heart.fill" : "heart"}
@@ -112,14 +112,16 @@ function Icon({
 function GlassContainer({
   solid,
   style,
+  interactive,
   children,
 }: {
   solid: string;
   style: object;
+  interactive?: boolean;
   children: ReactNode;
 }) {
   return GLASS ? (
-    <GlassView glassEffectStyle="regular" style={style}>
+    <GlassView glassEffectStyle="regular" isInteractive={interactive} style={style}>
       {children}
     </GlassView>
   ) : (
@@ -140,7 +142,7 @@ function GlassCircle({
 }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} hitSlop={6}>
-      <GlassContainer solid={solid} style={styles.circle}>
+      <GlassContainer solid={solid} style={styles.circle} interactive>
         {children}
       </GlassContainer>
     </Pressable>

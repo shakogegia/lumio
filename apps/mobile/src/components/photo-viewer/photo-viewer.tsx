@@ -3,7 +3,7 @@
    gesture/effect callbacks; the React Compiler lint flags these as false
    positives (see components/photo-grid/zoomable-photo-grid.tsx + [[lumio-react-compiler-lint]]). */
 import { useEffect, useState } from "react";
-import { FlatList, Modal, StyleSheet, useWindowDimensions } from "react-native";
+import { FlatList, Modal, StyleSheet, View, useWindowDimensions } from "react-native";
 import { GestureDetector, GestureHandlerRootView, Gesture } from "react-native-gesture-handler";
 import Animated, {
   Easing,
@@ -80,6 +80,11 @@ export function PhotoViewer({
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
   const [favOverride, setFavOverride] = useState<Record<string, boolean>>({});
   const [infoVisible, setInfoVisible] = useState(false);
+  // Chrome mounts only once the open animation finishes (and unmounts on close /
+  // during a dismiss drag). It is NOT wrapped in an animated-opacity view —
+  // iOS Liquid Glass won't render its material under one — so it's shown/hidden
+  // by mounting instead of fading.
+  const [opened, setOpened] = useState(false);
 
   const activeIndex = currentIndex ?? index ?? 0;
   const activePhoto: PhotoDTO | undefined = photos[activeIndex];
@@ -94,7 +99,9 @@ export function PhotoViewer({
     vTy.value = c.ty;
     bg.value = 0;
     const ease = { duration: OPEN_MS, easing: Easing.out(Easing.cubic) } as const;
-    vScale.value = withTiming(1, ease);
+    vScale.value = withTiming(1, ease, (finished) => {
+      if (finished) runOnJS(setOpened)(true);
+    });
     vTx.value = withTiming(0, ease);
     vTy.value = withTiming(0, ease);
     bg.value = withTiming(1, { duration: OPEN_MS });
@@ -110,6 +117,7 @@ export function PhotoViewer({
   // Fly the content to the current photo's grid tile (scrolling the grid there),
   // then unmount. Falls back to the opened tile, then a shrink-to-center fade.
   const flyToTile = () => {
+    setOpened(false);
     const rect = onRequestTileRect?.(activeIndex) ?? originRect ?? {
       x: width / 2,
       y: height / 2,
@@ -147,6 +155,9 @@ export function PhotoViewer({
     .enabled(!zoomed)
     .activeOffsetY([-14, 14])
     .failOffsetX([-14, 14])
+    .onStart(() => {
+      runOnJS(setOpened)(false); // hide chrome while dragging
+    })
     .onUpdate((e) => {
       vTx.value = e.translationX;
       vTy.value = e.translationY;
@@ -162,6 +173,7 @@ export function PhotoViewer({
         vTy.value = withTiming(0);
         vScale.value = withTiming(1);
         bg.value = withTiming(1);
+        runOnJS(setOpened)(true); // snapped back — restore chrome
       }
     });
 
@@ -169,7 +181,6 @@ export function PhotoViewer({
   const contentStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: vTx.value }, { translateY: vTy.value }, { scale: vScale.value }],
   }));
-  const chromeStyle = useAnimatedStyle(() => ({ opacity: bg.value }));
 
   return (
     <>
@@ -213,8 +224,8 @@ export function PhotoViewer({
             </GestureDetector>
           )}
 
-          {visible && !zoomed && activePhoto && (
-            <Animated.View style={[StyleSheet.absoluteFill, chromeStyle]} pointerEvents="box-none">
+          {opened && !zoomed && activePhoto && (
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
               <ViewerChrome
                 photo={activePhoto}
                 topInset={insets.top}
@@ -225,7 +236,7 @@ export function PhotoViewer({
                 onInfo={() => setInfoVisible(true)}
                 onToggleFavorite={toggleFavorite}
               />
-            </Animated.View>
+            </View>
           )}
         </GestureHandlerRootView>
       </Modal>
