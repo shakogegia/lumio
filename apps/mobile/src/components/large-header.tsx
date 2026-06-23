@@ -27,34 +27,23 @@ const BLUR_EXTRA = 40;
 const THRESHOLD = 8;
 
 /**
- * iOS Photos-style screen. The large title stays fixed (no native collapse). On
- * scroll it adopts the Photos scroll-edge look: a *subtle* dark blur fades in
- * (progressive — MaskedView + gradient over BlurView, so no hard cut-off), and
- * the title + status bar flip to white for legibility over it. The right slot
- * holds a glass action button.
+ * Scroll-edge header state, reusable over ANY scroller (ScrollView or FlashList).
+ * Returns the `scrolled` flag, the 0->1 `anim` value driving blur/title, an
+ * `onScroll` handler to attach to the scroller, and `headerHeight` for content
+ * padding. The status bar flips to light over the dark scrolled blur.
  */
-export function LargeHeaderScreen({
-  title,
-  right,
-  children,
-}: {
-  title: string;
-  right?: ReactNode;
-  children?: ReactNode;
-}) {
-  const { colors } = useTheme();
+export function useScrollEdgeHeader() {
   const insets = useSafeAreaInsets();
   const [scrolled, setScrolled] = useState(false);
-  // Drives blur opacity + title color together (JS-driven; it's a short
-  // threshold transition, not a per-frame scroll link).
+  // Drives blur opacity + title color together (JS-driven; a short threshold
+  // transition, not a per-frame scroll link).
   const [anim] = useState(() => new Animated.Value(0));
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = e.nativeEvent.contentOffset.y > THRESHOLD;
     if (next !== scrolled) {
       setScrolled(next);
-      // Imperative so it reliably overrides the root StatusBar — the clock/wifi/
-      // battery turn white over the dark scrolled header.
+      // Imperative so it reliably overrides the root StatusBar.
       setStatusBarStyle(next ? "light" : "auto", true);
       Animated.timing(anim, { toValue: next ? 1 : 0, duration: 220, useNativeDriver: false }).start();
     }
@@ -63,24 +52,39 @@ export function LargeHeaderScreen({
   // Restore the default status bar when the screen unmounts (e.g. on logout).
   useEffect(() => () => setStatusBarStyle("auto", false), []);
 
-  const headerHeight = insets.top + TITLE_ROW;
-  const titleColor = anim.interpolate({ inputRange: [0, 1], outputRange: [colors.foreground, "#FFFFFF"] });
+  return { scrolled, anim, onScroll, headerHeight: insets.top + TITLE_ROW };
+}
+
+/**
+ * The fixed large title + progressive scroll-edge blur. Absolutely positioned —
+ * render it as a sibling ON TOP of a scroller whose onScroll comes from
+ * useScrollEdgeHeader(). Provides HeaderScrollContext so the `right` slot can
+ * react to scroll.
+ */
+export function LargeHeaderOverlay({
+  title,
+  right,
+  scrolled,
+  anim,
+  headerHeight,
+}: {
+  title: string;
+  right?: ReactNode;
+  scrolled: boolean;
+  anim: Animated.Value;
+  headerHeight: number;
+}) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const titleColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [colors.foreground, "#FFFFFF"],
+  });
 
   return (
     <HeaderScrollContext.Provider value={scrolled}>
-    <View style={[styles.flex, { backgroundColor: colors.background }]}>
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: insets.bottom + 96 }}
-        scrollIndicatorInsets={{ top: TITLE_ROW }}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        {children}
-      </ScrollView>
-
-      {/* Progressive blur: subtle dark material, opaque at top, fading to clear at
-          the bottom edge (no hard line). Fades in as you scroll. */}
+      {/* Progressive blur: subtle dark material, opaque at top, fading to clear
+          at the bottom edge (no hard line). Fades in as you scroll. */}
       <Animated.View
         style={[styles.blurLayer, { height: headerHeight + BLUR_EXTRA, opacity: anim }]}
         pointerEvents="none"
@@ -101,7 +105,10 @@ export function LargeHeaderScreen({
         </MaskedView>
       </Animated.View>
 
-      <View style={[styles.header, { height: headerHeight, paddingTop: insets.top }]} pointerEvents="box-none">
+      <View
+        style={[styles.header, { height: headerHeight, paddingTop: insets.top }]}
+        pointerEvents="box-none"
+      >
         <View style={styles.titleRow} pointerEvents="box-none">
           <Animated.Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
             {title}
@@ -109,8 +116,47 @@ export function LargeHeaderScreen({
           {right}
         </View>
       </View>
-    </View>
     </HeaderScrollContext.Provider>
+  );
+}
+
+/**
+ * iOS Photos-style screen: a fixed large title over a ScrollView. For a
+ * virtualized list (FlashList), compose useScrollEdgeHeader + LargeHeaderOverlay
+ * directly over the list instead of using this wrapper.
+ */
+export function LargeHeaderScreen({
+  title,
+  right,
+  children,
+}: {
+  title: string;
+  right?: ReactNode;
+  children?: ReactNode;
+}) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { scrolled, anim, onScroll, headerHeight } = useScrollEdgeHeader();
+
+  return (
+    <View style={[styles.flex, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={{ paddingTop: headerHeight + 8, paddingBottom: insets.bottom + 96 }}
+        scrollIndicatorInsets={{ top: TITLE_ROW }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
+        {children}
+      </ScrollView>
+      <LargeHeaderOverlay
+        title={title}
+        right={right}
+        scrolled={scrolled}
+        anim={anim}
+        headerHeight={headerHeight}
+      />
+    </View>
   );
 }
 
