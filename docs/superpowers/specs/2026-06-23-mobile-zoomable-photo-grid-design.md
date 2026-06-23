@@ -72,8 +72,8 @@ export async function fetchPhotos(
   baseURL: string,
   slug: string,
   cookie: string,
-  opts: { limit: number; offset: number; sort?: PhotoSort },
-): Promise<PhotosPage>;            // GET /api/c/{slug}/photos?limit&offset&sort
+  opts: { limit: number; offset: number },
+): Promise<PhotosPage>;            // GET /api/c/{slug}/photos?limit&offset
 
 export function thumbnailUrl(
   baseURL: string,
@@ -82,8 +82,12 @@ export function thumbnailUrl(
 ): string;                         // /api/c/{slug}/photos/{id}/thumbnail?v=<updatedAt>
 ```
 
-- `PhotosPage` / `PhotoDTO` / `PhotoSort` come from `@lumio/shared` — no
-  re-typing.
+- `PhotosPage` / `PhotoDTO` come from `@lumio/shared` (added as a `workspace:*`
+  dep), imported **type-only** — the package's barrel export means a *value*
+  import would bundle the whole shared graph (incl. Node-only modules) into the
+  RN app; `import type` is erased at build, so it carries the real API contract
+  at zero runtime cost. No `sort` is sent — we rely on the server default
+  (`imported-desc`, newest first).
 - `fetchPhotos` throws "Couldn't reach the server." on network failure and
   "Couldn't load photos (NNN)." on a non-OK status, matching `catalog-api`.
 - `thumbnailUrl` reuses the web cache-bust convention (`Date.parse(updatedAt)`),
