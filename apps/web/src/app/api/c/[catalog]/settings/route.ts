@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@lumio/db";
+import { setUploadTemplate } from "@lumio/db";
 import { updateCatalogSettingsSchema, validateTemplate } from "@lumio/shared";
 import { withCatalog } from "@/lib/with-catalog";
 import { parseJson } from "@/lib/route-helpers";
@@ -19,9 +19,6 @@ export const PUT = withCatalog(async (request, _context, { catalog }) => {
   if (!validation.ok) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
-  const updated = await prisma.catalog.update({
-    where: { id: catalog.id },
-    data: { uploadTemplate },
-  });
+  const updated = await setUploadTemplate(catalog.id, uploadTemplate);
   return NextResponse.json({ uploadTemplate: updated.uploadTemplate });
 });

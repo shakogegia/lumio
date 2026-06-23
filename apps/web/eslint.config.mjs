@@ -13,6 +13,19 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    files: ["src/app/api/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[object.name='prisma']",
+          message:
+            "Don't query Prisma directly in a route — call a service/@lumio/db function. (Injecting `prisma` as a `db` argument is fine.)",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
