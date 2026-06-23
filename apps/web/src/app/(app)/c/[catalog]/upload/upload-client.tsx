@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useGridSelectionNav } from "@/lib/use-grid-selection-nav";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Download, Loader2, Trash2, X } from "lucide-react";
@@ -20,7 +21,6 @@ import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
-import { computeSelection } from "@/lib/grid-selection";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
@@ -163,31 +163,18 @@ export function UploadClient({
     rowsRef.current = rows;
   }, [rows]);
 
-  // Last plain-clicked row index; the anchor for shift-click range selection.
-  const anchorRef = useRef<number | null>(null);
-
-  // Reset the anchor when the selection empties so a later shift-click ranges
-  // from a fresh plain click instead of a stale index (mirrors the photo grid).
-  useEffect(() => {
-    if (sel.count === 0) anchorRef.current = null;
-  }, [sel.count]);
-
-  // Stable per-tile callbacks (identity preserved across renders) so React.memo
-  // on UploadTile actually skips unchanged tiles when one selection toggles.
-  // `setSelected` is a useState setter, so its identity is stable. Reuses the
-  // shared selection reducer so plain-toggle and shift-range match /photos.
-  const { setSelected } = sel;
-  const handleTileClick = useCallback(
-    (index: number, e: React.MouseEvent) => {
-      const anchor = anchorRef.current;
-      if (!e.shiftKey) anchorRef.current = index;
-      const photoIds = rowsRef.current.map((r) => r.photoId ?? "");
-      // ⌘ (Mac) / Ctrl (Windows) toggles multi-select; shift extends a range.
-      const modifiers = { shift: e.shiftKey, toggle: e.metaKey || e.ctrlKey };
-      setSelected((prev) => computeSelection(prev, photoIds, index, modifiers, anchor));
-    },
-    [setSelected],
-  );
+  // Reuses the shared selection driver so plain-toggle, shift-range, and arrow
+  // key navigation match the photo grid. `getClickIds` returns the row's photoId
+  // (or "" for not-yet-ingested rows, which computeSelection skips as falsy);
+  // `idAt` returns undefined for those rows so arrow selection skips them too.
+  const { handleItemClick: handleTileClick } = useGridSelectionNav({
+    count: rows.length,
+    columns,
+    idAt: (i) => rowsRef.current[i]?.photoId || undefined,
+    getClickIds: () => rowsRef.current.map((r) => r.photoId ?? ""),
+    selectedIds: sel.selected,
+    onSelectionChange: sel.setSelected,
+  });
 
   const retryRow = useCallback(
     (rowId: number) => {
