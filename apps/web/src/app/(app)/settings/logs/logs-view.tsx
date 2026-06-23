@@ -53,8 +53,9 @@ export function LogsView() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Filters — stacked & left-aligned on mobile; one row with Since pushed
+          right from the sm breakpoint up. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <ToggleGroup
           type="multiple"
           variant="outline"
@@ -81,7 +82,7 @@ export function LogsView() {
           onValueChange={(val) => {
             if (val) setSince(val as SinceFilter);
           }}
-          className="ml-auto"
+          className="sm:ml-auto"
         >
           {SINCE_OPTIONS.map((opt) => (
             <ToggleGroupItem key={opt.value} value={opt.value}>
