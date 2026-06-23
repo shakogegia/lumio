@@ -2,7 +2,7 @@
    reanimated shared values require the `.value` mutation pattern in worklets and
    gesture/effect callbacks; the React Compiler lint flags these as false
    positives (see components/photo-grid/zoomable-photo-grid.tsx + [[lumio-react-compiler-lint]]). */
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Modal,
@@ -72,6 +72,9 @@ export function PhotoViewer({
 
   const progress = useSharedValue(0);
   const ty = useSharedValue(0);
+  // True while the active page is pinch/double-tap zoomed — paging + swipe-down
+  // dismiss are disabled so the page's pan owns the gesture.
+  const [zoomed, setZoomed] = useState(false);
 
   // The collapsed transform that maps the fullscreen content onto the tile:
   // uniform scale (tile width / screen width) + translate to the tile center.
@@ -94,12 +97,14 @@ export function PhotoViewer({
 
   // Reverse the open animation back to the tile, then unmount.
   const close = () => {
+    setZoomed(false);
     progress.value = withTiming(0, { duration: CLOSE_MS }, (finished) => {
       if (finished) runOnJS(onClose)();
     });
   };
 
   const dismiss = Gesture.Pan()
+    .enabled(!zoomed)
     .activeOffsetY([-12, 12])
     .failOffsetX([-12, 12])
     .onUpdate((e) => {
@@ -149,6 +154,7 @@ export function PhotoViewer({
                 getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
                 keyExtractor={(p) => p.id}
                 showsHorizontalScrollIndicator={false}
+                scrollEnabled={!zoomed}
                 renderItem={({ item }) => (
                   <ViewerPage
                     photo={item}
@@ -157,6 +163,7 @@ export function PhotoViewer({
                     cookie={cookie}
                     width={width}
                     height={height}
+                    onZoomChange={setZoomed}
                   />
                 )}
                 onMomentumScrollEnd={(e) => {
