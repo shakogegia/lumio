@@ -55,9 +55,12 @@ export function useAsyncJob(
   const pendingRef = useRef(false);
   const fallbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const toastId = useRef<string | number | undefined>(undefined);
-  // Keep the latest options without re-running the effect on every poll.
+  // Keep the latest options without re-running the effect on every poll. Synced
+  // in an effect (not during render) per the refs-in-render rule.
   const optionsRef = useRef(options);
-  optionsRef.current = options;
+  useEffect(() => {
+    optionsRef.current = options;
+  });
 
   const finish = useCallback(() => {
     if (!pendingRef.current) return; // idempotent: effect + fallback both call this

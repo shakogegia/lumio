@@ -14,3 +14,5 @@ export * from "./photo-color.js";
 export * from "./crop-geometry.js";
 export * from "./catalogs.js";
 export * from "./ordering.js";
+export * from "./features.js";
+export * from "./paths.js";

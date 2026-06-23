@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
+import { addPhotosToAlbum } from "@/lib/photo-mutations";
 import { invalidateLibraryTree, useLibraryTree } from "@/components/library-tree/library-tree";
 import { buildFolderPickerRows } from "@/lib/library-tree-rows";
 import { playSound } from "@/lib/sound/player";
@@ -42,11 +43,14 @@ export function AddToAlbumDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset the form each time the dialog opens.
   useEffect(() => {
     if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
     setNewName("");
     setTarget(null);
     setError(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open]);
 
   const rows = buildFolderPickerRows(folders);
@@ -73,12 +77,7 @@ export function AddToAlbumDialog({
     }
     // The album exists now; a failure past this point is an add failure.
     try {
-      const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos`), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ photoIds }),
-      });
-      if (!res.ok) throw new Error();
+      await addPhotosToAlbum(slug, albumId, photoIds);
       invalidateLibraryTree();
       router.refresh();
       playSound(SoundEffect.ActionComplete);

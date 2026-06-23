@@ -145,7 +145,7 @@
   background-color: var(--label-tint);
 }
 .dark .label-mat {
-  background-color: color-mix(in oklch, var(--label-tint) 50%, var(--muted));
+  background-color: color-mix(in oklch, var(--label-tint) 70%, var(--muted));
 }
 
 /* TributeJS dropdown — themed to match the app popover (light + dark via tokens). */

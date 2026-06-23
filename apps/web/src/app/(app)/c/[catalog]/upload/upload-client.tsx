@@ -15,6 +15,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useGridSelection } from "@/lib/use-grid-selection";
 import { useGridColumns } from "@/lib/use-grid-columns";
 import { downloadSelection } from "@/lib/download-client";
+import { setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
 import { partitionSupported } from "@/lib/upload-collect";
@@ -22,7 +23,7 @@ import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/u
 import { computeSelection } from "@/lib/grid-selection";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
-import { SelectionToolbar } from "../photos/selection-toolbar";
+import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
 import { UploadTile } from "./upload-tile";
@@ -202,12 +203,7 @@ export function UploadClient({
       if (labelPending || selectedIds.size === 0) return;
       setLabelPending(true);
       try {
-        const res = await fetch(catalogApiUrl(slug, "/photos/color-label"), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: [...selectedIds], label }),
-        });
-        if (!res.ok) throw new Error("label failed");
+        await setPhotoColorLabel(slug, [...selectedIds], label);
         // Optimistically tint the affected tiles, keeping the selection intact
         // so the user can keep acting on the same photos (mirrors the library view).
         setRows((prev) =>
@@ -249,12 +245,7 @@ export function UploadClient({
     if (!ok) return;
     setDeleting(true);
     try {
-      const res = await fetch(catalogApiUrl(slug, "/photos/trash"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: [...selectedIds] }),
-      });
-      if (!res.ok) throw new Error("trash failed");
+      await trashPhotos(slug, [...selectedIds]);
       setRows((prev) => prev.filter((r) => !(r.photoId && selectedIds.has(r.photoId))));
       sel.clear();
       router.refresh();

@@ -17,9 +17,12 @@ export function useActivity(): ActivitySnapshot {
   const { slug } = useCatalog();
   const [snapshot, setSnapshot] = useState<ActivitySnapshot>(EMPTY);
   // Keep the latest snapshot in a ref so the scheduler can read it without
-  // re-subscribing the effect on every poll.
+  // re-subscribing the effect on every poll. Synced in an effect (not during
+  // render) per the refs-in-render rule.
   const latest = useRef(snapshot);
-  latest.current = snapshot;
+  useEffect(() => {
+    latest.current = snapshot;
+  });
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

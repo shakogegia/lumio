@@ -115,4 +115,29 @@ describe("locatePhoto", () => {
       expect(JSON.stringify(w)).toContain(CAT);
     }
   });
+
+  it("folder scope: resolves via dirPath before-count", async () => {
+    const fake = db({ row: cursor, before: 3, inScope: 1 });
+    const idx = await locatePhoto(
+      CAT,
+      "p5",
+      { kind: "folder", dir: "2024", sort: "taken-desc" },
+      fake as never,
+    );
+    expect(idx).toBe(3);
+    // The count where should contain dirPath
+    const whereJson = fake.counts.map((w) => JSON.stringify(w));
+    expect(whereJson.some((s) => s.includes('"dirPath":"2024"'))).toBe(true);
+  });
+
+  it("folder scope: returns null when the photo is not in the dir", async () => {
+    const fake = db({ row: cursor, before: 0, inScope: 0 });
+    const idx = await locatePhoto(
+      CAT,
+      "p5",
+      { kind: "folder", dir: "2024", sort: "taken-desc" },
+      fake as never,
+    );
+    expect(idx).toBeNull();
+  });
 });

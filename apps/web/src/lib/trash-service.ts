@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { type PrismaClient, prisma, toTrashedPhotoDTO } from "@lumio/db";
-import type { PhotosPage, PhotosQuery } from "@lumio/shared";
+import { parentDir, type PhotosPage, type PhotosQuery } from "@lumio/shared";
 
 type Db = Pick<PrismaClient, "photo" | "trashedPhoto" | "album">;
 
@@ -163,6 +163,7 @@ export async function restorePhotos(
         id: t.id,
         catalogId: deps.catalogId,
         path: destRel,
+        dirPath: parentDir(destRel),
         source: t.source,
         takenAt: t.takenAt,
         sortDate: t.sortDate,

@@ -51,6 +51,7 @@ export function LibraryTreeProvider({ children }: { children: React.ReactNode })
   }, [slug]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     reload();
     const onInvalidate = () => reload();
     window.addEventListener(INVALIDATE_EVENT, onInvalidate);

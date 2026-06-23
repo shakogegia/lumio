@@ -30,6 +30,7 @@ import {
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
+import { removePhotoFromAlbum } from "@/lib/photo-mutations";
 import { usePhotoCollection } from "./photo-collection";
 import { LightboxEditPanel } from "./lightbox-edit-panel";
 import { LightboxTab } from "@/lib/lightbox-tab";
@@ -155,17 +156,13 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
     const next = (albumIds ?? []).filter((id) => id !== albumId);
     setPending(true);
     try {
-      const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos/${photo.id}`), {
-        method: "DELETE",
-      });
+      await removePhotoFromAlbum(slug, albumId, photo.id);
       // Only commit once the server confirms, so a failed delete can't leave
       // phantom membership in the UI or the shared grid store.
-      if (!res.ok) {
-        toast.error("Failed to update album.");
-        return;
-      }
       setAlbumIds(next);
       patchPhotos(new Set([photo.id]), { albumIds: next });
+    } catch {
+      toast.error("Failed to update album.");
     } finally {
       setPending(false);
     }

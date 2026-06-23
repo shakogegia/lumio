@@ -43,6 +43,17 @@ export function collectionForScope(slug: string, scope: DetailScope): Collection
       baseUrl: catalogPath(slug, "/search"),
     };
   }
+  if (scope.kind === "folder") {
+    return {
+      endpoint: catalogApiUrl(slug, "/fs/photos"),
+      params: new URLSearchParams({ path: scope.dir, sort: scope.sort }),
+      urlForId,
+      baseUrl: catalogPath(
+        slug,
+        scope.dir ? `/folders?path=${encodeURIComponent(scope.dir)}` : "/folders",
+      ),
+    };
+  }
   return {
     endpoint: catalogApiUrl(slug, "/photos"),
     params: new URLSearchParams({ sort: scope.sort }),

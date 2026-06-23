@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search } from "lucide-react";
+import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderSearch } from "lucide-react";
+import { FeatureKey } from "@lumio/shared";
+import { FeatureGate } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
@@ -11,11 +13,13 @@ import { useCatalog } from "@/lib/catalog-context";
 
 // Hrefs/match segments are catalog-relative; the sidebar scopes them to the
 // active catalog (`/c/<slug>/…`) at render and strips that prefix before
-// matching the active route.
+// matching the active route. Items with a `feature` only render when that
+// feature is enabled (gated via <FeatureGate> below).
 const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
+  { href: "/folders", label: "Folders", icon: FolderSearch, match: ["/folders"], feature: FeatureKey.DiskExplorer },
   { href: "/favorites", label: "Favorites", icon: Heart, match: ["/favorites"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
@@ -69,18 +73,18 @@ export function AppSidebar() {
             the catalog-relative pathname. */}
         {PRIMARY.map((item) => {
           const scoped = { ...item, href: catalogPath(slug, item.href) };
-          return item.href === "/albums" ? (
-            <SidebarAlbums
-              key={item.href}
-              item={scoped}
-              active={isActive(scopedPath, item)}
-            />
+          const node =
+            item.href === "/albums" ? (
+              <SidebarAlbums key={item.href} item={scoped} active={isActive(scopedPath, item)} />
+            ) : (
+              <NavLink key={item.href} item={scoped} active={isActive(scopedPath, item)} />
+            );
+          return item.feature ? (
+            <FeatureGate key={item.href} feature={item.feature}>
+              {node}
+            </FeatureGate>
           ) : (
-            <NavLink
-              key={item.href}
-              item={scoped}
-              active={isActive(scopedPath, item)}
-            />
+            node
           );
         })}
       </nav>

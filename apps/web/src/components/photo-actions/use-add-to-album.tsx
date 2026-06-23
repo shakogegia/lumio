@@ -4,8 +4,8 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
-import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/lib/catalog-context";
+import { addPhotosToAlbum } from "@/lib/photo-mutations";
 import { playSound } from "@/lib/sound/player";
 import { SoundEffect } from "@/lib/sound/registry";
 
@@ -43,12 +43,7 @@ export function useAddToAlbum(): AddToAlbumControls {
     async (ids: string[], albumId: string, opts?: AddToAlbumOpts) => {
       if (ids.length === 0) return;
       try {
-        const res = await fetch(catalogApiUrl(slug, `/albums/${albumId}/photos`), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ photoIds: ids }),
-        });
-        if (!res.ok) throw new Error("add failed");
+        await addPhotosToAlbum(slug, albumId, ids);
         // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
         router.refresh();
         playSound(SoundEffect.ActionComplete);

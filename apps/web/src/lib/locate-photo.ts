@@ -42,6 +42,7 @@ async function scopeWhereFor(
 ): Promise<Prisma.PhotoWhereInput | null> {
   if (scope.kind === "album") return albumPhotoWhere(catalogId, scope.albumId, db);
   if (scope.kind === "search") return buildSearchWhere({ album: scope.albums, q: scope.q });
+  if (scope.kind === "folder") return { dirPath: scope.dir };
   return {};
 }
 

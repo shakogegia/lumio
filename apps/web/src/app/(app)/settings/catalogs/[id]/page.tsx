@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
-import { getCatalogById } from "@lumio/db";
+import { getCatalogById, getCatalogFeatureStates } from "@lumio/db";
 import {
   getCatalogStats,
   getPhotoFileCount,
@@ -25,6 +25,7 @@ import { RefreshStatsButton } from "./refresh-stats-button";
 import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
+import { CatalogFeaturesForm } from "./catalog-features-form";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export default async function CatalogSettingsPage({
   const catalog = await getCatalogById(id);
   if (!catalog) notFound();
   const stats = await getCatalogStats(catalog.id);
+  const featureStates = await getCatalogFeatureStates(catalog.id);
 
   return (
     <CatalogProvider catalog={{ id: catalog.id, slug: catalog.slug, name: catalog.name }}>
@@ -77,6 +79,7 @@ export default async function CatalogSettingsPage({
           <TabsList>
             <TabsTrigger value="catalog">Catalog</TabsTrigger>
             <TabsTrigger value="uploads">Uploads</TabsTrigger>
+            <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="danger">Danger zone</TabsTrigger>
           </TabsList>
 
@@ -143,6 +146,21 @@ export default async function CatalogSettingsPage({
               </CardHeader>
               <CardContent>
                 <UploadTemplateForm initial={catalog.uploadTemplate} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="features">
+            <Card>
+              <CardHeader>
+                <CardTitle>Features</CardTitle>
+                <CardDescription>
+                  Enable or disable optional features for this catalog. The global
+                  switch in Settings → Features is the master.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CatalogFeaturesForm catalogId={catalog.id} initial={featureStates} />
               </CardContent>
             </Card>
           </TabsContent>
