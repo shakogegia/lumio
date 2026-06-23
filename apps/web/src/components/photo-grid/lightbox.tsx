@@ -8,6 +8,7 @@ import { usePhotoCollection } from "./photo-collection";
 import { EditSessionProvider, useEditSession } from "./use-edit-session";
 import { useLightboxKeyboard } from "./use-lightbox-keyboard";
 import { useToggleFavorite } from "./use-favorite";
+import { LightboxHeader } from "./lightbox-header";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
 import { ZoomableImage } from "./zoomable-image";
@@ -114,7 +115,14 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             hasPrev={hasPrev}
             hasNext={hasNext}
             step={(d) => guard(() => step(d))}
-            onTrashed={onTrashed}
+            renderHeader={(z) => (
+              <LightboxHeader
+                {...z}
+                photo={photo}
+                onTrashed={onTrashed}
+                showZoom={!cropMode}
+              />
+            )}
           />
           {strip.length > 0 && (
             <FilmStrip

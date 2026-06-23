@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   NO_EDITS,
@@ -22,23 +22,37 @@ import { MAX_ZOOM } from "@/lib/zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
 import { useEditSession } from "./use-edit-session";
-import { LightboxHeader } from "./lightbox-header";
 import { CropOverlay } from "./crop-overlay";
 import { BaseImageStage } from "./base-image-stage";
 import { EditedResult } from "./edited-result";
+
+/** Zoom state the stage hands up to whoever renders the lightbox header, so the
+ *  header (with its zoom controls) lives in the lightbox layer without the editor
+ *  importing it — keeping the editor free of any lightbox dependency. */
+export interface ZoomHeaderProps {
+  zoom: number;
+  min: number;
+  onZoom: (zoom: number) => void;
+  onStepIn: () => void;
+  onStepOut: () => void;
+  canStepIn: boolean;
+  canStepOut: boolean;
+}
 
 export function ZoomableImage({
   photo,
   hasPrev,
   hasNext,
   step,
-  onTrashed,
+  renderHeader,
 }: {
   photo: PhotoDTO;
   hasPrev: boolean;
   hasNext: boolean;
   step: (delta: 1 | -1) => void;
-  onTrashed: () => void;
+  /** Renders the header above the stage from the stage's live zoom state. Injected
+   *  by the lightbox so the editor never imports lightbox chrome. */
+  renderHeader: (zoom: ZoomHeaderProps) => ReactNode;
 }) {
   const { slug } = useCatalog();
   const { working, editing, cropMode, orientedBase, setBaseSize } = useEditSession();
@@ -225,18 +239,15 @@ export function ZoomableImage({
 
   return (
     <>
-      <LightboxHeader
-        photo={photo}
-        onTrashed={onTrashed}
-        zoom={zoom}
-        min={fitZoom}
-        onZoom={setZoom}
-        onStepIn={stepIn}
-        onStepOut={stepOut}
-        canStepIn={zoom < MAX_ZOOM - 0.5}
-        canStepOut={isZoomed}
-        showZoom={!cropMode}
-      />
+      {renderHeader({
+        zoom,
+        min: fitZoom,
+        onZoom: setZoom,
+        onStepIn: stepIn,
+        onStepOut: stepOut,
+        canStepIn: zoom < MAX_ZOOM - 0.5,
+        canStepOut: isZoomed,
+      })}
       <div
         ref={viewportRef}
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden"
