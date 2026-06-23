@@ -34,7 +34,7 @@ export function useSearchCount(
     if (month) params.set("month", month);
     params.set("count", "1");
     fetch(catalogApiUrl(slug, `/search?${params.toString()}`))
-      .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error())))
+      .then((res) => (res.ok ? (res.json() as Promise<SearchCount>) : Promise.reject(new Error(`${res.status} ${res.url}`))))
       .then((data) => {
         if (!cancelled) setCount(data.total);
       })

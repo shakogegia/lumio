@@ -69,7 +69,7 @@ export function AddToAlbumDialog({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name, isSmart: false, folderId: target }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`${res.status} ${res.url}`);
       albumId = ((await res.json()) as { id: string }).id;
     } catch {
       setError("Failed to create the album.");

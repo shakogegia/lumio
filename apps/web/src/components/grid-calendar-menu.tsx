@@ -59,7 +59,7 @@ export function GridCalendarMenu({
     setLoading(true);
     setError(false);
     fetch(facetsEndpoint)
-      .then((res) => (res.ok ? (res.json() as Promise<CalendarFacets>) : Promise.reject(new Error())))
+      .then((res) => (res.ok ? (res.json() as Promise<CalendarFacets>) : Promise.reject(new Error(`${res.status} ${res.url}`))))
       .then((data) => {
         if (cancelled) return;
         setFacets(data);

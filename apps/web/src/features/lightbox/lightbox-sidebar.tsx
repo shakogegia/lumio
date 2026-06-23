@@ -109,7 +109,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
   useEffect(() => {
     let alive = true;
     fetch(catalogApiUrl(slug, `/photos/${photo.id}`))
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.url}`))))
       .then((data: PhotoDTO) => {
         if (alive) setAlbumIds(data.albumIds ?? []);
       })
@@ -125,7 +125,7 @@ function AlbumMembership({ photo }: { photo: PhotoDTO }) {
   // "New album…" dialog adds the photo (the dialog doesn't return the new id).
   const resync = useCallback(() => {
     fetch(catalogApiUrl(slug, `/photos/${photo.id}`))
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.url}`))))
       .then((data: PhotoDTO) => {
         const next = data.albumIds ?? [];
         setAlbumIds(next);

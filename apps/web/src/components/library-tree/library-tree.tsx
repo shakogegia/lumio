@@ -40,7 +40,7 @@ export function LibraryTreeProvider({ children }: { children: React.ReactNode })
   const reload = useCallback(() => {
     setLoading(true);
     fetch(catalogApiUrl(slug, "/library/tree"))
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.url}`))))
       .then((data: { folders: FolderDTO[]; albums: AlbumSummaryDTO[] }) => {
         setFolders(data.folders);
         setAlbums(data.albums);

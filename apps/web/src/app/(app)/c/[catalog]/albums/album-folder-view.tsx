@@ -142,7 +142,7 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
           targetFolderId,
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`${res.status} ${res.url}`);
       playSound(SoundEffect.ActionComplete);
       sel.clear();
       invalidateLibraryTree();

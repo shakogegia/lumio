@@ -12,6 +12,9 @@ import { catalogForPath } from "./catalog-routing.js";
 const isSupported = (p: string): boolean =>
   SUPPORTED_EXTENSIONS.has(path.extname(p).toLowerCase());
 
+/** How often the watcher reconciles its catalog set against the DB (ms). */
+const RECONCILE_DEBOUNCE_MS = 5000;
+
 const emptySummary = (): ScanSummary => ({
   processed: 0,
   skipped: 0,
@@ -110,7 +113,7 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
     } catch (err) {
       console.warn(`catalog reconcile error: ${errorMessage(err)}`);
     }
-  }, 5000);
+  }, RECONCILE_DEBOUNCE_MS);
 
   signal.addEventListener(
     "abort",
