@@ -7,6 +7,7 @@ import { coercePhotoEdits, errorMessage, hasEdits } from "@lumio/shared";
 import { INGEST_CONCURRENCY, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
 import { ingestDepsFor, removeDepsFor } from "./deps.js";
 import { timedLine } from "./format.js";
+import { log } from "./log.js";
 import { runPool } from "./pool.js";
 
 export interface ScanSummary {
@@ -176,7 +177,7 @@ export async function reconcileFile(
   const start = performance.now();
   await ingestPath(relPath, ingestDepsFor(catalog));
   summary.processed++;
-  console.log(`processed ${timedLine(relPath, performance.now() - start)}`);
+  log.info(`processed ${timedLine(relPath, performance.now() - start)}`, { scope: "scan", catalogId: catalog.id });
 }
 
 /** Scan one catalog: ingest new/changed images concurrently, skip unchanged, reconcile deletions. */
@@ -204,7 +205,7 @@ export async function scanCatalog(
       await reconcileFile(catalog, relPath, byPath.get(relPath), summary);
     } catch (err) {
       summary.skipped++;
-      console.warn(`skip ${relPath}: ${errorMessage(err)}`);
+      log.warn(`skip ${relPath}: ${errorMessage(err)}`, { scope: "scan", catalogId: catalog.id });
     } finally {
       onProgress?.(++done, relPaths.length);
     }
@@ -219,7 +220,7 @@ export async function scanCatalog(
       await removePath(row.path, removeDepsFor(catalog));
       summary.removed++;
     } catch (err) {
-      console.warn(`remove failed ${row.path}: ${errorMessage(err)}`);
+      log.warn(`remove failed ${row.path}: ${errorMessage(err)}`, { scope: "scan", catalogId: catalog.id });
     }
   });
 
