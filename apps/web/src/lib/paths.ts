@@ -17,6 +17,10 @@ export const TRASH_DIR = path.resolve(ROOT, process.env.TRASH_DIR ?? "./trash");
 
 export type { CatalogCacheDirs };
 
+export function catalogCacheDir(catalogId: string): string {
+  return path.join(CACHE_DIR, catalogId);
+}
+
 export function catalogCacheDirs(catalogId: string): CatalogCacheDirs {
   return catalogCacheDirsUnder(CACHE_DIR, catalogId);
 }
@@ -37,6 +41,10 @@ export function editedDisplayPath(catalogId: string, id: string): string {
 // its move targets from the injected `trashDir` (for testability, like
 // purgeAllPhotos), so the only helper needed here is the one the thumbnail
 // route uses to fall back to a trashed photo's rendition.
+export function catalogTrashDir(catalogId: string): string {
+  return path.join(TRASH_DIR, catalogId);
+}
+
 export function trashThumbnailPath(catalogId: string, id: string): string {
   return path.join(TRASH_DIR, catalogId, "thumbnails", `${id}.webp`);
 }

@@ -1,8 +1,7 @@
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { handleUpload } from "@/lib/upload-service";
-import { CACHE_DIR } from "@/lib/paths";
+import { catalogCacheDirs } from "@/lib/paths";
 import { withCatalog } from "@/lib/with-catalog";
 
 export const runtime = "nodejs";
@@ -23,14 +22,15 @@ export const POST = withCatalog(async (request, _context, { catalog }) => {
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
+  const { thumbnailsDir, displaysDir } = catalogCacheDirs(catalog.id);
   const result = await handleUpload(
     { bytes, originalFilename: file.name, lastModified },
     {
       db: prisma,
       catalogId: catalog.id,
       photosDir: catalog.path,
-      thumbnailsDir: path.join(CACHE_DIR, catalog.id, "thumbnails"),
-      displaysDir: path.join(CACHE_DIR, catalog.id, "displays"),
+      thumbnailsDir,
+      displaysDir,
       uploadTemplate: catalog.uploadTemplate,
     },
   );

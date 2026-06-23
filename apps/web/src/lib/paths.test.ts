@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isInsideMediaRoot, originalPath } from "./paths.js";
+import { catalogCacheDir, catalogTrashDir, isInsideMediaRoot, originalPath } from "./paths.js";
 
 // MEDIA_ROOT defaults to /media (process.env.MEDIA_ROOT is not set in test env)
 
@@ -29,6 +29,21 @@ describe("isInsideMediaRoot", () => {
   it("rejects a path that has MEDIA_ROOT as a prefix in its name but is not inside it", () => {
     // /media-other should not be considered inside /media
     expect(isInsideMediaRoot("/media-other")).toBe(false);
+  });
+});
+
+describe("catalogCacheDir", () => {
+  it("returns a path under the default CACHE_DIR for the given catalog", () => {
+    // CACHE_DIR resolves from cwd in test env; we just verify the catalogId is appended.
+    const result = catalogCacheDir("cat42");
+    expect(result.endsWith(path.join("cache", "cat42"))).toBe(true);
+  });
+});
+
+describe("catalogTrashDir", () => {
+  it("returns a path under the default TRASH_DIR for the given catalog", () => {
+    const result = catalogTrashDir("cat99");
+    expect(result.endsWith(path.join("trash", "cat99"))).toBe(true);
   });
 });
 

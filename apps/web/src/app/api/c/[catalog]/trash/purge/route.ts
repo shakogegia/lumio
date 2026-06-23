@@ -1,9 +1,8 @@
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { prisma } from "@lumio/db";
 import { purgeTrash } from "@lumio/jobs";
 import { photoIdsSchema } from "@lumio/shared";
-import { TRASH_DIR } from "@/lib/paths";
+import { catalogTrashDir } from "@/lib/paths";
 import { parseJson } from "@/lib/route-helpers";
 import { withCatalog } from "@/lib/with-catalog";
 
@@ -16,7 +15,7 @@ export const POST = withCatalog(async (request, _context, { catalog }) => {
   const result = await purgeTrash(parsed.data.ids, {
     db: prisma,
     catalogId: catalog.id,
-    trashDir: path.join(TRASH_DIR, catalog.id),
+    trashDir: catalogTrashDir(catalog.id),
   });
   return NextResponse.json(result);
 });
