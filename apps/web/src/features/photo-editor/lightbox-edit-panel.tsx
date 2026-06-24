@@ -39,6 +39,7 @@ const ASPECTS: { preset: AspectPreset; label: string }[] = [
 export function LightboxEditPanel() {
   const {
     working,
+    baseline,
     dirty,
     applying,
     canUndo,
@@ -242,7 +243,11 @@ export function LightboxEditPanel() {
           </Button>
         </div>
         {COLOR_FIELDS.map((f) => {
-          const value = working[f.key] ?? f.neutral;
+          const neutral =
+            f.key === "temperature" ? baseline.k
+            : f.key === "tint" ? baseline.tint
+            : f.neutral;
+          const value = working[f.key] ?? neutral;
           return (
             <div key={f.key} className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
@@ -251,7 +256,7 @@ export function LightboxEditPanel() {
                   type="button"
                   aria-label={`Reset ${f.label}`}
                   className="text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setColor(f.key, f.neutral)}
+                  onClick={() => setColor(f.key, neutral)}
                 >
                   {f.precision ? value.toFixed(f.precision) : value}
                 </button>
