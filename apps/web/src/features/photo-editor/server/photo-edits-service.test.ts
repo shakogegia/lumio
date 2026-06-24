@@ -35,6 +35,8 @@ function makePhotoRow(overrides: Record<string, unknown> = {}) {
     isFavorite: false,
     thumbhash: null,
     edits: null,
+    asShotTempK: null,
+    asShotTint: null,
     createdAt: new Date("2024-01-01T00:00:00.000Z"),
     updatedAt: new Date("2024-01-01T00:00:00.000Z"),
     ...overrides,
@@ -90,6 +92,7 @@ describe("applyPhotoEdits", () => {
         displaysDir: `/cache/${CAT_OBJ.id}/displays`,
         editedDisplaysDir: `/cache/${CAT_OBJ.id}/displays-edited`,
       },
+      { k: 6500, tint: 0 },
     );
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -109,7 +112,7 @@ describe("applyPhotoEdits", () => {
 
     await applyPhotoEdits(CAT_OBJ, PHOTO_ID, null, db as never);
 
-    expect(regenerateRenditions).toHaveBeenCalledWith(expect.any(String), null, PHOTO_ID, expect.any(Object));
+    expect(regenerateRenditions).toHaveBeenCalledWith(expect.any(String), null, PHOTO_ID, expect.any(Object), { k: 6500, tint: 0 });
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ edits: Prisma.JsonNull }) }),
     );

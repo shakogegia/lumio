@@ -56,11 +56,11 @@ export async function listPhotosForDownload(
   catalogId: string,
   ids: string[],
   db: Db = prisma,
-): Promise<{ id: string; path: string; edits: unknown }[]> {
+): Promise<{ id: string; path: string; edits: unknown; asShotTempK: number | null; asShotTint: number | null }[]> {
   return db.photo.findMany({
     where: { catalogId, id: { in: ids } },
     orderBy: PHOTO_ORDER,
-    select: { id: true, path: true, edits: true },
+    select: { id: true, path: true, edits: true, asShotTempK: true, asShotTint: true },
   });
 }
 

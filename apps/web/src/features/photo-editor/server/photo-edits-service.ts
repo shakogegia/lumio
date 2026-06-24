@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
-import { EDITS_VERSION, hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
+import { EDITS_VERSION, hasEdits, wbBaselineOf, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
 import { regenerateRenditions } from "@lumio/ingest";
 import { catalogCacheDirs, originalPath } from "@/lib/server/server-paths";
 
@@ -36,6 +36,7 @@ export async function applyPhotoEdits(
     recipe,
     id,
     catalogCacheDirs(catalog.id),
+    wbBaselineOf(photo),
   );
 
   const updated = await db.photo.update({
