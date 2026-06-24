@@ -268,3 +268,51 @@ describe("white-balance baseline", () => {
     expect(wbBaselineOf({ asShotTempK: 5200, asShotTint: -20 })).toEqual({ k: 5200, tint: -20 });
   });
 });
+
+describe("estimateAsShotWhite", () => {
+  // Fill a w×h RGB buffer with one sRGB-byte colour.
+  const fill = (r: number, g: number, b: number, w = 8, h = 8): Uint8Array => {
+    const buf = new Uint8Array(w * h * 3);
+    for (let i = 0; i < w * h; i++) { buf[i * 3] = r; buf[i * 3 + 1] = g; buf[i * 3 + 2] = b; }
+    return buf;
+  };
+
+  it("a neutral grey buffer estimates ≈ 6500K / 0 tint", () => {
+    const wb = estimateAsShotWhite(fill(128, 128, 128), 8, 8, 3)!;
+    expect(wb).not.toBeNull();
+    expect(wb.k).toBeGreaterThan(6000);
+    expect(wb.k).toBeLessThan(7000);
+    expect(Math.abs(wb.tint)).toBeLessThan(15);
+  });
+
+  it("an orange-cast (warm-looking) buffer estimates a LOW K", () => {
+    const wb = estimateAsShotWhite(fill(190, 140, 90), 8, 8, 3)!;
+    expect(wb.k).toBeLessThan(5500);
+  });
+
+  it("a blue-cast (cool-looking) buffer estimates a HIGH K", () => {
+    const wb = estimateAsShotWhite(fill(90, 140, 190), 8, 8, 3)!;
+    expect(wb.k).toBeGreaterThan(7500);
+  });
+
+  it("round-trips a known baseline through whiteXyz at the default (slider==baseline ⇒ identity)", () => {
+    // Build the grey whose chromaticity IS the estimated baseline, then confirm
+    // editing at temperature=k is identity for that baseline.
+    const wb = estimateAsShotWhite(fill(170, 150, 120), 8, 8, 3)!;
+    const model = buildColorModel({ rotate: 0, flipH: false, flipV: false, temperature: wb.k, tint: wb.tint }, 1024, wb);
+    expect(model.linear).toBeNull(); // editing exactly to the estimate is the identity
+  });
+
+  it("returns null when there are no usable pixels (all black)", () => {
+    expect(estimateAsShotWhite(fill(0, 0, 0), 8, 8, 3)).toBeNull();
+  });
+
+  it("ignores a saturated minority and follows the neutral majority", () => {
+    // 60 grey pixels + 4 fully-saturated red ⇒ still ≈ neutral.
+    const buf = fill(128, 128, 128, 8, 8);
+    for (let i = 0; i < 4; i++) { buf[i * 3] = 255; buf[i * 3 + 1] = 0; buf[i * 3 + 2] = 0; }
+    const wb = estimateAsShotWhite(buf, 8, 8, 3)!;
+    expect(wb.k).toBeGreaterThan(5800);
+    expect(wb.k).toBeLessThan(7200);
+  });
+});

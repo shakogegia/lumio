@@ -225,6 +225,87 @@ function adaptMatrixRgb(K: number, tint: number, baseline: WbBaseline = DEFAULT_
   return m3mul(XYZ2RGB, m3mul(mXyz, RGB2XYZ));
 }
 
+/** McCamy's correlated-colour-temperature approximation from CIE 1931 xy. */
+function cctFromXy(x: number, y: number): number {
+  const n = (x - 0.3320) / (0.1858 - y);
+  return 449 * n ** 3 + 3525 * n ** 2 + 6823.3 * n + 5520.33;
+}
+
+/** Signed Duv of a CIE-1931 chromaticity from the Krystek Planckian locus at its
+ *  own (McCamy) CCT — the perpendicular residual used as the tint axis. Returns
+ *  the K used and the Duv so callers can re-reference it. */
+function duvFromXy(x: number, y: number): { k: number; duv: number } {
+  let k = cctFromXy(x, y);
+  k = Math.max(2000, Math.min(11000, k));
+  const denom = -2 * x + 12 * y + 3;
+  const u = (4 * x) / denom, v = (6 * y) / denom;
+  const [u0, v0] = planckUv(k);
+  const [u1, v1] = planckUv(k * 1.0001);
+  const [u2, v2] = planckUv(k * 0.9999);
+  let tu = u1 - u2, tv = v1 - v2;
+  const len = Math.hypot(tu, tv) || 1e-9;
+  tu /= len; tv /= len;
+  // displacement along the locus normal (-tv, tu) — matches whiteXyz's offset axis.
+  return { k, duv: (u - u0) * -tv + (v - v0) * tu };
+}
+
+// The model's Krystek locus is slightly offset from the true sRGB white (D65), so
+// a perfectly neutral grey sits a small constant Duv off the locus. Subtract that
+// reference so a neutral capture reads as tint 0 (the default baseline), not ~24.
+const D65_REF_DUV = duvFromXy(0.3127, 0.329).duv;
+
+/**
+ * Estimate a photo's as-shot white `(k, tint)` from a small decoded RGB buffer
+ * (robust gray-world). Because the editor default is identity-at-baseline, a
+ * rough estimate only changes the slider's anchor number, never the pixels — so
+ * this is deliberately simple. Returns null when no usable (near-neutral, non-
+ * black, non-clipped) pixels exist. `channels` may be 3 (RGB) or 4 (RGBA).
+ */
+export function estimateAsShotWhite(
+  rgb: Uint8Array | Uint8ClampedArray,
+  width: number,
+  height: number,
+  channels: number,
+): WbBaseline | null {
+  const inv = 1 / 255;
+  let sr = 0, sg = 0, sb = 0, wsum = 0;
+  for (let i = 0; i + channels <= rgb.length; i += channels) {
+    const r = rgb[i]! * inv, g = rgb[i + 1]! * inv, b = rgb[i + 2]! * inv;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (luma < 0.02 || luma > 0.98) continue;        // drop near-black / near-clipped
+    const sat = mx <= 0 ? 0 : (mx - mn) / mx;
+    if (sat > 0.6) continue;                          // drop strongly-coloured pixels
+    const w = 1 - sat;                                // weight toward neutral pixels
+    sr += srgbToLinear(r) * w;
+    sg += srgbToLinear(g) * w;
+    sb += srgbToLinear(b) * w;
+    wsum += w;
+  }
+  if (wsum < 1e-6) return null;
+  const lr = sr / wsum, lg = sg / wsum, lb = sb / wsum;
+
+  // linear RGB average → XYZ → chromaticity.
+  const X = RGB2XYZ[0]! * lr + RGB2XYZ[1]! * lg + RGB2XYZ[2]! * lb;
+  const Y = RGB2XYZ[3]! * lr + RGB2XYZ[4]! * lg + RGB2XYZ[5]! * lb;
+  const Z = RGB2XYZ[6]! * lr + RGB2XYZ[7]! * lg + RGB2XYZ[8]! * lb;
+  const sum = X + Y + Z;
+  if (sum <= 0) return null;
+  const x = X / sum, y = Y / sum;
+
+  // CCT (McCamy) + signed Duv from the Krystek locus, re-referenced so that a true
+  // neutral (D65) grey reads as tint 0 — the model's locus is offset from D65, so
+  // without this a neutral capture would estimate a large spurious tint.
+  const { k, duv } = duvFromXy(x, y);
+  if (!Number.isFinite(k)) return null;
+  // whiteXyz offsets along the normal by `off = TINT_SIGN*(tint/TINT_RANGE)*DUV_MAX`,
+  // so invert that mapping to recover tint from the re-referenced Duv.
+  let tint = TINT_SIGN * ((duv - D65_REF_DUV) / DUV_MAX) * TINT_RANGE;
+  tint = Math.max(-150, Math.min(150, tint));
+
+  return { k, tint };
+}
+
 /** The linear-light pre-pass matrix: exposure (a uniform scale) folded into the
  *  white-balance CAT. Stored COLUMN-MAJOR for the GL `mat3` uniform. null = identity
  *  (no exposure, neutral white balance). */
