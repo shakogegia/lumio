@@ -8,8 +8,6 @@ import {
   previewTransform,
   straightenedSize,
   centeredAspectCrop,
-  colorCssFilter,
-  colorOverlays,
   type PhotoDTO,
   type PhotoEdits,
 } from "@lumio/shared";
@@ -414,39 +412,19 @@ function EditorCanvas({
         : null)
     : null;
 
-  // Color preview while cropping: same CSS filter + blend-mode overlays the
-  // EditedResult preview uses, so the user crops against their adjusted image —
-  // not the edit-free base. Layered UNDER the CropOverlay so the dim/frame/
-  // handles stay crisp and untinted. (Superseded by the GL render seam later.)
-  const filter = colorCssFilter(working);
-  const overlays = colorOverlays(working);
-
   return (
     <div ref={wrapRef} className="relative flex h-full w-full items-center justify-center overflow-hidden">
       {layout && (
         <div className="absolute" style={{ width: layout.stageW, height: layout.stageH }}>
-          {/* Filter wrapper fills the stage (inset-0) so it is the containing
-              block for BaseImageStage's absolute children; `filter` would
-              otherwise make a zero-size box and collapse the layout. */}
-          <div className="absolute inset-0" style={{ filter: filter || undefined }}>
-            <BaseImageStage
-              src={src}
-              stageW={layout.stageW}
-              orientedBase={orientedBase!}
-              working={working}
-              onLoad={(e) =>
-                onBaseSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
-              }
-            />
-          </div>
-          {overlays.map((o) => (
-            <div
-              key={o.kind}
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{ background: o.background, mixBlendMode: o.blendMode, opacity: o.opacity }}
-            />
-          ))}
+          {/* BaseImageStage applies color (GPU), so Crop mode shows the adjusted
+              image. The CropOverlay (dim/frame/handles) sits above it. */}
+          <BaseImageStage
+            src={src}
+            stageW={layout.stageW}
+            orientedBase={orientedBase!}
+            working={working}
+            onNaturalSize={onBaseSize}
+          />
           <CropOverlay
             stageW={layout.stageW}
             stageH={layout.stageH}
