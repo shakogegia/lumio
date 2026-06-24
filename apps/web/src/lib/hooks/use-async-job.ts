@@ -48,7 +48,7 @@ export function useAsyncJob(
   endpoint: string,
   options: AsyncJobOptions = {},
 ) {
-  const snapshot = useActivity();
+  const { snapshot } = useActivity();
   const isActive = snapshot.jobs.some((j) => j.type === jobType);
   const [phase, setPhase] = useState<AsyncJobPhase>("idle");
   const sawActive = useRef(false);

@@ -13,7 +13,7 @@ export default async function SettingsLayout({
   const backHref = slug ? catalogPath(slug, "/photos") : "/";
   return (
     <>
-      <SettingsSidebar backHref={backHref} />
+      <SettingsSidebar backHref={backHref} catalogSlug={slug} />
       {/* Offset content by the 76px fixed rail, matching the main app layout. */}
       <div className="min-h-dvh pl-[76px]">{children}</div>
     </>
