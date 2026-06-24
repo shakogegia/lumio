@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, FileClock, GalleryHorizontalEnd, ToggleRight, User, Users } from "lucide-react";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
+import { SettingsWorkerStatus } from "@/components/settings-worker-status";
 
 // Settings sections — absolute hrefs (not catalog-scoped). Catalogs matches its
 // detail pages too (`/settings/catalogs/<id>`) via the prefix check in isActive.
@@ -21,7 +22,14 @@ const ITEMS: NavItem[] = [
  * replaced by a back arrow that returns to the photos view (`backHref`, resolved
  * server-side from the remembered catalog, else "/").
  */
-export function SettingsSidebar({ backHref }: { backHref: string }) {
+export function SettingsSidebar({
+  backHref,
+  catalogSlug,
+}: {
+  backHref: string;
+  /** Default catalog for the global worker poll; null when no catalogs exist. */
+  catalogSlug: string | null;
+}) {
   const pathname = usePathname() ?? "/";
 
   return (
@@ -46,6 +54,12 @@ export function SettingsSidebar({ backHref }: { backHref: string }) {
           <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
         ))}
       </nav>
+
+      {/* Footer mirrors the main rail's "More" slot so the nav centers the same
+          way; here it carries the live worker-status pill. */}
+      <div className="mb-4 flex flex-col items-center gap-1">
+        <SettingsWorkerStatus slug={catalogSlug} />
+      </div>
     </aside>
   );
 }

@@ -8,14 +8,38 @@ import { useCatalog } from "@/components/providers/catalog-context";
 
 const EMPTY: ActivitySnapshot = { worker: { online: false, activity: "offline" }, jobs: [] };
 
+export interface ActivityState {
+  snapshot: ActivitySnapshot;
+  /**
+   * False until the first poll resolves (success or failure). The seed snapshot
+   * reads as "offline", so consumers gate on this to avoid flashing an offline
+   * state on load before we've actually heard back from the server.
+   */
+  ready: boolean;
+}
+
 /**
  * Poll GET /api/activity with an adaptive cadence: fast (~1.5s) while a job is
  * active, slow (~5s) when idle, paused on a hidden tab. This is the single seam
  * to later swap for an SSE/LISTEN-NOTIFY stream without touching consumers.
+ *
+ * Reads the active catalog from context — use {@link useActivityForSlug} in
+ * shells without a CatalogProvider (e.g. the catalog-agnostic settings layout).
  */
-export function useActivity(): ActivitySnapshot {
+export function useActivity(): ActivityState {
   const { slug } = useCatalog();
+  return useActivityForSlug(slug);
+}
+
+/**
+ * The poller behind {@link useActivity}, taking the catalog slug explicitly.
+ * Worker status is global (jobs carry their own catalogId), so any valid slug
+ * yields the same worker state. A null slug (no catalogs yet) parks the poller
+ * and stays not-ready.
+ */
+export function useActivityForSlug(slug: string | null): ActivityState {
   const [snapshot, setSnapshot] = useState<ActivitySnapshot>(EMPTY);
+  const [ready, setReady] = useState(false);
   // Keep the latest snapshot in a ref so the scheduler can read it without
   // re-subscribing the effect on every poll. Synced in an effect (not during
   // render) per the refs-in-render rule.
@@ -25,6 +49,7 @@ export function useActivity(): ActivitySnapshot {
   });
 
   useEffect(() => {
+    if (!slug) return; // no catalog to scope the poll to; stay parked + not-ready
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
 
@@ -37,6 +62,9 @@ export function useActivity(): ActivitySnapshot {
         }
       } catch {
         // transient — keep the last snapshot, try again next tick
+      } finally {
+        // We've now heard back at least once; show the real state from here on.
+        if (!cancelled) setReady(true);
       }
       schedule();
     };
@@ -65,5 +93,5 @@ export function useActivity(): ActivitySnapshot {
     };
   }, [slug]);
 
-  return snapshot;
+  return { snapshot, ready };
 }

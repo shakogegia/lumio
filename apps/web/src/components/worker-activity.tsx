@@ -17,16 +17,20 @@ const IRIS_CLIP = "polygon(50% 3%, 93% 27%, 93% 73%, 50% 97%, 7% 73%, 7% 27%)";
  * exposed via title/aria for hover + screen readers.
  */
 export function WorkerActivity() {
-  const snapshot = useActivity();
+  const { snapshot, ready } = useActivity();
   const online = snapshot.worker.online;
   const busy = online && isBusy(snapshot);
-  const label = activityLabel(snapshot);
+  const label = ready ? activityLabel(snapshot) : "Checking worker…";
 
-  const pupil = !online
-    ? "bg-red-400"
-    : busy
-      ? "animate-pulse bg-amber-600 dark:bg-amber-400"
-      : null;
+  // Until the first poll resolves the worker state is unknown (the seed reads as
+  // offline), so show the plain mark rather than flashing the offline red.
+  const pupil = !ready
+    ? null
+    : !online
+      ? "bg-red-400"
+      : busy
+        ? "animate-pulse bg-amber-600 dark:bg-amber-400"
+        : null;
 
   return (
     <span
