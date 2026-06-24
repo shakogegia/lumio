@@ -43,7 +43,10 @@ interface EditSessionValue {
   rotateRight: () => void;
   flipH: () => void;
   flipV: () => void;
+  /** Discard unsaved edits, reverting to the last-applied recipe. */
   reset: () => void;
+  /** Strip all edits back to the unedited original (staged; Apply persists). */
+  revertToOriginal: () => void;
   undo: () => void;
   redo: () => void;
   /** Persist the working recipe; resolves true on success, false on skip/failure. */
@@ -61,10 +64,16 @@ interface EditSessionValue {
   setStraighten: (deg: number) => void;
   setCrop: (crop: CropRect | null) => void;
   setAspect: (preset: AspectPreset) => void;
-  /** Set a single color-adjustment field (0/neutral removes it). Pushes history. */
+  /** Clear crop + straighten back to the full frame. Pushes history. */
+  resetCrop: () => void;
+  /** Live-preview a color field during a drag (no history entry). */
+  setColorLive: (key: ColorKey, value: number) => void;
+  /** Commit a color field (0/neutral removes it). One history entry; clears the live preview. */
   setColor: (key: ColorKey, value: number) => void;
   /** Set a tone curve's points for one channel (identity/<2 points clears it). Pushes history. */
   setCurve: (channel: keyof CurveSpec, points: CurvePoint[]) => void;
+  /** Clear all tone curves (master + per-channel). Pushes history. */
+  resetCurves: () => void;
   /** Reset rotate + flip to identity (the Transform group). Pushes history. */
   resetTransform: () => void;
   /** Reset all color adjustments to neutral (the Adjust group). Pushes history. */
@@ -140,7 +149,18 @@ export function EditSessionProvider({
   const cropSnapshot = useRef<PhotoEdits | null>(null);
   const photoIdRef = useRef(photo.id);
 
-  const working = history.stack[history.index];
+  // Live, uncommitted color preview during a slider drag: lets the image follow the
+  // drag in real time WITHOUT pushing an undo entry per pixel of movement. Committed
+  // (and cleared) on release via setColor. null = no drag in progress.
+  const [livePreview, setLivePreview] = useState<PhotoEdits | null>(null);
+  const committed = history.stack[history.index];
+  const working = livePreview ?? committed;
+  // The committed recipe a live drag builds on, reachable from setColorLive without
+  // a stale closure.
+  const committedRef = useRef(committed);
+  useEffect(() => {
+    committedRef.current = committed;
+  });
   const orientedBase =
     baseSize === null
       ? null
@@ -158,6 +178,7 @@ export function EditSessionProvider({
       setHistory(freshHistory(e));
       setBaseSize(null);
       setCropMode(false);
+      setLivePreview(null);
       cropSnapshot.current = null;
     };
     if (photoIdRef.current !== photo.id) {
@@ -216,7 +237,16 @@ export function EditSessionProvider({
     },
     [baseSize],
   );
+  // Live (drag): preview the value without touching history. The image follows in
+  // real time; no undo entry is created until the gesture commits.
+  const setColorLive = useCallback((key: ColorKey, value: number) => {
+    const base = committedRef.current;
+    const neutral = COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0;
+    setLivePreview(value === neutral ? withoutColor(base, key) : { ...base, [key]: value });
+  }, []);
+  // Commit (release): one history entry for the whole gesture; clears the live preview.
   const setColor = useCallback((key: ColorKey, value: number) => {
+    setLivePreview(null);
     setHistory((h) => {
       const cur = h.stack[h.index];
       const neutral = COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0;
@@ -238,12 +268,24 @@ export function EditSessionProvider({
       return pushHistory(h, next);
     });
   }, []);
+  const resetCurves = useCallback(() => {
+    setLivePreview(null);
+    setHistory((h) => {
+      const next = { ...h.stack[h.index] };
+      delete next.curves;
+      return pushHistory(h, next);
+    });
+  }, []);
+  const resetCrop = useCallback(() => {
+    setHistory((h) => pushHistory(h, { ...h.stack[h.index], crop: null, straighten: 0 }));
+  }, []);
   const resetTransform = useCallback(() => {
     setHistory((h) =>
       pushHistory(h, { ...h.stack[h.index], rotate: 0, flipH: false, flipV: false }),
     );
   }, []);
   const resetColor = useCallback(() => {
+    setLivePreview(null);
     setHistory((h) => {
       const next = { ...h.stack[h.index] };
       for (const f of COLOR_FIELDS) delete next[f.key];
@@ -263,7 +305,15 @@ export function EditSessionProvider({
     if (snap) setHistory((h) => pushHistory(h, snap));
     setCropMode(false);
   }, []);
+  // Reset = discard the current unsaved edits, reverting to the last-applied recipe
+  // (not all the way to the original). Undoable.
   const reset = useCallback(() => {
+    setLivePreview(null);
+    setHistory((h) => pushHistory(h, saved));
+  }, [saved]);
+  // Revert all the way to the unedited original (stage NO_EDITS; Apply persists it).
+  const revertToOriginal = useCallback(() => {
+    setLivePreview(null);
     setHistory((h) => pushHistory(h, NO_EDITS));
   }, []);
   const undo = useCallback(() => {
@@ -352,6 +402,7 @@ export function EditSessionProvider({
     flipH,
     flipV,
     reset,
+    revertToOriginal,
     undo,
     redo,
     apply,
@@ -364,8 +415,11 @@ export function EditSessionProvider({
     setStraighten,
     setCrop,
     setAspect,
+    resetCrop,
+    setColorLive,
     setColor,
     setCurve,
+    resetCurves,
     resetTransform,
     resetColor,
     cropMode,

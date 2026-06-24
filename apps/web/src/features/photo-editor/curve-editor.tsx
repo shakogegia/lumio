@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { sampleCurve, type CurvePoint, type CurveSpec } from "@lumio/shared";
+import { RefreshCcw } from "lucide-react";
+import { hasCurves, sampleCurve, type CurvePoint, type CurveSpec } from "@lumio/shared";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEditSession } from "./use-edit-session";
 
 const CHANNELS: { key: keyof CurveSpec; label: string; stroke: string; dot: string }[] = [
@@ -25,7 +28,7 @@ const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
  *  double-click an interior point to remove it. Endpoints move only vertically.
  *  Commits one history entry per gesture via `setCurve`. */
 export function CurveEditor() {
-  const { working, setCurve } = useEditSession();
+  const { working, setCurve, resetCurves } = useEditSession();
   const [channel, setChannel] = useState<keyof CurveSpec>("master");
   const boxRef = useRef<HTMLDivElement>(null);
   // In-progress gesture: the dragged index + the working points (kept in a ref so
@@ -108,21 +111,38 @@ export function CurveEditor() {
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="font-medium text-muted-foreground">Curve</p>
-        <div className="flex gap-1">
-          {CHANNELS.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              aria-pressed={channel === c.key}
-              onClick={() => setChannel(c.key)}
-              className={cn(
-                "flex size-6 items-center justify-center rounded text-[10px] font-medium",
-                channel === c.key ? "bg-foreground/15 text-foreground" : "text-muted-foreground hover:bg-foreground/10",
-              )}
-            >
-              {c.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1">
+          <ToggleGroup
+            type="single"
+            size="sm"
+            value={channel}
+            onValueChange={(v) => {
+              if (v) setChannel(v as keyof CurveSpec);
+            }}
+            spacing={0}
+            variant="outline"
+          >
+            {CHANNELS.map((c) => (
+              <ToggleGroupItem
+                key={c.key}
+                value={c.key}
+                aria-label={c.label}
+                className="h-7 min-w-7 px-2 text-[11px] font-medium"
+              >
+                {c.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset curves"
+            disabled={!hasCurves(working.curves)}
+            onClick={resetCurves}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
         </div>
       </div>
       <div
