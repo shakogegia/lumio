@@ -17,8 +17,8 @@ describe("applyColorBake", () => {
     expect(await meanR(out)).toBeCloseTo(100, 0);
   });
 
-  it("exposure/brightness raise the mean", async () => {
-    const out = await applyColorBake(grey(), { rotate: 0, flipH: false, flipV: false, brightness: 80 });
+  it("exposure (EV, linear light) raises the mean", async () => {
+    const out = await applyColorBake(grey(), { rotate: 0, flipH: false, flipV: false, exposure: 2 });
     expect(await meanR(out)).toBeGreaterThan(150);
   });
 

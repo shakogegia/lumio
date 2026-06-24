@@ -90,7 +90,7 @@ describe("buildRenditions color", () => {
     const white = await sharp({
       create: { width: 48, height: 48, channels: 3, background: { r: 255, g: 255, b: 255 } },
     }).png().toBuffer();
-    const r = await buildRenditions(white, { rotate: 0, flipH: false, flipV: false, vignette: 100 });
+    const r = await buildRenditions(white, { rotate: 0, flipH: false, flipV: false, vignette: -100 });
     const { data, info } = await sharp(r.display).raw().toBuffer({ resolveWithObject: true });
     const lum = (x: number, y: number) => data[(y * info.width + x) * info.channels];
     const corner = lum(0, 0)!;
@@ -104,7 +104,7 @@ describe("buildRenditions color", () => {
     }).png().toBuffer();
     const r = await buildRenditions(img, {
       rotate: 0, flipH: false, flipV: false,
-      crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }, brightness: 80,
+      crop: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }, exposure: 2,
     });
     expect([r.width, r.height]).toEqual([50, 50]);
     const mean = (await sharp(r.display).stats()).channels[0]!.mean;

@@ -4,14 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildToneLut,
   chromaParams,
+  linearParams,
   vignetteParams,
-  colorCssFilter,
   type PhotoEdits,
 } from "@lumio/shared";
 import { GlColor, isWebGL2Available, type GlColorModel } from "./render/gl-color";
 
 function glModel(working: PhotoEdits): GlColorModel {
   return {
+    linear: linearParams(working),
     tone: buildToneLut(working, 256),
     chroma: chromaParams(working),
     vignette: vignetteParams(working),
@@ -25,11 +26,10 @@ function glModel(working: PhotoEdits): GlColorModel {
  * resolution; the caller's `style`/`className` (geometry transform, layout size)
  * scale it exactly as they did the `<img>`.
  *
- * Falls back to an `<img>` + CSS `filter` when WebGL2 is unavailable. The CSS
- * fallback can only express the per-pixel filters (exposure/brightness/contrast/
- * saturation/hue/−fade); the overlay-based effects (temperature/+fade/vignette)
- * and the v2 tonal sliders/curves are GL-only. WebGL2 is effectively universal,
- * so this is a rare safety net.
+ * Requires WebGL2 (effectively universal). On the rare device without it, falls
+ * back to the un-adjusted `<img>` — the recipe's color can't be previewed without
+ * the GPU, but the photo still shows. (The old CSS-`filter` fallback was dropped:
+ * it could only fake a few of the adjustments and silently diverged from the bake.)
  */
 export function AdjustedImage({
   src,
@@ -119,7 +119,7 @@ export function AdjustedImage({
         alt=""
         draggable={false}
         className={className}
-        style={{ ...style, filter: colorCssFilter(working) || undefined }}
+        style={style}
         onLoad={(e) =>
           onSizeRef.current?.({
             w: e.currentTarget.naturalWidth,

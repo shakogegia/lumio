@@ -26,9 +26,9 @@ export interface CropRect {
 /** Non-destructive edit recipe applied on top of EXIF auto-orientation.
  *  Canonical order: flipH → flipV → coarse rotate → straighten(θ) → crop. */
 export interface PhotoEdits {
-  /** Recipe schema version (see EDITS_VERSION in photo-edits.ts). Absent in legacy
-   *  rows → treated as v1. Stamped on every coerced/saved recipe; metadata only,
-   *  not a visual field (sameEdits ignores it). */
+  /** Recipe schema version (see EDITS_VERSION in photo-edits.ts). Absent/<3 in
+   *  legacy rows → migrated to current units on read (coercePhotoEdits). Stamped on
+   *  every coerced/saved recipe; metadata only, not a visual field (sameEdits ignores it). */
   version?: number;
   rotate: 0 | 90 | 180 | 270;
   flipH: boolean;
@@ -39,21 +39,24 @@ export interface PhotoEdits {
   crop?: CropRect | null;
 
   // Color adjustments. All optional; absent === neutral. See photo-color.ts.
-  /** Tonal gain in perceptual stops-ish units. -100..100, 0 = neutral. */
+  // NOTE: temperature's neutral is 6500 (K), NOT 0 — use NEUTRAL[key] to default.
+  /** Exposure in EV stops; applied as a 2^EV multiply in linear light. -5..5, 0 = neutral. */
   exposure?: number;
-  /** Linear lightness multiply. -100..100, 0 = neutral. */
+  /** Midtone-gamma lift/cut (anchors black & white). -100..100, 0 = neutral. */
   brightness?: number;
   /** Contrast around mid-grey. -100..100, 0 = neutral. */
   contrast?: number;
   /** Saturation multiply. -100..100, 0 = neutral. */
   saturation?: number;
-  /** Warm (+) / cool (−) white-balance tint. -100..100, 0 = neutral. */
+  /** White-balance temperature in Kelvin (higher = warmer). 2000..12000, 6500 = neutral. */
   temperature?: number;
+  /** White-balance tint, green (−) ↔ magenta (+). -150..150, 0 = neutral. */
+  tint?: number;
   /** Hue rotation in degrees. -180..180, 0 = neutral. */
   hue?: number;
   /** Fade: + lifts blacks (matte/wash), − deepens blacks (punch/contrast). -100..100, 0 = neutral. */
   fade?: number;
-  /** Corner darkening. 0..100, 0 = neutral. */
+  /** Vignette: − darkens corners, + lightens. -100..100, 0 = neutral. */
   vignette?: number;
   /** Highlights region brightness (+ brightens, − recovers). -100..100, 0 = neutral. */
   highlights?: number;

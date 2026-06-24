@@ -25,7 +25,7 @@ const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotat
 
 describe("photo-edits", () => {
   it("NO_EDITS is the identity recipe", () => {
-    expect(NO_EDITS).toEqual({ version: 2, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 3, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is false for null and identity, true otherwise", () => {
@@ -63,7 +63,7 @@ describe("photo-edits", () => {
   });
 
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
-    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 2, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 3, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();
     expect(coercePhotoEdits({ rotate: 45, flipH: false, flipV: false })).toBeNull();
     expect(coercePhotoEdits({ rotate: 90 })).toBeNull();
@@ -103,7 +103,7 @@ describe("photo-edits crop & straighten", () => {
   const base = { rotate: 0, flipH: false, flipV: false } as const;
 
   it("NO_EDITS includes straighten 0 and crop null", () => {
-    expect(NO_EDITS).toEqual({ version: 2, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 3, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is true when only straighten or only crop is set", () => {
@@ -192,25 +192,63 @@ describe("photo-edits color", () => {
     expect(hasEdits({ ...base })).toBe(false);
   });
 
-  it("sameEdits compares color fields (absent === 0)", () => {
+  it("sameEdits compares color fields (absent === neutral)", () => {
     expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 10 })).toBe(true);
     expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 11 })).toBe(false);
     expect(sameEdits({ ...base, exposure: 0 }, { ...base })).toBe(true);
+    // temperature's neutral is 6500, not 0
+    expect(sameEdits({ ...base, temperature: 6500 }, { ...base })).toBe(true);
+    expect(sameEdits({ ...base, temperature: 9000 }, { ...base })).toBe(false);
   });
 
-  it("coercePhotoEdits clamps color and omits neutral", () => {
-    const out = coercePhotoEdits({ ...base, brightness: 50, contrast: 999, exposure: 0 })!;
+  it("coercePhotoEdits clamps color and omits neutral (v3 input, no migration)", () => {
+    const out = coercePhotoEdits({ ...base, version: 3, brightness: 50, contrast: 999, exposure: 0 })!;
     expect(out.brightness).toBe(50);
     expect(out.contrast).toBe(100);
     expect(out).not.toHaveProperty("exposure");
     expect(out).not.toHaveProperty("vignette");
+  });
+
+  it("coercePhotoEdits clamps temperature to Kelvin range and drops neutral", () => {
+    expect(coercePhotoEdits({ ...base, version: 3, temperature: 99999 })!.temperature).toBe(12000);
+    expect(coercePhotoEdits({ ...base, version: 3, temperature: 6500 })!).not.toHaveProperty("temperature");
+    expect(coercePhotoEdits({ ...base, version: 3, tint: 999 })!.tint).toBe(150);
+  });
+});
+
+describe("v3 migration of legacy recipes", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+
+  it("legacy temperature (−100..100) becomes Kelvin (warm = lower K)", () => {
+    expect(coercePhotoEdits({ ...base, temperature: 100 })!.temperature).toBe(4000); // warm
+    expect(coercePhotoEdits({ ...base, temperature: -100 })!.temperature).toBe(9000); // cool
+  });
+
+  it("legacy exposure (±100) becomes EV stops (÷50)", () => {
+    expect(coercePhotoEdits({ ...base, exposure: 100 })!.exposure).toBeCloseTo(2, 6);
+    expect(coercePhotoEdits({ ...base, exposure: -50 })!.exposure).toBeCloseTo(-1, 6);
+  });
+
+  it("legacy brightness folds into exposure; brightness resets to neutral", () => {
+    const out = coercePhotoEdits({ ...base, brightness: 100 })!; // ×2 ⇒ +1 EV
+    expect(out.exposure).toBeCloseTo(1, 6);
+    expect(out).not.toHaveProperty("brightness");
+  });
+
+  it("legacy vignette (0..100 darken) flips to negative", () => {
+    expect(coercePhotoEdits({ ...base, vignette: 60 })!.vignette).toBe(-60);
+  });
+
+  it("a v3 recipe is left as-is (no double migration)", () => {
+    expect(coercePhotoEdits({ ...base, version: 3, temperature: 4000 })!.temperature).toBe(4000);
+    expect(coercePhotoEdits({ ...base, version: 3, exposure: 2 })!.exposure).toBe(2);
   });
 });
 
 describe("edits schema version", () => {
   it("NO_EDITS carries the current schema version", () => {
     expect(NO_EDITS.version).toBe(EDITS_VERSION);
-    expect(EDITS_VERSION).toBe(2);
+    expect(EDITS_VERSION).toBe(3);
   });
 
   it("coercePhotoEdits stamps the current version on a legacy row that lacks one", () => {

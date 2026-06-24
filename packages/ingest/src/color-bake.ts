@@ -9,11 +9,12 @@ import { applyColorToRaw, buildColorModel, hasColor, type PhotoEdits } from "@lu
  * per-channel `.linear()` → vignette composite), each round-tripping through an
  * 8-bit PNG buffer — so every step re-quantized to 256 levels and the errors
  * compounded into visible banding on smooth gradients. Here we instead read the
- * pixels once, run the SHARED per-pixel kernel in floating point (exposure /
- * brightness / contrast / highlights / shadows / whites / blacks / fade + curves
- * via a tone LUT, then temperature / hue / saturation / vibrance, then vignette),
- * and quantize exactly once on write-back. This is the same math the WebGL preview
- * runs (`applyColorToRaw`), so the bake matches what the user saw while editing.
+ * pixels once, run the SHARED per-pixel kernel in floating point (exposure ×
+ * white balance in linear light; then a gamma-space tone LUT for brightness /
+ * contrast / highlights / shadows / whites / blacks / fade + curves; then hue /
+ * saturation / vibrance; then vignette), and quantize exactly once on write-back.
+ * This is the same math the WebGL preview runs (`applyColorToRaw`), so the bake
+ * matches what the user saw while editing.
  *
  * Note on bit depth: the output renditions are 8-bit (JPEG/WebP), so a 16-bit
  * working *container* would add no quality for 8-bit sources — the banding win is

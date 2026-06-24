@@ -1,13 +1,17 @@
-import type { ChromaParams, ToneLut, VignetteParams } from "@lumio/shared";
+import type { ChromaParams, LinearParams, ToneLut, VignetteParams } from "@lumio/shared";
 
 /** The render inputs — exactly the artifacts the shared color model produces.
  *  The bake (`applyColorToRaw`) runs the identical math, so preview = save. */
 export interface GlColorModel {
+  /** Exposure × white-balance matrix, applied in linear light. null = identity. */
+  linear: LinearParams | null;
   /** Per-channel tone LUT (any length; uploaded as a 256-wide texture). null = identity. */
   tone: ToneLut | null;
   chroma: ChromaParams | null;
   vignette: VignetteParams | null;
 }
+
+const IDENTITY3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 export function isWebGL2Available(): boolean {
   if (typeof document === "undefined") return false;
@@ -33,20 +37,29 @@ void main() {
 }`;
 
 // Fragment shader — mirrors packages/shared/src/photo-color.ts#applyColorToRaw:
-// tone LUT per channel → temperature/hue/saturation/vibrance → radial vignette.
+// linear pre-pass (exposure × white balance) → tone LUT per channel →
+// hue/saturation/vibrance → radial vignette.
 const FRAG = `#version 300 es
 precision highp float;
 in vec2 vUv;
 out vec4 fragColor;
 uniform sampler2D uImage;
 uniform sampler2D uLut;     // 256x1 RGB: column i = [toneR[i], toneG[i], toneB[i]]
+uniform bool uHasLinear;
+uniform mat3 uLinear;       // exposure × white-balance CAT (column-major)
 uniform bool uHasChroma;
-uniform float uTempR;
-uniform float uTempB;
 uniform float uHue;         // degrees
 uniform float uSatF;
 uniform float uVib;
-uniform float uVigStrength;
+uniform float uVigStrength; // signed: <0 darken corners, >0 lighten
+
+vec3 srgbToLinear(vec3 c) {
+  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}
+vec3 linearToSrgb(vec3 c) {
+  c = max(c, 0.0);
+  return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+}
 
 vec3 rotateHue(vec3 c, float deg) {
   float a = radians(deg);
@@ -63,6 +76,11 @@ void main() {
   vec4 src = texture(uImage, vUv);
   vec3 c = src.rgb;
 
+  // Exposure × white balance in LINEAR light, then re-encode to gamma.
+  if (uHasLinear) {
+    c = linearToSrgb(uLinear * srgbToLinear(c));
+  }
+
   // Tone: per-channel LUT lookup (linear filtering interpolates between entries,
   // matching the shared sampleLut lerp).
   c = vec3(
@@ -72,8 +90,6 @@ void main() {
   );
 
   if (uHasChroma) {
-    c.r *= uTempR;
-    c.b *= uTempB;
     if (uHue != 0.0) c = rotateHue(c, uHue);
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     float vf = 1.0;
@@ -87,9 +103,9 @@ void main() {
     c = vec3(l) + (c - vec3(l)) * f;
   }
 
-  if (uVigStrength > 0.0) {
+  if (uVigStrength != 0.0) {
     float dist = length(vUv - 0.5) / 0.70710678;
-    c *= (1.0 - uVigStrength * smoothstep(0.45, 1.0, dist));
+    c *= (1.0 + uVigStrength * smoothstep(0.45, 1.0, dist));
   }
 
   fragColor = vec4(clamp(c, 0.0, 1.0), src.a);
@@ -135,9 +151,9 @@ export class GlColor {
     this.uniforms = {
       uImage: gl.getUniformLocation(this.program, "uImage"),
       uLut: gl.getUniformLocation(this.program, "uLut"),
+      uHasLinear: gl.getUniformLocation(this.program, "uHasLinear"),
+      uLinear: gl.getUniformLocation(this.program, "uLinear"),
       uHasChroma: gl.getUniformLocation(this.program, "uHasChroma"),
-      uTempR: gl.getUniformLocation(this.program, "uTempR"),
-      uTempB: gl.getUniformLocation(this.program, "uTempB"),
       uHue: gl.getUniformLocation(this.program, "uHue"),
       uSatF: gl.getUniformLocation(this.program, "uSatF"),
       uVib: gl.getUniformLocation(this.program, "uVib"),
@@ -178,10 +194,13 @@ export class GlColor {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
 
+    const lin = model.linear;
+    gl.uniform1i(this.uniforms.uHasLinear!, lin ? 1 : 0);
+    // `m` is column-major; uploaded transpose=false. IDENTITY3 when absent (unused).
+    gl.uniformMatrix3fv(this.uniforms.uLinear!, false, lin ? lin.m : IDENTITY3);
+
     const ch = model.chroma;
     gl.uniform1i(this.uniforms.uHasChroma!, ch ? 1 : 0);
-    gl.uniform1f(this.uniforms.uTempR!, ch?.tempR ?? 1);
-    gl.uniform1f(this.uniforms.uTempB!, ch?.tempB ?? 1);
     gl.uniform1f(this.uniforms.uHue!, ch?.hue ?? 0);
     gl.uniform1f(this.uniforms.uSatF!, ch?.satF ?? 1);
     gl.uniform1f(this.uniforms.uVib!, ch?.vib ?? 0);

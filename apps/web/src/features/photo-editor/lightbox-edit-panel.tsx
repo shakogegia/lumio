@@ -242,7 +242,7 @@ export function LightboxEditPanel() {
           </Button>
         </div>
         {COLOR_FIELDS.map((f) => {
-          const value = working[f.key] ?? 0;
+          const value = working[f.key] ?? f.neutral;
           return (
             <div key={f.key} className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
@@ -253,7 +253,7 @@ export function LightboxEditPanel() {
                   className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setColor(f.key, f.neutral)}
                 >
-                  {value}
+                  {f.precision ? value.toFixed(f.precision) : value}
                 </button>
               </div>
               <Slider
