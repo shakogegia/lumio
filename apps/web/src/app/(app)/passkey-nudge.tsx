@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { KeyRound } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 
@@ -45,6 +46,7 @@ export function showPasskeyNudgeToast() {
           void addPasskeyFromToast();
         }}
       >
+        <KeyRound />
         Add passkey
       </Button>
     ),

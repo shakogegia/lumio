@@ -64,6 +64,7 @@ export function PasskeyList({ passkeys }: { passkeys: PasskeyRow[] }) {
       )}
 
       <Button variant="outline" size="sm" disabled={adding} onClick={add}>
+        <KeyRound />
         {adding ? "Waiting for your device…" : "Add passkey"}
       </Button>
     </div>
