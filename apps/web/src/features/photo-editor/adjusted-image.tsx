@@ -6,13 +6,15 @@ import {
   chromaParams,
   linearParams,
   vignetteParams,
+  DEFAULT_BASELINE,
   type PhotoEdits,
+  type WbBaseline,
 } from "@lumio/shared";
 import { GlColor, isWebGL2Available, type GlColorModel } from "./render/gl-color";
 
-function glModel(working: PhotoEdits): GlColorModel {
+function glModel(working: PhotoEdits, baseline: WbBaseline): GlColorModel {
   return {
-    linear: linearParams(working),
+    linear: linearParams(working, baseline),
     tone: buildToneLut(working, 256),
     chroma: chromaParams(working),
     vignette: vignetteParams(working),
@@ -34,12 +36,14 @@ function glModel(working: PhotoEdits): GlColorModel {
 export function AdjustedImage({
   src,
   working,
+  baseline = DEFAULT_BASELINE,
   onNaturalSize,
   className,
   style,
 }: {
   src: string;
   working: PhotoEdits;
+  baseline?: WbBaseline;
   onNaturalSize?: (s: { w: number; h: number }) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -66,7 +70,7 @@ export function AdjustedImage({
     onSizeRef.current = onNaturalSize;
   });
 
-  const model = useMemo(() => glModel(working), [working]);
+  const model = useMemo(() => glModel(working, baseline), [working, baseline]);
 
   // Latest model reachable from the async (re)upload below, without making the
   // decode effect depend on `model` — that would re-decode the source on every
