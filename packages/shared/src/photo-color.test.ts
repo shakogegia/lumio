@@ -31,7 +31,9 @@ describe("photo-color fields", () => {
   it("exposes the ordered color fields (tint after temperature)", () => {
     expect(COLOR_FIELDS.map((f) => f.key)).toEqual([
       "exposure", "brightness", "contrast", "highlights", "shadows", "whites", "blacks",
-      "temperature", "tint", "saturation", "vibrance", "hue", "fade", "vignette",
+      "temperature", "tint", "saturation", "vibrance", "hue",
+      "sharpen", "sharpenMask", "noiseReduction",
+      "fade", "vignette", "grain", "grainSize",
     ]);
   });
 
@@ -222,5 +224,23 @@ describe("applyColorToRaw identity", () => {
     const buf = new Uint8Array([10, 20, 30, 200, 100, 50]);
     applyColorToRaw(buf, 2, 1, 3, 255, { linear: null, tone: null, chroma: null, vignette: null });
     expect(Array.from(buf)).toEqual([10, 20, 30, 200, 100, 50]);
+  });
+});
+
+describe("detail/grain fields", () => {
+  it("registers the five new fields as neutral-0 sliders", () => {
+    for (const key of ["sharpen", "sharpenMask", "noiseReduction", "grain", "grainSize"] as const) {
+      const f = COLOR_FIELDS.find((c) => c.key === key);
+      expect(f, key).toBeDefined();
+      expect(f!.neutral).toBe(0);
+      expect(f!.min).toBe(0);
+      expect(f!.max).toBe(100);
+      expect(NEUTRAL[key]).toBe(0);
+    }
+  });
+  it("hasColor flips true when a detail/grain field is non-neutral", () => {
+    expect(hasColor({ ...base, sharpen: 40 })).toBe(true);
+    expect(hasColor({ ...base, grain: 25 })).toBe(true);
+    expect(hasColor({ ...base, sharpen: 0, grain: 0 })).toBe(false);
   });
 });

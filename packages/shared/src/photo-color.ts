@@ -4,7 +4,8 @@ import { sampleCurve } from "./tone-curve.js";
 export type ColorKey =
   | "exposure" | "brightness" | "contrast" | "saturation"
   | "temperature" | "tint" | "hue" | "fade" | "vignette"
-  | "highlights" | "shadows" | "whites" | "blacks" | "vibrance";
+  | "highlights" | "shadows" | "whites" | "blacks" | "vibrance"
+  | "sharpen" | "sharpenMask" | "noiseReduction" | "grain" | "grainSize";
 
 /** Slider config — drives the edit-panel UI, validation, and reset. */
 export interface ColorField {
@@ -34,9 +35,15 @@ export const COLOR_FIELDS: ColorField[] = [
   { key: "saturation",  label: "Saturation",  min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vibrance",    label: "Vibrance",    min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "hue",         label: "Hue",         min: -180, max: 180,   neutral: 0,    step: 1 },
+  // Detail
+  { key: "sharpen",        label: "Sharpen",         min: 0, max: 100, neutral: 0, step: 1 },
+  { key: "sharpenMask",    label: "Sharpen Masking", min: 0, max: 100, neutral: 0, step: 1 },
+  { key: "noiseReduction", label: "Noise Reduction", min: 0, max: 100, neutral: 0, step: 1 },
   // Effects
   { key: "fade",        label: "Fade",        min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vignette",    label: "Vignette",    min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "grain",       label: "Grain",       min: 0,    max: 100,   neutral: 0,    step: 1 },
+  { key: "grainSize",   label: "Grain Size",  min: 0,    max: 100,   neutral: 0,    step: 1 },
 ];
 
 /** Per-key neutral value. Temperature's neutral is 6500 (K), NOT 0 — so anything

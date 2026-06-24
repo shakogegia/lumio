@@ -68,6 +68,16 @@ export interface PhotoEdits {
   blacks?: number;
   /** Vibrance: saturation weighted toward less-saturated pixels. -100..100, 0 = neutral. */
   vibrance?: number;
+  /** Unsharp-mask amount (3×3 high-pass over the source). 0..100, 0 = neutral. */
+  sharpen?: number;
+  /** Sharpen masking: hold sharpening back in flat areas. 0..100, 0 = neutral. */
+  sharpenMask?: number;
+  /** Edge-aware noise reduction (blend toward the local mean). 0..100, 0 = neutral. */
+  noiseReduction?: number;
+  /** Film grain amount (per-pixel hash, applied last). 0..100, 0 = neutral. */
+  grain?: number;
+  /** Grain cell size; only meaningful when grain > 0. 0..100, 0 = neutral. */
+  grainSize?: number;
   /** Tone curves (master + optional per-channel). Absent = identity. */
   curves?: CurveSpec;
 }
