@@ -115,14 +115,29 @@ packages/ingest/src/
 
 Folded into §6 (via `<AdjustedImage>`). If we ship the crop fix *before* the GL renderer (recommended quick win — see plan Phase 1), the interim fix wraps `BaseImageStage` in crop mode with `colorCssFilter` + `colorOverlays`, matching `EditedResult` today. The GL work then supersedes it. Either way the crop frame/dim/handles stay above the adjusted image.
 
-## 9. Async save
+## 9. Async (non-blocking) save
 
-- **Schema:** add `JobType.regenerate_renditions`. Add a nullable `payload Json?` column to `Job` (additive, safe migration) carrying `{ photoId }`. (Drizzle/Prisma additive migration; follow the project DB-migration recipe; do **not** reset the shared dev DB.)
-- **Route (`/photos/[id]/edit`):** validate edits → **persist `edits` + client-computed dimensions to the DB** → enqueue a `regenerate_renditions` job for the photo → return the updated DTO immediately (dimensions computed from the recipe via existing shared geometry; `thumbhash` left as the prior value until the job lands).
-- **Worker handler:** reads the photo's *current* `edits` from the DB (idempotent, latest-wins) and runs `regenerateRenditions`, then updates `thumbhash`/dims and bumps `updatedAt` (busts the `?v=` rendition URL).
-- **Client:** `apply()` returns immediately; the live GL preview already shows the final look, so there's no visual wait. `patchPhotos` optimistically sets `edits` + computed dims. `useActivity()` (already polling) detects job completion; on completion the rendition URL version bumps and the grid/lightbox thumbnails refresh. A subtle "saving…/saved" affordance reuses the existing activity surface.
-- **Dedup/races:** enqueue per save; the handler always bakes current DB edits, so a rapid second save simply supersedes. Optional: skip enqueue if a queued (not yet running) job exists for the same photo.
-- **Worker-offline:** if the worker is down, edits persist (DB) but renditions don't regenerate until it returns; activity already surfaces worker online/offline. Acceptable and visible.
+**Decision — optimistic, non-blocking client (not a worker job).** The original plan
+moved rendition regeneration to a `regenerate_renditions` worker job. On reflection
+that carried three compounding risks for little extra user-visible benefit on a
+self-hosted single-host deployment: (1) a **migration on the shared dev Postgres**
+(every worktree shares one DB — adding a `Job.payload` column + a `_prisma_migrations`
+record creates drift other branches' `migrate dev` would try to "fix" by resetting);
+(2) a **rendition-versioning race** — the route bumping `updatedAt` before the worker
+rebakes would serve the *old* cached file under the new URL; (3) **client
+reconciliation** needing a photo↔job mapping and refetch. The chosen design avoids all
+three:
+
+- **Route (`/photos/[id]/edit`): unchanged** — still validates, regenerates renditions, and returns the authoritative DTO. The regen runs inside the request (fine on a persistent self-hosted Node server); the user is simply no longer *blocked* on it.
+- **Client (`apply()`): optimistic + fire-and-reconcile.** It patches the store with the new `edits` immediately (so `dirty` clears and the user can keep editing or navigate away at once — the live GL preview already shows the final result), fires the POST **without awaiting it**, and on response reconciles the authoritative `edits`/`width`/`height`/`thumbhash`/`updatedAt` (the `updatedAt` bump busts the cached rendition URLs so the grid/lightbox thumbnails refresh). On failure it **rolls the store's `edits` back** so `dirty` returns and the user can retry; a toast reports it. The shared photo store lives above the lightbox, so the reconcile lands even after navigating to another photo.
+- **No schema, worker, or activity changes.** No shared-DB migration.
+
+**Future hardening (deferred):** a true `regenerate_renditions` worker job (per-photo
+`payload`, latest-wins, surfaced via `useActivity()`) is worthwhile if Lumio ever runs
+multiple web replicas or wants regen to survive a mid-request crash. It needs the
+additive `Job.payload` migration applied carefully to the shared DB (idempotent
+`ADD COLUMN IF NOT EXISTS`, no `migrate dev` reset) and the rendition-versioning race
+handled (only the worker bumps `updatedAt`, after the bake lands).
 
 ## 10. Testing strategy
 

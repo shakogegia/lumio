@@ -274,39 +274,48 @@ export function EditSessionProvider({
   }, []);
 
   const apply = useCallback(async (): Promise<boolean> => {
-    if (applying || sameEdits(working, photo.edits ?? NO_EDITS)) return false;
+    if (sameEdits(working, photo.edits ?? NO_EDITS)) return false;
     const startedId = photo.id; // the edit targets this photo, even if we navigate
+    const prevSaved = photo.edits ?? null; // for revert on failure
+    const recipe = hasEdits(working) ? working : null;
+
+    // Optimistic + non-blocking save: reflect the change immediately (clears
+    // `dirty`, so the user can keep editing or navigate away without waiting), then
+    // reconcile the authoritative dims/thumbhash/version when the bake responds.
+    // The live GL preview already shows the final result, so there is nothing to
+    // visually wait for. The shared store lives above the lightbox, so the
+    // background reconcile lands even after navigating to another photo.
+    patchPhotos(new Set([startedId]), { edits: recipe });
+    if (photoIdRef.current === startedId) setHistory(freshHistory(recipe ?? NO_EDITS));
     setApplying(true);
-    try {
-      const body = hasEdits(working) ? working : null;
-      const res = await fetch(catalogApiUrl(slug, `/photos/${startedId}/edit`), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ edits: body }),
-      });
-      if (!res.ok) throw new Error("edit failed");
-      const dto = (await res.json()) as PhotoDTO;
-      // Patch the shared store so the grid tile + lightbox pick up the new
-      // renditions (updatedAt busts the cached rendition URLs) and dimensions.
-      // Always safe to patch the edited photo's store entry, even after nav.
-      patchPhotos(new Set([startedId]), {
-        edits: dto.edits,
-        width: dto.width,
-        height: dto.height,
-        thumbhash: dto.thumbhash,
-        updatedAt: dto.updatedAt,
-      });
-      // Only reset history if we're still on the photo we edited — otherwise we'd
-      // clobber the (already reseeded) history of the new photo.
-      if (photoIdRef.current === startedId) setHistory(freshHistory(dto.edits ?? NO_EDITS));
-      return true;
-    } catch {
-      toast.error("Failed to save edits.");
-      return false;
-    } finally {
-      setApplying(false);
-    }
-  }, [applying, working, slug, photo.id, photo.edits, patchPhotos]);
+
+    void fetch(catalogApiUrl(slug, `/photos/${startedId}/edit`), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ edits: recipe }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("edit failed");
+        const dto = (await res.json()) as PhotoDTO;
+        // updatedAt busts the cached rendition URLs once the bake is on disk; dims
+        // correct any geometry change; thumbhash refreshes the blur-up.
+        patchPhotos(new Set([startedId]), {
+          edits: dto.edits,
+          width: dto.width,
+          height: dto.height,
+          thumbhash: dto.thumbhash,
+          updatedAt: dto.updatedAt,
+        });
+      })
+      .catch(() => {
+        // Roll the store's edits back so `dirty` returns and the user can retry.
+        patchPhotos(new Set([startedId]), { edits: prevSaved });
+        toast.error("Failed to save edits.");
+      })
+      .finally(() => setApplying(false));
+
+    return true;
+  }, [working, slug, photo.id, photo.edits, patchPhotos]);
 
   const guard = useCallback(
     (go: () => void) => {

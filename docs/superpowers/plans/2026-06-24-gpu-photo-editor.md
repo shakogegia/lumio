@@ -225,7 +225,15 @@ Math (evaluated in sRGB-encoded [0,1], `x` = input level):
 
 ## Phase 6 — Async (non-blocking) save
 
-### Task 6.1: `Job.payload` migration + `regenerate_renditions` type
+> **Implemented as an optimistic, non-blocking client — NOT a worker job.** See spec
+> §9 for the rationale (avoids a shared-DB migration, a rendition-versioning race, and
+> reconciliation complexity, with the same user-visible result on a single-host deploy).
+> Only `use-edit-session.tsx#apply()` changed: it patches the store optimistically,
+> fires the POST without awaiting it, reconciles dims/thumbhash/version on response,
+> and reverts on failure. The route/worker/schema are untouched. The worker-job design
+> below is retained as **deferred future hardening** (multi-replica / crash-survival).
+
+### Task 6.1 (deferred): `Job.payload` migration + `regenerate_renditions` type
 
 **Files:** Modify `packages/db/prisma/schema.prisma`, `packages/shared/src/jobs.ts`; generate migration.
 
