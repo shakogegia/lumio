@@ -1,9 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, KeyRound, Search, FolderSearch } from "lucide-react";
+import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderSearch } from "lucide-react";
 import { FeatureKey } from "@lumio/shared";
-import { showPasskeyNudgeToast } from "@/app/(app)/passkey-nudge";
 import { FeatureGate } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
 import { SidebarMore } from "@/components/sidebar-more";
@@ -92,24 +91,6 @@ export function AppSidebar() {
 
       {/* Bottom group */}
       <div className="mb-4 flex flex-col items-center gap-1">
-        {/* Dev-only: fire the passkey nudge toast on demand for testing. */}
-        {process.env.NODE_ENV === "development" && (
-          <button
-            type="button"
-            title="Test passkey toast (dev only)"
-            onClick={showPasskeyNudgeToast}
-            className="group flex w-14 flex-col items-center gap-1 rounded-2xl py-2.5 text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <KeyRound
-              className="h-[26px] w-[26px] transition-transform duration-200 group-active:scale-90"
-              strokeWidth={1.8}
-              aria-hidden
-            />
-            <span className="text-[10px] leading-none font-medium tracking-wide">
-              Passkey
-            </span>
-          </button>
-        )}
         <SidebarMore />
       </div>
     </aside>
