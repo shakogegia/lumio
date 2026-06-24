@@ -11,6 +11,10 @@ import {
   chromaParams,
   vignetteParams,
   applyColorToRaw,
+  grainHash,
+  valueNoise,
+  detailParams,
+  grainParams,
 } from "./photo-color.js";
 
 const base = { rotate: 0 as const, flipH: false, flipV: false };
@@ -222,7 +226,9 @@ describe("vignette (bidirectional)", () => {
 describe("applyColorToRaw identity", () => {
   it("identity model leaves pixels unchanged", () => {
     const buf = new Uint8Array([10, 20, 30, 200, 100, 50]);
-    applyColorToRaw(buf, 2, 1, 3, 255, { linear: null, tone: null, chroma: null, vignette: null });
+    applyColorToRaw(buf, 2, 1, 3, 255, {
+      linear: null, tone: null, chroma: null, vignette: null, detail: null, grain: null,
+    });
     expect(Array.from(buf)).toEqual([10, 20, 30, 200, 100, 50]);
   });
 });
@@ -242,5 +248,51 @@ describe("detail/grain fields", () => {
     expect(hasColor({ ...base, sharpen: 40 })).toBe(true);
     expect(hasColor({ ...base, grain: 25 })).toBe(true);
     expect(hasColor({ ...base, sharpen: 0, grain: 0 })).toBe(false);
+  });
+});
+
+describe("grain noise", () => {
+  it("grainHash is deterministic and in [0,1)", () => {
+    const a = grainHash(12, 7);
+    expect(grainHash(12, 7)).toBe(a);
+    expect(a).toBeGreaterThanOrEqual(0);
+    expect(a).toBeLessThan(1);
+    expect(grainHash(12, 8)).not.toBe(a);
+  });
+  it("grainHash uses only the low 16 bits (float32-safe)", () => {
+    const v = grainHash(99, 1234);
+    expect(Number.isInteger(v * 65536)).toBe(true);
+    expect(grainHash(0, 0)).toBe(0);
+  });
+  it("valueNoise stays in [-1,1] and reduces to the lattice hash at integers", () => {
+    for (const [x, y] of [[0, 0], [5, 9], [40, 3]]) {
+      const n = valueNoise(x, y, 3);
+      expect(n).toBeGreaterThanOrEqual(-1);
+      expect(n).toBeLessThanOrEqual(1);
+    }
+    expect(valueNoise(0, 0, 1)).toBeCloseTo(grainHash(0, 0) * 2 - 1, 10);
+  });
+});
+
+describe("detail/grain params", () => {
+  it("detailParams is null unless sharpen or NR is active", () => {
+    expect(detailParams({ ...base, sharpenMask: 80 })).toBeNull();
+    expect(detailParams(null)).toBeNull();
+    const d = detailParams({ ...base, sharpen: 100, sharpenMask: 50, noiseReduction: 20 })!;
+    expect(d.sharpen).toBeCloseTo(1.5, 6);
+    expect(d.mask).toBeCloseTo(0.5, 6);
+    expect(d.nr).toBeCloseTo(0.2, 6);
+  });
+  it("grainParams is null unless grain is active; folds amount + cell", () => {
+    expect(grainParams({ ...base, grainSize: 100 })).toBeNull();
+    const g = grainParams({ ...base, grain: 50, grainSize: 100 })!;
+    expect(g.amount).toBeCloseTo(0.06, 6);
+    expect(g.cell).toBeCloseTo(4, 6);
+    expect(grainParams({ ...base, grain: 50 })!.cell).toBeCloseTo(1, 6);
+  });
+  it("buildColorModel carries detail + grain", () => {
+    const m = buildColorModel({ ...base, sharpen: 30, grain: 10 });
+    expect(m.detail).not.toBeNull();
+    expect(m.grain).not.toBeNull();
   });
 });

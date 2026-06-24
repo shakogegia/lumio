@@ -64,6 +64,14 @@ const NEUTRAL_K = 6500;           // temperature where the white-balance matrix 
 const DUV_MAX = 0.02;             // tint Duv offset at |tint| = 150
 const TINT_RANGE = 150;
 const TINT_SIGN = -1;             // orientation of +tint → magenta (verified by test)
+// Detail/grain (the GL preview and the sharp bake share these; the shader
+// hardcodes the same MASK_LO/MASK_HI/NR_SIGMA + Gaussian/Sobel weights).
+const SHARPEN_MAX = 1.5;          // high-pass gain at sharpen = 100
+const MASK_LO = 0.1;              // raw-Sobel luma gradient where masking starts allowing sharpen
+const MASK_HI = 0.8;              // gradient where masking fully allows sharpen
+const NR_SIGMA = 0.12;            // bilateral luma-difference sigma for noise reduction
+const GRAIN_MAX = 0.12;           // grain signal amplitude at grain = 100
+const GRAIN_CELL_MAX = 4;         // grain cell size (px) at grainSize = 100
 
 /** Field value with the field's *neutral* as the default for a missing key. */
 const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? NEUTRAL[k];
@@ -349,11 +357,55 @@ export function vignetteParams(e: PhotoEdits | null): VignetteParams | null {
   return { strength: v * VIGNETTE_MAX };
 }
 
+// ---------------------------------------------------------------------
+// Detail (spatial) — sharpen + masking + noise reduction. A single 3×3 read
+// of the SOURCE feeds both: an unsharp high-pass and an edge-aware blend
+// toward the local mean. Applied BEFORE the color pipeline.
+// ---------------------------------------------------------------------
+
+export interface DetailParams {
+  /** High-pass gain (sharpen/100 × SHARPEN_MAX); 0 ⇒ noise-reduction only. */
+  sharpen: number;
+  /** Masking strength 0..1 (1 = sharpen edges only). */
+  mask: number;
+  /** Noise-reduction strength 0..1. */
+  nr: number;
+}
+
+export function detailParams(e: PhotoEdits | null): DetailParams | null {
+  const sharpen = val(e, "sharpen");
+  const nr = val(e, "noiseReduction");
+  if (sharpen === 0 && nr === 0) return null; // masking alone is a no-op
+  return {
+    sharpen: (sharpen / 100) * SHARPEN_MAX,
+    mask: val(e, "sharpenMask") / 100,
+    nr: nr / 100,
+  };
+}
+
+export interface GrainParams {
+  /** Signal amplitude (grain/100 × GRAIN_MAX). */
+  amount: number;
+  /** Lattice cell size in px (≥1). */
+  cell: number;
+}
+
+export function grainParams(e: PhotoEdits | null): GrainParams | null {
+  const grain = val(e, "grain");
+  if (grain === 0) return null;
+  return {
+    amount: (grain / 100) * GRAIN_MAX,
+    cell: 1 + (val(e, "grainSize") / 100) * (GRAIN_CELL_MAX - 1),
+  };
+}
+
 export interface ColorModel {
   linear: LinearParams | null;
   tone: ToneLut | null;
   chroma: ChromaParams | null;
   vignette: VignetteParams | null;
+  detail: DetailParams | null;
+  grain: GrainParams | null;
 }
 
 /** Assemble the full color model. The bake uses a high-resolution tone LUT
@@ -365,6 +417,8 @@ export function buildColorModel(e: PhotoEdits | null, toneSamples = 1024): Color
     tone: buildToneLut(e, toneSamples),
     chroma: chromaParams(e),
     vignette: vignetteParams(e),
+    detail: detailParams(e),
+    grain: grainParams(e),
   };
 }
 
@@ -460,4 +514,40 @@ export function applyColorToRaw(
 function toChannel(v: number, maxVal: number): number {
   const s = Math.round(v * maxVal);
   return s < 0 ? 0 : s > maxVal ? maxVal : s;
+}
+
+// =====================================================================
+// Grain (per-pixel) — integer coordinate hash kept to ≤16 bits so that
+// float32 (the GL shader) and double (this JS) agree on the value; the
+// GLSL `grainHash`/`valueNoise` mirror these exactly. Applied last, after
+// the color pipeline, as a monochrome additive offset.
+// =====================================================================
+
+/** 32-bit integer hash of a pixel coordinate → [0,1), reduced to 16 bits. */
+export function grainHash(ix: number, iy: number): number {
+  let n = (Math.imul(ix >>> 0, 0x1f1f1f1f) ^ (iy >>> 0)) >>> 0;
+  n = Math.imul(n, 0x27d4eb2d) >>> 0;
+  n = (n ^ (n >>> 15)) >>> 0;
+  return (n & 0xffff) / 65536;
+}
+
+function smoothstepUnit(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** Bilinear value-noise in [-1,1] on a lattice scaled by `cell` (px per cell). */
+export function valueNoise(x: number, y: number, cell: number): number {
+  const fx = x / cell;
+  const fy = y / cell;
+  const ix = Math.floor(fx);
+  const iy = Math.floor(fy);
+  const sx = smoothstepUnit(fx - ix);
+  const sy = smoothstepUnit(fy - iy);
+  const h00 = grainHash(ix, iy);
+  const h10 = grainHash(ix + 1, iy);
+  const h01 = grainHash(ix, iy + 1);
+  const h11 = grainHash(ix + 1, iy + 1);
+  const a = h00 + (h10 - h00) * sx;
+  const b = h01 + (h11 - h01) * sx;
+  return (a + (b - a) * sy) * 2 - 1;
 }
