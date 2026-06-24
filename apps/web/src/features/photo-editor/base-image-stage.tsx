@@ -1,25 +1,30 @@
 "use client";
 
 import { straightenedSize, type PhotoEdits } from "@lumio/shared";
+import { AdjustedImage } from "./adjusted-image";
 
-/** Renders the edit-free base with flip + coarse-rotate + straighten applied, as
- *  the O-box (the oriented image, tilted by straighten) holding the base <img>.
+/** Renders the base image with flip + coarse-rotate + straighten applied, as the
+ *  O-box (the oriented image, tilted by straighten) holding the base picture.
  *  Caller wraps this in a POSITIONED stage box of pixel size stageW×stageH (the
  *  O′ straightened bounding box); this fills that box (the O-box is centered in it
  *  via left-1/2/top-1/2). Shared by the crop editor (stage fit whole + overlay)
- *  and the edited-result preview (stage clipped to the crop). */
+ *  and the edited-result preview (stage clipped to the crop).
+ *
+ *  COLOR is applied here, in the image layer, by <AdjustedImage> (GPU). Because
+ *  both the crop editor and the preview render this component, the live color
+ *  adjustments show in every editor view — including Crop mode. */
 export function BaseImageStage({
   src,
   stageW,
   orientedBase,
   working,
-  onLoad,
+  onNaturalSize,
 }: {
   src: string;
   stageW: number;
   orientedBase: { w: number; h: number };
   working: PhotoEdits;
-  onLoad?: (e: React.SyntheticEvent<HTMLImageElement>) => void;
+  onNaturalSize?: (s: { w: number; h: number }) => void;
 }) {
   const theta = working.straighten ?? 0;
   const sx = working.flipH ? -1 : 1;
@@ -34,12 +39,10 @@ export function BaseImageStage({
       className="absolute left-1/2 top-1/2"
       style={{ width: oW, height: oH, transform: `translate(-50%, -50%) rotate(${theta}deg)` }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <AdjustedImage
         src={src}
-        alt=""
-        draggable={false}
-        onLoad={onLoad}
+        working={working}
+        onNaturalSize={onNaturalSize}
         className="absolute left-1/2 top-1/2 max-w-none select-none"
         style={{
           width: swap ? oH : oW,

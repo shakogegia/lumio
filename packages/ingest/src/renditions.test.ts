@@ -111,6 +111,36 @@ describe("buildRenditions color", () => {
     expect(mean).toBeGreaterThan(150);
   });
 
+  it("applies a v2 slider (shadows+) end-to-end and keeps dimensions", async () => {
+    const dark = () =>
+      sharp({ create: { width: 16, height: 16, channels: 3, background: { r: 40, g: 40, b: 40 } } })
+        .png()
+        .toBuffer();
+    const base = await buildRenditions(await dark(), null);
+    const lifted = await buildRenditions(await dark(), {
+      rotate: 0, flipH: false, flipV: false, shadows: 100,
+    });
+    const m0 = (await sharp(base.display).stats()).channels[0]!.mean;
+    const m1 = (await sharp(lifted.display).stats()).channels[0]!.mean;
+    expect(m1).toBeGreaterThan(m0);
+    expect([lifted.width, lifted.height]).toEqual([16, 16]);
+  });
+
+  it("applies a master tone curve end-to-end", async () => {
+    const mid = () =>
+      sharp({ create: { width: 16, height: 16, channels: 3, background: { r: 128, g: 128, b: 128 } } })
+        .png()
+        .toBuffer();
+    const base = await buildRenditions(await mid(), null);
+    const curved = await buildRenditions(await mid(), {
+      rotate: 0, flipH: false, flipV: false,
+      curves: { master: [{ x: 0, y: 0 }, { x: 0.5, y: 0.8 }, { x: 1, y: 1 }] },
+    });
+    const m0 = (await sharp(base.display).stats()).channels[0]!.mean;
+    const m1 = (await sharp(curved.display).stats()).channels[0]!.mean;
+    expect(m1).toBeGreaterThan(m0 + 20);
+  });
+
   it("encodeEditedJpeg applies a color-only recipe", async () => {
     const plain = await encodeEditedJpeg(await grey(), null);
     const bright = await encodeEditedJpeg(await grey(), {

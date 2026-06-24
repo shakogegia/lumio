@@ -79,6 +79,14 @@ const colorFieldSchemas = Object.fromEntries(
   COLOR_FIELDS.map((f) => [f.key, z.number().min(f.min).max(f.max).optional()]),
 ) as { [K in (typeof COLOR_FIELDS)[number]["key"]]: z.ZodOptional<z.ZodNumber> };
 
+const curvePointSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
+const curveSpecSchema = z.object({
+  master: z.array(curvePointSchema).optional(),
+  r: z.array(curvePointSchema).optional(),
+  g: z.array(curvePointSchema).optional(),
+  b: z.array(curvePointSchema).optional(),
+});
+
 /** Edit recipe payload. Used by POST /api/photos/[id]/edit (null = reset). */
 export const photoEditsSchema = z.object({
   version: z.number().int().min(1).optional(),
@@ -87,6 +95,7 @@ export const photoEditsSchema = z.object({
   flipV: z.boolean(),
   straighten: z.number().min(-45).max(45).optional(),
   crop: cropRectSchema.nullable().optional(),
+  curves: curveSpecSchema.optional(),
   ...colorFieldSchemas,
 });
 export const editPhotoSchema = z.object({ edits: photoEditsSchema.nullable() });

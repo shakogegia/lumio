@@ -6,6 +6,7 @@ import {
   Crop,
   FlipHorizontal,
   FlipVertical,
+  History,
   Loader2,
   RefreshCcw,
   RotateCcw,
@@ -20,6 +21,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
 import { useEditSession } from "./use-edit-session";
 import { useEditKeyboard } from "./use-edit-keyboard";
+import { CurveEditor } from "./curve-editor";
 
 const ASPECTS: { preset: AspectPreset; label: string }[] = [
   { preset: "free", label: "Free" },
@@ -45,12 +47,15 @@ export function LightboxEditPanel() {
     flipH,
     flipV,
     reset,
+    revertToOriginal,
     undo,
     redo,
     apply,
     setEditing,
     setStraighten,
     setAspect,
+    resetCrop,
+    setColorLive,
     setColor,
     resetTransform,
     resetColor,
@@ -144,8 +149,9 @@ export function LightboxEditPanel() {
           variant="outline"
           size="sm"
           className="flex-1"
-          disabled={!hasEdits(working) || applying}
+          disabled={!dirty || applying}
           onClick={reset}
+          title="Discard unsaved changes"
         >
           Reset
         </Button>
@@ -184,7 +190,19 @@ export function LightboxEditPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="font-medium text-muted-foreground">Crop</p>
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-muted-foreground">Crop</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset crop & straighten"
+            disabled={working.crop == null && (working.straighten ?? 0) === 0}
+            onClick={resetCrop}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
         <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
           <Crop aria-hidden /> Crop &amp; Straighten
           <Kbd className="ml-auto">R</Kbd>
@@ -225,21 +243,36 @@ export function LightboxEditPanel() {
                 max={f.max}
                 step={f.step}
                 value={[value]}
-                onValueChange={(v) => setColor(f.key, v[0])}
+                onValueChange={(v) => setColorLive(f.key, v[0])}
+                onValueCommit={(v) => setColor(f.key, v[0])}
               />
             </div>
           );
         })}
       </div>
 
-      <div className="mt-auto flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
-          <Undo2 aria-hidden /> Undo
-          <Kbd className="ml-auto">⌘Z</Kbd>
-        </Button>
-        <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
-          <Redo2 aria-hidden /> Redo
-          <Kbd className="ml-auto">⌘⇧Z</Kbd>
+      <CurveEditor />
+
+      <div className="mt-auto flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>
+            <Undo2 aria-hidden /> Undo
+            <Kbd className="ml-auto">⌘Z</Kbd>
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" disabled={!canRedo} onClick={redo}>
+            <Redo2 aria-hidden /> Redo
+            <Kbd className="ml-auto">⌘⇧Z</Kbd>
+          </Button>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-muted-foreground"
+          disabled={!hasEdits(working) || applying}
+          onClick={revertToOriginal}
+          title="Remove all edits and return to the unedited photo"
+        >
+          <History aria-hidden /> Revert to original
         </Button>
       </div>
     </div>

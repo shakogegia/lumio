@@ -416,14 +416,14 @@ function EditorCanvas({
     <div ref={wrapRef} className="relative flex h-full w-full items-center justify-center overflow-hidden">
       {layout && (
         <div className="absolute" style={{ width: layout.stageW, height: layout.stageH }}>
+          {/* BaseImageStage applies color (GPU), so Crop mode shows the adjusted
+              image. The CropOverlay (dim/frame/handles) sits above it. */}
           <BaseImageStage
             src={src}
             stageW={layout.stageW}
             orientedBase={orientedBase!}
             working={working}
-            onLoad={(e) =>
-              onBaseSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
-            }
+            onNaturalSize={onBaseSize}
           />
           <CropOverlay
             stageW={layout.stageW}
