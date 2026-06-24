@@ -20,6 +20,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
 import { useEditSession } from "./use-edit-session";
 import { useEditKeyboard } from "./use-edit-keyboard";
+import { CurveEditor } from "./curve-editor";
 
 const ASPECTS: { preset: AspectPreset; label: string }[] = [
   { preset: "free", label: "Free" },
@@ -231,6 +232,8 @@ export function LightboxEditPanel() {
           );
         })}
       </div>
+
+      <CurveEditor />
 
       <div className="mt-auto flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" disabled={!canUndo} onClick={undo}>

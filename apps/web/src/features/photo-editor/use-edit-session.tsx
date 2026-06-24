@@ -15,11 +15,14 @@ import {
   aspectCrop as recipeAspectCrop,
   clampCropToImage,
   COLOR_FIELDS,
+  hasCurve,
   type PhotoDTO,
   type PhotoEdits,
   type AspectPreset,
   type CropRect,
   type ColorKey,
+  type CurvePoint,
+  type CurveSpec,
 } from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
 import { catalogApiUrl } from "@/lib/catalog-api";
@@ -60,6 +63,8 @@ interface EditSessionValue {
   setAspect: (preset: AspectPreset) => void;
   /** Set a single color-adjustment field (0/neutral removes it). Pushes history. */
   setColor: (key: ColorKey, value: number) => void;
+  /** Set a tone curve's points for one channel (identity/<2 points clears it). Pushes history. */
+  setCurve: (channel: keyof CurveSpec, points: CurvePoint[]) => void;
   /** Reset rotate + flip to identity (the Transform group). Pushes history. */
   resetTransform: () => void;
   /** Reset all color adjustments to neutral (the Adjust group). Pushes history. */
@@ -219,6 +224,20 @@ export function EditSessionProvider({
       return pushHistory(h, next);
     });
   }, []);
+  const setCurve = useCallback((channel: keyof CurveSpec, points: CurvePoint[]) => {
+    setHistory((h) => {
+      const cur = h.stack[h.index];
+      const curves: CurveSpec = { ...(cur.curves ?? {}) };
+      // An identity (or degenerate <2-point) curve is the same as no curve, so drop
+      // the channel rather than persist a no-op — keeps `dirty`/reset honest.
+      if (hasCurve(points)) curves[channel] = points;
+      else delete curves[channel];
+      const next = { ...cur };
+      if (curves.master || curves.r || curves.g || curves.b) next.curves = curves;
+      else delete next.curves;
+      return pushHistory(h, next);
+    });
+  }, []);
   const resetTransform = useCallback(() => {
     setHistory((h) =>
       pushHistory(h, { ...h.stack[h.index], rotate: 0, flipH: false, flipV: false }),
@@ -228,6 +247,7 @@ export function EditSessionProvider({
     setHistory((h) => {
       const next = { ...h.stack[h.index] };
       for (const f of COLOR_FIELDS) delete next[f.key];
+      delete next.curves;
       return pushHistory(h, next);
     });
   }, []);
@@ -336,6 +356,7 @@ export function EditSessionProvider({
     setCrop,
     setAspect,
     setColor,
+    setCurve,
     resetTransform,
     resetColor,
     cropMode,
