@@ -3,10 +3,12 @@ import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
 import { COLOR_FIELDS, hasColor } from "./photo-color.js";
 
 /** Current edit-recipe schema version. Stamped on every coerced/saved recipe so a
- *  future shape change can branch on it at the read boundary. Zero migration:
- *  legacy rows lack the field and are read as the version this code emits. v2 adds
- *  highlights/shadows/whites/blacks/vibrance + tone curves. */
-export const EDITS_VERSION = 2;
+ *  shape change can branch on it at the read boundary. v2 added
+ *  highlights/shadows/whites/blacks/vibrance + tone curves. v3 changed the *units*
+ *  of exposure (→ EV stops), temperature (→ Kelvin), brightness (→ midtone gamma),
+ *  and vignette (→ bidirectional); legacy recipes are migrated on read (see
+ *  migrateColor). */
+export const EDITS_VERSION = 3;
 
 export const NO_EDITS: PhotoEdits = {
   version: EDITS_VERSION,
@@ -62,7 +64,7 @@ export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
     a.flipV === b.flipV &&
     (a.straighten ?? 0) === (b.straighten ?? 0) &&
     sameCrop(a.crop, b.crop) &&
-    COLOR_FIELDS.every((f) => (a[f.key] ?? 0) === (b[f.key] ?? 0)) &&
+    COLOR_FIELDS.every((f) => (a[f.key] ?? f.neutral) === (b[f.key] ?? f.neutral)) &&
     sameCurves(a.curves, b.curves)
   );
 }
@@ -225,11 +227,43 @@ function coerceCrop(value: unknown): CropRect | null {
   return { x: c.x as number, y: c.y as number, w: c.w as number, h: c.h as number };
 }
 
+function numOrUndef(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+/** Migrate a pre-v3 recipe's color fields to v3 units. v3 changed exposure to EV
+ *  stops, temperature to Kelvin, brightness to a midtone gamma, and vignette to a
+ *  bidirectional control — so legacy values would otherwise read as garbage (e.g. a
+ *  stored `temperature: 50` would clamp to 2000 K). Best-effort, keeps the old look
+ *  roughly intact. Geometry/curves are untouched. */
+function migrateColor(e: Record<string, unknown>): Record<string, unknown> {
+  if ((numOrUndef(e.version) ?? 0) >= 3) return e;
+  const out: Record<string, unknown> = { ...e };
+  const oldExp = numOrUndef(e.exposure);
+  const oldBri = numOrUndef(e.brightness);
+  if (oldExp !== undefined || oldBri !== undefined) {
+    // old exposure was 2^(x/50) (±2 EV); old brightness was a redundant linear
+    // multiply ×(1+b/100) — fold both into pure EV. New brightness starts neutral.
+    const briMul = Math.max(Math.pow(2, -5), 1 + (oldBri ?? 0) / 100);
+    out.exposure = (oldExp ?? 0) / 50 + Math.log2(briMul);
+    out.brightness = 0;
+  }
+  const oldTemp = numOrUndef(e.temperature);
+  if (oldTemp !== undefined) {
+    // old −100(cool)..+100(warm) → Kelvin (warm = lower K): +100→4000K, −100→9000K.
+    const t = Math.max(-100, Math.min(100, oldTemp));
+    out.temperature = 6500 - (t / 100) * 2500;
+  }
+  const oldVig = numOrUndef(e.vignette);
+  if (oldVig !== undefined && oldVig > 0) out.vignette = -oldVig; // old 0..100 darkened
+  return out;
+}
+
 /** Defensively coerce an unknown JSON value (e.g. from the DB) into a recipe or
  *  null. Shared by the DTO mapper and the edited-download encoder. */
 export function coercePhotoEdits(value: unknown): PhotoEdits | null {
   if (!value || typeof value !== "object") return null;
-  const e = value as Record<string, unknown>;
+  const e = migrateColor(value as Record<string, unknown>);
   if (![0, 90, 180, 270].includes(e.rotate as number)) return null;
   if (typeof e.flipH !== "boolean" || typeof e.flipV !== "boolean") return null;
   const straighten =

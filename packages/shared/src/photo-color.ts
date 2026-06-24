@@ -3,7 +3,7 @@ import { sampleCurve } from "./tone-curve.js";
 
 export type ColorKey =
   | "exposure" | "brightness" | "contrast" | "saturation"
-  | "temperature" | "hue" | "fade" | "vignette"
+  | "temperature" | "tint" | "hue" | "fade" | "vignette"
   | "highlights" | "shadows" | "whites" | "blacks" | "vibrance";
 
 /** Slider config — drives the edit-panel UI, validation, and reset. */
@@ -15,57 +15,51 @@ export interface ColorField {
   /** Neutral (no-op) value. */
   neutral: number;
   step: number;
+  /** Decimal places to display in the panel readout. Defaults to 0 (integer). */
+  precision?: number;
 }
 
 export const COLOR_FIELDS: ColorField[] = [
   // Light
-  { key: "exposure",    label: "Exposure",    min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "brightness",  label: "Brightness",  min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "contrast",    label: "Contrast",    min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "highlights",  label: "Highlights",  min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "shadows",     label: "Shadows",     min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "whites",      label: "Whites",      min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "blacks",      label: "Blacks",      min: -100, max: 100, neutral: 0, step: 1 },
+  { key: "exposure",    label: "Exposure",    min: -5,   max: 5,     neutral: 0,    step: 0.05, precision: 2 },
+  { key: "brightness",  label: "Brightness",  min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "contrast",    label: "Contrast",    min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "highlights",  label: "Highlights",  min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "shadows",     label: "Shadows",     min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "whites",      label: "Whites",      min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "blacks",      label: "Blacks",      min: -100, max: 100,   neutral: 0,    step: 1 },
   // Color
-  { key: "temperature", label: "Temperature", min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "saturation",  label: "Saturation",  min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "vibrance",    label: "Vibrance",    min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "hue",         label: "Hue",         min: -180, max: 180, neutral: 0, step: 1 },
+  { key: "temperature", label: "Temperature", min: 2000, max: 11000, neutral: 6500, step: 10 },
+  { key: "tint",        label: "Tint",        min: -150, max: 150,   neutral: 0,    step: 1 },
+  { key: "saturation",  label: "Saturation",  min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "vibrance",    label: "Vibrance",    min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "hue",         label: "Hue",         min: -180, max: 180,   neutral: 0,    step: 1 },
   // Effects
-  { key: "fade",        label: "Fade",        min: -100, max: 100, neutral: 0, step: 1 },
-  { key: "vignette",    label: "Vignette",    min: 0,    max: 100, neutral: 0, step: 1 },
+  { key: "fade",        label: "Fade",        min: -100, max: 100,   neutral: 0,    step: 1 },
+  { key: "vignette",    label: "Vignette",    min: -100, max: 100,   neutral: 0,    step: 1 },
 ];
 
-// --- tuning constants (preview overlays and sharp bake share these) ---
-const TEMP_WARM = "rgb(255, 150, 40)";
-const TEMP_COOL = "rgb(40, 150, 255)";
-const TEMP_MAX_OPACITY = 0.5;   // overlay opacity at |temperature| = 100
-const TEMP_CHANNEL_GAIN = 0.25; // sharp per-channel R/B swing at |temperature| = 100
-const FADE_MAX_OPACITY = 0.12;  // white-overlay opacity at fade = 100
-const FADE_SCALE = 0.15;        // sharp contrast reduction at fade = 100
-const FADE_LIFT = 18;           // sharp black lift (0..255) at fade = 100
-const VIGNETTE_MAX_OPACITY = 0.6; // darkest corner alpha at vignette = 100
+/** Per-key neutral value. Temperature's neutral is 6500 (K), NOT 0 — so anything
+ *  that defaults a missing field MUST use this, never a bare `?? 0`. */
+export const NEUTRAL: Record<ColorKey, number> = Object.fromEntries(
+  COLOR_FIELDS.map((f) => [f.key, f.neutral]),
+) as Record<ColorKey, number>;
 
-const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? 0;
+// --- tuning constants (the GL preview and the sharp bake share these) ---
+const FADE_SCALE = 0.15;          // contrast reduction at fade = 100
+const FADE_LIFT = 18;             // black lift (0..255) at fade = 100
+const BW_RANGE = 0.25;            // blacks/whites endpoint shift at |value| = 100
+const SH_AMT = 0.35;              // shadows region lift at |value| = 100
+const HL_AMT = 0.35;              // highlights region shift at |value| = 100
+const BRIGHT_GAMMA = 0.7;         // midtone-gamma swing at |brightness| = 100
+const VIGNETTE_MAX = 0.6;         // corner alpha at |vignette| = 100
+const NEUTRAL_K = 6500;           // temperature where the white-balance matrix is identity
+const DUV_MAX = 0.02;             // tint Duv offset at |tint| = 150
+const TINT_RANGE = 150;
+const TINT_SIGN = -1;             // orientation of +tint → magenta (verified by test)
 
-// --- normalized getters: the single source of truth ---
-
-/** Combined tonal gain (exposure × brightness). 1 = neutral. */
-function gainFactor(e: PhotoEdits | null): number {
-  return Math.pow(2, val(e, "exposure") / 50) * (1 + val(e, "brightness") / 100);
-}
-/** Contrast factor. 1 = neutral. */
-function contrastFactor(e: PhotoEdits | null): number {
-  return 1 + val(e, "contrast") / 100;
-}
-/** Saturation factor. 1 = neutral. */
-function saturationFactor(e: PhotoEdits | null): number {
-  return Math.max(0, 1 + val(e, "saturation") / 100);
-}
-/** Hue rotation in degrees. 0 = neutral. */
-function hueDegrees(e: PhotoEdits | null): number {
-  return val(e, "hue");
-}
+/** Field value with the field's *neutral* as the default for a missing key. */
+const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? NEUTRAL[k];
 
 /** True when any color field is non-neutral. null/absent fields count as neutral. */
 export function hasColor(e: PhotoEdits | null): boolean {
@@ -84,137 +78,20 @@ export function hasCurves(c?: CurveSpec | null): boolean {
   return !!c && (hasCurve(c.master) || hasCurve(c.r) || hasCurve(c.g) || hasCurve(c.b));
 }
 
-// --- CSS preview ---
-
-/** Per-pixel CSS filter chain (exposure/brightness/contrast/saturation/hue, plus
- *  negative fade). "" when neutral. Temperature, positive fade, and vignette are
- *  overlays (colorOverlays). */
-export function colorCssFilter(e: PhotoEdits | null): string {
-  const parts: string[] = [];
-  const g = gainFactor(e);
-  const c = contrastFactor(e);
-  const s = saturationFactor(e);
-  const h = hueDegrees(e);
-  // Guards compare against the exact neutral factor (1), which is exact for the
-  // integer-stepped sliders; sub-integer programmatic values may still emit a
-  // near-neutral filter — that's valid CSS.
-  if (g !== 1) parts.push(`brightness(${round(g)})`);
-  if (c !== 1) parts.push(`contrast(${round(c)})`);
-  if (s !== 1) parts.push(`saturate(${round(s)})`);
-  if (h !== 0) parts.push(`hue-rotate(${h}deg)`);
-  // Fade is bidirectional: POSITIVE is a matte white-overlay (see colorOverlays);
-  // NEGATIVE deepens blacks / adds punch, which CSS expresses here as contrast(>1).
-  const fadeF = val(e, "fade") / 100;
-  if (fadeF < 0) parts.push(`contrast(${round(1 - FADE_SCALE * fadeF)})`);
-  return parts.join(" ");
-}
-
-export type OverlayKind = "temperature" | "fade" | "vignette";
-export interface ColorOverlay {
-  kind: OverlayKind;
-  /** CSS background value (color or gradient). */
-  background: string;
-  blendMode: "soft-light" | "normal";
-  /** 0..1 */
-  opacity: number;
-}
-
-/** Overlay specs for temperature/fade/vignette, in apply order. Empty when neutral.
- *  Sized by the consumer to the final cropped frame. */
-export function colorOverlays(e: PhotoEdits | null): ColorOverlay[] {
-  const out: ColorOverlay[] = [];
-  const temp = val(e, "temperature") / 100; // -1..1
-  const fade = val(e, "fade") / 100;          // -1..1 (only positive draws a matte overlay)
-  const vig = vignetteStrength(e);            // 0..max
-  if (temp !== 0) {
-    out.push({
-      kind: "temperature",
-      background: temp > 0 ? TEMP_WARM : TEMP_COOL,
-      blendMode: "soft-light",
-      opacity: Math.abs(temp) * TEMP_MAX_OPACITY,
-    });
-  }
-  if (fade > 0) {
-    out.push({ kind: "fade", background: "rgb(255,255,255)", blendMode: "normal", opacity: fade * FADE_MAX_OPACITY });
-  }
-  if (vig > 0) {
-    out.push({
-      kind: "vignette",
-      background: `radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,${round(vig)}) 100%)`,
-      blendMode: "normal",
-      opacity: 1,
-    });
-  }
-  return out;
-}
-
-// --- sharp bake params (consumed by packages/ingest) ---
-
-export interface ToneLinear { a: number; b: number; }
-/** Gain × contrast folded into one scalar linear (a*x + b on 0..255). null = neutral. */
-export function toneLinear(e: PhotoEdits | null): ToneLinear | null {
-  const g = gainFactor(e);
-  const c = contrastFactor(e);
-  if (g === 1 && c === 1) return null;
-  return { a: c * g, b: 128 * (1 - c) };
-}
-
-export interface ModulateParams { saturation: number; hue: number; }
-export function modulateParams(e: PhotoEdits | null): ModulateParams | null {
-  const s = saturationFactor(e);
-  const h = hueDegrees(e);
-  if (s === 1 && h === 0) return null;
-  return { saturation: s, hue: h };
-}
-
-export interface ChannelLinear { a: [number, number, number]; b: [number, number, number]; }
-/** Temperature × fade folded into one per-channel [R,G,B] linear. null = neutral. */
-export function tempFadeLinear(e: PhotoEdits | null): ChannelLinear | null {
-  const t = val(e, "temperature") / 100; // -1..1
-  const f = val(e, "fade") / 100;         // -1..1 (negative → scale>1, lift<0 = punch)
-  if (t === 0 && f === 0) return null;
-  const tempR = 1 + TEMP_CHANNEL_GAIN * t;
-  const tempG = 1; // green is unaffected by warm/cool balance
-  const tempB = 1 - TEMP_CHANNEL_GAIN * t;
-  const scale = 1 - FADE_SCALE * f;
-  const lift = FADE_LIFT * f;
-  return {
-    a: [scale * tempR, scale * tempG, scale * tempB],
-    b: [lift, lift, lift],
-  };
-}
-
-/** Corner-darkening alpha 0..max. 0 = none. */
-export function vignetteStrength(e: PhotoEdits | null): number {
-  return (val(e, "vignette") / 100) * VIGNETTE_MAX_OPACITY;
-}
-
-function round(n: number): number {
-  return Math.round(n * 1000) / 1000;
-}
-
 // =====================================================================
 // Unified color model — one source of truth for the GL preview AND the bake.
 //
-// Every adjustment is reduced to three renderer-agnostic artifacts:
-//   • a per-channel TONE LUT  (exposure/brightness/contrast/highlights/shadows/
-//     whites/blacks/fade + curves), sampled over input [0,1];
-//   • CHROMA params           (temperature, hue, saturation, vibrance), per-pixel;
-//   • VIGNETTE params         (spatial radial darkening).
-// The GL shader samples the LUT as a texture and runs the same chroma/vignette
-// math; `applyColorToRaw` runs the identical math on a raw pixel buffer for the
-// bake. Same math ⇒ preview equals save.
+// Every adjustment is reduced to four renderer-agnostic artifacts, applied in
+// this fixed order so the GL shader and `applyColorToRaw` produce the same image:
+//   • a LINEAR matrix   (exposure × white-balance CAT), applied in linear light;
+//   • a per-channel TONE LUT  (brightness/contrast/highlights/shadows/whites/
+//     blacks/fade + curves), sampled over input [0,1] in gamma space;
+//   • CHROMA params           (hue, saturation, vibrance), per-pixel, gamma space;
+//   • VIGNETTE params         (spatial radial darken/lighten).
+// The GL shader samples the LUT as a texture, multiplies the same `mat3`, and
+// runs the same chroma/vignette math; `applyColorToRaw` runs the identical math
+// on a raw pixel buffer for the bake. Same math ⇒ preview equals save.
 // =====================================================================
-
-/** Keys folded into the tone LUT (everything that is a pure input→output curve). */
-const TONE_KEYS: ColorKey[] = [
-  "exposure", "brightness", "contrast", "highlights", "shadows", "whites", "blacks", "fade",
-];
-
-// Tuning constants for the new tonal sliders (preview and bake share these).
-const BW_RANGE = 0.25; // blacks/whites endpoint shift at |value| = 100
-const SH_AMT = 0.35;   // shadows region lift at |value| = 100
-const HL_AMT = 0.35;   // highlights region shift at |value| = 100
 
 function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
@@ -224,10 +101,155 @@ function smoothstep(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+/** sRGB EOTF (gamma→linear), per channel. Identical to the GLSL `srgbToLinear`. */
+export function srgbToLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+/** Inverse sRGB EOTF (linear→gamma), per channel. Identical to GLSL `linearToSrgb`. */
+export function linearToSrgb(c: number): number {
+  if (c <= 0) return 0;
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+}
+
+// ---------------------------------------------------------------------
+// White balance — a Bradford chromatic-adaptation matrix in linear light.
+// The hard color science lives here and is computed ONCE per edit; only the
+// resulting 3×3 (9 numbers) cross into the shader, so the GL preview and the
+// bake share the exact matrix and can't drift.
+// ---------------------------------------------------------------------
+
+type M3 = number[]; // length 9, row-major
+
+// linear sRGB (D65 primaries) ↔ CIE XYZ
+const RGB2XYZ: M3 = [
+  0.4123908, 0.3575843, 0.1804808,
+  0.2126390, 0.7151687, 0.0721923,
+  0.0193308, 0.1191948, 0.9505322,
+];
+const XYZ2RGB: M3 = [
+  3.2409699, -1.5373832, -0.4986108,
+  -0.9692436, 1.8759675, 0.0415551,
+  0.0556301, -0.2039770, 1.0569715,
+];
+// Bradford cone-response matrix and its inverse (von Kries adaptation)
+const BRADFORD: M3 = [
+  0.8951, 0.2664, -0.1614,
+  -0.7502, 1.7135, 0.0367,
+  0.0389, -0.0685, 1.0296,
+];
+const BRADFORD_INV: M3 = [
+  0.9869929, -0.1470543, 0.1599627,
+  0.4323053, 0.5183603, 0.0492912,
+  -0.0085287, 0.0400428, 0.9684867,
+];
+
+function m3mul(a: M3, b: M3): M3 {
+  const o = new Array<number>(9);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      o[r * 3 + c] = a[r * 3]! * b[c]! + a[r * 3 + 1]! * b[3 + c]! + a[r * 3 + 2]! * b[6 + c]!;
+    }
+  }
+  return o;
+}
+function m3vec(a: M3, v: number[]): number[] {
+  return [
+    a[0]! * v[0]! + a[1]! * v[1]! + a[2]! * v[2]!,
+    a[3]! * v[0]! + a[4]! * v[1]! + a[5]! * v[2]!,
+    a[6]! * v[0]! + a[7]! * v[1]! + a[8]! * v[2]!,
+  ];
+}
+
+/** Planckian locus chromaticity in CIE 1960 UCS (Krystek 1985), valid 1000–15000K. */
+function planckUv(K: number): [number, number] {
+  const T = K;
+  const T2 = T * T;
+  const u =
+    (0.860117757 + 1.54118254e-4 * T + 1.28641212e-7 * T2) /
+    (1 + 8.42420235e-4 * T + 7.08145163e-7 * T2);
+  const v =
+    (0.317398726 + 4.22806245e-5 * T + 4.20481691e-8 * T2) /
+    (1 - 2.89741816e-5 * T + 1.61456053e-7 * T2);
+  return [u, v];
+}
+
+/** XYZ (Y=1) of the white point for a given Kelvin + tint. Tint offsets the white
+ *  perpendicular to the Planckian locus (the green↔magenta / Duv axis). */
+function whiteXyz(K: number, tint: number): number[] {
+  let [u, v] = planckUv(K);
+  if (tint !== 0) {
+    const [u1, v1] = planckUv(K * 1.0001);
+    const [u0, v0] = planckUv(K * 0.9999);
+    let tu = u1 - u0;
+    let tv = v1 - v0;
+    const len = Math.hypot(tu, tv) || 1e-9;
+    tu /= len;
+    tv /= len;
+    // unit normal to the locus tangent; sign chosen so +tint → magenta image
+    const off = TINT_SIGN * (tint / TINT_RANGE) * DUV_MAX;
+    u += -tv * off;
+    v += tu * off;
+  }
+  const denom = 2 * u - 8 * v + 4;
+  const x = (3 * u) / denom;
+  const y = (2 * v) / denom;
+  return [x / y, 1, (1 - x - y) / y];
+}
+
+/** Linear-sRGB chromatic-adaptation matrix that re-balances the image as if its
+ *  neutral were lit at `K`/`tint`, normalized back to NEUTRAL_K. Identity at
+ *  (NEUTRAL_K, 0). Higher K ⇒ bluer source ⇒ warmer result (Lightroom-style). */
+function adaptMatrixRgb(K: number, tint: number): M3 {
+  const ws = whiteXyz(K, tint);
+  const wd = whiteXyz(NEUTRAL_K, 0);
+  const cs = m3vec(BRADFORD, ws);
+  const cd = m3vec(BRADFORD, wd);
+  const D: M3 = [cd[0]! / cs[0]!, 0, 0, 0, cd[1]! / cs[1]!, 0, 0, 0, cd[2]! / cs[2]!];
+  const mXyz = m3mul(BRADFORD_INV, m3mul(D, BRADFORD));
+  return m3mul(XYZ2RGB, m3mul(mXyz, RGB2XYZ));
+}
+
+/** The linear-light pre-pass matrix: exposure (a uniform scale) folded into the
+ *  white-balance CAT. Stored COLUMN-MAJOR for the GL `mat3` uniform. null = identity
+ *  (no exposure, neutral white balance). */
+export interface LinearParams {
+  /** Column-major 3×3 applied to LINEAR-light RGB. */
+  m: number[];
+}
+
+export function linearParams(e: PhotoEdits | null): LinearParams | null {
+  const ev = val(e, "exposure");
+  const K = val(e, "temperature");
+  const tint = val(e, "tint");
+  const wbActive = K !== NEUTRAL_K || tint !== 0;
+  if (ev === 0 && !wbActive) return null;
+  const r: M3 = wbActive ? adaptMatrixRgb(K, tint) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const s = Math.pow(2, ev); // exposure in stops → linear scale
+  // fold exposure (uniform scale) and transpose row-major → column-major
+  return {
+    m: [
+      r[0]! * s, r[3]! * s, r[6]! * s,
+      r[1]! * s, r[4]! * s, r[7]! * s,
+      r[2]! * s, r[5]! * s, r[8]! * s,
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------
+// Tone (gamma space) — per-channel input→output LUT.
+// ---------------------------------------------------------------------
+
+/** Keys folded into the tone LUT (a pure input→output curve in gamma space).
+ *  Exposure is NOT here — it is a linear-light multiply (see linearParams). */
+const TONE_KEYS: ColorKey[] = [
+  "brightness", "contrast", "highlights", "shadows", "whites", "blacks", "fade",
+];
+
 /** The composed master tonal transfer T(x) for x in [0,1] (curves applied
  *  separately, per channel, by buildToneLut). */
 function toneTransfer(e: PhotoEdits | null): (x: number) => number {
-  const gain = Math.pow(2, val(e, "exposure") / 50) * (1 + val(e, "brightness") / 100);
+  const bright = val(e, "brightness") / 100; // -1..1
+  const pBright = Math.pow(2, -bright * BRIGHT_GAMMA); // midtone gamma; 1 = identity
   const c = 1 + val(e, "contrast") / 100;
   const highlights = val(e, "highlights") / 100;
   const shadows = val(e, "shadows") / 100;
@@ -235,10 +257,10 @@ function toneTransfer(e: PhotoEdits | null): (x: number) => number {
   const whitePoint = 1 - (val(e, "whites") / 100) * BW_RANGE; // whites>0 ⇒ clip/brighten
   const span = whitePoint - blackPoint || 1e-6;
   const f = val(e, "fade") / 100;
-  const fadeScale = 1 - FADE_SCALE * f; // matches legacy fade: + washes, − punches
+  const fadeScale = 1 - FADE_SCALE * f; // + washes, − punches
   const fadeLift = (FADE_LIFT * f) / 255;
   return (x: number): number => {
-    let y = x * gain;
+    let y = Math.pow(clamp01(x), pBright); // brightness: lift/cut midtones, anchor 0 & 1
     y = (y - 0.5) * c + 0.5; // contrast about mid-grey
     y += shadows * SH_AMT * (1 - smoothstep(0, 0.5, y)); // lift/cut shadow region
     y += highlights * HL_AMT * smoothstep(0.5, 1, y); // lift/cut highlight region
@@ -287,6 +309,11 @@ export function buildToneLut(e: PhotoEdits | null, n = 256): ToneLut | null {
   return { r: build(curves?.r), g: build(curves?.g), b: build(curves?.b) };
 }
 
+// ---------------------------------------------------------------------
+// Chroma (gamma space) — hue / saturation / vibrance. (Temperature moved to the
+// linear pre-pass; it is a white-balance matrix, not a chroma op.)
+// ---------------------------------------------------------------------
+
 export interface ChromaParams {
   /** Saturation multiplier (≥0; 1 = neutral). */
   satF: number;
@@ -294,37 +321,29 @@ export interface ChromaParams {
   vib: number;
   /** Hue rotation in degrees. */
   hue: number;
-  /** Red / blue channel gain for white balance. */
-  tempR: number;
-  tempB: number;
 }
 
 export function chromaParams(e: PhotoEdits | null): ChromaParams | null {
   const sat = val(e, "saturation");
   const vib = val(e, "vibrance");
   const hue = val(e, "hue");
-  const temp = val(e, "temperature") / 100;
-  if (sat === 0 && vib === 0 && hue === 0 && temp === 0) return null;
-  return {
-    satF: Math.max(0, 1 + sat / 100),
-    vib: vib / 100,
-    hue,
-    tempR: 1 + TEMP_CHANNEL_GAIN * temp,
-    tempB: 1 - TEMP_CHANNEL_GAIN * temp,
-  };
+  if (sat === 0 && vib === 0 && hue === 0) return null;
+  return { satF: Math.max(0, 1 + sat / 100), vib: vib / 100, hue };
 }
 
 export interface VignetteParams {
-  /** Corner-darkening strength 0..max. */
+  /** Signed corner adjustment: <0 darkens, >0 lightens (magnitude ≤ VIGNETTE_MAX). */
   strength: number;
 }
 
 export function vignetteParams(e: PhotoEdits | null): VignetteParams | null {
-  const s = vignetteStrength(e);
-  return s > 0 ? { strength: s } : null;
+  const v = val(e, "vignette") / 100; // -1..1
+  if (v === 0) return null;
+  return { strength: v * VIGNETTE_MAX };
 }
 
 export interface ColorModel {
+  linear: LinearParams | null;
   tone: ToneLut | null;
   chroma: ChromaParams | null;
   vignette: VignetteParams | null;
@@ -335,6 +354,7 @@ export interface ColorModel {
  *  a smaller LUT for its texture. */
 export function buildColorModel(e: PhotoEdits | null, toneSamples = 1024): ColorModel {
   return {
+    linear: linearParams(e),
     tone: buildToneLut(e, toneSamples),
     chroma: chromaParams(e),
     vignette: vignetteParams(e),
@@ -368,8 +388,8 @@ export function applyColorToRaw(
   maxVal: number,
   model: ColorModel,
 ): void {
-  const { tone, chroma, vignette } = model;
-  if (!tone && !chroma && !vignette) return;
+  const { linear, tone, chroma, vignette } = model;
+  if (!linear && !tone && !chroma && !vignette) return;
   const inv = 1 / maxVal;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -378,6 +398,17 @@ export function applyColorToRaw(
       let g = buf[o + 1]! * inv;
       let b = buf[o + 2]! * inv;
 
+      if (linear) {
+        // Exposure × white balance in LINEAR light, then re-encode to gamma.
+        const m = linear.m; // column-major
+        const lr = srgbToLinear(r);
+        const lg = srgbToLinear(g);
+        const lb = srgbToLinear(b);
+        r = linearToSrgb(m[0]! * lr + m[3]! * lg + m[6]! * lb);
+        g = linearToSrgb(m[1]! * lr + m[4]! * lg + m[7]! * lb);
+        b = linearToSrgb(m[2]! * lr + m[5]! * lg + m[8]! * lb);
+      }
+
       if (tone) {
         r = sampleLut(tone.r, r);
         g = sampleLut(tone.g, g);
@@ -385,8 +416,6 @@ export function applyColorToRaw(
       }
 
       if (chroma) {
-        r *= chroma.tempR;
-        b *= chroma.tempB;
         if (chroma.hue !== 0) [r, g, b] = rotateHue(r, g, b, chroma.hue);
         const l = LUMA_R * r + LUMA_G * g + LUMA_B * b;
         let vf = 1;
@@ -408,7 +437,7 @@ export function applyColorToRaw(
         const dx = ux - 0.5;
         const dy = uy - 0.5;
         const d = Math.sqrt(dx * dx + dy * dy) / Math.SQRT1_2; // 0 center → 1 corner
-        const k = 1 - vignette.strength * smoothstep(0.45, 1, d);
+        const k = 1 + vignette.strength * smoothstep(0.45, 1, d); // <0 darken, >0 lighten
         r *= k;
         g *= k;
         b *= k;

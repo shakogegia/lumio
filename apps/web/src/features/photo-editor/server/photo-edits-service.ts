@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient, prisma, toPhotoDTO } from "@lumio/db";
-import { hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
+import { EDITS_VERSION, hasEdits, type PhotoDTO, type PhotoEdits } from "@lumio/shared";
 import { regenerateRenditions } from "@lumio/ingest";
 import { catalogCacheDirs, originalPath } from "@/lib/server/server-paths";
 
@@ -41,8 +41,12 @@ export async function applyPhotoEdits(
   const updated = await db.photo.update({
     where: { id, catalogId: catalog.id },
     // Prisma needs the JsonNull sentinel (not JS null) to clear a Json column.
+    // Always stamp the current schema version so stored recipes are never
+    // re-migrated as legacy on read (coercePhotoEdits skips version >= current).
     data: {
-      edits: recipe ? (recipe as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+      edits: recipe
+        ? ({ ...recipe, version: EDITS_VERSION } as unknown as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
       width,
       height,
       thumbhash,

@@ -206,14 +206,19 @@ describe("photoEditsSchema color fields", () => {
   const base = { rotate: 0 as const, flipH: false, flipV: false };
 
   it("accepts in-range color fields", () => {
-    const r = photoEditsSchema.safeParse({ ...base, brightness: 50, hue: 90, vignette: 100 });
+    const r = photoEditsSchema.safeParse({
+      ...base, brightness: 50, hue: 90, vignette: -100, temperature: 9000, tint: -120, exposure: 2.5,
+    });
     expect(r.success).toBe(true);
   });
 
   it("rejects out-of-range color fields", () => {
     expect(photoEditsSchema.safeParse({ ...base, brightness: 999 }).success).toBe(false);
     expect(photoEditsSchema.safeParse({ ...base, hue: 360 }).success).toBe(false);
-    expect(photoEditsSchema.safeParse({ ...base, vignette: -1 }).success).toBe(false);
+    expect(photoEditsSchema.safeParse({ ...base, vignette: -101 }).success).toBe(false);
+    expect(photoEditsSchema.safeParse({ ...base, exposure: 6 }).success).toBe(false); // EV ±5
+    expect(photoEditsSchema.safeParse({ ...base, temperature: 1000 }).success).toBe(false); // <2000 K
+    expect(photoEditsSchema.safeParse({ ...base, tint: 200 }).success).toBe(false); // >±150
   });
 
   it("preserves color fields through parse (does not strip them)", () => {
