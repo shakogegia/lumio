@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FingerprintPattern } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,7 +153,7 @@ export function LoginForm({ className }: { className?: string }) {
           disabled={pending || passkeyPending}
           onClick={onPasskey}
         >
-          <FingerprintPattern />
+          <KeyRound />
           {passkeyPending ? "Waiting for your device…" : "Sign in with a passkey"}
         </Button>
       </div>
