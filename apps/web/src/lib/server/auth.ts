@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
 import { twoFactor } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { expo } from "@better-auth/expo";
 import { prisma, hasAnyUser } from "@lumio/db";
 import { assertSignupAllowed } from "@/lib/signup-gate";
@@ -58,7 +59,12 @@ export const auth = betterAuth({
   ...(secureCookiesEnv !== undefined && {
     advanced: { useSecureCookies: secureCookiesEnv !== "false" },
   }),
-  plugins: [twoFactor(), expo()],
+  // passkey(): WebAuthn/FIDO2 sign-in. rpID/origin auto-derive from baseURL
+  // (localhost in dev, the real domain in prod). registration.requireSession
+  // defaults to true, so passkeys are only added by an already-authenticated
+  // user — the assertSignupAllowed gate above is unaffected. A passkey sign-in
+  // returns a session directly (no twoFactorRedirect), so it skips TOTP.
+  plugins: [twoFactor(), passkey(), expo()],
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,

@@ -13,6 +13,7 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@better-auth/expo": "1.6.19",
+    "@better-auth/passkey": "1.6.19",
     "@lumio/db": "workspace:*",
     "@lumio/ingest": "workspace:*",
     "@lumio/jobs": "workspace:*",

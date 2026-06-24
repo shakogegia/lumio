@@ -177,6 +177,7 @@ model User {
   sessions         Session[]
   accounts         Account[]
   twoFactors       TwoFactor[]
+  passkeys         Passkey[]
   settings         UserSettings?
 }
 
@@ -222,6 +223,23 @@ model TwoFactor {
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([secret])
+  @@index([userId])
+}
+
+model Passkey {
+  id           String    @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
   @@index([userId])
 }
 

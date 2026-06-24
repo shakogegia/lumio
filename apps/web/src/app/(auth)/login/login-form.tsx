@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,63 @@ export function LoginForm({ className }: { className?: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [passkeyPending, setPasskeyPending] = useState(false);
+
+  // Conditional UI: if the browser supports it, kick off a background passkey
+  // request so saved passkeys surface in the email field's autofill dropdown.
+  // It resolves only when the user picks one; otherwise it sits idle and the
+  // explicit button below still works. No synchronous setState here (the
+  // navigation happens in the async success callback).
+  useEffect(() => {
+    let cancelled = false;
+    async function preloadConditionalUi() {
+      try {
+        if (
+          typeof PublicKeyCredential === "undefined" ||
+          !PublicKeyCredential.isConditionalMediationAvailable ||
+          !(await PublicKeyCredential.isConditionalMediationAvailable()) ||
+          cancelled
+        ) {
+          return;
+        }
+        await signIn.passkey({
+          autoFill: true,
+          fetchOptions: {
+            onSuccess() {
+              router.replace("/");
+            },
+          },
+        });
+      } catch {
+        // Conditional mediation unsupported or aborted — ignore.
+      }
+    }
+    void preloadConditionalUi();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  async function onPasskey() {
+    setError(null);
+    setPasskeyPending(true);
+    try {
+      // A passkey is a complete, phishing-resistant factor, so this resolves
+      // straight to a session — no twoFactorRedirect / TOTP step.
+      const { error } = await signIn.passkey();
+      if (error) {
+        setError(error.message ?? "Passkey sign-in failed.");
+        return;
+      }
+      router.replace("/");
+    } catch {
+      setError(
+        "Passkey sign-in was cancelled or isn’t supported on this device.",
+      );
+    } finally {
+      setPasskeyPending(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,7 +109,13 @@ export function LoginForm({ className }: { className?: string }) {
       <div className="grid gap-3">
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" autoComplete="email" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email webauthn"
+            required
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="password">Password</Label>
@@ -68,8 +132,29 @@ export function LoginForm({ className }: { className?: string }) {
             {error}
           </p>
         )}
-        <Button type="submit" className="w-full" disabled={pending}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={pending || passkeyPending}
+        >
           {pending ? "Signing in…" : "Login"}
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-foreground/10" />
+          <span className="text-muted-foreground text-xs">or</span>
+          <span className="h-px flex-1 bg-foreground/10" />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={pending || passkeyPending}
+          onClick={onPasskey}
+        >
+          <KeyRound />
+          {passkeyPending ? "Waiting for your device…" : "Sign in with a passkey"}
         </Button>
       </div>
     </form>
