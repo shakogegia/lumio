@@ -77,10 +77,25 @@ export function wbBaselineOf(p: { asShotTempK?: number | null; asShotTint?: numb
 /** Field value with the field's *neutral* as the default for a missing key. */
 const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? NEUTRAL[k];
 
-/** True when any color field is non-neutral. null/absent fields count as neutral. */
+/** The white-balance keys. They have NO in-band neutral: their "neutral" is the
+ *  per-photo as-shot baseline, which the matrix encodes as identity. The editor
+ *  removes them from the recipe whenever they sit on the baseline, so a *present*
+ *  temperature/tint always means an off-baseline (real) edit. Recipe-level neutral
+ *  checks therefore treat them as presence-based, NOT compared to 6500/0 — the
+ *  global neutral 6500 is a legitimate value for a non-6500-baseline photo. */
+export function isWbKey(k: ColorKey): boolean {
+  return k === "temperature" || k === "tint";
+}
+
+/** True when any color field is non-neutral. null/absent fields count as neutral;
+ *  a present temperature/tint always counts (see {@link isWbKey}). */
 export function hasColor(e: PhotoEdits | null): boolean {
   if (!e) return false;
-  return COLOR_FIELDS.some((f) => val(e, f.key) !== f.neutral) || hasCurves(e.curves);
+  return (
+    COLOR_FIELDS.some((f) =>
+      isWbKey(f.key) ? e[f.key] !== undefined : val(e, f.key) !== f.neutral,
+    ) || hasCurves(e.curves)
+  );
 }
 
 /** True when a single curve has ≥2 points that deviate from the y=x identity. */

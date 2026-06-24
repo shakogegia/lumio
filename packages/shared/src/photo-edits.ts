@@ -1,6 +1,6 @@
 import type { CropRect, CurvePoint, CurveSpec, PhotoEdits } from "./types.js";
 import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
-import { COLOR_FIELDS, hasColor } from "./photo-color.js";
+import { COLOR_FIELDS, hasColor, isWbKey } from "./photo-color.js";
 
 /** Current edit-recipe schema version. Stamped on every coerced/saved recipe so a
  *  shape change can branch on it at the read boundary. v2 added
@@ -64,7 +64,11 @@ export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
     a.flipV === b.flipV &&
     (a.straighten ?? 0) === (b.straighten ?? 0) &&
     sameCrop(a.crop, b.crop) &&
-    COLOR_FIELDS.every((f) => (a[f.key] ?? f.neutral) === (b[f.key] ?? f.neutral)) &&
+    // White-balance keys compare by presence+value (absent === absent, present must
+    // match); other keys treat their global neutral as equal to absent. See isWbKey.
+    COLOR_FIELDS.every((f) =>
+      isWbKey(f.key) ? a[f.key] === b[f.key] : (a[f.key] ?? f.neutral) === (b[f.key] ?? f.neutral),
+    ) &&
     sameCurves(a.curves, b.curves)
   );
 }
@@ -283,7 +287,10 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
     const v = e[f.key];
     if (typeof v === "number" && Number.isFinite(v)) {
       const clamped = Math.max(f.min, Math.min(f.max, v));
-      if (clamped !== f.neutral) out[f.key] = clamped;
+      // WB keys (temperature/tint) have no in-band neutral — keep any present value
+      // (the editor only stores them off the per-photo baseline). Other keys drop
+      // at their global neutral. See isWbKey in photo-color.
+      if (isWbKey(f.key) || clamped !== f.neutral) out[f.key] = clamped;
     }
   }
   const curves = coerceCurves(e.curves);

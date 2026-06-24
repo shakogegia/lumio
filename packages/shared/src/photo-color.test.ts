@@ -62,9 +62,13 @@ describe("hasColor (neutral-aware)", () => {
     expect(hasColor({ ...base, vignette: 5 })).toBe(true);
   });
 
-  it("temperature counts only when off neutral (6500), not 0", () => {
-    expect(hasColor({ ...base, temperature: 6500 })).toBe(false);
+  it("temperature/tint are presence-based: present (off-baseline) counts, absent doesn't", () => {
+    // The editor only ever stores temperature/tint off the per-photo baseline, so a
+    // present value — even the global 6500/0 — is a real edit on a non-6500 baseline.
+    expect(hasColor({ ...base })).toBe(false);
+    expect(hasColor({ ...base, temperature: 6500 })).toBe(true);
     expect(hasColor({ ...base, temperature: 9000 })).toBe(true);
+    expect(hasColor({ ...base, tint: 0 })).toBe(true);
   });
 });
 
