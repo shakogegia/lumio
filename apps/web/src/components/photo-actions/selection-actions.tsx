@@ -1,11 +1,12 @@
 "use client";
 
-import { Download, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
+import { DownloadMenu } from "@/components/photo-actions/download-menu";
 import type { PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import type { PhotoGridHandle } from "@/features/photo-grid";
 
@@ -23,6 +24,7 @@ export function SelectionActions({
   gridRef,
   clearSelection,
   clearOnFavorite = false,
+  anyEdited = false,
 }: {
   actions: PhotoActions;
   selectedIds: Set<string>;
@@ -30,6 +32,10 @@ export function SelectionActions({
   clearSelection: () => void;
   /** Favorites view: (un)favorite drops tiles, so clear the selection after. */
   clearOnFavorite?: boolean;
+  /** Any selected photo has edits → Download offers edited vs original. The
+   *  parent computes this from inside the provider (SelectionEditReporter),
+   *  since this toolbar renders outside it and can't read the grid directly. */
+  anyEdited?: boolean;
 }) {
   const ids = [...selectedIds];
   const none = ids.length === 0;
@@ -53,16 +59,12 @@ export function SelectionActions({
         onPick={(albumId) => void actions.addToAlbumDirect(ids, albumId)}
         onCreateNew={() => actions.addToAlbum(ids)}
       />
-      <Button
-        variant="outline"
-        size="icon-sm"
+      <DownloadMenu
+        anyEdited={anyEdited}
         disabled={none || actions.pending.download}
-        onClick={() => void actions.download(ids, { onSuccess: clearSelection })}
-        aria-label="Download"
-        title="Download"
-      >
-        {actions.pending.download ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
-      </Button>
+        pending={actions.pending.download}
+        onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
+      />
       <Button
         variant="destructive"
         size="icon-sm"

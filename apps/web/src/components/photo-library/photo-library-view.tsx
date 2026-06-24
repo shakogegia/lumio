@@ -10,7 +10,7 @@ import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
-import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter, GridShortcuts } from "@/features/photo-grid";
+import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,6 +78,9 @@ export function PhotoLibraryView({
   const { sort, setSort } = useGridSort();
   const [month, setMonth] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
+  // Whether any selected photo is edited — reported up from inside the provider
+  // (the toolbar renders outside it), so Download can offer edited vs original.
+  const [anySelectedEdited, setAnySelectedEdited] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, ...actionOptions });
 
@@ -107,6 +110,7 @@ export function PhotoLibraryView({
                 gridRef={gridRef}
                 clearSelection={sel.clear}
                 clearOnFavorite={!!actionOptions?.dropOnUnfavorite}
+                anyEdited={anySelectedEdited}
               />
             </>
           }
@@ -141,6 +145,7 @@ export function PhotoLibraryView({
         baseUrl={src.baseUrl}
       >
         <CollectionTotalReporter onTotal={setTotal} />
+        <SelectionEditReporter selectedIds={sel.selected} onAnyEdited={setAnySelectedEdited} />
         <PhotoActionsProvider value={actions}>
           {aboveGrid}
           <PhotoGrid
