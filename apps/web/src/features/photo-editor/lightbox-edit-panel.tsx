@@ -258,7 +258,7 @@ export function LightboxEditPanel() {
                   className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => setColor(f.key, neutral)}
                 >
-                  {f.precision ? value.toFixed(f.precision) : value}
+                  {f.precision ? value.toFixed(f.precision) : Math.round(value)}
                 </button>
               </div>
               <Slider
