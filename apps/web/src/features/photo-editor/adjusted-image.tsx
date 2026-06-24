@@ -59,7 +59,6 @@ export function AdjustedImage({
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const glRef = useRef<GlColor | null>(null);
-  const [ready, setReady] = useState(false);
 
   // Keep the size callback reachable from the async loader without re-running it.
   const onSizeRef = useRef(onNaturalSize);
@@ -69,11 +68,18 @@ export function AdjustedImage({
 
   const model = useMemo(() => glModel(working), [working]);
 
+  // Latest model reachable from the async (re)upload below, without making the
+  // decode effect depend on `model` — that would re-decode the source on every
+  // slider tick.
+  const modelRef = useRef(model);
+  useEffect(() => {
+    modelRef.current = model;
+  });
+
   // (Re)decode and upload whenever the source changes (e.g. zoom→full-res swap).
   useEffect(() => {
     if (!useGl) return;
     let cancelled = false;
-    const markReady = () => setReady(true);
     const img = new Image();
     img.decoding = "async";
     img.src = src;
@@ -86,7 +92,10 @@ export function AdjustedImage({
         if (!gl) gl = glRef.current = new GlColor(canvas);
         gl.setImage(img);
         onSizeRef.current?.({ w: img.naturalWidth, h: img.naturalHeight });
-        markReady();
+        // setImage resizes the canvas, which clears it — repaint now. The
+        // color-change effect below won't fire on a pure src swap (same recipe,
+        // e.g. the zoom→full-res swap), so without this the canvas goes blank.
+        gl.render(modelRef.current);
       })
       .catch(() => {
         // Source missing/unreadable — leave the canvas blank; the lightbox keeps
@@ -97,10 +106,11 @@ export function AdjustedImage({
     };
   }, [src, useGl]);
 
-  // Re-render on any color change (and once the image is ready).
+  // Re-render on any color change (slider/curve edits). No-op until the first
+  // upload has created the GL context.
   useEffect(() => {
-    if (ready && glRef.current) glRef.current.render(model);
-  }, [model, ready]);
+    glRef.current?.render(model);
+  }, [model]);
 
   // Release GL resources on unmount.
   useEffect(
