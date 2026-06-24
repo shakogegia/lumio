@@ -59,6 +59,11 @@ export async function storePhoto(
     hash: processed.hash,
     thumbhash: processed.thumbhash,
     exif: processed.exif as object,
+    // As-shot WB baseline (estimated at ingest). On re-import the update path also
+    // clears `edits` (below), so a recomputed baseline always lands on an unedited
+    // photo — the recipe stays consistent with its anchor.
+    asShotTempK: processed.asShot?.k ?? null,
+    asShotTint: processed.asShot?.tint ?? null,
     fileSize,
     fileMtimeMs,
     fileModifiedAt,

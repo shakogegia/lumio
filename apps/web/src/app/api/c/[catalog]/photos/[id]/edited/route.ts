@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
+import { wbBaselineOf } from "@lumio/shared";
 import { getPhoto } from "@/lib/server/photos-service";
 import { originalPath } from "@/lib/server/server-paths";
 import { attachmentDisposition, jpegName } from "@/lib/server/download-archive";
@@ -15,7 +16,7 @@ export const GET = withCatalog<{ id: string }>(async (request, context, { catalo
 
   const decoded = await decodeToSharpInput(originalPath(catalog, photo.path));
   try {
-    const jpeg = await encodeEditedJpeg(decoded.input, photo.edits);
+    const jpeg = await encodeEditedJpeg(decoded.input, photo.edits, wbBaselineOf(photo));
     const headers: Record<string, string> = {
       "Content-Type": "image/jpeg",
       "Cache-Control": "private, max-age=0, must-revalidate",

@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { PhotoEdits } from "@lumio/shared";
+import { DEFAULT_BASELINE, type PhotoEdits, type WbBaseline } from "@lumio/shared";
 import { decodeToSharpInput } from "./decode.js";
 import { buildRenditions } from "./renditions.js";
 
@@ -27,6 +27,7 @@ export async function regenerateRenditions(
   edits: PhotoEdits | null,
   id: string,
   deps: RegenerateDeps,
+  baseline: WbBaseline = DEFAULT_BASELINE,
 ): Promise<{ thumbhash: string; width: number; height: number }> {
   const decoded = await decodeToSharpInput(absPath);
   try {
@@ -36,7 +37,7 @@ export async function regenerateRenditions(
     await mkdir(deps.thumbnailsDir, { recursive: true });
     await writeFile(path.join(deps.displaysDir, `${id}.webp`), base.display);
     if (edits) {
-      const edited = await buildRenditions(decoded.input, edits);
+      const edited = await buildRenditions(decoded.input, edits, baseline);
       await mkdir(deps.editedDisplaysDir, { recursive: true });
       await writeFile(path.join(deps.editedDisplaysDir, `${id}.webp`), edited.display);
       await writeFile(path.join(deps.thumbnailsDir, `${id}.webp`), edited.thumbnail);

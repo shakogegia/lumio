@@ -75,13 +75,44 @@ const NR_SIGMA = 0.12;            // bilateral luma-difference sigma for noise r
 const GRAIN_MAX = 0.12;           // grain signal amplitude at grain = 100
 const GRAIN_CELL_MAX = 4;         // grain cell size (px) at grainSize = 100
 
+/** A photo's white-balance baseline: the Temperature(K)/Tint at which the WB
+ *  matrix is identity (the as-shot anchor). Estimated at ingest. */
+export interface WbBaseline {
+  k: number;
+  tint: number;
+}
+
+/** The global default baseline — identical to the pre-baseline behaviour
+ *  (identity at 6500K / 0 tint). Used whenever a photo has no estimated baseline. */
+export const DEFAULT_BASELINE: WbBaseline = { k: NEUTRAL_K, tint: 0 };
+
+/** Build a baseline from a photo row / DTO. null/absent columns ⇒ neutral. */
+export function wbBaselineOf(p: { asShotTempK?: number | null; asShotTint?: number | null }): WbBaseline {
+  return { k: p.asShotTempK ?? NEUTRAL_K, tint: p.asShotTint ?? 0 };
+}
+
 /** Field value with the field's *neutral* as the default for a missing key. */
 const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? NEUTRAL[k];
 
-/** True when any color field is non-neutral. null/absent fields count as neutral. */
+/** The white-balance keys. They have NO in-band neutral: their "neutral" is the
+ *  per-photo as-shot baseline, which the matrix encodes as identity. The editor
+ *  removes them from the recipe whenever they sit on the baseline, so a *present*
+ *  temperature/tint always means an off-baseline (real) edit. Recipe-level neutral
+ *  checks therefore treat them as presence-based, NOT compared to 6500/0 — the
+ *  global neutral 6500 is a legitimate value for a non-6500-baseline photo. */
+export function isWbKey(k: ColorKey): boolean {
+  return k === "temperature" || k === "tint";
+}
+
+/** True when any color field is non-neutral. null/absent fields count as neutral;
+ *  a present temperature/tint always counts (see {@link isWbKey}). */
 export function hasColor(e: PhotoEdits | null): boolean {
   if (!e) return false;
-  return COLOR_FIELDS.some((f) => val(e, f.key) !== f.neutral) || hasCurves(e.curves);
+  return (
+    COLOR_FIELDS.some((f) =>
+      isWbKey(f.key) ? e[f.key] !== undefined : val(e, f.key) !== f.neutral,
+    ) || hasCurves(e.curves)
+  );
 }
 
 /** True when a single curve has ≥2 points that deviate from the y=x identity. */
@@ -214,16 +245,97 @@ function whiteXyz(K: number, tint: number): number[] {
 }
 
 /** Linear-sRGB chromatic-adaptation matrix that re-balances the image as if its
- *  neutral were lit at `K`/`tint`, normalized back to NEUTRAL_K. Identity at
- *  (NEUTRAL_K, 0). Higher K ⇒ bluer source ⇒ warmer result (Lightroom-style). */
-function adaptMatrixRgb(K: number, tint: number): M3 {
+ *  neutral were lit at `K`/`tint`, normalized back to the BASELINE white. Identity
+ *  at (baseline.k, baseline.tint). Higher K ⇒ bluer source ⇒ warmer result. */
+function adaptMatrixRgb(K: number, tint: number, baseline: WbBaseline = DEFAULT_BASELINE): M3 {
   const ws = whiteXyz(K, tint);
-  const wd = whiteXyz(NEUTRAL_K, 0);
+  const wd = whiteXyz(baseline.k, baseline.tint);
   const cs = m3vec(BRADFORD, ws);
   const cd = m3vec(BRADFORD, wd);
   const D: M3 = [cd[0]! / cs[0]!, 0, 0, 0, cd[1]! / cs[1]!, 0, 0, 0, cd[2]! / cs[2]!];
   const mXyz = m3mul(BRADFORD_INV, m3mul(D, BRADFORD));
   return m3mul(XYZ2RGB, m3mul(mXyz, RGB2XYZ));
+}
+
+/** McCamy's correlated-colour-temperature approximation from CIE 1931 xy. */
+function cctFromXy(x: number, y: number): number {
+  const n = (x - 0.3320) / (0.1858 - y);
+  return 449 * n ** 3 + 3525 * n ** 2 + 6823.3 * n + 5520.33;
+}
+
+/** Signed Duv of a CIE-1931 chromaticity from the Krystek Planckian locus at its
+ *  own (McCamy) CCT — the perpendicular residual used as the tint axis. Returns
+ *  the K used and the Duv so callers can re-reference it. */
+function duvFromXy(x: number, y: number): { k: number; duv: number } {
+  let k = cctFromXy(x, y);
+  k = Math.max(2000, Math.min(11000, k));
+  const denom = -2 * x + 12 * y + 3;
+  const u = (4 * x) / denom, v = (6 * y) / denom;
+  const [u0, v0] = planckUv(k);
+  const [u1, v1] = planckUv(k * 1.0001);
+  const [u2, v2] = planckUv(k * 0.9999);
+  let tu = u1 - u2, tv = v1 - v2;
+  const len = Math.hypot(tu, tv) || 1e-9;
+  tu /= len; tv /= len;
+  // displacement along the locus normal (-tv, tu) — matches whiteXyz's offset axis.
+  return { k, duv: (u - u0) * -tv + (v - v0) * tu };
+}
+
+// The model's Krystek locus is slightly offset from the true sRGB white (D65), so
+// a perfectly neutral grey sits a small constant Duv off the locus. Subtract that
+// reference so a neutral capture reads as tint 0 (the default baseline), not ~24.
+const D65_REF_DUV = duvFromXy(0.3127, 0.329).duv;
+
+/**
+ * Estimate a photo's as-shot white `(k, tint)` from a small decoded RGB buffer
+ * (robust gray-world). Because the editor default is identity-at-baseline, a
+ * rough estimate only changes the slider's anchor number, never the pixels — so
+ * this is deliberately simple. Returns null when no usable (near-neutral, non-
+ * black, non-clipped) pixels exist. `channels` may be 3 (RGB) or 4 (RGBA).
+ */
+export function estimateAsShotWhite(
+  rgb: Uint8Array | Uint8ClampedArray,
+  width: number,
+  height: number,
+  channels: number,
+): WbBaseline | null {
+  const inv = 1 / 255;
+  let sr = 0, sg = 0, sb = 0, wsum = 0;
+  for (let i = 0; i + channels <= rgb.length; i += channels) {
+    const r = rgb[i]! * inv, g = rgb[i + 1]! * inv, b = rgb[i + 2]! * inv;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    if (luma < 0.02 || luma > 0.98) continue;        // drop near-black / near-clipped
+    const sat = mx <= 0 ? 0 : (mx - mn) / mx;
+    if (sat > 0.6) continue;                          // drop strongly-coloured pixels
+    const w = 1 - sat;                                // weight toward neutral pixels
+    sr += srgbToLinear(r) * w;
+    sg += srgbToLinear(g) * w;
+    sb += srgbToLinear(b) * w;
+    wsum += w;
+  }
+  if (wsum < 1e-6) return null;
+  const lr = sr / wsum, lg = sg / wsum, lb = sb / wsum;
+
+  // linear RGB average → XYZ → chromaticity.
+  const X = RGB2XYZ[0]! * lr + RGB2XYZ[1]! * lg + RGB2XYZ[2]! * lb;
+  const Y = RGB2XYZ[3]! * lr + RGB2XYZ[4]! * lg + RGB2XYZ[5]! * lb;
+  const Z = RGB2XYZ[6]! * lr + RGB2XYZ[7]! * lg + RGB2XYZ[8]! * lb;
+  const sum = X + Y + Z;
+  if (sum <= 0) return null;
+  const x = X / sum, y = Y / sum;
+
+  // CCT (McCamy) + signed Duv from the Krystek locus, re-referenced so that a true
+  // neutral (D65) grey reads as tint 0 — the model's locus is offset from D65, so
+  // without this a neutral capture would estimate a large spurious tint.
+  const { k, duv } = duvFromXy(x, y);
+  if (!Number.isFinite(k)) return null;
+  // whiteXyz offsets along the normal by `off = TINT_SIGN*(tint/TINT_RANGE)*DUV_MAX`,
+  // so invert that mapping to recover tint from the re-referenced Duv.
+  let tint = TINT_SIGN * ((duv - D65_REF_DUV) / DUV_MAX) * TINT_RANGE;
+  tint = Math.max(-150, Math.min(150, tint));
+
+  return { k, tint };
 }
 
 /** The linear-light pre-pass matrix: exposure (a uniform scale) folded into the
@@ -234,13 +346,18 @@ export interface LinearParams {
   m: number[];
 }
 
-export function linearParams(e: PhotoEdits | null): LinearParams | null {
+export function linearParams(
+  e: PhotoEdits | null,
+  baseline: WbBaseline = DEFAULT_BASELINE,
+): LinearParams | null {
   const ev = val(e, "exposure");
-  const K = val(e, "temperature");
-  const tint = val(e, "tint");
-  const wbActive = K !== NEUTRAL_K || tint !== 0;
+  // Temperature/tint default to the photo's baseline when absent — so an unedited
+  // photo (no temperature key) is identity, NOT a shift toward 6500.
+  const K = e?.temperature ?? baseline.k;
+  const tint = e?.tint ?? baseline.tint;
+  const wbActive = K !== baseline.k || tint !== baseline.tint;
   if (ev === 0 && !wbActive) return null;
-  const r: M3 = wbActive ? adaptMatrixRgb(K, tint) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const r: M3 = wbActive ? adaptMatrixRgb(K, tint, baseline) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const s = Math.pow(2, ev); // exposure in stops → linear scale
   // fold exposure (uniform scale) and transpose row-major → column-major
   return {
@@ -413,9 +530,13 @@ export interface ColorModel {
 /** Assemble the full color model. The bake uses a high-resolution tone LUT
  *  (1024 entries) so 16-bit precision isn't quantized; the GL preview can request
  *  a smaller LUT for its texture. */
-export function buildColorModel(e: PhotoEdits | null, toneSamples = 1024): ColorModel {
+export function buildColorModel(
+  e: PhotoEdits | null,
+  toneSamples = 1024,
+  baseline: WbBaseline = DEFAULT_BASELINE,
+): ColorModel {
   return {
-    linear: linearParams(e),
+    linear: linearParams(e, baseline),
     tone: buildToneLut(e, toneSamples),
     chroma: chromaParams(e),
     vignette: vignetteParams(e),

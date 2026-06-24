@@ -49,4 +49,25 @@ describe("applyColorBake", () => {
     expect([meta.width, meta.height]).toEqual([12, 9]);
     expect(meta.channels).toBe(3);
   });
+
+  it("at the baseline, a temperature edit is identity (no channel shift)", async () => {
+    // temperature === baseline.k ⇒ WB matrix identity ⇒ grey stays grey.
+    const out = await applyColorBake(
+      grey(128),
+      { rotate: 0, flipH: false, flipV: false, temperature: 5200 },
+      { k: 5200, tint: 0 },
+    );
+    const s = (await out.stats()).channels;
+    expect(Math.abs(s[0]!.mean - s[2]!.mean)).toBeLessThan(1.5);
+  });
+
+  it("a temperature above the baseline warms (R > B)", async () => {
+    const out = await applyColorBake(
+      grey(128),
+      { rotate: 0, flipH: false, flipV: false, temperature: 9000 },
+      { k: 5000, tint: 0 },
+    );
+    const s = (await out.stats()).channels;
+    expect(s[0]!.mean).toBeGreaterThan(s[2]!.mean);
+  });
 });

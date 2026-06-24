@@ -43,6 +43,7 @@ const ASPECTS: { preset: AspectPreset; label: string }[] = [
 export function LightboxEditPanel() {
   const {
     working,
+    baseline,
     dirty,
     applying,
     canUndo,
@@ -87,7 +88,13 @@ export function LightboxEditPanel() {
   }, [setEditing]);
 
   const renderSlider = (f: ColorField) => {
-    const value = working[f.key] ?? f.neutral;
+    // Temperature/Tint default + reset to the photo's as-shot baseline (their
+    // neutral is per-photo); other fields use their global neutral.
+    const neutral =
+      f.key === "temperature" ? baseline.k
+      : f.key === "tint" ? baseline.tint
+      : f.neutral;
+    const value = working[f.key] ?? neutral;
     return (
       <div key={f.key} className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
@@ -96,9 +103,9 @@ export function LightboxEditPanel() {
             type="button"
             aria-label={`Reset ${f.label}`}
             className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => setColor(f.key, f.neutral)}
+            onClick={() => setColor(f.key, neutral)}
           >
-            {f.precision ? value.toFixed(f.precision) : value}
+            {f.precision ? value.toFixed(f.precision) : Math.round(value)}
           </button>
         </div>
         <Slider

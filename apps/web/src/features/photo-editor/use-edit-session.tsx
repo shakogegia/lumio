@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   NO_EDITS,
@@ -16,6 +16,7 @@ import {
   clampCropToImage,
   COLOR_FIELDS,
   hasCurve,
+  wbBaselineOf,
   type PhotoDTO,
   type PhotoEdits,
   type AspectPreset,
@@ -23,6 +24,7 @@ import {
   type ColorKey,
   type CurvePoint,
   type CurveSpec,
+  type WbBaseline,
 } from "@lumio/shared";
 import { useConfirm } from "@/components/confirm-dialog";
 import { catalogApiUrl } from "@/lib/catalog-api";
@@ -34,6 +36,8 @@ interface EditSessionValue {
   working: PhotoEdits;
   /** The recipe currently baked into the photo's renditions. */
   saved: PhotoEdits;
+  /** The photo's as-shot WB baseline: the Temp/Tint where the WB matrix is identity. */
+  baseline: WbBaseline;
   /** working differs from saved. */
   dirty: boolean;
   applying: boolean;
@@ -146,6 +150,11 @@ export function EditSessionProvider({
   const { confirm, confirmDialog } = useConfirm();
 
   const saved = photo.edits ?? NO_EDITS;
+  const baseline = useMemo(
+    () => wbBaselineOf(photo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [photo.asShotTempK, photo.asShotTint],
+  );
   const [history, setHistory] = useState<History>(() => freshHistory(saved));
   const [applying, setApplying] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -245,23 +254,30 @@ export function EditSessionProvider({
     },
     [baseSize],
   );
+  const neutralFor = useCallback(
+    (key: ColorKey): number =>
+      key === "temperature" ? baseline.k
+      : key === "tint" ? baseline.tint
+      : COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0,
+    [baseline],
+  );
   // Live (drag): preview the value without touching history. The image follows in
   // real time; no undo entry is created until the gesture commits.
   const setColorLive = useCallback((key: ColorKey, value: number) => {
     const base = committedRef.current;
-    const neutral = COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0;
+    const neutral = neutralFor(key);
     setLivePreview(value === neutral ? withoutColor(base, key) : { ...base, [key]: value });
-  }, []);
+  }, [neutralFor]);
   // Commit (release): one history entry for the whole gesture; clears the live preview.
   const setColor = useCallback((key: ColorKey, value: number) => {
     setLivePreview(null);
     setHistory((h) => {
       const cur = h.stack[h.index];
-      const neutral = COLOR_FIELDS.find((f) => f.key === key)?.neutral ?? 0;
+      const neutral = neutralFor(key);
       const next = value === neutral ? withoutColor(cur, key) : { ...cur, [key]: value };
       return pushHistory(h, next);
     });
-  }, []);
+  }, [neutralFor]);
   const setCurve = useCallback((channel: keyof CurveSpec, points: CurvePoint[]) => {
     setHistory((h) => {
       const cur = h.stack[h.index];
@@ -406,6 +422,7 @@ export function EditSessionProvider({
   const value: EditSessionValue = {
     working,
     saved,
+    baseline,
     dirty,
     applying,
     canUndo,

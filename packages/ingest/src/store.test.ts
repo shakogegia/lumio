@@ -19,6 +19,7 @@ const processed: ProcessedPhoto = {
   exif: { cameraMake: "Lumio" },
   thumbnail: Buffer.from("fake-webp-bytes"),
   display: Buffer.from("fake-display-bytes"),
+  asShot: null,
 };
 
 function fakeDb(returnedId: string) {
@@ -196,5 +197,51 @@ describe("storePhoto", () => {
     );
     expect(calls[0].where).toEqual({ catalogId_path: { catalogId: "cat1", path: "2024/a.jpg" } });
     expect(calls[0].create.catalogId).toBe("cat1");
+  });
+
+  it("persists the as-shot baseline on create and update", async () => {
+    const db = fakeDb("photo-wb");
+    await storePhoto(
+      {
+        catalogId: "cat1",
+        path: "vacation/wb.jpg",
+        source: PhotoSource.filesystem,
+        processed: { ...processed, asShot: { k: 5200, tint: -10 } },
+        fileSize: 1,
+        fileMtimeMs: 1,
+        fileBirthtimeMs: 1700000000000,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "twb"), displaysDir: path.join(dir, "dwb") },
+    );
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(args.create).toMatchObject({ asShotTempK: 5200, asShotTint: -10 });
+    expect(args.update).toMatchObject({ asShotTempK: 5200, asShotTint: -10 });
+  });
+
+  it("persists null baseline when asShot is absent", async () => {
+    const db = fakeDb("photo-no-wb");
+    await storePhoto(
+      {
+        catalogId: "cat1",
+        path: "vacation/no-wb.jpg",
+        source: PhotoSource.filesystem,
+        processed: { ...processed, asShot: null },
+        fileSize: 1,
+        fileMtimeMs: 1,
+        fileBirthtimeMs: 1700000000000,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "tnwb"), displaysDir: path.join(dir, "dnwb") },
+    );
+
+    const args = db.calls[0] as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(args.create).toMatchObject({ asShotTempK: null, asShotTint: null });
+    expect(args.update).toMatchObject({ asShotTempK: null, asShotTint: null });
   });
 });

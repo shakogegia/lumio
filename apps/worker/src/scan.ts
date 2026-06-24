@@ -3,7 +3,7 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { listCatalogs, prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS, hashFile, ingestPath, regenerateRenditions, removePath } from "@lumio/ingest";
-import { coercePhotoEdits, errorMessage, hasEdits } from "@lumio/shared";
+import { coercePhotoEdits, errorMessage, hasEdits, wbBaselineOf } from "@lumio/shared";
 import { INGEST_CONCURRENCY, displayPath, editedDisplayPath, thumbnailPath } from "./config.js";
 import { ingestDepsFor, removeDepsFor } from "./deps.js";
 import { timedLine } from "./format.js";
@@ -82,6 +82,8 @@ export const SCAN_SELECT = {
   fileMtimeMs: true,
   hash: true,
   edits: true,
+  asShotTempK: true,
+  asShotTint: true,
 } as const;
 
 export interface ScanRow {
@@ -92,6 +94,8 @@ export interface ScanRow {
   fileMtimeMs: number;
   hash: string | null;
   edits: unknown;
+  asShotTempK: number | null;
+  asShotTint: number | null;
 }
 
 async function cachePresent(catalogId: string, id: string, edited: boolean): Promise<boolean> {
@@ -105,7 +109,15 @@ async function cachePresent(catalogId: string, id: string, edited: boolean): Pro
  *  pipeline make them deterministically equal to the values already stored, so
  *  there is nothing to persist (and persisting would needlessly bump updatedAt). */
 async function heal(catalog: { id: string; path: string }, row: ScanRow, absPath: string): Promise<void> {
-  await regenerateRenditions(absPath, coercePhotoEdits(row.edits), row.id, ingestDepsFor(catalog));
+  // Pass the photo's as-shot baseline so the healed edited rendition matches the
+  // editor preview + the on-demand /edited bake (identity at the baseline).
+  await regenerateRenditions(
+    absPath,
+    coercePhotoEdits(row.edits),
+    row.id,
+    ingestDepsFor(catalog),
+    wbBaselineOf(row),
+  );
 }
 
 /**

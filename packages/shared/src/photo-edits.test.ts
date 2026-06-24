@@ -196,8 +196,10 @@ describe("photo-edits color", () => {
     expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 10 })).toBe(true);
     expect(sameEdits({ ...base, contrast: 10 }, { ...base, contrast: 11 })).toBe(false);
     expect(sameEdits({ ...base, exposure: 0 }, { ...base })).toBe(true);
-    // temperature's neutral is 6500, not 0
-    expect(sameEdits({ ...base, temperature: 6500 }, { ...base })).toBe(true);
+    // temperature/tint are presence-based (no in-band neutral): present !== absent,
+    // even at the global 6500/0 — they're only stored off the per-photo baseline.
+    expect(sameEdits({ ...base, temperature: 6500 }, { ...base })).toBe(false);
+    expect(sameEdits({ ...base, temperature: 6500 }, { ...base, temperature: 6500 })).toBe(true);
     expect(sameEdits({ ...base, temperature: 9000 }, { ...base })).toBe(false);
   });
 
@@ -209,10 +211,12 @@ describe("photo-edits color", () => {
     expect(out).not.toHaveProperty("vignette");
   });
 
-  it("coercePhotoEdits clamps temperature to Kelvin range and drops neutral", () => {
+  it("coercePhotoEdits clamps temperature/tint and keeps them (presence-based)", () => {
     expect(coercePhotoEdits({ ...base, version: 3, temperature: 99999 })!.temperature).toBe(11000);
-    expect(coercePhotoEdits({ ...base, version: 3, temperature: 6500 })!).not.toHaveProperty("temperature");
+    // WB keys have no in-band neutral: a present 6500/0 is an off-baseline edit, kept.
+    expect(coercePhotoEdits({ ...base, version: 3, temperature: 6500 })!.temperature).toBe(6500);
     expect(coercePhotoEdits({ ...base, version: 3, tint: 999 })!.tint).toBe(150);
+    expect(coercePhotoEdits({ ...base, version: 3, tint: 0 })!.tint).toBe(0);
   });
 });
 

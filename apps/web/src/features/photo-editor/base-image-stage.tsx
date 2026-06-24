@@ -1,6 +1,6 @@
 "use client";
 
-import { straightenedSize, type PhotoEdits } from "@lumio/shared";
+import { straightenedSize, DEFAULT_BASELINE, type PhotoEdits, type WbBaseline } from "@lumio/shared";
 import { AdjustedImage } from "./adjusted-image";
 
 /** Renders the base image with flip + coarse-rotate + straighten applied, as the
@@ -18,12 +18,14 @@ export function BaseImageStage({
   stageW,
   orientedBase,
   working,
+  baseline = DEFAULT_BASELINE,
   onNaturalSize,
 }: {
   src: string;
   stageW: number;
   orientedBase: { w: number; h: number };
   working: PhotoEdits;
+  baseline?: WbBaseline;
   onNaturalSize?: (s: { w: number; h: number }) => void;
 }) {
   const theta = working.straighten ?? 0;
@@ -42,6 +44,7 @@ export function BaseImageStage({
       <AdjustedImage
         src={src}
         working={working}
+        baseline={baseline}
         onNaturalSize={onNaturalSize}
         className="absolute left-1/2 top-1/2 max-w-none select-none"
         style={{

@@ -6,6 +6,7 @@ import {
   straightenedSize,
   type CropRect,
   type PhotoEdits,
+  type WbBaseline,
 } from "@lumio/shared";
 import { BaseImageStage } from "./base-image-stage";
 
@@ -19,6 +20,7 @@ export function EditedResult({
   fullSrc,
   zoomed,
   working,
+  baseline,
   orientedBase,
   onBaseSize,
 }: {
@@ -26,6 +28,7 @@ export function EditedResult({
   fullSrc: string;
   zoomed: boolean;
   working: PhotoEdits;
+  baseline: WbBaseline;
   orientedBase: { w: number; h: number } | null;
   onBaseSize: (s: { w: number; h: number }) => void;
 }) {
@@ -97,6 +100,7 @@ export function EditedResult({
             stageW={stageW}
             orientedBase={orientedBase}
             working={working}
+            baseline={baseline}
             onNaturalSize={onBaseSize}
           />
         </div>

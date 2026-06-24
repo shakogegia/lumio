@@ -1,0 +1,3 @@
+-- AddAsShotWhiteBalance
+ALTER TABLE "Photo" ADD COLUMN "asShotTempK" DOUBLE PRECISION;
+ALTER TABLE "Photo" ADD COLUMN "asShotTint" DOUBLE PRECISION;

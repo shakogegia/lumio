@@ -55,7 +55,7 @@ export function ZoomableImage({
   renderHeader: (zoomHeader: ZoomHeaderProps) => ReactNode;
 }) {
   const { slug } = useCatalog();
-  const { working, editing, cropMode, orientedBase, setBaseSize } = useEditSession();
+  const { working, editing, cropMode, orientedBase, setBaseSize, baseline } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
   const displaySrc = displayUrl(slug, photo);
@@ -272,6 +272,7 @@ export function ZoomableImage({
                 fullSrc={originalSrc}
                 zoomed={isZoomed}
                 working={working}
+                baseline={baseline}
                 orientedBase={orientedBase}
                 onBaseSize={setBaseSize}
               />
@@ -377,7 +378,7 @@ function EditorCanvas({
   onBaseSize: (s: { w: number; h: number }) => void;
   interactive: boolean;
 }) {
-  const { working, orientedBase, setCrop, cropAspect } = useEditSession();
+  const { working, orientedBase, setCrop, cropAspect, baseline } = useEditSession();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -423,6 +424,7 @@ function EditorCanvas({
             stageW={layout.stageW}
             orientedBase={orientedBase!}
             working={working}
+            baseline={baseline}
             onNaturalSize={onBaseSize}
           />
           <CropOverlay

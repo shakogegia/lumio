@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
-import { coercePhotoEdits, hasEdits, type DownloadVariant } from "@lumio/shared";
+import { coercePhotoEdits, hasEdits, wbBaselineOf, type DownloadVariant } from "@lumio/shared";
 import { decodeToSharpInput, encodeEditedJpeg } from "@lumio/ingest";
 /** A path's basename with the extension swapped to `.jpg` (edited exports). */
 export function jpegName(relPath: string): string {
@@ -70,7 +70,7 @@ export function attachmentDisposition(filename: string): string {
  * logged and skipped — never fatal.
  */
 export function streamPhotosZip(
-  photos: { id: string; path: string; edits?: unknown }[],
+  photos: { id: string; path: string; edits?: unknown; asShotTempK?: number | null; asShotTint?: number | null }[],
   zipName: string,
   variant: DownloadVariant = "original",
   resolve: (relPath: string) => string,
@@ -106,7 +106,7 @@ export function streamPhotosZip(
           try {
             const decoded = await decodeToSharpInput(abs);
             try {
-              const jpeg = await encodeEditedJpeg(decoded.input, recipe);
+              const jpeg = await encodeEditedJpeg(decoded.input, recipe, wbBaselineOf(photo));
               archive.append(jpeg, { name: dedupeEntryName(jpegName(photo.path), used) });
             } finally {
               await decoded.cleanup();
