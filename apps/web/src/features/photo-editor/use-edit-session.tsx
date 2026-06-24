@@ -64,6 +64,9 @@ interface EditSessionValue {
   setStraighten: (deg: number) => void;
   setCrop: (crop: CropRect | null) => void;
   setAspect: (preset: AspectPreset) => void;
+  /** The selected crop aspect preset; "free" = unconstrained. Drives the chip
+   *  highlight and locks handle-resize to that ratio. */
+  cropAspect: AspectPreset;
   /** Clear crop + straighten back to the full frame. Pushes history. */
   resetCrop: () => void;
   /** Live-preview a color field during a drag (no history entry). */
@@ -146,6 +149,7 @@ export function EditSessionProvider({
   const [editing, setEditing] = useState(false);
   const [baseSize, setBaseSize] = useState<{ w: number; h: number } | null>(null);
   const [cropMode, setCropMode] = useState(false);
+  const [cropAspect, setCropAspect] = useState<AspectPreset>("free");
   const cropSnapshot = useRef<PhotoEdits | null>(null);
   const photoIdRef = useRef(photo.id);
 
@@ -178,6 +182,7 @@ export function EditSessionProvider({
       setHistory(freshHistory(e));
       setBaseSize(null);
       setCropMode(false);
+      setCropAspect("free");
       setLivePreview(null);
       cropSnapshot.current = null;
     };
@@ -225,6 +230,7 @@ export function EditSessionProvider({
   }, []);
   const setAspect = useCallback(
     (preset: AspectPreset) => {
+      setCropAspect(preset);
       setHistory((h) => {
         const cur = h.stack[h.index];
         const ob =
@@ -277,6 +283,7 @@ export function EditSessionProvider({
     });
   }, []);
   const resetCrop = useCallback(() => {
+    setCropAspect("free");
     setHistory((h) => pushHistory(h, { ...h.stack[h.index], crop: null, straighten: 0 }));
   }, []);
   const resetTransform = useCallback(() => {
@@ -415,6 +422,7 @@ export function EditSessionProvider({
     setStraighten,
     setCrop,
     setAspect,
+    cropAspect,
     resetCrop,
     setColorLive,
     setColor,
