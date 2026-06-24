@@ -79,8 +79,10 @@ interface EditSessionValue {
   resetCurves: () => void;
   /** Reset rotate + flip to identity (the Transform group). Pushes history. */
   resetTransform: () => void;
-  /** Reset all color adjustments to neutral (the Adjust group). Pushes history. */
-  resetColor: () => void;
+  /** Reset color adjustments to neutral. With `keys`, resets only those fields
+   *  (a panel sub-group); without, resets every color field + curves (the Adjust
+   *  group's master reset). Pushes history. */
+  resetColor: (keys?: ColorKey[]) => void;
   /** True while the focused Crop mode is active. */
   cropMode: boolean;
   /** Enter Crop mode (snapshots crop+straighten for Cancel). */
@@ -291,12 +293,16 @@ export function EditSessionProvider({
       pushHistory(h, { ...h.stack[h.index], rotate: 0, flipH: false, flipV: false }),
     );
   }, []);
-  const resetColor = useCallback(() => {
+  const resetColor = useCallback((keys?: ColorKey[]) => {
     setLivePreview(null);
     setHistory((h) => {
       const next = { ...h.stack[h.index] };
-      for (const f of COLOR_FIELDS) delete next[f.key];
-      delete next.curves;
+      if (keys) {
+        for (const k of keys) delete next[k];
+      } else {
+        for (const f of COLOR_FIELDS) delete next[f.key];
+        delete next.curves;
+      }
       return pushHistory(h, next);
     });
   }, []);

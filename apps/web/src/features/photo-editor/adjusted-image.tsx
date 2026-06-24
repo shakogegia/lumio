@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildToneLut,
   chromaParams,
+  detailParams,
+  grainParams,
   linearParams,
   vignetteParams,
   type PhotoEdits,
@@ -16,6 +18,8 @@ function glModel(working: PhotoEdits): GlColorModel {
     tone: buildToneLut(working, 256),
     chroma: chromaParams(working),
     vignette: vignetteParams(working),
+    detail: detailParams(working),
+    grain: grainParams(working),
   };
 }
 

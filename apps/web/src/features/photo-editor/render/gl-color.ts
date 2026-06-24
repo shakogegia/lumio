@@ -1,4 +1,11 @@
-import type { ChromaParams, LinearParams, ToneLut, VignetteParams } from "@lumio/shared";
+import type {
+  ChromaParams,
+  DetailParams,
+  GrainParams,
+  LinearParams,
+  ToneLut,
+  VignetteParams,
+} from "@lumio/shared";
 
 /** The render inputs — exactly the artifacts the shared color model produces.
  *  The bake (`applyColorToRaw`) runs the identical math, so preview = save. */
@@ -9,6 +16,10 @@ export interface GlColorModel {
   tone: ToneLut | null;
   chroma: ChromaParams | null;
   vignette: VignetteParams | null;
+  /** Spatial sharpen + masking + noise reduction (3×3 of source). null = off. */
+  detail: DetailParams | null;
+  /** Per-pixel film grain, applied last. null = off. */
+  grain: GrainParams | null;
 }
 
 const IDENTITY3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
@@ -41,6 +52,7 @@ void main() {
 // hue/saturation/vibrance → radial vignette.
 const FRAG = `#version 300 es
 precision highp float;
+precision highp int;   // grain hash needs full 32-bit uint math (fragment int defaults to mediump)
 in vec2 vUv;
 out vec4 fragColor;
 uniform sampler2D uImage;
@@ -52,6 +64,45 @@ uniform float uHue;         // degrees
 uniform float uSatF;
 uniform float uVib;
 uniform float uVigStrength; // signed: <0 darken corners, >0 lighten
+uniform vec2 uResolution;   // image size in px (for texel offsets + grain coords)
+uniform bool uHasDetail;
+uniform float uSharpen;     // folded high-pass gain (sharpen/100 × SHARPEN_MAX)
+uniform float uMask;        // 0..1 masking strength
+uniform float uNr;          // 0..1 noise-reduction strength
+uniform bool uHasGrain;
+uniform float uGrainAmount; // grain/100 × GRAIN_MAX
+uniform float uGrainCell;   // grain lattice cell size in px (>=1)
+
+// Detail/grain constants — kept byte-identical to packages/shared/src/photo-color.ts.
+const float MASK_LO = 0.1;
+const float MASK_HI = 0.8;
+const float NR_SIGMA = 0.12;
+const float GWv[9] = float[9](1.0, 2.0, 1.0, 2.0, 4.0, 2.0, 1.0, 2.0, 1.0);
+const float SXv[9] = float[9](-1.0, 0.0, 1.0, -2.0, 0.0, 2.0, -1.0, 0.0, 1.0);
+const float SYv[9] = float[9](-1.0, -2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 1.0);
+
+float lumaOf(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+// Integer pixel-coord hash, reduced to 16 bits so float32 matches JS double.
+uint grainHashU(uint ix, uint iy) {
+  uint n = (ix * 0x1f1f1f1fu) ^ iy;
+  n = n * 0x27d4eb2du;
+  n = n ^ (n >> 15u);
+  return n;
+}
+float grainHash(int ix, int iy) {
+  return float(grainHashU(uint(ix), uint(iy)) & 0xffffu) / 65536.0;
+}
+float smoothUnit(float t) { return t * t * (3.0 - 2.0 * t); }
+float valueNoise(float x, float y, float cell) {
+  float fx = x / cell, fy = y / cell;
+  float ifx = floor(fx), ify = floor(fy);
+  int ix = int(ifx), iy = int(ify);
+  float sx = smoothUnit(fx - ifx), sy = smoothUnit(fy - ify);
+  float a = mix(grainHash(ix, iy),     grainHash(ix + 1, iy),     sx);
+  float b = mix(grainHash(ix, iy + 1), grainHash(ix + 1, iy + 1), sx);
+  return mix(a, b, sy) * 2.0 - 1.0;
+}
 
 vec3 srgbToLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -74,7 +125,35 @@ vec3 rotateHue(vec3 c, float deg) {
 
 void main() {
   vec4 src = texture(uImage, vUv);
-  vec3 c = src.rgb;
+
+  // Detail (spatial): denoise + sharpen the SOURCE from a clamped 3×3, before color.
+  vec3 c;
+  if (uHasDetail) {
+    vec2 texel = 1.0 / uResolution;
+    vec3 ctr = src.rgb;
+    float cl = lumaOf(ctr);
+    float sig2 = NR_SIGMA * NR_SIGMA;
+    vec3 blur = vec3(0.0);
+    vec3 nrSum = vec3(0.0);
+    float nrW = 0.0, gx = 0.0, gy = 0.0;
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        int k = (j + 1) * 3 + (i + 1);
+        vec3 s = texture(uImage, vUv + vec2(float(i), float(j)) * texel).rgb;
+        float gw = GWv[k] / 16.0;
+        blur += gw * s;
+        float nl = lumaOf(s);
+        float bw = gw * exp(-((nl - cl) * (nl - cl)) / sig2);
+        nrSum += bw * s; nrW += bw;
+        gx += SXv[k] * nl; gy += SYv[k] * nl;
+      }
+    }
+    vec3 den = mix(ctr, nrSum / nrW, uNr);
+    float edge = smoothstep(MASK_LO, MASK_HI, sqrt(gx * gx + gy * gy));
+    c = den + (uSharpen * mix(1.0, edge, uMask)) * (den - blur);
+  } else {
+    c = src.rgb;
+  }
 
   // Exposure × white balance in LINEAR light, then re-encode to gamma.
   if (uHasLinear) {
@@ -106,6 +185,13 @@ void main() {
   if (uVigStrength != 0.0) {
     float dist = length(vUv - 0.5) / 0.70710678;
     c *= (1.0 + uVigStrength * smoothstep(0.45, 1.0, dist));
+  }
+
+  // Grain (per pixel, monochrome) — vUv*resolution gives top-down pixel coords
+  // matching the bake's loop indices (vUv already flips V so row 0 = image top).
+  if (uHasGrain) {
+    vec2 pix = vUv * uResolution;
+    c += vec3(uGrainAmount * valueNoise(floor(pix.x), floor(pix.y), uGrainCell));
   }
 
   fragColor = vec4(clamp(c, 0.0, 1.0), src.a);
@@ -158,6 +244,14 @@ export class GlColor {
       uSatF: gl.getUniformLocation(this.program, "uSatF"),
       uVib: gl.getUniformLocation(this.program, "uVib"),
       uVigStrength: gl.getUniformLocation(this.program, "uVigStrength"),
+      uResolution: gl.getUniformLocation(this.program, "uResolution"),
+      uHasDetail: gl.getUniformLocation(this.program, "uHasDetail"),
+      uSharpen: gl.getUniformLocation(this.program, "uSharpen"),
+      uMask: gl.getUniformLocation(this.program, "uMask"),
+      uNr: gl.getUniformLocation(this.program, "uNr"),
+      uHasGrain: gl.getUniformLocation(this.program, "uHasGrain"),
+      uGrainAmount: gl.getUniformLocation(this.program, "uGrainAmount"),
+      uGrainCell: gl.getUniformLocation(this.program, "uGrainCell"),
     };
     gl.uniform1i(this.uniforms.uImage!, 0);
     gl.uniform1i(this.uniforms.uLut!, 1);
@@ -205,6 +299,17 @@ export class GlColor {
     gl.uniform1f(this.uniforms.uSatF!, ch?.satF ?? 1);
     gl.uniform1f(this.uniforms.uVib!, ch?.vib ?? 0);
     gl.uniform1f(this.uniforms.uVigStrength!, model.vignette?.strength ?? 0);
+
+    gl.uniform2f(this.uniforms.uResolution!, this.width, this.height);
+    const d = model.detail;
+    gl.uniform1i(this.uniforms.uHasDetail!, d ? 1 : 0);
+    gl.uniform1f(this.uniforms.uSharpen!, d?.sharpen ?? 0);
+    gl.uniform1f(this.uniforms.uMask!, d?.mask ?? 0);
+    gl.uniform1f(this.uniforms.uNr!, d?.nr ?? 0);
+    const gr = model.grain;
+    gl.uniform1i(this.uniforms.uHasGrain!, gr ? 1 : 0);
+    gl.uniform1f(this.uniforms.uGrainAmount!, gr?.amount ?? 0);
+    gl.uniform1f(this.uniforms.uGrainCell!, gr?.cell ?? 1);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
