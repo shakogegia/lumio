@@ -96,6 +96,11 @@ export interface PhotoDTO {
   exif: ExifData;
   colorLabel: ColorLabel | null;
   edits: PhotoEdits | null;
+  /** As-shot white-balance baseline (estimated at ingest). null = use 6500K/0
+   *  (the WB matrix's default identity point). Drives the editor's Temp/Tint
+   *  default + reset; non-destructive at the default. */
+  asShotTempK: number | null;
+  asShotTint: number | null;
   isFavorite: boolean;
   createdAt: string;
   updatedAt: string;
