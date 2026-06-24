@@ -438,6 +438,56 @@ function rotateHue(r: number, g: number, b: number, deg: number): [number, numbe
   ];
 }
 
+const GW = [1, 2, 1, 2, 4, 2, 1, 2, 1]; // 3×3 Gaussian (÷16)
+const SOBEL_X = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+const SOBEL_Y = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+/** Denoise + sharpen the pixel at (cx,cy) from a clamped 3×3 of `src` (gamma
+ *  space, per channel). `src` MUST be the pristine buffer — a snapshot, not the
+ *  buffer being mutated — so every neighbour reads its ORIGINAL value. The GL
+ *  shader runs this identical math (same Gaussian/Sobel weights, same σ). */
+export function applyDetailAt(
+  src: Uint8Array | Uint16Array | Uint8ClampedArray,
+  width: number,
+  height: number,
+  channels: number,
+  inv: number,
+  cx: number,
+  cy: number,
+  d: DetailParams,
+): [number, number, number] {
+  const at = (x: number, y: number): [number, number, number] => {
+    const o = (y * width + x) * channels;
+    return [src[o]! * inv, src[o + 1]! * inv, src[o + 2]! * inv];
+  };
+  const [cr, cg, cb] = at(cx, cy);
+  const cl = LUMA_R * cr + LUMA_G * cg + LUMA_B * cb;
+  const sig2 = NR_SIGMA * NR_SIGMA;
+  let blurR = 0, blurG = 0, blurB = 0;
+  let nrR = 0, nrG = 0, nrB = 0, nrW = 0;
+  let gx = 0, gy = 0;
+  for (let j = -1; j <= 1; j++) {
+    const ny = Math.min(height - 1, Math.max(0, cy + j));
+    for (let i = -1; i <= 1; i++) {
+      const nx = Math.min(width - 1, Math.max(0, cx + i));
+      const [r, g, b] = at(nx, ny);
+      const k = (j + 1) * 3 + (i + 1);
+      const gw = GW[k]! / 16;
+      blurR += gw * r; blurG += gw * g; blurB += gw * b;
+      const nl = LUMA_R * r + LUMA_G * g + LUMA_B * b;
+      const bw = gw * Math.exp(-((nl - cl) * (nl - cl)) / sig2);
+      nrR += bw * r; nrG += bw * g; nrB += bw * b; nrW += bw;
+      gx += SOBEL_X[k]! * nl; gy += SOBEL_Y[k]! * nl;
+    }
+  }
+  const denR = cr + (nrR / nrW - cr) * d.nr;
+  const denG = cg + (nrG / nrW - cg) * d.nr;
+  const denB = cb + (nrB / nrW - cb) * d.nr;
+  const edge = smoothstep(MASK_LO, MASK_HI, Math.sqrt(gx * gx + gy * gy));
+  const amt = d.sharpen * (1 + (edge - 1) * d.mask);
+  return [denR + amt * (denR - blurR), denG + amt * (denG - blurG), denB + amt * (denB - blurB)];
+}
+
 /** Apply the color model to a packed raw buffer (row-major, `channels` per pixel,
  *  channel order R,G,B[,A]; values 0..maxVal). Mutates in place. This is the exact
  *  math the GL shader runs, so the bake matches the live preview. */
@@ -449,15 +499,22 @@ export function applyColorToRaw(
   maxVal: number,
   model: ColorModel,
 ): void {
-  const { linear, tone, chroma, vignette } = model;
-  if (!linear && !tone && !chroma && !vignette) return;
+  const { linear, tone, chroma, vignette, detail, grain } = model;
+  if (!linear && !tone && !chroma && !vignette && !detail && !grain) return;
   const inv = 1 / maxVal;
+  // Spatial ops read ORIGINAL neighbours → snapshot before mutating in place.
+  const src = detail ? (buf.slice() as typeof buf) : buf;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const o = (y * width + x) * channels;
-      let r = buf[o]! * inv;
-      let g = buf[o + 1]! * inv;
-      let b = buf[o + 2]! * inv;
+      let r: number, g: number, b: number;
+      if (detail) {
+        [r, g, b] = applyDetailAt(src, width, height, channels, inv, x, y, detail);
+      } else {
+        r = buf[o]! * inv;
+        g = buf[o + 1]! * inv;
+        b = buf[o + 2]! * inv;
+      }
 
       if (linear) {
         // Exposure × white balance in LINEAR light, then re-encode to gamma.
@@ -502,6 +559,13 @@ export function applyColorToRaw(
         r *= k;
         g *= k;
         b *= k;
+      }
+
+      if (grain) {
+        const delta = grain.amount * valueNoise(x, y, grain.cell);
+        r += delta;
+        g += delta;
+        b += delta;
       }
 
       buf[o] = toChannel(r, maxVal);

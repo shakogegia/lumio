@@ -265,7 +265,7 @@ describe("grain noise", () => {
     expect(grainHash(0, 0)).toBe(0);
   });
   it("valueNoise stays in [-1,1] and reduces to the lattice hash at integers", () => {
-    for (const [x, y] of [[0, 0], [5, 9], [40, 3]]) {
+    for (const [x, y] of [[0, 0], [5, 9], [40, 3]] as const) {
       const n = valueNoise(x, y, 3);
       expect(n).toBeGreaterThanOrEqual(-1);
       expect(n).toBeLessThanOrEqual(1);
@@ -294,5 +294,65 @@ describe("detail/grain params", () => {
     const m = buildColorModel({ ...base, sharpen: 30, grain: 10 });
     expect(m.detail).not.toBeNull();
     expect(m.grain).not.toBeNull();
+  });
+});
+
+/** 3×3 RGB buffer (no alpha), all channels = the given luma byte grid (row-major). */
+function img3(grid: number[]): Uint8Array {
+  const b = new Uint8Array(3 * 3 * 3);
+  grid.forEach((v, i) => { b[i * 3] = v; b[i * 3 + 1] = v; b[i * 3 + 2] = v; });
+  return b;
+}
+const CENTER_BRIGHT = [102, 102, 102, 102, 153, 102, 102, 102, 102]; // (1,1) = 153
+
+describe("applyColorToRaw — detail", () => {
+  it("sharpen boosts the center against its Gaussian blur (exact, edge-clamped)", () => {
+    const b = img3(CENTER_BRIGHT);
+    applyColorToRaw(b, 3, 3, 3, 255, buildColorModel({ ...base, sharpen: 100 }));
+    expect(b[(1 * 3 + 1) * 3]).toBe(210); // center: 0.6 + 1.5*(0.6-0.45) → 0.825
+    expect(b[(0 * 3 + 1) * 3]).toBe(92);  // top-center, clamped: 0.4 + 1.5*(0.4-0.425)
+    expect(b[(0 * 3 + 0) * 3]).toBe(97);  // corner, clamped: 0.4 + 1.5*(0.4-0.4125)
+  });
+
+  it("a flat field is unchanged by sharpen + NR + masking (identity)", () => {
+    const b = img3(Array(9).fill(128));
+    applyColorToRaw(b, 3, 3, 3, 255,
+      buildColorModel({ ...base, sharpen: 100, noiseReduction: 100, sharpenMask: 50 }));
+    expect([...b]).toEqual(Array(27).fill(128));
+  });
+
+  it("noise reduction pulls the center toward its neighbours, edge-preserved", () => {
+    const b = img3(CENTER_BRIGHT);
+    applyColorToRaw(b, 3, 3, 3, 255, buildColorModel({ ...base, noiseReduction: 100 }));
+    const c = b[(1 * 3 + 1) * 3]!;
+    expect(c).toBeLessThan(153);
+    expect(c).toBeGreaterThan(120);
+  });
+
+  it("masking reduces how hard a low-contrast point is sharpened", () => {
+    const grid = [120, 120, 120, 120, 135, 120, 120, 120, 120];
+    const open = img3(grid), masked = img3(grid);
+    applyColorToRaw(open, 3, 3, 3, 255, buildColorModel({ ...base, sharpen: 100 }));
+    applyColorToRaw(masked, 3, 3, 3, 255, buildColorModel({ ...base, sharpen: 100, sharpenMask: 100 }));
+    const dOpen = open[(1 * 3 + 1) * 3]! - 135;
+    const dMasked = masked[(1 * 3 + 1) * 3]! - 135;
+    expect(dMasked).toBeLessThanOrEqual(dOpen);
+  });
+});
+
+describe("applyColorToRaw — grain + gating", () => {
+  it("grain perturbs a flat field, but grain=0 is identity", () => {
+    const flat = img3(Array(9).fill(128));
+    applyColorToRaw(flat, 3, 3, 3, 255, buildColorModel({ ...base, grain: 0 }));
+    expect([...flat]).toEqual(Array(27).fill(128));
+    const g = img3(Array(9).fill(128));
+    applyColorToRaw(g, 3, 3, 3, 255, buildColorModel({ ...base, grain: 100 }));
+    expect([...g].some((v) => v !== 128)).toBe(true);
+  });
+  it("an all-neutral model leaves the buffer untouched", () => {
+    const b = img3([10, 20, 30, 40, 50, 60, 70, 80, 90]);
+    const before = [...b];
+    applyColorToRaw(b, 3, 3, 3, 255, buildColorModel({ ...base }));
+    expect([...b]).toEqual(before);
   });
 });
