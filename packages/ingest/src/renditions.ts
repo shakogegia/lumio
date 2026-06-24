@@ -6,7 +6,9 @@ import {
   cropToExtract,
   centeredAspectCrop,
   straightenedSize,
+  DEFAULT_BASELINE,
   type PhotoEdits,
+  type WbBaseline,
 } from "@lumio/shared";
 import { DISPLAY_MAX, THUMBNAIL_MAX, EDITED_JPEG_QUALITY } from "./constants.js";
 import { computeThumbhash } from "./thumbhash.js";
@@ -72,6 +74,7 @@ export async function applyStraightenCrop(
 export async function encodeEditedJpeg(
   input: RenditionInput,
   edits: PhotoEdits | null,
+  baseline: WbBaseline = DEFAULT_BASELINE,
 ): Promise<Buffer> {
   const oriented = await sharp(input).rotate().toBuffer();
   if (!hasEdits(edits)) {
@@ -82,7 +85,7 @@ export async function encodeEditedJpeg(
   const wo = (swap ? m.height : m.width) ?? 0;
   const ho = (swap ? m.width : m.height) ?? 0;
   const framed = await applyStraightenCrop(applyEdits(sharp(oriented), edits), edits, wo, ho);
-  const baked = await applyColorBake(framed, edits);
+  const baked = await applyColorBake(framed, edits, baseline);
   return baked.jpeg({ quality: EDITED_JPEG_QUALITY }).toBuffer();
 }
 
@@ -96,6 +99,7 @@ export async function encodeEditedJpeg(
 export async function buildRenditions(
   input: RenditionInput,
   edits: PhotoEdits | null,
+  baseline: WbBaseline = DEFAULT_BASELINE,
 ): Promise<Renditions> {
   const geom = hasGeometry(edits);
 
@@ -117,7 +121,7 @@ export async function buildRenditions(
 
   const start = () => (geom ? sharp(source) : sharp(source).rotate());
   const framed = await applyStraightenCrop(applyEdits(start(), edits), edits, wo, ho);
-  const baked = await applyColorBake(framed, edits);
+  const baked = await applyColorBake(framed, edits, baseline);
   const display = await baked
     .resize(DISPLAY_MAX, DISPLAY_MAX, FIT)
     .webp({ quality: 80 })

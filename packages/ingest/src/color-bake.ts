@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import type { Sharp } from "sharp";
-import { applyColorToRaw, buildColorModel, hasColor, type PhotoEdits } from "@lumio/shared";
+import { applyColorToRaw, buildColorModel, DEFAULT_BASELINE, hasColor, type PhotoEdits, type WbBaseline } from "@lumio/shared";
 
 /**
  * Apply the recipe's color in a SINGLE float-precision raw pass.
@@ -25,10 +25,14 @@ import { applyColorToRaw, buildColorModel, hasColor, type PhotoEdits } from "@lu
  * Operates on the RGB channels only; an alpha channel (if present) is preserved.
  * No-op (returns `img`) when the recipe has no color component.
  */
-export async function applyColorBake(img: Sharp, edits: PhotoEdits | null): Promise<Sharp> {
+export async function applyColorBake(
+  img: Sharp,
+  edits: PhotoEdits | null,
+  baseline: WbBaseline = DEFAULT_BASELINE,
+): Promise<Sharp> {
   if (!hasColor(edits)) return img;
   const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
-  const model = buildColorModel(edits);
+  const model = buildColorModel(edits, 1024, baseline);
   applyColorToRaw(data, info.width, info.height, info.channels, 255, model);
   return sharp(data, {
     raw: { width: info.width, height: info.height, channels: info.channels },
