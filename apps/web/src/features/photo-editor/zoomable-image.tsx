@@ -377,7 +377,7 @@ function EditorCanvas({
   onBaseSize: (s: { w: number; h: number }) => void;
   interactive: boolean;
 }) {
-  const { working, orientedBase, setCrop } = useEditSession();
+  const { working, orientedBase, setCrop, cropAspect } = useEditSession();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -432,7 +432,12 @@ function EditorCanvas({
             ho={orientedBase!.h}
             deg={theta}
             crop={effectiveCrop}
-            ratio={null}
+            ratio={
+              // A locked preset constrains handle-resize to the crop's current w/h
+              // aspect (in O′-fraction space — exactly what CropOverlay expects). The
+              // preset already shaped the rect, so locking to its own aspect keeps it.
+              cropAspect !== "free" && working.crop ? working.crop.w / working.crop.h : null
+            }
             interactive={interactive}
             onCommit={(c) => setCrop(c)}
           />

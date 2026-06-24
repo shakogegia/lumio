@@ -19,6 +19,7 @@ import { hasEdits, hasColor, COLOR_FIELDS, type AspectPreset } from "@lumio/shar
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEditSession } from "./use-edit-session";
 import { useEditKeyboard } from "./use-edit-keyboard";
 import { CurveEditor } from "./curve-editor";
@@ -54,6 +55,7 @@ export function LightboxEditPanel() {
     setEditing,
     setStraighten,
     setAspect,
+    cropAspect,
     resetCrop,
     setColorLive,
     setColor,
@@ -115,23 +117,39 @@ export function LightboxEditPanel() {
         </div>
 
         <div className="space-y-2">
-          <p className="font-medium text-muted-foreground">Crop</p>
-          <div className="flex flex-wrap gap-1.5">
-            {ASPECTS.map(({ preset, label }) => {
-              const active = preset === "free" ? working.crop == null : false;
-              return (
-                <Button
-                  key={preset}
-                  variant={active ? "default" : "outline"}
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => setAspect(preset)}
-                >
-                  {label}
-                </Button>
-              );
-            })}
+          <div className="flex items-center justify-between">
+            <p className="font-medium text-muted-foreground">Crop</p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground"
+              aria-label="Reset crop"
+              disabled={working.crop == null}
+              onClick={() => setAspect("free")}
+            >
+              <RefreshCcw aria-hidden />
+            </Button>
           </div>
+          {/* A null crop is unconstrained regardless of the remembered preset, so
+              Free lights up whenever there is no explicit crop. */}
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={working.crop == null ? "free" : cropAspect}
+            onValueChange={(v) => {
+              // Radix fires "" when the active item is re-clicked; ignore so a chip
+              // can't be toggled off into an empty selection.
+              if (v) setAspect(v as AspectPreset);
+            }}
+            className="w-full flex-wrap"
+          >
+            {ASPECTS.map(({ preset, label }) => (
+              <ToggleGroupItem key={preset} value={preset} className="h-7 px-2 text-xs">
+                {label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
       </div>
     );
