@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getAuthenticatorName } from "@better-auth/passkey";
 import { auth } from "@/lib/server/auth";
 import { getServerSession } from "@/lib/server/server-session";
 import { getProfile } from "@/lib/server/profile-service";
@@ -16,6 +17,7 @@ import { AccountForm } from "./account-form";
 import { PasswordForm } from "./password-form";
 import { TwoFactorSection } from "./two-factor-section";
 import { SessionsList, type SessionRow } from "./sessions-list";
+import { PasskeyList, type PasskeyRow } from "./passkey-section";
 import { SoundEffectsForm } from "./sound-effects-form";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +55,28 @@ export default async function AccountPage() {
       updatedAt: new Date(s.updatedAt).toISOString(),
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  // Same defensive pattern as sessions: a stale session could make listPasskeys
+  // throw, so degrade to an empty list rather than 500-ing the page.
+  let rawPasskeys: Awaited<ReturnType<typeof auth.api.listPasskeys>> = [];
+  try {
+    rawPasskeys = await auth.api.listPasskeys({ headers: await headers() });
+  } catch {
+    // Leave rawPasskeys empty — PasskeyList renders its empty state.
+  }
+  const passkeys: PasskeyRow[] = rawPasskeys
+    .map((p) => ({
+      id: p.id,
+      name: p.name ?? null,
+      // Apple devices report an all-zero aaguid that resolves to nothing, so the
+      // final fallback is a generic label.
+      label:
+        p.name ||
+        (p.aaguid ? getAuthenticatorName(p.aaguid) : undefined) ||
+        "Passkey",
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : null,
+    }))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
@@ -103,6 +127,19 @@ export default async function AccountPage() {
               <TwoFactorSection
                 enabled={Boolean(session.user.twoFactorEnabled)}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Passkeys</CardTitle>
+              <CardDescription>
+                Sign in with Face ID, Touch ID, or a security key — a passkey
+                signs you in on its own, no password or code needed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PasskeyList passkeys={passkeys} />
             </CardContent>
           </Card>
 
