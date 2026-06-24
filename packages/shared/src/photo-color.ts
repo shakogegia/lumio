@@ -58,6 +58,22 @@ const DUV_MAX = 0.02;             // tint Duv offset at |tint| = 150
 const TINT_RANGE = 150;
 const TINT_SIGN = -1;             // orientation of +tint → magenta (verified by test)
 
+/** A photo's white-balance baseline: the Temperature(K)/Tint at which the WB
+ *  matrix is identity (the as-shot anchor). Estimated at ingest. */
+export interface WbBaseline {
+  k: number;
+  tint: number;
+}
+
+/** The global default baseline — identical to the pre-baseline behaviour
+ *  (identity at 6500K / 0 tint). Used whenever a photo has no estimated baseline. */
+export const DEFAULT_BASELINE: WbBaseline = { k: NEUTRAL_K, tint: 0 };
+
+/** Build a baseline from a photo row / DTO. null/absent columns ⇒ neutral. */
+export function wbBaselineOf(p: { asShotTempK?: number | null; asShotTint?: number | null }): WbBaseline {
+  return { k: p.asShotTempK ?? NEUTRAL_K, tint: p.asShotTint ?? 0 };
+}
+
 /** Field value with the field's *neutral* as the default for a missing key. */
 const val = (e: PhotoEdits | null, k: ColorKey): number => e?.[k] ?? NEUTRAL[k];
 
@@ -197,11 +213,11 @@ function whiteXyz(K: number, tint: number): number[] {
 }
 
 /** Linear-sRGB chromatic-adaptation matrix that re-balances the image as if its
- *  neutral were lit at `K`/`tint`, normalized back to NEUTRAL_K. Identity at
- *  (NEUTRAL_K, 0). Higher K ⇒ bluer source ⇒ warmer result (Lightroom-style). */
-function adaptMatrixRgb(K: number, tint: number): M3 {
+ *  neutral were lit at `K`/`tint`, normalized back to the BASELINE white. Identity
+ *  at (baseline.k, baseline.tint). Higher K ⇒ bluer source ⇒ warmer result. */
+function adaptMatrixRgb(K: number, tint: number, baseline: WbBaseline = DEFAULT_BASELINE): M3 {
   const ws = whiteXyz(K, tint);
-  const wd = whiteXyz(NEUTRAL_K, 0);
+  const wd = whiteXyz(baseline.k, baseline.tint);
   const cs = m3vec(BRADFORD, ws);
   const cd = m3vec(BRADFORD, wd);
   const D: M3 = [cd[0]! / cs[0]!, 0, 0, 0, cd[1]! / cs[1]!, 0, 0, 0, cd[2]! / cs[2]!];
@@ -217,13 +233,18 @@ export interface LinearParams {
   m: number[];
 }
 
-export function linearParams(e: PhotoEdits | null): LinearParams | null {
+export function linearParams(
+  e: PhotoEdits | null,
+  baseline: WbBaseline = DEFAULT_BASELINE,
+): LinearParams | null {
   const ev = val(e, "exposure");
-  const K = val(e, "temperature");
-  const tint = val(e, "tint");
-  const wbActive = K !== NEUTRAL_K || tint !== 0;
+  // Temperature/tint default to the photo's baseline when absent — so an unedited
+  // photo (no temperature key) is identity, NOT a shift toward 6500.
+  const K = e?.temperature ?? baseline.k;
+  const tint = e?.tint ?? baseline.tint;
+  const wbActive = K !== baseline.k || tint !== baseline.tint;
   if (ev === 0 && !wbActive) return null;
-  const r: M3 = wbActive ? adaptMatrixRgb(K, tint) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const r: M3 = wbActive ? adaptMatrixRgb(K, tint, baseline) : [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const s = Math.pow(2, ev); // exposure in stops → linear scale
   // fold exposure (uniform scale) and transpose row-major → column-major
   return {
@@ -352,9 +373,13 @@ export interface ColorModel {
 /** Assemble the full color model. The bake uses a high-resolution tone LUT
  *  (1024 entries) so 16-bit precision isn't quantized; the GL preview can request
  *  a smaller LUT for its texture. */
-export function buildColorModel(e: PhotoEdits | null, toneSamples = 1024): ColorModel {
+export function buildColorModel(
+  e: PhotoEdits | null,
+  toneSamples = 1024,
+  baseline: WbBaseline = DEFAULT_BASELINE,
+): ColorModel {
   return {
-    linear: linearParams(e),
+    linear: linearParams(e, baseline),
     tone: buildToneLut(e, toneSamples),
     chroma: chromaParams(e),
     vignette: vignetteParams(e),

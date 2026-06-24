@@ -11,6 +11,9 @@ import {
   chromaParams,
   vignetteParams,
   applyColorToRaw,
+  DEFAULT_BASELINE,
+  wbBaselineOf,
+  estimateAsShotWhite,
 } from "./photo-color.js";
 
 const base = { rotate: 0 as const, flipH: false, flipV: false };
@@ -222,5 +225,46 @@ describe("applyColorToRaw identity", () => {
     const buf = new Uint8Array([10, 20, 30, 200, 100, 50]);
     applyColorToRaw(buf, 2, 1, 3, 255, { linear: null, tone: null, chroma: null, vignette: null });
     expect(Array.from(buf)).toEqual([10, 20, 30, 200, 100, 50]);
+  });
+});
+
+describe("white-balance baseline", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+
+  it("DEFAULT_BASELINE is 6500K / 0 tint", () => {
+    expect(DEFAULT_BASELINE).toEqual({ k: 6500, tint: 0 });
+  });
+
+  it("absent temperature + custom baseline ⇒ identity (no pixel change)", () => {
+    const model = buildColorModel(base, 1024, { k: 5200, tint: 30 });
+    expect(model.linear).toBeNull(); // identity ⇒ null linear pre-pass
+  });
+
+  it("temperature === baseline.k ⇒ identity", () => {
+    const model = buildColorModel({ ...base, temperature: 5200 }, 1024, { k: 5200, tint: 0 });
+    expect(model.linear).toBeNull();
+  });
+
+  it("default-baseline output is unchanged from today (no baseline arg)", () => {
+    // A warm edit with no baseline must match the same edit with DEFAULT_BASELINE.
+    const a = buildColorModel({ ...base, temperature: 4000 });
+    const b = buildColorModel({ ...base, temperature: 4000 }, 1024, DEFAULT_BASELINE);
+    expect(a.linear?.m).toEqual(b.linear?.m);
+  });
+
+  it("slider above baseline warms; below cools (grey pixel)", () => {
+    // baseline 5000; push slider to 8000 ⇒ warmer ⇒ R > B.
+    const warm = new Uint8Array([128, 128, 128]);
+    applyColorToRaw(warm, 1, 1, 3, 255, buildColorModel({ ...base, temperature: 8000 }, 1024, { k: 5000, tint: 0 }));
+    expect(warm[0]!).toBeGreaterThan(warm[2]!);
+    const cool = new Uint8Array([128, 128, 128]);
+    applyColorToRaw(cool, 1, 1, 3, 255, buildColorModel({ ...base, temperature: 3000 }, 1024, { k: 5000, tint: 0 }));
+    expect(cool[2]!).toBeGreaterThan(cool[0]!);
+  });
+
+  it("wbBaselineOf falls back to neutral on null/absent", () => {
+    expect(wbBaselineOf({ asShotTempK: null, asShotTint: null })).toEqual({ k: 6500, tint: 0 });
+    expect(wbBaselineOf({})).toEqual({ k: 6500, tint: 0 });
+    expect(wbBaselineOf({ asShotTempK: 5200, asShotTint: -20 })).toEqual({ k: 5200, tint: -20 });
   });
 });
