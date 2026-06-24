@@ -4,6 +4,7 @@ export * from "./process.js";
 export * from "./hash.js";
 export * from "./renditions.js";
 export * from "./regenerate.js";
+export * from "./wb-estimate.js";
 export * from "./store.js";
 export * from "./ingest.js";
 export * from "./find-by-hash.js";
