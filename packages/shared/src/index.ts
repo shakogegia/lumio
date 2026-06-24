@@ -13,6 +13,7 @@ export * from "./uploads.js";
 export * from "./formats.js";
 export * from "./photo-edits.js";
 export * from "./photo-color.js";
+export * from "./tone-curve.js";
 export * from "./crop-geometry.js";
 export * from "./catalogs.js";
 export * from "./ordering.js";

@@ -1,5 +1,17 @@
 import type { ColorLabel } from "./color-labels.js";
 import type { MatchType, PhotoSource, RuleOp } from "./enums.js";
+import type { CurvePoint } from "./tone-curve.js";
+
+export type { CurvePoint };
+
+/** Tone curves: a master (luminance) curve plus optional per-channel R/G/B curves.
+ *  Each is a list of control points in [0,1]; absent / <2 points = identity. */
+export interface CurveSpec {
+  master?: CurvePoint[];
+  r?: CurvePoint[];
+  g?: CurvePoint[];
+  b?: CurvePoint[];
+}
 
 /** A crop rectangle, normalized 0..1 against the straightened bounding box O′
  *  (see the crop-geometry module). When straighten is 0, O′ === the oriented
@@ -43,6 +55,18 @@ export interface PhotoEdits {
   fade?: number;
   /** Corner darkening. 0..100, 0 = neutral. */
   vignette?: number;
+  /** Highlights region brightness (+ brightens, − recovers). -100..100, 0 = neutral. */
+  highlights?: number;
+  /** Shadows region brightness (+ lifts, − deepens). -100..100, 0 = neutral. */
+  shadows?: number;
+  /** White point (+ brightens/clips highlights, − compresses). -100..100, 0 = neutral. */
+  whites?: number;
+  /** Black point (+ lifts blacks, − deepens/clips). -100..100, 0 = neutral. */
+  blacks?: number;
+  /** Vibrance: saturation weighted toward less-saturated pixels. -100..100, 0 = neutral. */
+  vibrance?: number;
+  /** Tone curves (master + optional per-channel). Absent = identity. */
+  curves?: CurveSpec;
 }
 
 /** Normalized subset of EXIF we surface to clients. */

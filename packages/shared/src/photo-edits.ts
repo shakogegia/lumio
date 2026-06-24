@@ -1,11 +1,12 @@
-import type { CropRect, PhotoEdits } from "./types.js";
+import type { CropRect, CurvePoint, CurveSpec, PhotoEdits } from "./types.js";
 import { centeredAspectCrop, straightenedSize } from "./crop-geometry.js";
 import { COLOR_FIELDS, hasColor } from "./photo-color.js";
 
 /** Current edit-recipe schema version. Stamped on every coerced/saved recipe so a
  *  future shape change can branch on it at the read boundary. Zero migration:
- *  legacy rows lack the field and are read as v1. */
-export const EDITS_VERSION = 1;
+ *  legacy rows lack the field and are read as the version this code emits. v2 adds
+ *  highlights/shadows/whites/blacks/vibrance + tone curves. */
+export const EDITS_VERSION = 2;
 
 export const NO_EDITS: PhotoEdits = {
   version: EDITS_VERSION,
@@ -36,6 +37,23 @@ function sameCrop(a: CropRect | null | undefined, b: CropRect | null | undefined
   return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h;
 }
 
+function samePoints(a: CurvePoint[] | undefined, b: CurvePoint[] | undefined): boolean {
+  const an = a ?? [];
+  const bn = b ?? [];
+  if (an.length !== bn.length) return false;
+  for (let i = 0; i < an.length; i++) if (an[i]!.x !== bn[i]!.x || an[i]!.y !== bn[i]!.y) return false;
+  return true;
+}
+
+function sameCurves(a: CurveSpec | undefined, b: CurveSpec | undefined): boolean {
+  return (
+    samePoints(a?.master, b?.master) &&
+    samePoints(a?.r, b?.r) &&
+    samePoints(a?.g, b?.g) &&
+    samePoints(a?.b, b?.b)
+  );
+}
+
 /** Structural equality of two recipes. */
 export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
   return (
@@ -44,7 +62,8 @@ export function sameEdits(a: PhotoEdits, b: PhotoEdits): boolean {
     a.flipV === b.flipV &&
     (a.straighten ?? 0) === (b.straighten ?? 0) &&
     sameCrop(a.crop, b.crop) &&
-    COLOR_FIELDS.every((f) => (a[f.key] ?? 0) === (b[f.key] ?? 0))
+    COLOR_FIELDS.every((f) => (a[f.key] ?? 0) === (b[f.key] ?? 0)) &&
+    sameCurves(a.curves, b.curves)
   );
 }
 
@@ -164,6 +183,38 @@ export function orientedSize(w: number, h: number, e: PhotoEdits | null): [numbe
   return [W, H];
 }
 
+function coercePoints(value: unknown): CurvePoint[] | null {
+  if (!Array.isArray(value)) return null;
+  const pts: CurvePoint[] = [];
+  for (const p of value) {
+    if (!p || typeof p !== "object") return null;
+    const x = (p as Record<string, unknown>).x;
+    const y = (p as Record<string, unknown>).y;
+    if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return null;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+/** Coerce an unknown JSON value into a CurveSpec, keeping only channels with ≥2
+ *  valid points. Returns null when no usable curve is present. */
+function coerceCurves(value: unknown): CurveSpec | null {
+  if (!value || typeof value !== "object") return null;
+  const c = value as Record<string, unknown>;
+  const out: CurveSpec = {};
+  let any = false;
+  for (const ch of ["master", "r", "g", "b"] as const) {
+    if (c[ch] === undefined) continue;
+    const pts = coercePoints(c[ch]);
+    if (pts && pts.length >= 2) {
+      out[ch] = pts;
+      any = true;
+    }
+  }
+  return any ? out : null;
+}
+
 function coerceCrop(value: unknown): CropRect | null {
   if (!value || typeof value !== "object") return null;
   const c = value as Record<string, unknown>;
@@ -201,6 +252,8 @@ export function coercePhotoEdits(value: unknown): PhotoEdits | null {
       if (clamped !== f.neutral) out[f.key] = clamped;
     }
   }
+  const curves = coerceCurves(e.curves);
+  if (curves) out.curves = curves;
   return out;
 }
 

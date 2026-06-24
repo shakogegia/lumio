@@ -25,7 +25,7 @@ const R = (rotate: 0 | 90 | 180 | 270, flipH = false, flipV = false) => ({ rotat
 
 describe("photo-edits", () => {
   it("NO_EDITS is the identity recipe", () => {
-    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 2, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is false for null and identity, true otherwise", () => {
@@ -63,7 +63,7 @@ describe("photo-edits", () => {
   });
 
   it("coercePhotoEdits accepts valid, rejects malformed/null", () => {
-    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 1, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(coercePhotoEdits({ rotate: 90, flipH: true, flipV: false })).toEqual({ version: 2, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
     expect(coercePhotoEdits(null)).toBeNull();
     expect(coercePhotoEdits({ rotate: 45, flipH: false, flipV: false })).toBeNull();
     expect(coercePhotoEdits({ rotate: 90 })).toBeNull();
@@ -103,7 +103,7 @@ describe("photo-edits crop & straighten", () => {
   const base = { rotate: 0, flipH: false, flipV: false } as const;
 
   it("NO_EDITS includes straighten 0 and crop null", () => {
-    expect(NO_EDITS).toEqual({ version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
+    expect(NO_EDITS).toEqual({ version: 2, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null });
   });
 
   it("hasEdits is true when only straighten or only crop is set", () => {
@@ -210,7 +210,7 @@ describe("photo-edits color", () => {
 describe("edits schema version", () => {
   it("NO_EDITS carries the current schema version", () => {
     expect(NO_EDITS.version).toBe(EDITS_VERSION);
-    expect(EDITS_VERSION).toBe(1);
+    expect(EDITS_VERSION).toBe(2);
   });
 
   it("coercePhotoEdits stamps the current version on a legacy row that lacks one", () => {
@@ -224,6 +224,44 @@ describe("edits schema version", () => {
 
   it("sameEdits ignores version (it is metadata, not a visual field)", () => {
     expect(sameEdits({ ...NO_EDITS, version: 1 }, { ...NO_EDITS, version: 99 })).toBe(true);
+  });
+});
+
+describe("v2 fields: new sliders + curves", () => {
+  const base = { rotate: 0 as const, flipH: false, flipV: false };
+
+  it("sameEdits treats absent new fields as neutral", () => {
+    expect(sameEdits({ ...NO_EDITS }, { ...NO_EDITS, highlights: 0, vibrance: 0 })).toBe(true);
+    expect(sameEdits({ ...NO_EDITS }, { ...NO_EDITS, highlights: 10 })).toBe(false);
+  });
+
+  it("coercePhotoEdits clamps the new scalar sliders and omits neutral", () => {
+    const out = coercePhotoEdits({ ...base, highlights: 999, shadows: -50, vibrance: 0 })!;
+    expect(out.highlights).toBe(100);
+    expect(out.shadows).toBe(-50);
+    expect(out).not.toHaveProperty("vibrance");
+  });
+
+  it("coercePhotoEdits round-trips a valid curve and drops a degenerate one", () => {
+    const out = coercePhotoEdits({
+      ...base,
+      curves: { master: [{ x: 0, y: 0 }, { x: 0.5, y: 0.7 }, { x: 1, y: 1 }], r: [{ x: 0, y: 0 }] },
+    })!;
+    expect(out.curves?.master).toHaveLength(3);
+    expect(out.curves).not.toHaveProperty("r"); // <2 points dropped
+  });
+
+  it("coercePhotoEdits rejects out-of-range curve points (whole spec dropped)", () => {
+    const out = coercePhotoEdits({ ...base, curves: { master: [{ x: 0, y: 0 }, { x: 2, y: 0.5 }] } })!;
+    expect(out).not.toHaveProperty("curves");
+  });
+
+  it("sameEdits compares curves structurally", () => {
+    const a = { ...NO_EDITS, curves: { master: [{ x: 0, y: 0 }, { x: 1, y: 0.9 }] } };
+    const b = { ...NO_EDITS, curves: { master: [{ x: 0, y: 0 }, { x: 1, y: 0.9 }] } };
+    const c = { ...NO_EDITS, curves: { master: [{ x: 0, y: 0 }, { x: 1, y: 0.8 }] } };
+    expect(sameEdits(a, b)).toBe(true);
+    expect(sameEdits(a, c)).toBe(false);
   });
 });
 
