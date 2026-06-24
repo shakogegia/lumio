@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { FilePenLine } from "lucide-react";
+import { Palette } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
@@ -65,7 +65,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
           title="Edited"
           aria-label="Edited"
         >
-          <FilePenLine className="size-3" aria-hidden />
+          <Palette className="size-3" aria-hidden />
         </span>
       )}
     </div>
