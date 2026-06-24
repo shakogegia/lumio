@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { Download, FilePenLine, Heart, Trash2 } from "lucide-react";
+import { Download, Heart, Palette, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
@@ -83,7 +83,7 @@ export function LightboxActions({
             title={dirty ? "Reset edits (unsaved changes)" : "Reset edits"}
             onClick={() => void resetEdits()}
           >
-            <FilePenLine
+            <Palette
               aria-hidden
               className={dirty ? "text-amber-500" : "text-primary"}
             />
