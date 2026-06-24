@@ -86,6 +86,8 @@ model Photo {
   exif           Json
   colorLabel     ColorLabel?
   edits          Json? // PhotoEdits recipe; null = unedited
+  asShotTempK    Float? // estimated as-shot white-balance temperature (K); null = use 6500
+  asShotTint     Float? // estimated as-shot tint (green−/magenta+); null = use 0
   isFavorite     Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
