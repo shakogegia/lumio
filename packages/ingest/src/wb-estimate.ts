@@ -14,7 +14,10 @@ export async function estimateAsShotFromImage(image: string | Buffer): Promise<W
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    return estimateAsShotWhite(new Uint8Array(data), info.width, info.height, info.channels);
+    const wb = estimateAsShotWhite(new Uint8Array(data), info.width, info.height, info.channels);
+    // Round to clean slider stops (K → nearest 10, the slider step; tint → integer):
+    // the baseline is a display anchor, so a fractional Kelvin only shows as noise.
+    return wb && { k: Math.round(wb.k / 10) * 10, tint: Math.round(wb.tint) };
   } catch {
     return null; // a bad/odd image must never block ingest
   }
