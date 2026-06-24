@@ -239,7 +239,7 @@ describe("detail/grain fields", () => {
       expect(f, key).toBeDefined();
       expect(f!.neutral).toBe(0);
       expect(f!.min).toBe(0);
-      expect(f!.max).toBe(100);
+      expect(f!.max).toBe(key === "sharpen" ? 200 : 100); // sharpen has extra headroom
       expect(f!.group).toBe("detail");
       expect(NEUTRAL[key]).toBe(0);
     }
@@ -282,6 +282,8 @@ describe("detail/grain params", () => {
     expect(d.sharpen).toBeCloseTo(1.5, 6);
     expect(d.mask).toBeCloseTo(0.5, 6);
     expect(d.nr).toBeCloseTo(0.2, 6);
+    // sharpen extends past 100 for extra headroom (gain scales linearly)
+    expect(detailParams({ ...base, sharpen: 200 })!.sharpen).toBeCloseTo(3, 6);
   });
   it("grainParams is null unless grain is active; folds amount + cell", () => {
     expect(grainParams({ ...base, grainSize: 100 })).toBeNull();

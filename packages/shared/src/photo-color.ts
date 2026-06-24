@@ -41,7 +41,7 @@ export const COLOR_FIELDS: ColorField[] = [
   { key: "fade",        label: "Fade",        min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vignette",    label: "Vignette",    min: -100, max: 100,   neutral: 0,    step: 1 },
   // Detail & Grain — rendered as their own panel group (group: "detail").
-  { key: "sharpen",        label: "Sharpen",         min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "sharpen",        label: "Sharpen",         min: 0, max: 200, neutral: 0, step: 1, group: "detail" },
   { key: "sharpenMask",    label: "Sharpen Masking", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
   { key: "noiseReduction", label: "Noise Reduction", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
   { key: "grain",          label: "Grain",           min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
