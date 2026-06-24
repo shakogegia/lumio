@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { extractMetadata } from "./metadata.js";
 import { hashBuffer } from "./hash.js";
-import type { ExifData } from "@lumio/shared";
+import type { ExifData, WbBaseline } from "@lumio/shared";
 import { decodeToSharpInput } from "./decode.js";
 import { buildRenditions } from "./renditions.js";
+import { estimateAsShotFromImage } from "./wb-estimate.js";
 
 export interface ProcessedPhoto {
   width: number;
@@ -14,6 +15,7 @@ export interface ProcessedPhoto {
   exif: ExifData;
   thumbnail: Buffer;
   display: Buffer;
+  asShot: WbBaseline | null;
 }
 
 /** Read an image and derive everything the store layer needs. No DB or FS writes. */
@@ -28,8 +30,9 @@ export async function processImage(absPath: string): Promise<ProcessedPhoto> {
       null,
     );
     const hash = hashBuffer(original);
+    const asShot = await estimateAsShotFromImage(thumbnail);
 
-    return { width, height, takenAt, hash, thumbhash, exif, thumbnail, display };
+    return { width, height, takenAt, hash, thumbhash, exif, thumbnail, display, asShot };
   } finally {
     await decoded.cleanup();
   }
