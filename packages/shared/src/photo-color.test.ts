@@ -35,9 +35,8 @@ describe("photo-color fields", () => {
   it("exposes the ordered color fields (tint after temperature)", () => {
     expect(COLOR_FIELDS.map((f) => f.key)).toEqual([
       "exposure", "brightness", "contrast", "highlights", "shadows", "whites", "blacks",
-      "temperature", "tint", "saturation", "vibrance", "hue",
-      "sharpen", "sharpenMask", "noiseReduction",
-      "fade", "vignette", "grain", "grainSize",
+      "temperature", "tint", "saturation", "vibrance", "hue", "fade", "vignette",
+      "sharpen", "sharpenMask", "noiseReduction", "grain", "grainSize",
     ]);
   });
 
@@ -241,6 +240,7 @@ describe("detail/grain fields", () => {
       expect(f!.neutral).toBe(0);
       expect(f!.min).toBe(0);
       expect(f!.max).toBe(100);
+      expect(f!.group).toBe("detail");
       expect(NEUTRAL[key]).toBe(0);
     }
   });

@@ -18,6 +18,8 @@ export interface ColorField {
   step: number;
   /** Decimal places to display in the panel readout. Defaults to 0 (integer). */
   precision?: number;
+  /** Optional panel sub-group; fields without one render in the main "Adjust" group. */
+  group?: "detail";
 }
 
 export const COLOR_FIELDS: ColorField[] = [
@@ -35,15 +37,15 @@ export const COLOR_FIELDS: ColorField[] = [
   { key: "saturation",  label: "Saturation",  min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vibrance",    label: "Vibrance",    min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "hue",         label: "Hue",         min: -180, max: 180,   neutral: 0,    step: 1 },
-  // Detail
-  { key: "sharpen",        label: "Sharpen",         min: 0, max: 100, neutral: 0, step: 1 },
-  { key: "sharpenMask",    label: "Sharpen Masking", min: 0, max: 100, neutral: 0, step: 1 },
-  { key: "noiseReduction", label: "Noise Reduction", min: 0, max: 100, neutral: 0, step: 1 },
   // Effects
   { key: "fade",        label: "Fade",        min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vignette",    label: "Vignette",    min: -100, max: 100,   neutral: 0,    step: 1 },
-  { key: "grain",       label: "Grain",       min: 0,    max: 100,   neutral: 0,    step: 1 },
-  { key: "grainSize",   label: "Grain Size",  min: 0,    max: 100,   neutral: 0,    step: 1 },
+  // Detail & Grain — rendered as their own panel group (group: "detail").
+  { key: "sharpen",        label: "Sharpen",         min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "sharpenMask",    label: "Sharpen Masking", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "noiseReduction", label: "Noise Reduction", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "grain",          label: "Grain",           min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "grainSize",      label: "Grain Size",      min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
 ];
 
 /** Per-key neutral value. Temperature's neutral is 6500 (K), NOT 0 — so anything
