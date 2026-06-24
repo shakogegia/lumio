@@ -3,11 +3,6 @@ import type { Sharp } from "sharp";
 import {
   hasEdits,
   hasGeometry,
-  hasColor,
-  toneLinear,
-  modulateParams,
-  tempFadeLinear,
-  vignetteStrength,
   cropToExtract,
   centeredAspectCrop,
   straightenedSize,
@@ -15,6 +10,7 @@ import {
 } from "@lumio/shared";
 import { DISPLAY_MAX, THUMBNAIL_MAX, EDITED_JPEG_QUALITY } from "./constants.js";
 import { computeThumbhash } from "./thumbhash.js";
+import { applyColorBake } from "./color-bake.js";
 
 const FIT = { fit: "inside", withoutEnlargement: true } as const;
 
@@ -68,54 +64,6 @@ export async function applyStraightenCrop(
   return sharp(buf).extract(ex);
 }
 
-/** Apply the color recipe to an ALREADY-FRAMED pipeline (flip/rotate/straighten/
- *  crop done). Order matches the CSS preview: gain×contrast → saturation/hue →
- *  temperature×fade → vignette (last, on the final frame). Materializes between
- *  the two linear stages so their order is deterministic (sharp keeps a single
- *  linear slot). No-op (returns `img`) when the recipe has no color. */
-async function applyColor(img: Sharp, edits: PhotoEdits | null): Promise<Sharp> {
-  if (!hasColor(edits)) return img;
-  const tone = toneLinear(edits);
-  const mod = modulateParams(edits);
-  const tempFade = tempFadeLinear(edits);
-  const vig = vignetteStrength(edits);
-
-  // Pass 1: tone (gain×contrast) then saturation/hue.
-  let pass1 = img;
-  if (tone) pass1 = pass1.linear(tone.a, tone.b);
-  if (mod) pass1 = pass1.modulate({ saturation: mod.saturation, hue: mod.hue });
-  let buf = await pass1.png().toBuffer();
-
-  // Pass 2: temperature×fade as one per-channel linear.
-  if (tempFade) {
-    buf = await sharp(buf).linear(tempFade.a, tempFade.b).png().toBuffer();
-  }
-
-  // Pass 3: vignette — composite a radial darkening mask sized to the frame.
-  if (vig > 0) {
-    const meta = await sharp(buf).metadata();
-    const svg = vignetteSvg(meta.width ?? 0, meta.height ?? 0, vig);
-    buf = await sharp(buf)
-      .composite([{ input: Buffer.from(svg), blend: "over" }])
-      .flatten({ background: { r: 0, g: 0, b: 0 } })
-      .png()
-      .toBuffer();
-  }
-
-  return sharp(buf);
-}
-
-function vignetteSvg(w: number, h: number, alpha: number): string {
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
-    `<defs><radialGradient id="v" cx="50%" cy="50%" r="75%">` +
-    `<stop offset="45%" stop-color="#000" stop-opacity="0"/>` +
-    `<stop offset="100%" stop-color="#000" stop-opacity="${alpha.toFixed(3)}"/>` +
-    `</radialGradient></defs>` +
-    `<rect width="${w}" height="${h}" fill="url(#v)"/></svg>`
-  );
-}
-
 /**
  * Encode a full-resolution edited JPEG: bake EXIF orientation into a buffer, then
  * apply the recipe (so auto-orient and explicit rotate don't mix) and JPEG-encode.
@@ -134,7 +82,7 @@ export async function encodeEditedJpeg(
   const wo = (swap ? m.height : m.width) ?? 0;
   const ho = (swap ? m.width : m.height) ?? 0;
   const framed = await applyStraightenCrop(applyEdits(sharp(oriented), edits), edits, wo, ho);
-  const baked = await applyColor(framed, edits);
+  const baked = await applyColorBake(framed, edits);
   return baked.jpeg({ quality: EDITED_JPEG_QUALITY }).toBuffer();
 }
 
@@ -169,7 +117,7 @@ export async function buildRenditions(
 
   const start = () => (geom ? sharp(source) : sharp(source).rotate());
   const framed = await applyStraightenCrop(applyEdits(start(), edits), edits, wo, ho);
-  const baked = await applyColor(framed, edits);
+  const baked = await applyColorBake(framed, edits);
   const display = await baked
     .resize(DISPLAY_MAX, DISPLAY_MAX, FIT)
     .webp({ quality: 80 })
