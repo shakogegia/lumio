@@ -45,7 +45,8 @@ describe("photo-color fields", () => {
     const exp = COLOR_FIELDS.find((f) => f.key === "exposure")!;
     expect([exp.min, exp.max, exp.neutral]).toEqual([-5, 5, 0]);
     const t = COLOR_FIELDS.find((f) => f.key === "temperature")!;
-    expect([t.min, t.max, t.neutral]).toEqual([2000, 12000, 6500]);
+    expect([t.min, t.max, t.neutral]).toEqual([2000, 11000, 6500]);
+    expect((t.min + t.max) / 2).toBe(t.neutral); // 6500 centered on the slider
   });
 });
 

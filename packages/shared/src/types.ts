@@ -48,7 +48,7 @@ export interface PhotoEdits {
   contrast?: number;
   /** Saturation multiply. -100..100, 0 = neutral. */
   saturation?: number;
-  /** White-balance temperature in Kelvin (higher = warmer). 2000..12000, 6500 = neutral. */
+  /** White-balance temperature in Kelvin (higher = warmer). 2000..11000, 6500 = neutral (centered). */
   temperature?: number;
   /** White-balance tint, green (−) ↔ magenta (+). -150..150, 0 = neutral. */
   tint?: number;

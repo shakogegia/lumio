@@ -29,7 +29,7 @@ export const COLOR_FIELDS: ColorField[] = [
   { key: "whites",      label: "Whites",      min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "blacks",      label: "Blacks",      min: -100, max: 100,   neutral: 0,    step: 1 },
   // Color
-  { key: "temperature", label: "Temperature", min: 2000, max: 12000, neutral: 6500, step: 10 },
+  { key: "temperature", label: "Temperature", min: 2000, max: 11000, neutral: 6500, step: 10 },
   { key: "tint",        label: "Tint",        min: -150, max: 150,   neutral: 0,    step: 1 },
   { key: "saturation",  label: "Saturation",  min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vibrance",    label: "Vibrance",    min: -100, max: 100,   neutral: 0,    step: 1 },

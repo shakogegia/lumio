@@ -210,7 +210,7 @@ describe("photo-edits color", () => {
   });
 
   it("coercePhotoEdits clamps temperature to Kelvin range and drops neutral", () => {
-    expect(coercePhotoEdits({ ...base, version: 3, temperature: 99999 })!.temperature).toBe(12000);
+    expect(coercePhotoEdits({ ...base, version: 3, temperature: 99999 })!.temperature).toBe(11000);
     expect(coercePhotoEdits({ ...base, version: 3, temperature: 6500 })!).not.toHaveProperty("temperature");
     expect(coercePhotoEdits({ ...base, version: 3, tint: 999 })!.tint).toBe(150);
   });

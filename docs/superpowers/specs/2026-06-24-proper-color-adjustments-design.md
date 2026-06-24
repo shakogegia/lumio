@@ -29,8 +29,8 @@ This supersedes the temperature handling in
 3. **Brightness** → kept but **redefined** as a midtone-gamma control (anchors
    pure black and pure white, lifts/darkens midtones). Range `-100..100`,
    neutral `0`. Distinct from Exposure. Applied in gamma space inside the tone LUT.
-4. **Temperature** → Kelvin. Range `2000..12000`, neutral `6500`, step `10`.
-   Higher K = warmer image (Lightroom convention).
+4. **Temperature** → Kelvin. Range `2000..11000`, neutral `6500` (centered on
+   the slider), step `10`. Higher K = warmer image (Lightroom convention).
 5. **Tint** → green↔magenta. Range `-150..+150`, neutral `0`, step `1`.
    Negative = green, positive = magenta (Lightroom convention).
 6. Temperature + Tint produce a **Bradford chromatic-adaptation matrix** applied
@@ -82,7 +82,7 @@ Constants embedded in `photo-color.ts`:
 - Linear-sRGB(D65) ↔ XYZ matrices (standard Rec.709/D65).
 - Bradford cone matrix `MA` and its inverse.
 - Krystek (1985) CCT→(u,v) rational approximation in CIE 1960 UCS, valid
-  1000–15000K (covers the 2000–12000K slider range).
+  1000–15000K (covers the 2000–11000K slider range).
 
 Steps:
 
