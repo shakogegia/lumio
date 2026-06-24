@@ -36,6 +36,11 @@ export function showPasskeyNudgeToast() {
     description:
       "Sign in faster next time with Face ID, Touch ID, or a security key.",
     duration: 12000,
+    // Give the user a way to dismiss without setting up a passkey. The custom
+    // action button below replaces sonner's built-in action, which is what
+    // would otherwise have provided the close affordance — so opt the X back in
+    // here (it's off by default on our global <Toaster>).
+    closeButton: true,
     // Custom shadcn Button instead of sonner's built-in action. A custom node
     // doesn't auto-dismiss, so we dismiss this toast explicitly.
     action: (
