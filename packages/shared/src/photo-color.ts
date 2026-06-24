@@ -4,7 +4,8 @@ import { sampleCurve } from "./tone-curve.js";
 export type ColorKey =
   | "exposure" | "brightness" | "contrast" | "saturation"
   | "temperature" | "tint" | "hue" | "fade" | "vignette"
-  | "highlights" | "shadows" | "whites" | "blacks" | "vibrance";
+  | "highlights" | "shadows" | "whites" | "blacks" | "vibrance"
+  | "sharpen" | "sharpenMask" | "noiseReduction" | "grain" | "grainSize";
 
 /** Slider config — drives the edit-panel UI, validation, and reset. */
 export interface ColorField {
@@ -17,6 +18,8 @@ export interface ColorField {
   step: number;
   /** Decimal places to display in the panel readout. Defaults to 0 (integer). */
   precision?: number;
+  /** Optional panel sub-group; fields without one render in the main "Adjust" group. */
+  group?: "detail";
 }
 
 export const COLOR_FIELDS: ColorField[] = [
@@ -37,6 +40,12 @@ export const COLOR_FIELDS: ColorField[] = [
   // Effects
   { key: "fade",        label: "Fade",        min: -100, max: 100,   neutral: 0,    step: 1 },
   { key: "vignette",    label: "Vignette",    min: -100, max: 100,   neutral: 0,    step: 1 },
+  // Detail & Grain — rendered as their own panel group (group: "detail").
+  { key: "sharpen",        label: "Sharpen",         min: 0, max: 300, neutral: 0, step: 1, group: "detail" },
+  { key: "sharpenMask",    label: "Sharpen Masking", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "noiseReduction", label: "Noise Reduction", min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "grain",          label: "Grain",           min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
+  { key: "grainSize",      label: "Grain Size",      min: 0, max: 100, neutral: 0, step: 1, group: "detail" },
 ];
 
 /** Per-key neutral value. Temperature's neutral is 6500 (K), NOT 0 — so anything
@@ -57,6 +66,14 @@ const NEUTRAL_K = 6500;           // temperature where the white-balance matrix 
 const DUV_MAX = 0.02;             // tint Duv offset at |tint| = 150
 const TINT_RANGE = 150;
 const TINT_SIGN = -1;             // orientation of +tint → magenta (verified by test)
+// Detail/grain (the GL preview and the sharp bake share these; the shader
+// hardcodes the same MASK_LO/MASK_HI/NR_SIGMA + Gaussian/Sobel weights).
+const SHARPEN_MAX = 1.5;          // high-pass gain at sharpen = 100
+const MASK_LO = 0.1;              // raw-Sobel luma gradient where masking starts allowing sharpen
+const MASK_HI = 0.8;              // gradient where masking fully allows sharpen
+const NR_SIGMA = 0.12;            // bilateral luma-difference sigma for noise reduction
+const GRAIN_MAX = 0.12;           // grain signal amplitude at grain = 100
+const GRAIN_CELL_MAX = 4;         // grain cell size (px) at grainSize = 100
 
 /** A photo's white-balance baseline: the Temperature(K)/Tint at which the WB
  *  matrix is identity (the as-shot anchor). Estimated at ingest. */
@@ -459,11 +476,55 @@ export function vignetteParams(e: PhotoEdits | null): VignetteParams | null {
   return { strength: v * VIGNETTE_MAX };
 }
 
+// ---------------------------------------------------------------------
+// Detail (spatial) — sharpen + masking + noise reduction. A single 3×3 read
+// of the SOURCE feeds both: an unsharp high-pass and an edge-aware blend
+// toward the local mean. Applied BEFORE the color pipeline.
+// ---------------------------------------------------------------------
+
+export interface DetailParams {
+  /** High-pass gain (sharpen/100 × SHARPEN_MAX); 0 ⇒ noise-reduction only. */
+  sharpen: number;
+  /** Masking strength 0..1 (1 = sharpen edges only). */
+  mask: number;
+  /** Noise-reduction strength 0..1. */
+  nr: number;
+}
+
+export function detailParams(e: PhotoEdits | null): DetailParams | null {
+  const sharpen = val(e, "sharpen");
+  const nr = val(e, "noiseReduction");
+  if (sharpen === 0 && nr === 0) return null; // masking alone is a no-op
+  return {
+    sharpen: (sharpen / 100) * SHARPEN_MAX,
+    mask: val(e, "sharpenMask") / 100,
+    nr: nr / 100,
+  };
+}
+
+export interface GrainParams {
+  /** Signal amplitude (grain/100 × GRAIN_MAX). */
+  amount: number;
+  /** Lattice cell size in px (≥1). */
+  cell: number;
+}
+
+export function grainParams(e: PhotoEdits | null): GrainParams | null {
+  const grain = val(e, "grain");
+  if (grain === 0) return null;
+  return {
+    amount: (grain / 100) * GRAIN_MAX,
+    cell: 1 + (val(e, "grainSize") / 100) * (GRAIN_CELL_MAX - 1),
+  };
+}
+
 export interface ColorModel {
   linear: LinearParams | null;
   tone: ToneLut | null;
   chroma: ChromaParams | null;
   vignette: VignetteParams | null;
+  detail: DetailParams | null;
+  grain: GrainParams | null;
 }
 
 /** Assemble the full color model. The bake uses a high-resolution tone LUT
@@ -479,6 +540,8 @@ export function buildColorModel(
     tone: buildToneLut(e, toneSamples),
     chroma: chromaParams(e),
     vignette: vignetteParams(e),
+    detail: detailParams(e),
+    grain: grainParams(e),
   };
 }
 
@@ -498,6 +561,56 @@ function rotateHue(r: number, g: number, b: number, deg: number): [number, numbe
   ];
 }
 
+const GW = [1, 2, 1, 2, 4, 2, 1, 2, 1]; // 3×3 Gaussian (÷16)
+const SOBEL_X = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+const SOBEL_Y = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+
+/** Denoise + sharpen the pixel at (cx,cy) from a clamped 3×3 of `src` (gamma
+ *  space, per channel). `src` MUST be the pristine buffer — a snapshot, not the
+ *  buffer being mutated — so every neighbour reads its ORIGINAL value. The GL
+ *  shader runs this identical math (same Gaussian/Sobel weights, same σ). */
+export function applyDetailAt(
+  src: Uint8Array | Uint16Array | Uint8ClampedArray,
+  width: number,
+  height: number,
+  channels: number,
+  inv: number,
+  cx: number,
+  cy: number,
+  d: DetailParams,
+): [number, number, number] {
+  const at = (x: number, y: number): [number, number, number] => {
+    const o = (y * width + x) * channels;
+    return [src[o]! * inv, src[o + 1]! * inv, src[o + 2]! * inv];
+  };
+  const [cr, cg, cb] = at(cx, cy);
+  const cl = LUMA_R * cr + LUMA_G * cg + LUMA_B * cb;
+  const sig2 = NR_SIGMA * NR_SIGMA;
+  let blurR = 0, blurG = 0, blurB = 0;
+  let nrR = 0, nrG = 0, nrB = 0, nrW = 0;
+  let gx = 0, gy = 0;
+  for (let j = -1; j <= 1; j++) {
+    const ny = Math.min(height - 1, Math.max(0, cy + j));
+    for (let i = -1; i <= 1; i++) {
+      const nx = Math.min(width - 1, Math.max(0, cx + i));
+      const [r, g, b] = at(nx, ny);
+      const k = (j + 1) * 3 + (i + 1);
+      const gw = GW[k]! / 16;
+      blurR += gw * r; blurG += gw * g; blurB += gw * b;
+      const nl = LUMA_R * r + LUMA_G * g + LUMA_B * b;
+      const bw = gw * Math.exp(-((nl - cl) * (nl - cl)) / sig2);
+      nrR += bw * r; nrG += bw * g; nrB += bw * b; nrW += bw;
+      gx += SOBEL_X[k]! * nl; gy += SOBEL_Y[k]! * nl;
+    }
+  }
+  const denR = cr + (nrR / nrW - cr) * d.nr;
+  const denG = cg + (nrG / nrW - cg) * d.nr;
+  const denB = cb + (nrB / nrW - cb) * d.nr;
+  const edge = smoothstep(MASK_LO, MASK_HI, Math.sqrt(gx * gx + gy * gy));
+  const amt = d.sharpen * (1 + (edge - 1) * d.mask);
+  return [denR + amt * (denR - blurR), denG + amt * (denG - blurG), denB + amt * (denB - blurB)];
+}
+
 /** Apply the color model to a packed raw buffer (row-major, `channels` per pixel,
  *  channel order R,G,B[,A]; values 0..maxVal). Mutates in place. This is the exact
  *  math the GL shader runs, so the bake matches the live preview. */
@@ -509,15 +622,22 @@ export function applyColorToRaw(
   maxVal: number,
   model: ColorModel,
 ): void {
-  const { linear, tone, chroma, vignette } = model;
-  if (!linear && !tone && !chroma && !vignette) return;
+  const { linear, tone, chroma, vignette, detail, grain } = model;
+  if (!linear && !tone && !chroma && !vignette && !detail && !grain) return;
   const inv = 1 / maxVal;
+  // Spatial ops read ORIGINAL neighbours → snapshot before mutating in place.
+  const src = detail ? (buf.slice() as typeof buf) : buf;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const o = (y * width + x) * channels;
-      let r = buf[o]! * inv;
-      let g = buf[o + 1]! * inv;
-      let b = buf[o + 2]! * inv;
+      let r: number, g: number, b: number;
+      if (detail) {
+        [r, g, b] = applyDetailAt(src, width, height, channels, inv, x, y, detail);
+      } else {
+        r = buf[o]! * inv;
+        g = buf[o + 1]! * inv;
+        b = buf[o + 2]! * inv;
+      }
 
       if (linear) {
         // Exposure × white balance in LINEAR light, then re-encode to gamma.
@@ -564,6 +684,13 @@ export function applyColorToRaw(
         b *= k;
       }
 
+      if (grain) {
+        const delta = grain.amount * valueNoise(x, y, grain.cell);
+        r += delta;
+        g += delta;
+        b += delta;
+      }
+
       buf[o] = toChannel(r, maxVal);
       buf[o + 1] = toChannel(g, maxVal);
       buf[o + 2] = toChannel(b, maxVal);
@@ -574,4 +701,40 @@ export function applyColorToRaw(
 function toChannel(v: number, maxVal: number): number {
   const s = Math.round(v * maxVal);
   return s < 0 ? 0 : s > maxVal ? maxVal : s;
+}
+
+// =====================================================================
+// Grain (per-pixel) — integer coordinate hash kept to ≤16 bits so that
+// float32 (the GL shader) and double (this JS) agree on the value; the
+// GLSL `grainHash`/`valueNoise` mirror these exactly. Applied last, after
+// the color pipeline, as a monochrome additive offset.
+// =====================================================================
+
+/** 32-bit integer hash of a pixel coordinate → [0,1), reduced to 16 bits. */
+export function grainHash(ix: number, iy: number): number {
+  let n = (Math.imul(ix >>> 0, 0x1f1f1f1f) ^ (iy >>> 0)) >>> 0;
+  n = Math.imul(n, 0x27d4eb2d) >>> 0;
+  n = (n ^ (n >>> 15)) >>> 0;
+  return (n & 0xffff) / 65536;
+}
+
+function smoothstepUnit(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+/** Bilinear value-noise in [-1,1] on a lattice scaled by `cell` (px per cell). */
+export function valueNoise(x: number, y: number, cell: number): number {
+  const fx = x / cell;
+  const fy = y / cell;
+  const ix = Math.floor(fx);
+  const iy = Math.floor(fy);
+  const sx = smoothstepUnit(fx - ix);
+  const sy = smoothstepUnit(fy - iy);
+  const h00 = grainHash(ix, iy);
+  const h10 = grainHash(ix + 1, iy);
+  const h01 = grainHash(ix, iy + 1);
+  const h11 = grainHash(ix + 1, iy + 1);
+  const a = h00 + (h10 - h00) * sx;
+  const b = h01 + (h11 - h01) * sx;
+  return (a + (b - a) * sy) * 2 - 1;
 }

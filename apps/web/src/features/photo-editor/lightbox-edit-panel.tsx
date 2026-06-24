@@ -15,7 +15,11 @@ import {
   Redo2,
   X,
 } from "lucide-react";
-import { hasEdits, hasColor, COLOR_FIELDS, type AspectPreset } from "@lumio/shared";
+import { hasEdits, hasColor, COLOR_FIELDS, type AspectPreset, type ColorField } from "@lumio/shared";
+
+const COLOR_GROUP = COLOR_FIELDS.filter((f) => f.group !== "detail");
+const DETAIL_GROUP = COLOR_FIELDS.filter((f) => f.group === "detail");
+const DETAIL_KEYS = DETAIL_GROUP.map((f) => f.key);
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Slider } from "@/components/ui/slider";
@@ -82,6 +86,39 @@ export function LightboxEditPanel() {
     setEditing(true);
     return () => setEditing(false);
   }, [setEditing]);
+
+  const renderSlider = (f: ColorField) => {
+    // Temperature/Tint default + reset to the photo's as-shot baseline (their
+    // neutral is per-photo); other fields use their global neutral.
+    const neutral =
+      f.key === "temperature" ? baseline.k
+      : f.key === "tint" ? baseline.tint
+      : f.neutral;
+    const value = working[f.key] ?? neutral;
+    return (
+      <div key={f.key} className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{f.label}</span>
+          <button
+            type="button"
+            aria-label={`Reset ${f.label}`}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setColor(f.key, neutral)}
+          >
+            {f.precision ? value.toFixed(f.precision) : Math.round(value)}
+          </button>
+        </div>
+        <Slider
+          min={f.min}
+          max={f.max}
+          step={f.step}
+          value={[value]}
+          onValueChange={(v) => setColorLive(f.key, v[0])}
+          onValueCommit={(v) => setColor(f.key, v[0])}
+        />
+      </div>
+    );
+  };
 
   if (cropMode) {
     return (
@@ -237,41 +274,29 @@ export function LightboxEditPanel() {
             className="size-7 text-muted-foreground"
             aria-label="Reset adjustments"
             disabled={!hasColor(working)}
-            onClick={resetColor}
+            onClick={() => resetColor()}
           >
             <RefreshCcw aria-hidden />
           </Button>
         </div>
-        {COLOR_FIELDS.map((f) => {
-          const neutral =
-            f.key === "temperature" ? baseline.k
-            : f.key === "tint" ? baseline.tint
-            : f.neutral;
-          const value = working[f.key] ?? neutral;
-          return (
-            <div key={f.key} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">{f.label}</span>
-                <button
-                  type="button"
-                  aria-label={`Reset ${f.label}`}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setColor(f.key, neutral)}
-                >
-                  {f.precision ? value.toFixed(f.precision) : Math.round(value)}
-                </button>
-              </div>
-              <Slider
-                min={f.min}
-                max={f.max}
-                step={f.step}
-                value={[value]}
-                onValueChange={(v) => setColorLive(f.key, v[0])}
-                onValueCommit={(v) => setColor(f.key, v[0])}
-              />
-            </div>
-          );
-        })}
+        {COLOR_GROUP.map(renderSlider)}
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-muted-foreground">Detail &amp; Grain</p>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-label="Reset detail & grain"
+            disabled={DETAIL_KEYS.every((k) => (working[k] ?? 0) === 0)}
+            onClick={() => resetColor(DETAIL_KEYS)}
+          >
+            <RefreshCcw aria-hidden />
+          </Button>
+        </div>
+        {DETAIL_GROUP.map(renderSlider)}
       </div>
 
       <CurveEditor />
