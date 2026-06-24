@@ -45,13 +45,17 @@ export function AdjustedImage({
   style?: React.CSSProperties;
 }) {
   // Gate GL on mount so SSR and the first client render agree (no hydration
-  // mismatch); switch to the canvas afterwards.
+  // mismatch); switch to the canvas afterwards. The capability probe is memoized —
+  // calling it per render would spawn (and leak) a WebGL2 context every render,
+  // exhausting the browser's context pool mid-slider-drag and killing the editor's
+  // own canvas.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     const mark = () => setMounted(true);
     mark();
   }, []);
-  const useGl = mounted && isWebGL2Available();
+  const supported = useMemo(() => isWebGL2Available(), []);
+  const useGl = mounted && supported;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const glRef = useRef<GlColor | null>(null);

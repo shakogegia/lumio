@@ -13,7 +13,11 @@ export function isWebGL2Available(): boolean {
   if (typeof document === "undefined") return false;
   try {
     const c = document.createElement("canvas");
-    return !!c.getContext("webgl2");
+    const gl = c.getContext("webgl2");
+    // Release the probe context immediately — WebGL contexts are a scarce resource
+    // (~16 per page); leaking one per call would evict live editor contexts.
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return !!gl;
   } catch {
     return false;
   }
