@@ -19,11 +19,13 @@ import {
  * originals — same as a multi-photo zip with no edits.
  */
 export function DownloadMenu({
+  count,
   anyEdited,
   disabled,
   pending,
   onDownload,
 }: {
+  count: number;
   anyEdited: boolean;
   disabled: boolean;
   pending: boolean;
@@ -50,6 +52,10 @@ export function DownloadMenu({
     );
   }
 
+  // A single photo reads "Download edited"; many keep the count, e.g.
+  // "Download 3 photos edited". No "1 photo" — the count only earns its keep
+  // once there's more than one.
+  const prefix = count === 1 ? "" : `${count} photos `;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -65,10 +71,10 @@ export function DownloadMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={() => onDownload("edited")}>
-          Download edited
+          Download {prefix}edited
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onDownload("original")}>
-          Download original
+          Download {prefix}original
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

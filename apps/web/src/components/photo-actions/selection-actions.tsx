@@ -60,6 +60,7 @@ export function SelectionActions({
         onCreateNew={() => actions.addToAlbum(ids)}
       />
       <DownloadMenu
+        count={ids.length}
         anyEdited={anyEdited}
         disabled={none || actions.pending.download}
         pending={actions.pending.download}
