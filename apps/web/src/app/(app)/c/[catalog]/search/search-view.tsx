@@ -15,7 +15,7 @@ import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
-import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, GridShortcuts } from "@/features/photo-grid";
+import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
@@ -48,6 +48,9 @@ export function SearchView() {
   const [month, setMonth] = useState<string | null>(null);
   const sel = useGridSelection();
   const gridRef = useRef<PhotoGridHandle>(null);
+  // Any selected photo edited → Download offers edited vs original. Reported up
+  // from inside the provider, since this toolbar renders outside it.
+  const [anySelectedEdited, setAnySelectedEdited] = useState(false);
 
   const empty = isEmptyFilters(filters);
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
@@ -150,6 +153,7 @@ export function SearchView() {
                         selectedIds={sel.selected}
                         gridRef={gridRef}
                         clearSelection={sel.clear}
+                        anyEdited={anySelectedEdited}
                       />
                       <Button
                         variant="outline"
@@ -187,6 +191,7 @@ export function SearchView() {
                 baseUrl={catalogPath(slug, "/search")}
               >
                 <PhotoActionsProvider value={actions}>
+                  <SelectionEditReporter selectedIds={sel.selected} onAnyEdited={setAnySelectedEdited} />
                   <PhotoGrid
                     apiRef={gridRef}
                     mode={mode}
