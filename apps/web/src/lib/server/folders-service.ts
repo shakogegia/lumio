@@ -129,6 +129,7 @@ export async function listFolderContents(
 
   const directAlbums = allAlbums.filter((a) => a.folderId === folderId);
   const albums: AlbumSummaryDTO[] = await Promise.all(directAlbums.map((a) => albumSummary(catalogId, a, db, now)));
+  albums.sort((a, b) => a.name.localeCompare(b.name));
 
   // Recursive deduplicated photo count of the viewed folder (for the header subtitle).
   let currentPhotoCount: number | null = null;
