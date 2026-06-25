@@ -47,6 +47,7 @@ export function SharePasswordGate({ token, title }: { token: string; title: stri
           <Input
             id="share-password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
