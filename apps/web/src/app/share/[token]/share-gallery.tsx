@@ -59,7 +59,9 @@ export function ShareGallery({ token, title }: { token: string; title: string | 
     return () => document.removeEventListener("keydown", onKey);
   }, [viewer, photos.length]);
 
-  const hasMore = total === null || photos.length < total;
+  // Only after the first page lands (total known) and more remain — avoids a
+  // "Load more" flash before the initial fetch resolves.
+  const hasMore = total !== null && photos.length < total;
   const current = viewer !== null ? photos[viewer] : null;
 
   return (
@@ -122,12 +124,18 @@ export function ShareGallery({ token, title }: { token: string; title: string | 
       )}
 
       {current && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+        >
           <button
             type="button"
             onClick={() => setViewer(null)}
-            className="absolute right-4 top-4 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
+            className="absolute right-4 top-4 z-10 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
             aria-label="Close"
+            autoFocus
           >
             <X aria-hidden />
           </button>
@@ -135,7 +143,7 @@ export function ShareGallery({ token, title }: { token: string; title: string | 
             <button
               type="button"
               onClick={() => setViewer((i) => (i === null ? i : i - 1))}
-              className="absolute left-4 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
               aria-label="Previous"
             >
               <ChevronLeft aria-hidden />
@@ -145,7 +153,7 @@ export function ShareGallery({ token, title }: { token: string; title: string | 
             <button
               type="button"
               onClick={() => setViewer((i) => (i === null ? i : i + 1))}
-              className="absolute right-4 top-1/2 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
               aria-label="Next"
             >
               <ChevronRight aria-hidden />
@@ -154,7 +162,7 @@ export function ShareGallery({ token, title }: { token: string; title: string | 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={shareDisplayUrl(token, current.id, renditionVersion(current.updatedAt))}
-            alt=""
+            alt={`Shared photo ${viewer !== null ? viewer + 1 : ""} of ${photos.length}`}
             className="max-h-[90dvh] max-w-[92vw] object-contain"
           />
           <a
