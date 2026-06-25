@@ -7,6 +7,10 @@ import {
   upsertPhotoMetadataValue,
   getPhotoMetadataValues,
   suggestFieldValues,
+  createMetadataField,
+  createMetadataGroup,
+  updateMetadataField,
+  deleteMetadataField,
 } from "./metadata.js";
 
 describe("getCatalogSchema", () => {
@@ -118,5 +122,54 @@ describe("clearCatalogSchema", () => {
     } as never;
     await clearCatalogSchema("cat1", db);
     expect(order).toEqual(["fields", "groups"]);
+  });
+});
+
+describe("createMetadataField", () => {
+  it("creates a custom field at the end of its group with a unique slug key", async () => {
+    const created: any[] = [];
+    const db = {
+      metadataField: {
+        findMany: async ({ select }: any) =>
+          select?.key
+            ? [{ key: "film-stock" }, { key: "developer" }]
+            : [{ position: "a0" }, { position: "a1" }],
+        create: async ({ data }: any) => { created.push(data); return { id: "f9", ...data }; },
+      },
+    } as never;
+    const row = await createMetadataField("cat1", "g1", "Film Stock", "text", db);
+    expect(row.key).toBe("film-stock-2"); // collides with existing "film-stock"
+    expect(created[0]).toMatchObject({ catalogId: "cat1", groupId: "g1", kind: "custom", label: "Film Stock", type: "text" });
+    expect(created[0].position > "a1").toBe(true); // appended after last
+  });
+});
+
+describe("createMetadataGroup", () => {
+  it("creates a group appended after the last position", async () => {
+    let made: any = null;
+    const db = {
+      metadataGroup: {
+        findMany: async () => [{ position: "a0" }],
+        create: async ({ data }: any) => { made = data; return { id: "g9", ...data }; },
+      },
+    } as never;
+    await createMetadataGroup("cat1", "Process", db);
+    expect(made).toMatchObject({ catalogId: "cat1", label: "Process" });
+    expect(made.position > "a0").toBe(true);
+  });
+});
+
+describe("updateMetadataField / deleteMetadataField", () => {
+  it("updates only the given fields", async () => {
+    let arg: any = null;
+    const db = { metadataField: { update: async (a: any) => { arg = a; return {}; } } } as never;
+    await updateMetadataField("f1", { label: "Stock", enabled: false }, db);
+    expect(arg).toEqual({ where: { id: "f1" }, data: { label: "Stock", enabled: false } });
+  });
+  it("deletes by id", async () => {
+    let arg: any = null;
+    const db = { metadataField: { delete: async (a: any) => { arg = a; return {}; } } } as never;
+    await deleteMetadataField("f1", db);
+    expect(arg).toEqual({ where: { id: "f1" } });
   });
 });

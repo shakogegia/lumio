@@ -84,6 +84,56 @@ export async function clearCatalogSchema(catalogId: string, db: TxDb = prisma): 
   });
 }
 
+/** label → stable url-ish slug; empty falls back to "field". */
+export function slugify(label: string): string {
+  return label.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "field";
+}
+
+export async function createMetadataGroup(
+  catalogId: string,
+  label: string,
+  db: GroupDb = prisma,
+): Promise<{ id: string }> {
+  const groups = await db.metadataGroup.findMany({ where: { catalogId }, orderBy: { position: "asc" } });
+  const last = groups.at(-1)?.position ?? null;
+  const position = keysBetween(last, null, 1)[0]!;
+  return db.metadataGroup.create({ data: { catalogId, label, position } });
+}
+
+export async function createMetadataField(
+  catalogId: string,
+  groupId: string,
+  label: string,
+  type: string,
+  db: FieldDb = prisma,
+): Promise<{ id: string; key: string }> {
+  const [inGroup, taken] = await Promise.all([
+    db.metadataField.findMany({ where: { catalogId, groupId }, orderBy: { position: "asc" } }),
+    db.metadataField.findMany({ where: { catalogId }, select: { key: true } }),
+  ]);
+  const used = new Set(taken.map((f) => f.key));
+  const base = slugify(label);
+  let key = base;
+  for (let i = 2; used.has(key); i += 1) key = `${base}-${i}`;
+  const last = inGroup.at(-1)?.position ?? null;
+  const position = keysBetween(last, null, 1)[0]!;
+  return db.metadataField.create({
+    data: { catalogId, groupId, key, label, type, kind: "custom", position },
+  });
+}
+
+export async function updateMetadataField(
+  fieldId: string,
+  data: { label?: string; type?: string; enabled?: boolean; suggests?: boolean },
+  db: FieldDb = prisma,
+): Promise<void> {
+  await db.metadataField.update({ where: { id: fieldId }, data });
+}
+
+export async function deleteMetadataField(fieldId: string, db: FieldDb = prisma): Promise<void> {
+  await db.metadataField.delete({ where: { id: fieldId } });
+}
+
 /** Set (or clear, when empty) a photo's value for one field. NULL-safe upsert. */
 export async function upsertPhotoMetadataValue(
   photoId: string,
