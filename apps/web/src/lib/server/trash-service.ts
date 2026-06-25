@@ -145,8 +145,12 @@ export async function restorePhotos(
     //    `add` upserts in place (keeps id + album links) instead of recreating.
     //    Reuses the trashed id, which is safe because a trashed photo's row was
     //    deleted on trash, so no live Photo can hold this id.
-    await deps.db.photo.create({
-      data: {
+    //    Upsert (not create) so a concurrent worker that hasn't deleted the
+    //    pending Photo row yet doesn't throw P2002 — we just clear trashedAt on
+    //    the still-existing row instead.
+    await deps.db.photo.upsert({
+      where: { id: t.id },
+      create: {
         id: t.id,
         catalogId: deps.catalogId,
         path: destRel,
@@ -166,6 +170,7 @@ export async function restorePhotos(
         fileCreatedAt: new Date(fileBirthtimeMs),
         albums: { create: albumIds.map((albumId) => ({ albumId })) },
       },
+      update: { trashedAt: null }, // pending row already live; just ensure the marker is cleared
     });
 
     // 2. Move renditions + original back.

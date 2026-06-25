@@ -115,7 +115,7 @@ describe("restorePhotos", () => {
     await writeFile(path.join(trashDir, "thumbnails", "a.webp"), "thumb");
     await writeFile(path.join(trashDir, "displays", "a.webp"), "display");
 
-    let createArgs: { data: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } } } | null = null;
+    let upsertArgs: { where: { id: string }; create: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } }; update: { trashedAt: null } } | null = null;
     const db = {
       trashedPhoto: {
         findFirst: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
@@ -124,8 +124,8 @@ describe("restorePhotos", () => {
       album: { findMany: async () => [{ id: "keep" }] },
       photo: {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-        create: async (args: never) => {
-          createArgs = args;
+        upsert: async (args: never) => {
+          upsertArgs = args;
           return {};
         },
       },
@@ -134,15 +134,17 @@ describe("restorePhotos", () => {
     const result = await restorePhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
 
     expect(result).toEqual({ restored: 1 });
-    expect(createArgs!.data.id).toBe("a");
+    expect(upsertArgs!.where).toEqual({ id: "a" });
+    expect(upsertArgs!.create.id).toBe("a");
     // Scoping assertion: restored photo carries catalogId
-    expect(createArgs!.data.catalogId).toBe(CAT);
-    expect(createArgs!.data.path).toBe("a.jpg");
-    expect(createArgs!.data.colorLabel).toBe("blue");
-    expect(createArgs!.data.albums.create).toEqual([{ albumId: "keep" }]);
-    expect(createArgs!.data.fileSize).toBe(4); // "orig" is 4 bytes
-    expect(createArgs!.data.fileModifiedAt).toBeInstanceOf(Date);
-    expect(createArgs!.data.fileCreatedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.create.catalogId).toBe(CAT);
+    expect(upsertArgs!.create.path).toBe("a.jpg");
+    expect(upsertArgs!.create.colorLabel).toBe("blue");
+    expect(upsertArgs!.create.albums.create).toEqual([{ albumId: "keep" }]);
+    expect(upsertArgs!.create.fileSize).toBe(4); // "orig" is 4 bytes
+    expect(upsertArgs!.create.fileModifiedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.create.fileCreatedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.update).toEqual({ trashedAt: null });
     expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(true);
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(true);
     expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
@@ -160,8 +162,8 @@ describe("restorePhotos", () => {
       album: { findMany: async () => [] },
       photo: {
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
-        create: async (args: { data: { path: string } }) => {
-          restoredPath = args.data.path;
+        upsert: async (args: { create: { path: string } }) => {
+          restoredPath = args.create.path;
           return {};
         },
       },
@@ -178,7 +180,7 @@ describe("restorePhotos (dual-state)", () => {
     const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const trashedFindFirst = vi.fn().mockResolvedValue(null); // not finalized
     const db = {
-      photo: { updateMany, create: vi.fn() },
+      photo: { updateMany, upsert: vi.fn() },
       trashedPhoto: { findFirst: trashedFindFirst, deleteMany: vi.fn() },
       album: { findMany: vi.fn().mockResolvedValue([]) },
     } as never;

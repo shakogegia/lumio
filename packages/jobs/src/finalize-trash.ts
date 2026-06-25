@@ -87,8 +87,22 @@ export async function finalizeTrash(
     await move(path.join(deps.cacheDir, "displays", `${id}.webp`), path.join(deps.trashDir, "displays", `${id}.webp`));
     await move(path.join(deps.photosDir, photo.path), path.join(deps.trashDir, "originals", `${id}${ext}`));
 
-    // 3. Delete the Photo row (tolerant: the watcher's unlink may delete it first).
-    await deps.db.photo.deleteMany({ where: { id, catalogId: deps.catalogId } });
+    // 3. Delete the Photo row — but only if it's still pending. A concurrent
+    //    restore (Undo / Trash-page restore) may have cleared trashedAt while we
+    //    snapshotted + moved; then the row is live again and must NOT be deleted.
+    //    Roll back our snapshot + file moves so the live row stays consistent.
+    //    (restore's own finalized pass also does this; every op here is
+    //    idempotent/tolerant, so whichever runs last wins.)
+    const { count } = await deps.db.photo.deleteMany({
+      where: { id, catalogId: deps.catalogId, trashedAt: { not: null } },
+    });
+    if (count === 0) {
+      await move(path.join(deps.trashDir, "thumbnails", `${id}.webp`), path.join(deps.cacheDir, "thumbnails", `${id}.webp`));
+      await move(path.join(deps.trashDir, "displays", `${id}.webp`), path.join(deps.cacheDir, "displays", `${id}.webp`));
+      await move(path.join(deps.trashDir, "originals", `${id}${ext}`), path.join(deps.photosDir, photo.path));
+      await deps.db.trashedPhoto.deleteMany({ where: { id, catalogId: deps.catalogId } });
+      continue; // un-trashed mid-flight — don't count
+    }
     finalized++;
     onProgress?.(finalized);
   }
