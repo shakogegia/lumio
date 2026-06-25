@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useGridSelectionNav } from "@/lib/hooks/use-grid-selection-nav";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Loader2, Trash2, X } from "lucide-react";
+import { Download, Loader2, PanelRight, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { errorMessage } from "@lumio/shared";
 import { countLabel } from "@/lib/count-label";
@@ -27,6 +27,7 @@ import { downloadSelection } from "@/lib/download-client";
 import { setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { playSound } from "@/lib/sound/player";
@@ -68,6 +69,11 @@ export function UploadClient({
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Batch-metadata side panel: off by default, toggled from the toolbar; only
+  // available when the catalog actually has custom fields.
+  const [showMeta, setShowMeta] = useState(false);
+  const metaSchema = useCatalogMetadataSchema(slug);
+  const hasMeta = (metaSchema ?? []).some((g) => g.fields.some((f) => f.enabled));
   const [metaValues, setMetaValues] = useState<Record<string, string>>({});
   const metaRef = useRef<Record<string, string>>({});
   const setMeta = useCallback((next: Record<string, string>) => {
@@ -337,14 +343,32 @@ export function UploadClient({
             ) : undefined
           }
           actions={
-            hasRows ? <GridSizeMenu columns={columns} onColumnsChange={setColumns} /> : null
+            <div className="flex items-center gap-2">
+              {hasMeta && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showMeta ? "default" : "outline"}
+                      size="icon-sm"
+                      aria-pressed={showMeta}
+                      onClick={() => setShowMeta((v) => !v)}
+                      aria-label="Batch metadata"
+                    >
+                      <PanelRight aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Batch metadata</TooltipContent>
+                </Tooltip>
+              )}
+              {hasRows && <GridSizeMenu columns={columns} onColumnsChange={setColumns} />}
+            </div>
           }
         />
       )}
 
-      <div className="space-y-6 pt-2">
-        <UploadMetadataForm values={metaValues} onChange={setMeta} />
-        <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
+      <div className="flex gap-6 pt-2">
+        <div className="min-w-0 flex-1 space-y-6">
+          <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
           <UploadCommandBar
@@ -380,6 +404,14 @@ export function UploadClient({
             ))}
           </div>
         ) : null}
+        </div>
+        {showMeta && hasMeta && (
+          <aside className="w-80 shrink-0">
+            <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+              <UploadMetadataForm values={metaValues} onChange={setMeta} />
+            </div>
+          </aside>
+        )}
       </div>
 
       {album.element}
