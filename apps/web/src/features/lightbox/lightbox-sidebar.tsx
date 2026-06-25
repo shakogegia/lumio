@@ -34,6 +34,9 @@ import { removePhotoFromAlbum } from "@/lib/photo-mutations";
 import { usePhotoCollection } from "@/features/photo-grid";
 import { LightboxEditPanel } from "@/features/photo-editor";
 import { LightboxTab } from "@/lib/lightbox-tab";
+import { FeatureKey } from "@lumio/shared";
+import { FeatureGate } from "@/components/features/features-provider";
+import { MetadataPanel } from "./metadata-panel";
 import { StandardMetadata } from "./standard-metadata";
 
 export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
@@ -73,6 +76,10 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
               <Row label="File modified" value={photo.fileModifiedAt ?? "—"} />
               <Row label="Hash" value={photo.hash ?? "—"} />
             </div>
+            <FeatureGate feature={FeatureKey.Metadata}>
+              <Separator />
+              <MetadataPanel key={photo.id} photo={photo} />
+            </FeatureGate>
             <Separator />
             {/* Keyed on photo.id so membership re-initializes per photo during
               arrow-key navigation. */}
