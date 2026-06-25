@@ -10,6 +10,8 @@ import { errorMessage } from "@lumio/shared";
 import { countLabel } from "@/lib/count-label";
 import { postJson } from "@/lib/http";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -273,6 +275,8 @@ export function UploadClient({
     <>
       {confirmDialog}
 
+      <div className={cn("flex", showMeta && hasMeta && "h-[calc(100dvh-1.5rem)]")}>
+        <div className="flex min-w-0 flex-1 flex-col">
       {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
@@ -366,8 +370,7 @@ export function UploadClient({
         />
       )}
 
-      <div className="flex pt-2">
-        <div className="min-w-0 flex-1 space-y-6">
+          <div className={cn("space-y-6 pt-2", showMeta && hasMeta && "flex-1 overflow-y-auto")}>
           <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
@@ -404,12 +407,15 @@ export function UploadClient({
             ))}
           </div>
         ) : null}
+          </div>
         </div>
         {showMeta && hasMeta && (
-          <aside className="w-80 shrink-0 border-l pl-6">
-            <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
-              <UploadMetadataForm values={metaValues} onChange={setMeta} />
-            </div>
+          <aside className="w-80 shrink-0 border-l">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                <UploadMetadataForm values={metaValues} onChange={setMeta} />
+              </div>
+            </ScrollArea>
           </aside>
         )}
       </div>
