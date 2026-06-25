@@ -14,7 +14,6 @@ import {
 import { Lightbox } from "@/features/lightbox";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { HeaderBar } from "@/components/header-bar";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
@@ -92,12 +91,7 @@ export function ShareGalleryView({
     <Skeleton className="inline-block h-3 w-16 align-middle" />
   );
 
-  const titleNode = (
-    <span className="flex items-center gap-2">
-      <Logo className="size-5 text-muted-foreground" />
-      <span className="truncate">{heading}</span>
-    </span>
-  );
+  const titleNode = <span className="truncate">{heading}</span>;
 
   return (
     <ShareRenditionProvider token={token}>
@@ -121,24 +115,28 @@ export function ShareGalleryView({
                   }
                 />
               ) : (
-                <HeaderBar
-                  title={titleNode}
-                  subtitle={countSubtitle}
-                  actions={
-                    <>
-                      <GridViewMenu mode={mode} onModeChange={setMode} />
-                      <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                      {total !== null && total > 0 && (
-                        <Button asChild variant="outline" size="sm">
-                          <a href={shareDownloadAllUrl(token)} download>
-                            <Download aria-hidden />
-                            Download all
-                          </a>
-                        </Button>
-                      )}
-                    </>
-                  }
-                />
+                <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-4 bg-background px-4 py-3">
+                  {/* Logo leads the toolbar as a prominent brand mark + wordmark. */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Logo className="size-8 shrink-0" />
+                    <div className="min-w-0">
+                      <h1 className="truncate text-sm font-semibold leading-tight">{heading}</h1>
+                      <div className="text-xs text-muted-foreground">{countSubtitle}</div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <GridViewMenu mode={mode} onModeChange={setMode} />
+                    <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+                    {total !== null && total > 0 && (
+                      <Button asChild variant="outline" size="sm">
+                        <a href={shareDownloadAllUrl(token)} download>
+                          <Download aria-hidden />
+                          Download all
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
 
               <PhotoCollectionProvider
