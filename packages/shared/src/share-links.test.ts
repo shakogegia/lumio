@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createShareLinkSchema } from "./share-links.js";
+import { createShareLinkSchema, shareUnlockSchema } from "./share-links.js";
 
 describe("createShareLinkSchema", () => {
   it("accepts a minimal body (just photoIds)", () => {
@@ -30,5 +30,14 @@ describe("createShareLinkSchema", () => {
     const v = createShareLinkSchema.parse({ photoIds: ["p1"], title: "  ", password: "" });
     expect(v.title).toBeUndefined();
     expect(v.password).toBeUndefined();
+  });
+});
+
+describe("shareUnlockSchema", () => {
+  it("accepts a non-empty password", () => {
+    expect(shareUnlockSchema.parse({ password: "pw" })).toEqual({ password: "pw" });
+  });
+  it("rejects an empty password", () => {
+    expect(() => shareUnlockSchema.parse({ password: "" })).toThrow();
   });
 });
