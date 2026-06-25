@@ -21,3 +21,5 @@ export * from "./features.js";
 export * from "./paths.js";
 export * from "./profile.js";
 export * from "./metadata-standard.js";
+export * from "./metadata-resolve.js";
+export * from "./metadata-presets.js";
