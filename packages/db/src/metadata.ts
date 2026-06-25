@@ -35,6 +35,7 @@ export async function getCatalogSchema(
       builtinKey: (f.builtinKey as StandardFieldKey | null) ?? null,
       enabled: f.enabled,
       suggests: f.suggests,
+      options: f.options ?? [],
     };
     const list = byGroup.get(f.groupId ?? "") ?? [];
     list.push(def);
@@ -68,6 +69,7 @@ export async function applyMetadataPreset(
             type: pf.type,
             kind: pf.kind,
             builtinKey: pf.builtinKey ?? null,
+            options: pf.options ?? [],
             position: fieldPositions[fi]!,
           },
         });
@@ -105,6 +107,7 @@ export async function createMetadataField(
   groupId: string,
   label: string,
   type: string,
+  options: string[] = [],
   db: FieldDb = prisma,
 ): Promise<{ id: string; key: string }> {
   const [inGroup, taken] = await Promise.all([
@@ -118,13 +121,13 @@ export async function createMetadataField(
   const last = inGroup.at(-1)?.position ?? null;
   const position = keysBetween(last, null, 1)[0]!;
   return db.metadataField.create({
-    data: { catalogId, groupId, key, label, type, kind: "custom", position },
+    data: { catalogId, groupId, key, label, type, kind: "custom", options, position },
   });
 }
 
 export async function updateMetadataField(
   fieldId: string,
-  data: { label?: string; type?: string; enabled?: boolean; suggests?: boolean },
+  data: { label?: string; type?: string; enabled?: boolean; suggests?: boolean; options?: string[] },
   db: FieldDb = prisma,
 ): Promise<void> {
   await db.metadataField.update({ where: { id: fieldId }, data });

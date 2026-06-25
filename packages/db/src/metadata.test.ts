@@ -137,7 +137,7 @@ describe("createMetadataField", () => {
         create: async ({ data }: any) => { created.push(data); return { id: "f9", ...data }; },
       },
     } as never;
-    const row = await createMetadataField("cat1", "g1", "Film Stock", "text", db);
+    const row = await createMetadataField("cat1", "g1", "Film Stock", "text", [], db);
     expect(row.key).toBe("film-stock-2"); // collides with existing "film-stock"
     expect(created[0]).toMatchObject({ catalogId: "cat1", groupId: "g1", kind: "custom", label: "Film Stock", type: "text" });
     expect(created[0].position > "a1").toBe(true); // appended after last
@@ -165,6 +165,12 @@ describe("updateMetadataField / deleteMetadataField", () => {
     const db = { metadataField: { update: async (a: any) => { arg = a; return {}; } } } as never;
     await updateMetadataField("f1", { label: "Stock", enabled: false }, db);
     expect(arg).toEqual({ where: { id: "f1" }, data: { label: "Stock", enabled: false } });
+  });
+  it("allows updating options", async () => {
+    let arg: any = null;
+    const db = { metadataField: { update: async (a: any) => { arg = a; return {}; } } } as never;
+    await updateMetadataField("f1", { options: ["35mm", "6×6"] }, db);
+    expect(arg).toEqual({ where: { id: "f1" }, data: { options: ["35mm", "6×6"] } });
   });
   it("deletes by id", async () => {
     let arg: any = null;
