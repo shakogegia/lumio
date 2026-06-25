@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, FileClock, GalleryHorizontalEnd, ToggleRight, User, Users } from "lucide-react";
+import { ArrowLeft, FileClock, GalleryHorizontalEnd, Settings2, ToggleRight, User, Users } from "lucide-react";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SettingsWorkerStatus } from "@/components/settings-worker-status";
 
 // Settings sections — absolute hrefs (not catalog-scoped). Catalogs matches its
 // detail pages too (`/settings/catalogs/<id>`) via the prefix check in isActive.
 const ITEMS: NavItem[] = [
+  { href: "/settings/general", label: "General", icon: Settings2, match: ["/settings/general"] },
   { href: "/settings/account", label: "Account", icon: User, match: ["/settings/account"] },
   { href: "/settings/catalogs", label: "Catalogs", icon: GalleryHorizontalEnd, match: ["/settings/catalogs"] },
   { href: "/settings/features", label: "Features", icon: ToggleRight, match: ["/settings/features"] },
