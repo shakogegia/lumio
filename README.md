@@ -12,6 +12,9 @@ other tool. Lumio just adds the index, the thumbnails, and the interface on top.
 It's self-hosted: run it on a NAS, home server, or any box you control — a self-hosted
 alternative to cloud photo services.
 
+<img width="1286" height="929" alt="image" src="https://github.com/user-attachments/assets/97a52dfb-fba5-448a-9b98-755fc2028a92" />
+
+
 ---
 
 ## What it does
