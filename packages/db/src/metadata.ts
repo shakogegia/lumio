@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import {
   keysBetween,
+  computeReorder,
+  type OrderedItem,
   type MetadataSchema,
   type MetadataFieldDef,
   type PresetDef,
@@ -185,4 +187,38 @@ export async function suggestFieldValues(
   return rows
     .sort((a, b) => b._count._all - a._count._all)
     .map((r) => r.value);
+}
+
+export async function reorderMetadataField(
+  groupId: string,
+  movedId: string,
+  afterId: string | null,
+  db: FieldDb & TxDb = prisma,
+): Promise<void> {
+  const rows = await db.metadataField.findMany({ where: { groupId }, orderBy: { position: "asc" } });
+  const items: OrderedItem[] = rows.map((r) => ({ id: r.id, position: r.position }));
+  const updates = computeReorder(items, movedId, afterId);
+  if (updates.length === 0) return;
+  await db.$transaction(async (tx) => {
+    for (const u of updates) {
+      await tx.metadataField.update({ where: { id: u.id }, data: { position: u.position } });
+    }
+  });
+}
+
+export async function reorderMetadataGroup(
+  catalogId: string,
+  movedId: string,
+  afterId: string | null,
+  db: GroupDb & TxDb = prisma,
+): Promise<void> {
+  const rows = await db.metadataGroup.findMany({ where: { catalogId }, orderBy: { position: "asc" } });
+  const items: OrderedItem[] = rows.map((r) => ({ id: r.id, position: r.position }));
+  const updates = computeReorder(items, movedId, afterId);
+  if (updates.length === 0) return;
+  await db.$transaction(async (tx) => {
+    for (const u of updates) {
+      await tx.metadataGroup.update({ where: { id: u.id }, data: { position: u.position } });
+    }
+  });
 }

@@ -11,6 +11,8 @@ import {
   createMetadataGroup,
   updateMetadataField,
   deleteMetadataField,
+  reorderMetadataField,
+  reorderMetadataGroup,
 } from "./metadata.js";
 
 describe("getCatalogSchema", () => {
@@ -177,5 +179,39 @@ describe("updateMetadataField / deleteMetadataField", () => {
     const db = { metadataField: { delete: async (a: any) => { arg = a; return {}; } } } as never;
     await deleteMetadataField("f1", db);
     expect(arg).toEqual({ where: { id: "f1" } });
+  });
+});
+
+describe("reorderMetadataField", () => {
+  it("loads the group's ordered fields and persists position updates", async () => {
+    const updated: Array<{ id: string; position: string }> = [];
+    const db = {
+      metadataField: {
+        findMany: async () => [
+          { id: "a", position: "a0" },
+          { id: "b", position: "a1" },
+          { id: "c", position: "a2" },
+        ],
+        update: async ({ where, data }: any) => { updated.push({ id: where.id, position: data.position }); return {}; },
+      },
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ metadataField: { update: async (a: any) => { updated.push({ id: a.where.id, position: a.data.position }); return {}; } } }),
+    } as never;
+    // move "c" to the front (afterId null)
+    await reorderMetadataField("g1", "c", null, db);
+    expect(updated.some((u) => u.id === "c")).toBe(true); // the moved row got a new key
+  });
+});
+
+describe("reorderMetadataGroup", () => {
+  it("reorders groups within a catalog", async () => {
+    const updated: string[] = [];
+    const db = {
+      metadataGroup: { findMany: async () => [{ id: "g1", position: "a0" }, { id: "g2", position: "a1" }] },
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ metadataGroup: { update: async (a: any) => { updated.push(a.where.id); return {}; } } }),
+    } as never;
+    await reorderMetadataGroup("cat1", "g2", null, db); // g2 to front
+    expect(updated).toContain("g2");
   });
 });
