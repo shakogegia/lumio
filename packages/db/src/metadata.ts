@@ -76,6 +76,14 @@ export async function applyMetadataPreset(
   });
 }
 
+/** Remove a catalog's entire custom-field schema (fields first, then groups). */
+export async function clearCatalogSchema(catalogId: string, db: TxDb = prisma): Promise<void> {
+  await db.$transaction(async (tx) => {
+    await tx.metadataField.deleteMany({ where: { catalogId } });
+    await tx.metadataGroup.deleteMany({ where: { catalogId } });
+  });
+}
+
 /** Set (or clear, when empty) a photo's value for one field. NULL-safe upsert. */
 export async function upsertPhotoMetadataValue(
   photoId: string,

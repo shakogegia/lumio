@@ -3,6 +3,7 @@ import { FieldKind, FieldType, getPreset } from "@lumio/shared";
 import {
   getCatalogSchema,
   applyMetadataPreset,
+  clearCatalogSchema,
   upsertPhotoMetadataValue,
   getPhotoMetadataValues,
   suggestFieldValues,
@@ -102,5 +103,20 @@ describe("suggestFieldValues", () => {
     const out = await suggestFieldValues("f1", "kod", db);
     expect(out).toEqual(["Kodak Portra 400", "Kodak Gold 200"]);
     expect(groupBy).toHaveBeenCalled();
+  });
+});
+
+describe("clearCatalogSchema", () => {
+  it("deletes a catalog's fields then groups inside a transaction", async () => {
+    const order: string[] = [];
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({
+          metadataField: { deleteMany: async () => { order.push("fields"); return { count: 3 }; } },
+          metadataGroup: { deleteMany: async () => { order.push("groups"); return { count: 2 }; } },
+        }),
+    } as never;
+    await clearCatalogSchema("cat1", db);
+    expect(order).toEqual(["fields", "groups"]);
   });
 });
