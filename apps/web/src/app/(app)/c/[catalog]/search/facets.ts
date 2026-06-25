@@ -32,7 +32,10 @@ const albumFacet: SearchFacet = {
     const res = await fetch(catalogApiUrl(slug, "/albums"));
     if (!res.ok) throw new Error(`Failed to load albums: ${res.status}`);
     const data: { items: AlbumSummaryDTO[] } = await res.json();
-    return data.items.map((a) => ({ value: a.id, label: a.name }));
+    return data.items
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((a) => ({ value: a.id, label: a.name }));
   },
 };
 
