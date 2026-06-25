@@ -11,7 +11,7 @@ import {
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
-import { albumSummary } from "@/lib/server/albums-service";
+import { albumCoverMap, albumSummary } from "@/lib/server/albums-service";
 import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
@@ -52,12 +52,30 @@ function albumsForSubtree(
   return { regularAlbumIds, smartAlbums };
 }
 
-/** Recursive summary (counts + preview ids) for one folder. */
+/** Albums in a folder's subtree, ordered for the preview mosaic: direct children
+ *  first, then deeper descendants. The incoming `allAlbums` order (catalog
+ *  createdAt-asc) is preserved as the within-tier tiebreak. */
+function subtreeAlbumsForPreview(allAlbums: AlbumLite[], folderId: string, descendantIds: Set<string>): AlbumLite[] {
+  const direct: AlbumLite[] = [];
+  const nested: AlbumLite[] = [];
+  for (const a of allAlbums) {
+    if (a.folderId === null || !descendantIds.has(a.folderId)) continue;
+    if (a.folderId === folderId) direct.push(a);
+    else nested.push(a);
+  }
+  return [...direct, ...nested];
+}
+
+/** Recursive summary (counts + preview ids) for one folder. The preview mosaic
+ *  leads with the inner albums' covers (direct children first), then tops up any
+ *  remaining cells with the most-recent subtree photos. `coverMap` carries the
+ *  catalog's album covers so they are resolved once, not per folder. */
 async function folderSummary(
   catalogId: string,
   folder: Folder,
   allFolders: Folder[],
   allAlbums: AlbumLite[],
+  coverMap: Map<string, string | null>,
   now: Date,
   db: Db,
 ): Promise<FolderSummaryDTO> {
@@ -66,16 +84,44 @@ async function folderSummary(
   const childFolderCount = allFolders.filter((f) => f.parentId === folder.id).length;
   const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
   const where = { catalogId, ...LIVE_PHOTO, ...scopedWhere };
-  const [totalPhotoCount, previews] = await Promise.all([
+
+  // Album covers first (direct children before nested), deduped, up to 4.
+  const previewPhotoIds: string[] = [];
+  const seen = new Set<string>();
+  for (const album of subtreeAlbumsForPreview(allAlbums, folder.id, descendantIds)) {
+    const cover = coverMap.get(album.id);
+    if (!cover || seen.has(cover)) continue;
+    previewPhotoIds.push(cover);
+    seen.add(cover);
+    if (previewPhotoIds.length === 4) break;
+  }
+
+  const fillNeeded = 4 - previewPhotoIds.length;
+  const [totalPhotoCount, fill] = await Promise.all([
     db.photo.count({ where }),
-    db.photo.findMany({ where, orderBy: PHOTO_ORDER, take: 4, select: { id: true } }),
+    fillNeeded > 0
+      ? db.photo.findMany({
+          where: seen.size ? { ...where, id: { notIn: [...seen] } } : where,
+          orderBy: PHOTO_ORDER,
+          take: fillNeeded,
+          select: { id: true },
+        })
+      : Promise.resolve<{ id: string }[]>([]),
   ]);
+  // Top up the remaining mosaic cells with recent photos, skipping any cover already shown.
+  for (const p of fill) {
+    if (previewPhotoIds.length === 4) break;
+    if (seen.has(p.id)) continue;
+    previewPhotoIds.push(p.id);
+    seen.add(p.id);
+  }
+
   return {
     ...toFolderDTO(folder),
     childFolderCount,
     albumCount: regularAlbumIds.length + smartAlbums.length,
     totalPhotoCount,
-    previewPhotoIds: previews.map((p) => p.id),
+    previewPhotoIds,
   };
 }
 
@@ -108,8 +154,12 @@ export async function listFolderContents(
   const now = new Date();
   const [allFolders, allAlbums] = await Promise.all([
     db.folder.findMany({ where: { catalogId } }),
-    db.album.findMany({ where: { catalogId } }),
+    // createdAt-asc is the canonical album order (matches listAlbumSummaries); it
+    // becomes the within-tier tiebreak for folder-preview album covers.
+    db.album.findMany({ where: { catalogId }, orderBy: { createdAt: "asc" } }),
   ]);
+  // Resolve every album's cover once so each folder preview reuses them.
+  const coverMap = await albumCoverMap(catalogId, allAlbums, db, now);
 
   let folder: FolderDTO | null = null;
   let breadcrumbs: FolderDTO[] = [];
@@ -123,7 +173,9 @@ export async function listFolderContents(
 
   const directChildFolders = allFolders.filter((f) => f.parentId === folderId);
   const subfolders = await Promise.all(
-    directChildFolders.map((child) => folderSummary(catalogId, child, allFolders, allAlbums as AlbumLite[], now, db)),
+    directChildFolders.map((child) =>
+      folderSummary(catalogId, child, allFolders, allAlbums as AlbumLite[], coverMap, now, db),
+    ),
   );
   subfolders.sort((a, b) => a.name.localeCompare(b.name));
 

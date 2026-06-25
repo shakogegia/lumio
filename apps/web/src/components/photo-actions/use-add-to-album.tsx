@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { AddToAlbumDialog } from "@/components/photo-actions/add-to-album-dialog";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { addPhotosToAlbum } from "@/lib/photo-mutations";
@@ -44,7 +45,9 @@ export function useAddToAlbum(): AddToAlbumControls {
       if (ids.length === 0) return;
       try {
         await addPhotosToAlbum(slug, albumId, ids);
-        // Mirror AddToAlbumDialog: refresh so album counts/covers stay current.
+        // Mirror AddToAlbumDialog: invalidate the cached library tree (so sidebar/
+        // picker album covers + counts update) and refresh server components.
+        invalidateLibraryTree();
         router.refresh();
         playSound(SoundEffect.ActionComplete);
         opts?.onSuccess?.();

@@ -167,6 +167,103 @@ describe("listFolderContents", () => {
   });
 });
 
+describe("listFolderContents folder preview covers", () => {
+  function albumRow(
+    o: Partial<{ id: string; folderId: string | null; coverPhotoId: string | null; createdAt: Date }> = {},
+  ) {
+    return {
+      id: "a",
+      name: "Album",
+      isSmart: false,
+      rules: null,
+      coverPhotoId: null,
+      folderId: null,
+      catalogId: CAT,
+      createdAt: new Date("2024-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+      ...o,
+    };
+  }
+
+  // `covers`: albumId -> derived cover photo id. `fill`: most-recent subtree photos
+  // used to top up the mosaic. Album rows must be supplied in createdAt-asc order.
+  function previewDb(
+    albums: ReturnType<typeof albumRow>[],
+    covers: Record<string, string>,
+    fill: string[],
+  ) {
+    return {
+      folder: {
+        findMany: async () => [
+          folderRow({ id: "trips", name: "Trips", parentId: null }),
+          folderRow({ id: "italy", name: "Italy", parentId: "trips" }),
+        ],
+      },
+      album: { findMany: async () => albums },
+      albumPhoto: {
+        count: async () => 1,
+        findUnique: async () => null,
+        findFirst: async ({ where }: { where: { albumId: string } }) => {
+          const id = covers[where.albumId];
+          return id ? { photoId: id } : null;
+        },
+      },
+      photo: {
+        count: async () => 10,
+        findFirst: async () => null,
+        findMany: async () => fill.map((id) => ({ id })),
+      },
+    };
+  }
+
+  it("leads with album covers (direct children, then nested), then fills with recent photos", async () => {
+    const albums = [
+      albumRow({ id: "rome", folderId: "trips", createdAt: new Date("2024-01-01T00:00:00.000Z") }),
+      albumRow({ id: "paris", folderId: "trips", createdAt: new Date("2024-02-01T00:00:00.000Z") }),
+      albumRow({ id: "venice", folderId: "italy", createdAt: new Date("2024-03-01T00:00:00.000Z") }),
+    ];
+    const covers = { rome: "rome-cover", paris: "paris-cover", venice: "venice-cover" };
+    const db = previewDb(albums, covers, ["r1", "r2", "r3", "r4"]);
+    const contents = await listFolderContents(CAT, null, db as never);
+    const trips = contents!.subfolders.find((f) => f.id === "trips");
+    expect(trips!.previewPhotoIds).toEqual(["rome-cover", "paris-cover", "venice-cover", "r1"]);
+  });
+
+  it("dedupes a recent photo that already appears as an album cover", async () => {
+    const albums = [albumRow({ id: "rome", folderId: "trips" })];
+    const db = previewDb(albums, { rome: "rome-cover" }, ["rome-cover", "r1", "r2", "r3"]);
+    const contents = await listFolderContents(CAT, null, db as never);
+    const trips = contents!.subfolders.find((f) => f.id === "trips");
+    expect(trips!.previewPhotoIds).toEqual(["rome-cover", "r1", "r2", "r3"]);
+  });
+
+  it("uses up to four album covers without pulling in recent photos", async () => {
+    const albums = [
+      albumRow({ id: "a1", folderId: "trips", createdAt: new Date("2024-01-01T00:00:00.000Z") }),
+      albumRow({ id: "a2", folderId: "trips", createdAt: new Date("2024-02-01T00:00:00.000Z") }),
+      albumRow({ id: "a3", folderId: "trips", createdAt: new Date("2024-03-01T00:00:00.000Z") }),
+      albumRow({ id: "a4", folderId: "trips", createdAt: new Date("2024-04-01T00:00:00.000Z") }),
+      albumRow({ id: "a5", folderId: "trips", createdAt: new Date("2024-05-01T00:00:00.000Z") }),
+    ];
+    const covers = { a1: "c1", a2: "c2", a3: "c3", a4: "c4", a5: "c5" };
+    const fillSpy = vi.fn(async () => [{ id: "should-not-appear" }]);
+    const db = previewDb(albums, covers, []);
+    db.photo.findMany = fillSpy;
+    const contents = await listFolderContents(CAT, null, db as never);
+    const trips = contents!.subfolders.find((f) => f.id === "trips");
+    expect(trips!.previewPhotoIds).toEqual(["c1", "c2", "c3", "c4"]);
+    expect(fillSpy).not.toHaveBeenCalled();
+  });
+
+  it("falls back to recent photos when no album has a cover", async () => {
+    const albums = [albumRow({ id: "rome", folderId: "trips" })];
+    const db = previewDb(albums, {}, ["r1", "r2", "r3", "r4"]);
+    const contents = await listFolderContents(CAT, null, db as never);
+    const trips = contents!.subfolders.find((f) => f.id === "trips");
+    expect(trips!.previewPhotoIds).toEqual(["r1", "r2", "r3", "r4"]);
+  });
+});
+
 describe("deleteFolder reparent", () => {
   it("reparents direct children to the deleted folder's parent, then deletes it", async () => {
     const folderUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
