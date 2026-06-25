@@ -95,7 +95,11 @@ export function ShareGalleryView({
       <CatalogProvider catalog={{ id: "share", slug: token, name: heading }}>
         <PhotoCapabilitiesProvider value={PUBLIC_CAPABILITIES}>
           <PhotoActionsProvider value={actions}>
-            <main className="mx-auto max-w-screen-2xl px-4 py-2">
+            {/* No app sidebar here, so the lightbox should go full-bleed. */}
+            <main
+              className="mx-auto max-w-screen-2xl px-4 py-2"
+              style={{ "--lightbox-left-inset": "0px" } as React.CSSProperties}
+            >
               {/* Single sticky toolbar: the logo always leads it (it stays put when a
                   selection is active — only the subtitle + right-hand actions swap). */}
               <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-4 bg-background px-4 py-3">

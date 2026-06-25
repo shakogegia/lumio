@@ -118,7 +118,11 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     <div
       ref={overlayRef}
       data-keyboard-overlay
-      className="fixed inset-y-0 left-[76px] right-0 z-40 overflow-y-auto bg-background lg:bg-background/85 lg:backdrop-blur-xl"
+      // Left inset leaves room for the app sidebar (76px). Surfaces without the
+      // app chrome (e.g. the public share gallery) override --lightbox-left-inset
+      // to 0 so the overlay goes full-bleed.
+      style={{ left: "var(--lightbox-left-inset, 76px)" }}
+      className="fixed inset-y-0 right-0 z-40 overflow-y-auto bg-background lg:bg-background/85 lg:backdrop-blur-xl"
       onClick={(e) => {
         // Click on the backdrop (not a child) closes — guarded for unsaved edits.
         if (e.target === e.currentTarget) guard(() => close());
@@ -138,6 +142,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
                 photo={photo}
                 onTrashed={onTrashed}
                 showZoom={!cropMode}
+                onClose={() => guard(() => close())}
               />
             )}
           />
