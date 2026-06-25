@@ -186,11 +186,15 @@ export function formatFocal(mm: unknown): string | null {
   return `${Number(f.toFixed(1)).toString().replace(/\.0$/, "")} mm`;
 }
 
-/** Make + Model, de-duplicated (Model frequently repeats the Make). */
+/** Make + Model, de-duplicated (Model frequently repeats the Make). Match on the
+ *  FIRST WORD of make so "NIKON CORPORATION" + "NIKON D800" → "NIKON D800". */
 export function formatCamera(make: unknown, model: unknown): string | null {
   const mk = str(make);
   const md = str(model);
-  if (mk && md) return md.toLowerCase().startsWith(mk.toLowerCase()) ? md : `${mk} ${md}`;
+  if (mk && md) {
+    const mkFirst = mk.split(/\s+/)[0]!;
+    return md.toLowerCase().startsWith(mkFirst.toLowerCase()) ? md : `${mk} ${md}`;
+  }
   return md ?? mk ?? null;
 }
 
