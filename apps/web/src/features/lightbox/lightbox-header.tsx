@@ -1,16 +1,25 @@
 "use client";
 
+import { X } from "lucide-react";
 import type { PhotoDTO } from "@lumio/shared";
 import { ZoomControls } from "@/features/photo-editor";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 import { LightboxActions } from "./lightbox-actions";
 
 /**
  * Header bar above the photo: zoom controls on the left, filename + resolution
- * centered, and the favorite/download/trash icon buttons on the right.
+ * centered, and the action icon buttons + a close button on the right.
  */
 export function LightboxHeader({
   photo,
   onTrashed,
+  onClose,
   zoom,
   min,
   onZoom,
@@ -22,6 +31,8 @@ export function LightboxHeader({
 }: {
   photo: PhotoDTO;
   onTrashed: () => void;
+  /** Close the lightbox (guarded for unsaved edits by the caller). */
+  onClose: () => void;
   zoom: number;
   min: number;
   onZoom: (zoom: number) => void;
@@ -56,8 +67,19 @@ export function LightboxHeader({
           {photo.width}×{photo.height}
         </p>
       </div>
-      <div className="flex flex-1 justify-end">
+      <div className="flex flex-1 items-center justify-end gap-1">
         <LightboxActions photo={photo} onTrashed={onTrashed} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
+              <X aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Close
+            <Kbd>Esc</Kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );

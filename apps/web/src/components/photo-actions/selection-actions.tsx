@@ -1,7 +1,8 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-import { computeFavoriteTarget } from "@lumio/shared";
+import { Share2, Trash2 } from "lucide-react";
+import { computeFavoriteTarget, FeatureKey } from "@lumio/shared";
+import { useFeature } from "@/components/features/features-provider";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -15,6 +16,7 @@ import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { DownloadMenu } from "@/components/photo-actions/download-menu";
 import type { PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import type { PhotoGridHandle } from "@/features/photo-grid";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
 /**
  * The standard bulk-action button set shared by every photo library view:
@@ -43,52 +45,80 @@ export function SelectionActions({
    *  since this toolbar renders outside it and can't read the grid directly. */
   anyEdited?: boolean;
 }) {
+  const sharingEnabled = useFeature(FeatureKey.Sharing);
+  const caps = usePhotoCapabilities();
   const ids = [...selectedIds];
   const none = ids.length === 0;
   return (
     <>
-      <FavoriteButton
-        disabled={none || actions.pending.favorite}
-        pending={actions.pending.favorite}
-        onClick={() => {
-          const target = computeFavoriteTarget(gridRef.current?.getPhotos(selectedIds) ?? []);
-          void actions.favorite(ids, target, clearOnFavorite ? { onSuccess: clearSelection } : undefined);
-        }}
-      />
-      <ColorLabelMenu
-        disabled={none || actions.pending.label}
-        onPick={(label) => void actions.applyLabel(ids, label)}
-      />
-      <AddToAlbumMenu
-        disabled={none}
-        excludeAlbumId={actions.excludeAlbumId}
-        onPick={(albumId) => void actions.addToAlbumDirect(ids, albumId)}
-        onCreateNew={() => actions.addToAlbum(ids)}
-      />
-      <DownloadMenu
-        count={ids.length}
-        anyEdited={anyEdited}
-        disabled={none || actions.pending.download}
-        pending={actions.pending.download}
-        onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
-      />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="destructive"
-            size="icon-sm"
-            disabled={none}
-            onClick={() => void actions.trash(ids, { onSuccess: clearSelection })}
-            aria-label="Delete"
-          >
-            <Trash2 aria-hidden />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          Delete
-          <Kbd>⌫</Kbd>
-        </TooltipContent>
-      </Tooltip>
+      {caps.favorite && (
+        <FavoriteButton
+          disabled={none || actions.pending.favorite}
+          pending={actions.pending.favorite}
+          onClick={() => {
+            const target = computeFavoriteTarget(gridRef.current?.getPhotos(selectedIds) ?? []);
+            void actions.favorite(ids, target, clearOnFavorite ? { onSuccess: clearSelection } : undefined);
+          }}
+        />
+      )}
+      {caps.label && (
+        <ColorLabelMenu
+          disabled={none || actions.pending.label}
+          onPick={(label) => void actions.applyLabel(ids, label)}
+        />
+      )}
+      {caps.addToAlbum && (
+        <AddToAlbumMenu
+          disabled={none}
+          excludeAlbumId={actions.excludeAlbumId}
+          onPick={(albumId) => void actions.addToAlbumDirect(ids, albumId)}
+          onCreateNew={() => actions.addToAlbum(ids)}
+        />
+      )}
+      {caps.download && (
+        <DownloadMenu
+          count={ids.length}
+          anyEdited={anyEdited}
+          disabled={none || actions.pending.download}
+          pending={actions.pending.download}
+          onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
+        />
+      )}
+      {sharingEnabled && caps.createShare && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={none}
+              onClick={() => actions.share(ids)}
+              aria-label="Share"
+            >
+              <Share2 aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share</TooltipContent>
+        </Tooltip>
+      )}
+      {caps.trash && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="destructive"
+              size="icon-sm"
+              disabled={none}
+              onClick={() => void actions.trash(ids, { onSuccess: clearSelection })}
+              aria-label="Delete"
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Delete
+            <Kbd>⌫</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </>
   );
 }

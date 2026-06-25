@@ -31,6 +31,7 @@ model Catalog {
   folders         Folder[]
   trashedPhotos   TrashedPhoto[]
   featureSettings FeatureSetting[]
+  shareLinks      ShareLink[]
 }
 
 model FeatureSetting {
@@ -97,6 +98,7 @@ model Photo {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
+  shareLinks     ShareLinkPhoto[]
 
   @@unique([catalogId, path])
   @@index([catalogId])
@@ -296,4 +298,35 @@ model WorkerLog {
 
   @@index([createdAt])
   @@index([level, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ShareLink {
+  id           String           @id @default(cuid())
+  token        String           @unique
+  catalogId    String
+  catalog      Catalog          @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  title        String?
+  passwordHash String?
+  expiresAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  photos       ShareLinkPhoto[]
+
+  @@index([catalogId])
+}
+
+model ShareLinkPhoto {
+  shareLinkId String
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  photoId     String
+  photo       Photo     @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([shareLinkId, photoId])
+  @@index([photoId])
 }

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 export enum FeatureKey {
   DiskExplorer = "diskExplorer",
+  Sharing = "sharing",
 }
 
 export enum FeatureScope {
@@ -35,6 +36,13 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = {
     label: "Folder browser",
     description: "Browse the catalog's folders and files on disk.",
     scopes: [FeatureScope.Global, FeatureScope.Catalog],
+    default: false,
+  },
+  [FeatureKey.Sharing]: {
+    key: FeatureKey.Sharing,
+    label: "Share links",
+    description: "Create public links to share selected photos. Requires a Public base URL in General settings.",
+    scopes: [FeatureScope.Global],
     default: false,
   },
 };

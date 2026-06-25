@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FEATURES, FeatureKey, FeatureScope, featureToggleSchema } from "./features.js";
+import { ALL_FEATURE_KEYS, FEATURES, FeatureKey, FeatureScope, featureToggleSchema } from "./features.js";
 
 describe("FEATURES registry", () => {
   it("has an entry for every FeatureKey, keyed by its own key", () => {
@@ -21,6 +21,15 @@ describe("FEATURES registry", () => {
     const d = FEATURES[FeatureKey.DiskExplorer];
     expect(d.scopes).toEqual([FeatureScope.Global, FeatureScope.Catalog]);
     expect(d.default).toBe(false);
+  });
+  it("every key has a matching def keyed by itself", () => {
+    for (const key of ALL_FEATURE_KEYS) {
+      expect(FEATURES[key].key).toBe(key);
+    }
+  });
+  it("Sharing is a global-only feature, default off", () => {
+    expect(FEATURES[FeatureKey.Sharing].scopes).toEqual([FeatureScope.Global]);
+    expect(FEATURES[FeatureKey.Sharing].default).toBe(false);
   });
 });
 

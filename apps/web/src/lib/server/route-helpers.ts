@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { FeatureScopeError, UnknownFeatureError } from "@lumio/db";
 import { AlbumNotFoundError, PhotoNotInAlbumError, SmartAlbumMutationError } from "@/lib/server/albums-service";
 import { FolderCycleError, FolderNotFoundError } from "@/lib/server/folders-service";
+import { ShareLinkNotFoundError } from "@/lib/server/share-links-service";
 
 /** The single error-response shape for every API route. */
 export interface ApiError {
@@ -42,6 +43,7 @@ const ERROR_STATUS: ReadonlyArray<readonly [abstract new (...args: never[]) => E
   [AlbumNotFoundError, 404],
   [PhotoNotInAlbumError, 404],
   [FolderNotFoundError, 404],
+  [ShareLinkNotFoundError, 404],
   [SmartAlbumMutationError, 400],
   [FolderCycleError, 400],
   [FeatureScopeError, 400],

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FolderPlus, Heart, ImageUp, Palette, Trash2 } from "lucide-react";
-import { COLOR_LABELS, computeFavoriteTarget, hasEdits } from "@lumio/shared";
+import { Download, FolderPlus, Heart, ImageUp, Palette, Share2, Trash2 } from "lucide-react";
+import { COLOR_LABELS, computeFavoriteTarget, FeatureKey, hasEdits } from "@lumio/shared";
+import { useFeature } from "@/components/features/features-provider";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,6 +19,7 @@ import {
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
 import { usePhotoCollection } from "./photo-collection";
 import { AlbumPickerItems } from "@/components/photo-actions/album-picker-items";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
 /**
  * Wraps a grid tile as a right-click context-menu trigger: a group of actions
@@ -40,6 +42,8 @@ export function PhotoContextMenu({
   const actions = usePhotoActionsContext();
   const collection = usePhotoCollection();
   const [favoriteTarget, setFavoriteTarget] = useState(true);
+  const sharingEnabled = useFeature(FeatureKey.Sharing);
+  const caps = usePhotoCapabilities();
   if (!actions) return <>{children}</>;
 
   const count = targetIds.length;
@@ -59,74 +63,88 @@ export function PhotoContextMenu({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-56">
         <ContextMenuGroup>
-          {anyEdited ? (
-            <>
-              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "edited" })}>
+          {caps.download && (
+            anyEdited ? (
+              <>
+                <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "edited" })}>
+                  <Download aria-hidden />
+                  Download {photos} edited
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "original" })}>
+                  <Download aria-hidden />
+                  Download {photos} original
+                </ContextMenuItem>
+              </>
+            ) : (
+              <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
                 <Download aria-hidden />
-                Download {photos} edited
+                Download {photos}
               </ContextMenuItem>
-              <ContextMenuItem onSelect={() => void actions.download(targetIds, { variant: "original" })}>
-                <Download aria-hidden />
-                Download {photos} original
-              </ContextMenuItem>
-            </>
-          ) : (
-            <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
-              <Download aria-hidden />
-              Download {photos}
+            )
+          )}
+          {caps.addToAlbum && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2.5">
+                <FolderPlus aria-hidden />
+                Add {photos} to album
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-56">
+                <AlbumPickerItems
+                  menu={{
+                    Item: ContextMenuItem,
+                    Separator: ContextMenuSeparator,
+                    Sub: ContextMenuSub,
+                    SubTrigger: ContextMenuSubTrigger,
+                    SubContent: ContextMenuSubContent,
+                  }}
+                  excludeAlbumId={actions.excludeAlbumId}
+                  onPick={(albumId) => void actions.addToAlbumDirect(targetIds, albumId)}
+                  onCreateNew={() => actions.addToAlbum(targetIds)}
+                />
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          {caps.label && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2.5">
+                <Palette aria-hidden />
+                Color label
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-44">
+                {COLOR_LABELS.map((c) => (
+                  <ContextMenuItem
+                    key={c.slug}
+                    onSelect={() => void actions.applyLabel(targetIds, c.slug)}
+                  >
+                    <span
+                      className="size-4 shrink-0 rounded-full ring-1 ring-foreground/10"
+                      style={{ backgroundColor: c.hex }}
+                      aria-hidden
+                    />
+                    {c.name}
+                  </ContextMenuItem>
+                ))}
+                <ContextMenuSeparator />
+                <ContextMenuItem onSelect={() => void actions.applyLabel(targetIds, null)}>
+                  None
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+          {caps.favorite && (
+            <ContextMenuItem onSelect={() => void actions.favorite(targetIds, favoriteTarget)}>
+              <Heart aria-hidden />
+              {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
+              <ContextMenuShortcut>F</ContextMenuShortcut>
             </ContextMenuItem>
           )}
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="gap-2.5">
-              <FolderPlus aria-hidden />
-              Add {photos} to album
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-56">
-              <AlbumPickerItems
-                menu={{
-                  Item: ContextMenuItem,
-                  Separator: ContextMenuSeparator,
-                  Sub: ContextMenuSub,
-                  SubTrigger: ContextMenuSubTrigger,
-                  SubContent: ContextMenuSubContent,
-                }}
-                excludeAlbumId={actions.excludeAlbumId}
-                onPick={(albumId) => void actions.addToAlbumDirect(targetIds, albumId)}
-                onCreateNew={() => actions.addToAlbum(targetIds)}
-              />
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuSub>
-            <ContextMenuSubTrigger className="gap-2.5">
-              <Palette aria-hidden />
-              Color label
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="w-44">
-              {COLOR_LABELS.map((c) => (
-                <ContextMenuItem
-                  key={c.slug}
-                  onSelect={() => void actions.applyLabel(targetIds, c.slug)}
-                >
-                  <span
-                    className="size-4 shrink-0 rounded-full ring-1 ring-foreground/10"
-                    style={{ backgroundColor: c.hex }}
-                    aria-hidden
-                  />
-                  {c.name}
-                </ContextMenuItem>
-              ))}
-              <ContextMenuSeparator />
-              <ContextMenuItem onSelect={() => void actions.applyLabel(targetIds, null)}>
-                None
-              </ContextMenuItem>
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-          <ContextMenuItem onSelect={() => void actions.favorite(targetIds, favoriteTarget)}>
-            <Heart aria-hidden />
-            {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
-            <ContextMenuShortcut>F</ContextMenuShortcut>
-          </ContextMenuItem>
-          {actions.albumCover && (
+          {sharingEnabled && caps.createShare && (
+            <ContextMenuItem onSelect={() => actions.share(targetIds)}>
+              <Share2 aria-hidden />
+              Share {photos}
+            </ContextMenuItem>
+          )}
+          {caps.setCover && actions.albumCover && (
             count === 1 && targetIds[0] === actions.albumCover.coverPhotoId ? (
               <ContextMenuItem disabled>
                 <ImageUp aria-hidden />
@@ -143,15 +161,19 @@ export function PhotoContextMenu({
             )
           )}
         </ContextMenuGroup>
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          variant="destructive"
-          onSelect={() => void actions.trash(targetIds, { onSuccess: onTrashed })}
-        >
-          <Trash2 aria-hidden />
-          Delete {photos}
-          <ContextMenuShortcut>⌫</ContextMenuShortcut>
-        </ContextMenuItem>
+        {caps.trash && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              variant="destructive"
+              onSelect={() => void actions.trash(targetIds, { onSuccess: onTrashed })}
+            >
+              <Trash2 aria-hidden />
+              Delete {photos}
+              <ContextMenuShortcut>⌫</ContextMenuShortcut>
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );
