@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderSearch } from "lucide-react";
+import { ArrowLeft, Heart, Images, GalleryVerticalEnd, ImageUp, Search, FolderSearch, Share2 } from "lucide-react";
 import { FeatureKey } from "@lumio/shared";
 import { FeatureGate } from "@/components/features/features-provider";
 import { CatalogSwitcher } from "@/components/catalog-switcher";
@@ -19,6 +19,7 @@ const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
+  { href: "/shared", label: "Shared", icon: Share2, match: ["/shared"], feature: FeatureKey.Sharing },
   { href: "/folders", label: "Folders", icon: FolderSearch, match: ["/folders"], feature: FeatureKey.DiskExplorer },
   { href: "/favorites", label: "Favorites", icon: Heart, match: ["/favorites"] },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
