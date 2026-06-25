@@ -13,6 +13,7 @@ import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
 import { DownloadMenu } from "@/components/photo-actions/download-menu";
+import { BulkMetadataButton } from "@/components/photo-actions/bulk-metadata-dialog";
 import type { PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import type { PhotoGridHandle } from "@/features/photo-grid";
 
@@ -72,6 +73,7 @@ export function SelectionActions({
         pending={actions.pending.download}
         onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
       />
+      <BulkMetadataButton selectedIds={selectedIds} disabled={none} onApplied={clearSelection} />
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
