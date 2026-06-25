@@ -1,0 +1,14 @@
+-- Catalog ordering uses fractional-index keys (the `fractional-indexing`
+-- package), whose alphabet is base-62 and ASSUMES bytewise (C) ordering where
+-- '0' < '9' < 'A' < 'Z' < 'a' < 'z'. Front-of-list moves generate
+-- uppercase-prefixed keys ("Zz", "Zy", "Yzz", ...) that are meant to sort
+-- BEFORE lowercase "a0"-style keys.
+--
+-- The database default collation (en_US.utf8) sorts case-insensitively, so it
+-- orders "a0" < "Zz" — the OPPOSITE — which made "drag a catalog to the top"
+-- silently land it at the bottom (looked like the reorder "didn't save").
+--
+-- Pin the column to the C (bytewise) collation so `ORDER BY position` matches
+-- the key generator. Non-destructive: existing values are preserved and simply
+-- re-sorted correctly.
+ALTER TABLE "Catalog" ALTER COLUMN "position" TYPE TEXT COLLATE "C";
