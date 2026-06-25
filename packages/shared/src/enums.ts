@@ -15,3 +15,25 @@ export enum RuleOp {
   eq = "eq",
   last_30_days = "last_30_days",
 }
+
+/** Data type of a metadata field. */
+export enum FieldType {
+  Text = "text",
+  Textarea = "textarea",
+  Number = "number",
+  Choice = "choice",
+  Date = "date",
+}
+
+/** Whether a field is a built-in standard (EXIF-backed) field or a user-defined one. */
+export enum FieldKind {
+  Standard = "standard",
+  Custom = "custom",
+}
+
+/** Where a resolved field's value came from. */
+export enum MetadataValueSource {
+  Exif = "exif",
+  User = "you",
+  Empty = "empty",
+}
