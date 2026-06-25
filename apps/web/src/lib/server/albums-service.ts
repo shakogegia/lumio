@@ -14,6 +14,54 @@ import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 
+/** The effective cover photo id for one album: the pinned cover while it is still a
+ *  member, otherwise the most-recent member; smart albums use the newest rule-match.
+ *  Single-sourced so the folders service derives folder-preview covers identically. */
+export async function albumCoverId(
+  catalogId: string,
+  row: Album,
+  db: Db = prisma,
+  now: Date = new Date(),
+): Promise<string | null> {
+  if (row.isSmart) {
+    const smartWhere = smartAlbumWhere(toAlbumDTO(row).rules as SmartAlbumRules, now);
+    const cover = await db.photo.findFirst({
+      where: { catalogId, ...LIVE_PHOTO, ...smartWhere },
+      orderBy: PHOTO_ORDER,
+      select: { id: true },
+    });
+    return cover?.id ?? null;
+  }
+  // Honor an explicitly pinned cover only while that photo is still a member.
+  if (row.coverPhotoId) {
+    const pinned = await db.albumPhoto.findUnique({
+      where: { albumId_photoId: { albumId: row.id, photoId: row.coverPhotoId } },
+      select: { photoId: true },
+    });
+    if (pinned) return pinned.photoId;
+  }
+  // Fall back to the most-recent member.
+  const cover = await db.albumPhoto.findFirst({
+    where: { albumId: row.id },
+    orderBy: { photo: { sortDate: "desc" } },
+    select: { photoId: true },
+  });
+  return cover?.photoId ?? null;
+}
+
+/** Resolve covers for many album rows in one parallel pass: Map<albumId, coverPhotoId|null>. */
+export async function albumCoverMap(
+  catalogId: string,
+  rows: Album[],
+  db: Db = prisma,
+  now: Date = new Date(),
+): Promise<Map<string, string | null>> {
+  const entries = await Promise.all(
+    rows.map(async (r) => [r.id, await albumCoverId(catalogId, r, db, now)] as const),
+  );
+  return new Map(entries);
+}
+
 /** Shape one album row into a summary DTO (photo count + effective cover).
  *  Exported so the folders service can reuse identical album-card shaping.
  *  `now` is injected for smart-album evaluation. */
@@ -27,31 +75,16 @@ export async function albumSummary(
   if (row.isSmart) {
     const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now);
     const where = { catalogId, ...LIVE_PHOTO, ...smartWhere };
-    const [photoCount, cover] = await Promise.all([
+    const [photoCount, coverPhotoId] = await Promise.all([
       db.photo.count({ where }),
-      db.photo.findFirst({ where, orderBy: PHOTO_ORDER, select: { id: true } }),
+      albumCoverId(catalogId, row, db, now),
     ]);
-    return { ...base, photoCount, coverPhotoId: cover?.id ?? null };
+    return { ...base, photoCount, coverPhotoId };
   }
-  const photoCount = await db.albumPhoto.count({ where: { albumId: row.id } });
-  let coverPhotoId: string | null = null;
-  // Honor an explicitly pinned cover only while that photo is still a member.
-  if (row.coverPhotoId) {
-    const pinned = await db.albumPhoto.findUnique({
-      where: { albumId_photoId: { albumId: row.id, photoId: row.coverPhotoId } },
-      select: { photoId: true },
-    });
-    if (pinned) coverPhotoId = pinned.photoId;
-  }
-  // Fall back to the most-recent member.
-  if (!coverPhotoId) {
-    const cover = await db.albumPhoto.findFirst({
-      where: { albumId: row.id },
-      orderBy: { photo: { sortDate: "desc" } },
-      select: { photoId: true },
-    });
-    coverPhotoId = cover?.photoId ?? null;
-  }
+  const [photoCount, coverPhotoId] = await Promise.all([
+    db.albumPhoto.count({ where: { albumId: row.id } }),
+    albumCoverId(catalogId, row, db, now),
+  ]);
   return { ...base, photoCount, coverPhotoId };
 }
 
