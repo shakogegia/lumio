@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -117,6 +117,16 @@ export function MetadataConfigForm({
     }
   }
 
+  async function reorder(kind: "field" | "group", movedId: string, afterId: string | null) {
+    setBusy(true);
+    try {
+      await postJson(catalogApiUrl(slug, "/metadata/reorder"), { kind, movedId, afterId });
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const hasGroups = schema.length > 0;
 
   return (
@@ -179,13 +189,21 @@ export function MetadataConfigForm({
               </div>
             ) : (
               <>
-                {schema.map((group) => (
+                {schema.map((group, gi) => (
                   <div key={group.id} className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {group.label}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
+                      <Button variant="ghost" size="icon-sm" aria-label="Move group up" disabled={busy || gi === 0}
+                        onClick={() => void reorder("group", group.id, gi >= 2 ? schema[gi - 2]!.id : null)}>
+                        <ChevronUp aria-hidden />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" aria-label="Move group down" disabled={busy || gi === schema.length - 1}
+                        onClick={() => void reorder("group", group.id, schema[gi + 1]!.id)}>
+                        <ChevronDown aria-hidden />
+                      </Button>
+                    </div>
                     <div className="space-y-1.5">
-                      {group.fields.map((f) => (
+                      {group.fields.map((f, fi) => (
                         <div key={f.id} className="rounded-lg border bg-card px-3 py-2">
                           <div className="flex items-center gap-2">
                             <Input
@@ -215,6 +233,14 @@ export function MetadataConfigForm({
                               onCheckedChange={(v) => void patchField(f.id, { enabled: v })}
                               aria-label={`${f.label} enabled`}
                             />
+                            <Button variant="ghost" size="icon-sm" aria-label={`Move ${f.label} up`} disabled={busy || fi === 0}
+                              onClick={() => void reorder("field", f.id, fi >= 2 ? group.fields[fi - 2]!.id : null)}>
+                              <ChevronUp aria-hidden />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" aria-label={`Move ${f.label} down`} disabled={busy || fi === group.fields.length - 1}
+                              onClick={() => void reorder("field", f.id, group.fields[fi + 1]!.id)}>
+                              <ChevronDown aria-hidden />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon-sm"
