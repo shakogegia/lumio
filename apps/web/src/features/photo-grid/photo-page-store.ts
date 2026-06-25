@@ -130,3 +130,9 @@ export function removeIds<T extends { id: string }>(
   const total = store.total === null ? null : Math.max(0, store.total - ids.size);
   return { ...store, pages, lru, total };
 }
+
+/** Drop all loaded pages + total, keeping sizing — the grid refetches from
+ *  scratch (used for undo/rollback after an optimistic remove). */
+export function resetStore<T>(store: PageStore<T>): PageStore<T> {
+  return createPageStore<T>(store.pageSize, store.maxPages);
+}

@@ -8,6 +8,7 @@ import {
   photoAt,
   photosByIds,
   removeIds,
+  resetStore,
   setPage,
 } from "./photo-page-store";
 
@@ -105,5 +106,18 @@ describe("photosByIds", () => {
   it("returns an empty array when nothing matches", () => {
     const store = createPageStore<{ id: string }>(2, 10);
     expect(photosByIds(store, new Set(["x"]))).toEqual([]);
+  });
+});
+
+describe("resetStore", () => {
+  it("clears pages, lru, and total so the grid refetches from scratch", () => {
+    let store = createPageStore<{ id: string }>(2, 10);
+    store = setPage(store, 0, [{ id: "a" }, { id: "b" }], 2);
+    const fresh = resetStore(store);
+    expect(fresh.pages.size).toBe(0);
+    expect(fresh.lru).toEqual([]);
+    expect(fresh.total).toBeNull();
+    expect(fresh.pageSize).toBe(2);
+    expect(fresh.maxPages).toBe(10);
   });
 });

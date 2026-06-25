@@ -45,6 +45,8 @@ export type PhotoGridHandle = {
   removePhotos: (ids: Set<string>) => void;
   /** Loaded photos for `ids` — for selection-aware bulk actions (favorite toggle). */
   getPhotos: (ids: Set<string>) => PhotoDTO[];
+  /** Reload the grid from the server (drops all loaded pages). For undo/rollback. */
+  reload: () => void;
 };
 
 export function PhotoGrid({
@@ -65,9 +67,9 @@ export function PhotoGrid({
   const columns = Math.max(1, columnsProp);
   const {
     total, photoAt, getLoadedIds, ensureRange, error, retry,
-    patchPhotos, removePhotos, getPhotos, open, urlForId, enableLightbox,
+    patchPhotos, removePhotos, getPhotos, reload, open, urlForId, enableLightbox,
   } = usePhotoCollection();
-  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos, getPhotos }), [patchPhotos, removePhotos, getPhotos]);
+  useImperativeHandle(apiRef, () => ({ patchPhotos, removePhotos, getPhotos, reload }), [patchPhotos, removePhotos, getPhotos, reload]);
 
   // After a menu-driven trash, drop the trashed ids from the selection so the
   // toolbar count can't go stale. (Toolbar trash clears the whole selection

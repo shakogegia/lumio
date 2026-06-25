@@ -34,6 +34,7 @@ interface PhotoCollectionValue {
   ensureRange: (start: number, end: number) => void;
   patchPhotos: (ids: Set<string>, patch: Partial<PhotoDTO>) => void;
   removePhotos: (ids: Set<string>) => void;
+  reload: () => void;
   error: boolean;
   retry: () => void;
   // Lightbox
@@ -121,6 +122,7 @@ export function PhotoCollectionProvider({
     ensureRange,
     patchPhotos,
     removePhotos,
+    reload,
     error,
     retry,
   } = store;
@@ -285,6 +287,7 @@ export function PhotoCollectionProvider({
       ensureRange,
       patchPhotos,
       removePhotos,
+      reload,
       error,
       retry,
       enableLightbox,
@@ -304,6 +307,7 @@ export function PhotoCollectionProvider({
       ensureRange,
       patchPhotos,
       removePhotos,
+      reload,
       error,
       retry,
       enableLightbox,
