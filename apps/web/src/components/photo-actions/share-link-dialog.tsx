@@ -24,11 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Expiry = "never" | "7d" | "30d";
+enum Expiry {
+  Never = "never",
+  SevenDays = "7d",
+  ThirtyDays = "30d",
+}
+
+const EXPIRY_DAYS: Record<Expiry, number | null> = {
+  [Expiry.Never]: null,
+  [Expiry.SevenDays]: 7,
+  [Expiry.ThirtyDays]: 30,
+};
 
 function expiryToIso(value: Expiry): string | undefined {
-  if (value === "never") return undefined;
-  const days = value === "7d" ? 7 : 30;
+  const days = EXPIRY_DAYS[value];
+  if (days === null) return undefined;
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d.toISOString();
@@ -46,7 +56,7 @@ export function ShareLinkDialog({
   const { slug } = useCatalog();
   const [title, setTitle] = useState("");
   const [advanced, setAdvanced] = useState(false);
-  const [expiry, setExpiry] = useState<Expiry>("never");
+  const [expiry, setExpiry] = useState<Expiry>(Expiry.Never);
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
@@ -55,7 +65,7 @@ export function ShareLinkDialog({
   function reset() {
     setTitle("");
     setAdvanced(false);
-    setExpiry("never");
+    setExpiry(Expiry.Never);
     setPassword("");
     setUrl(null);
     setCopied(false);
@@ -96,7 +106,7 @@ export function ShareLinkDialog({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard unavailable
+      toast.error("Couldn't copy — select the link and copy it manually.");
     }
   }
 
@@ -104,6 +114,7 @@ export function ShareLinkDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        if (pending) return;
         if (!o) reset();
         onOpenChange(o);
       }}
@@ -123,13 +134,25 @@ export function ShareLinkDialog({
                 {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
               </Button>
             </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => onOpenChange(false)}>
+                Done
+              </Button>
+            </DialogFooter>
           </div>
         ) : (
-          <div className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void create();
+            }}
+            className="space-y-4"
+          >
             <div className="space-y-1.5">
               <Label htmlFor="share-title">Title (optional)</Label>
               <Input
                 id="share-title"
+                autoFocus
                 placeholder="e.g. Wedding photos"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -153,9 +176,9 @@ export function ShareLinkDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="never">Never</SelectItem>
-                      <SelectItem value="7d">In 7 days</SelectItem>
-                      <SelectItem value="30d">In 30 days</SelectItem>
+                      <SelectItem value={Expiry.Never}>Never</SelectItem>
+                      <SelectItem value={Expiry.SevenDays}>In 7 days</SelectItem>
+                      <SelectItem value={Expiry.ThirtyDays}>In 30 days</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -172,20 +195,14 @@ export function ShareLinkDialog({
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        <DialogFooter>
-          {url ? (
-            <Button type="button" onClick={() => onOpenChange(false)}>
-              Done
-            </Button>
-          ) : (
-            <Button type="button" onClick={() => void create()} disabled={pending || ids.length === 0}>
-              {pending ? "Creating…" : "Create link"}
-            </Button>
-          )}
-        </DialogFooter>
+            <DialogFooter>
+              <Button type="submit" disabled={pending || ids.length === 0}>
+                {pending ? "Creating…" : "Create link"}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
