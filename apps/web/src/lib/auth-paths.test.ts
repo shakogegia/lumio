@@ -19,6 +19,21 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/auth/ok")).toBe(true);
   });
 
+  it("treats public share links and their token-scoped API as public", () => {
+    expect(isPublicPath("/share/AbC123")).toBe(true);
+    expect(isPublicPath("/api/share/AbC123/photos")).toBe(true);
+    expect(isPublicPath("/api/share/AbC123/photos/p1/thumbnail")).toBe(true);
+    expect(isPublicPath("/api/share/AbC123/download-all")).toBe(true);
+    expect(isPublicPath("/api/share")).toBe(true);
+  });
+
+  it("keeps the authed shared-links management page and lookalikes private", () => {
+    expect(isPublicPath("/shared")).toBe(false);
+    expect(isPublicPath("/c/fam/shared")).toBe(false);
+    expect(isPublicPath("/sharesomething")).toBe(false);
+    expect(isPublicPath("/api/sharelinks")).toBe(false);
+  });
+
   it("treats app pages and data routes as private", () => {
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/photos")).toBe(false);
