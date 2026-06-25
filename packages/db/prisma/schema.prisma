@@ -89,6 +89,7 @@ model Photo {
   asShotTempK    Float? // estimated as-shot white-balance temperature (K); null = use 6500
   asShotTint     Float? // estimated as-shot tint (green−/magenta+); null = use 0
   isFavorite     Boolean      @default(false)
+  trashedAt      DateTime? // set = pending trash (hidden from live views); worker finalizes into TrashedPhoto
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
@@ -100,6 +101,7 @@ model Photo {
   @@index([createdAt, id])
   @@index([hash])
   @@index([isFavorite, sortDate])
+  @@index([catalogId, trashedAt])
 }
 
 model Album {
