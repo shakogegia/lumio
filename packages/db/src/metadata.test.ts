@@ -11,6 +11,7 @@ import {
   createMetadataGroup,
   updateMetadataField,
   deleteMetadataField,
+  bulkSetPhotoMetadataValues,
 } from "./metadata.js";
 
 describe("getCatalogSchema", () => {
@@ -177,5 +178,40 @@ describe("updateMetadataField / deleteMetadataField", () => {
     const db = { metadataField: { delete: async (a: any) => { arg = a; return {}; } } } as never;
     await deleteMetadataField("f1", db);
     expect(arg).toEqual({ where: { id: "f1" } });
+  });
+});
+
+describe("bulkSetPhotoMetadataValues", () => {
+  it("upserts each non-empty value for every photo (update-or-create)", async () => {
+    const creates: any[] = [];
+    let updates = 0;
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({
+          photoMetadataValue: {
+            updateMany: async () => { updates += 1; return { count: 0 }; },
+            create: async ({ data }: any) => { creates.push(data); return data; },
+          },
+        }),
+    } as never;
+    await bulkSetPhotoMetadataValues(
+      ["p1", "p2"],
+      [{ fieldId: "f1", value: "Kodak Portra 400" }, { fieldId: "f2", value: "  " }],
+      db,
+    );
+    // f2 is blank → skipped; f1 applied to p1 and p2
+    expect(updates).toBe(2);
+    expect(creates).toEqual([
+      { photoId: "p1", fieldId: "f1", value: "Kodak Portra 400" },
+      { photoId: "p2", fieldId: "f1", value: "Kodak Portra 400" },
+    ]);
+  });
+
+  it("is a no-op when there are no photos or no non-empty values", async () => {
+    let touched = false;
+    const db = { $transaction: async () => { touched = true; } } as never;
+    await bulkSetPhotoMetadataValues([], [{ fieldId: "f1", value: "x" }], db);
+    await bulkSetPhotoMetadataValues(["p1"], [{ fieldId: "f1", value: "" }], db);
+    expect(touched).toBe(false);
   });
 });

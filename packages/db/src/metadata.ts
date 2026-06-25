@@ -158,6 +158,32 @@ export async function upsertPhotoMetadataValue(
   }
 }
 
+/** Set (non-empty) values on many photos at once. Blank values are skipped, so
+ *  a bulk edit only touches the fields the caller actually filled. */
+export async function bulkSetPhotoMetadataValues(
+  photoIds: string[],
+  values: { fieldId: string; value: string }[],
+  db: TxDb = prisma,
+): Promise<void> {
+  const clean = values
+    .map((v) => ({ fieldId: v.fieldId, value: v.value.trim() }))
+    .filter((v) => v.value !== "");
+  if (photoIds.length === 0 || clean.length === 0) return;
+  await db.$transaction(async (tx) => {
+    for (const photoId of photoIds) {
+      for (const { fieldId, value } of clean) {
+        const updated = await tx.photoMetadataValue.updateMany({
+          where: { photoId, fieldId },
+          data: { value },
+        });
+        if (updated.count === 0) {
+          await tx.photoMetadataValue.create({ data: { photoId, fieldId, value } });
+        }
+      }
+    }
+  });
+}
+
 /** Map of fieldId → stored value for one photo. */
 export async function getPhotoMetadataValues(
   photoId: string,
