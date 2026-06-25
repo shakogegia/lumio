@@ -31,6 +31,8 @@ model Catalog {
   folders         Folder[]
   trashedPhotos   TrashedPhoto[]
   featureSettings FeatureSetting[]
+  metadataGroups  MetadataGroup[]
+  metadataFields  MetadataField[]
 }
 
 model FeatureSetting {
@@ -97,6 +99,7 @@ model Photo {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
+  metadataValues PhotoMetadataValue[]
 
   @@unique([catalogId, path])
   @@index([catalogId])
@@ -296,4 +299,47 @@ model WorkerLog {
 
   @@index([createdAt])
   @@index([level, createdAt])
+}
+
+model MetadataGroup {
+  id        String          @id @default(cuid())
+  catalogId String
+  catalog   Catalog         @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  label     String
+  position  String
+  fields    MetadataField[]
+
+  @@index([catalogId])
+}
+
+model MetadataField {
+  id         String               @id @default(cuid())
+  catalogId  String
+  catalog    Catalog              @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  groupId    String?
+  group      MetadataGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  key        String
+  label      String
+  type       String
+  kind       String
+  builtinKey String?
+  enabled    Boolean              @default(true)
+  suggests   Boolean              @default(true)
+  position   String
+  values     PhotoMetadataValue[]
+
+  @@unique([catalogId, key])
+  @@index([catalogId])
+}
+
+model PhotoMetadataValue {
+  id      String        @id @default(cuid())
+  photoId String
+  photo   Photo         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  fieldId String
+  field   MetadataField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value   String
+
+  @@unique([photoId, fieldId])
+  @@index([fieldId, value])
 }
