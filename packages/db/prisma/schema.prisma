@@ -325,6 +325,7 @@ model MetadataField {
   builtinKey String?
   enabled    Boolean              @default(true)
   suggests   Boolean              @default(true)
+  options    String[]             @default([])
   position   String
   values     PhotoMetadataValue[]
 
