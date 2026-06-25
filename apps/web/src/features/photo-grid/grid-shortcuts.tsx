@@ -3,7 +3,9 @@
 import { useEffect, useRef } from "react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { resolveGridShortcut } from "@/lib/grid-shortcut";
+import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 import { usePhotoCollection } from "./photo-collection";
 
 /**
@@ -20,10 +22,11 @@ import { usePhotoCollection } from "./photo-collection";
 export function GridShortcuts({ selectedIds }: { selectedIds: Set<string> }) {
   const { open, openIndex, getLoadedIds, getPhotos } = usePhotoCollection();
   const actions = usePhotoActionsContext();
+  const caps = usePhotoCapabilities();
 
-  const ref = useRef({ selectedIds, open, openIndex, getLoadedIds, getPhotos, actions });
+  const ref = useRef({ selectedIds, open, openIndex, getLoadedIds, getPhotos, actions, caps });
   useEffect(() => {
-    ref.current = { selectedIds, open, openIndex, getLoadedIds, getPhotos, actions };
+    ref.current = { selectedIds, open, openIndex, getLoadedIds, getPhotos, actions, caps };
   });
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export function GridShortcuts({ selectedIds }: { selectedIds: Set<string> }) {
       e.preventDefault();
 
       if (action.kind === "favorite") {
-        if (!c.actions) return;
+        if (!c.actions || !c.caps.favorite) return;
         const ids = [...c.selectedIds];
         const target = computeFavoriteTarget(c.getPhotos(c.selectedIds));
         void c.actions.favorite(ids, target);
@@ -63,12 +66,15 @@ export function GridShortcuts({ selectedIds }: { selectedIds: Set<string> }) {
       }
 
       if (action.kind === "trash") {
-        if (!c.actions) return;
+        if (!c.actions || !c.caps.trash) return;
         void c.actions.trash([...c.selectedIds]);
         return;
       }
 
       // action.kind === "open" — selectionSize is guaranteed 1 by the resolver.
+      // The Edit-tab shortcut (`e`) is inert where editing isn't allowed (e.g. the
+      // public share gallery); Enter (Info tab) always opens.
+      if (action.tab === LightboxTab.Edit && !c.caps.edit) return;
       const [id] = c.selectedIds;
       if (!id) return;
       const index = c.getLoadedIds().indexOf(id);

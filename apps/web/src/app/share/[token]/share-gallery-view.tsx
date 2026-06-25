@@ -4,12 +4,13 @@ import { useCallback, useRef, useState } from "react";
 import { Download, X } from "lucide-react";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
-import { useGridColumns } from "@/lib/hooks/use-grid-columns";
+import { makeColumnsStore } from "@/lib/columns-store";
 import {
   PhotoGrid,
   type PhotoGridHandle,
   PhotoCollectionProvider,
   CollectionTotalReporter,
+  GridShortcuts,
 } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
 import { Logo } from "@/components/logo";
@@ -31,6 +32,14 @@ import {
 } from "./share-photo-actions";
 
 const NO_PARAMS = new URLSearchParams();
+
+// The public gallery defaults to larger preview tiles (3 columns) and persists
+// the viewer's own choice under a dedicated key (separate from the authed grid).
+const useShareGridColumns = makeColumnsStore({
+  storageKey: "lumio:share-grid-columns",
+  cssVar: null,
+  defaultColumns: 3,
+});
 
 /** The single "Download selected" button rendered in the selection toolbar. */
 function DownloadSelectedButton({
@@ -74,7 +83,7 @@ export function ShareGalleryView({
 }) {
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
-  const { columns, setColumns } = useGridColumns();
+  const { columns, setColumns } = useShareGridColumns();
   const [total, setTotal] = useState<number | null>(null);
   const gridRef = useRef<PhotoGridHandle>(null);
 
@@ -162,6 +171,8 @@ export function ShareGalleryView({
                   onSelectionChange={sel.setSelected}
                 />
                 <Lightbox />
+                {/* Capability-gated: only Enter→open is active publicly (no f/e/⌫). */}
+                <GridShortcuts selectedIds={sel.selected} />
               </PhotoCollectionProvider>
             </main>
           </PhotoActionsProvider>
