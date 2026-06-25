@@ -14,6 +14,7 @@ import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 import { PHOTO_ORDER } from "@/lib/photo-order";
 import { generateShareToken, hashPassword as hashPasswordImpl } from "@/lib/server/share-crypto";
+import { isExpired } from "@/lib/server/share-access";
 
 type Db = Pick<PrismaClient, "shareLink" | "shareLinkPhoto" | "photo">;
 
@@ -28,10 +29,6 @@ interface CreateDeps {
   hashPassword: (pw: string) => Promise<string>;
 }
 const DEFAULT_DEPS: CreateDeps = { generateToken: generateShareToken, hashPassword: hashPasswordImpl };
-
-function isExpired(expiresAt: Date | null, now: Date): boolean {
-  return expiresAt !== null && expiresAt.getTime() <= now.getTime();
-}
 
 function buildUrl(baseUrl: string, token: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/share/${token}`;

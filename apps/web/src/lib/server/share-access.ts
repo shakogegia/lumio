@@ -1,4 +1,9 @@
-import { isExpired } from "@/lib/server/share-links-service";
+/** True when `expiresAt` is set and at/after `now`. Lives here (a dependency-free
+ *  module) so the pure access logic — and its tests — never pull in the heavy
+ *  share-links-service import graph. The service re-exports it. */
+export function isExpired(expiresAt: Date | null, now: Date): boolean {
+  return expiresAt !== null && expiresAt.getTime() <= now.getTime();
+}
 
 /** Pure access decision for a share link. */
 export function evaluateShareAccess(args: {
