@@ -62,6 +62,12 @@ export function GridShortcuts({ selectedIds }: { selectedIds: Set<string> }) {
         return;
       }
 
+      if (action.kind === "trash") {
+        if (!c.actions) return;
+        void c.actions.trash([...c.selectedIds]);
+        return;
+      }
+
       // action.kind === "open" — selectionSize is guaranteed 1 by the resolver.
       const [id] = c.selectedIds;
       if (!id) return;

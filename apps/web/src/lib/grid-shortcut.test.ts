@@ -68,3 +68,27 @@ describe("resolveGridShortcut", () => {
     expect(resolveGridShortcut(base({ key: "x" }))).toBeNull();
   });
 });
+
+describe("resolveGridShortcut — trash", () => {
+  const trashBase: GridShortcutInput = {
+    key: "x", hasModifier: false, repeat: false, selectionSize: 0,
+    lightboxOpen: false, inEditable: false, overlayOpen: false,
+  };
+
+  it("maps Backspace to trash when something is selected", () => {
+    expect(resolveGridShortcut({ ...trashBase, key: "Backspace", selectionSize: 3 })).toEqual({ kind: "trash" });
+  });
+  it("maps Delete to trash when something is selected", () => {
+    expect(resolveGridShortcut({ ...trashBase, key: "Delete", selectionSize: 1 })).toEqual({ kind: "trash" });
+  });
+  it("does nothing with an empty selection", () => {
+    expect(resolveGridShortcut({ ...trashBase, key: "Backspace", selectionSize: 0 })).toBeNull();
+  });
+  it("is inert while typing (Backspace must edit text, not delete photos)", () => {
+    expect(resolveGridShortcut({ ...trashBase, key: "Backspace", selectionSize: 3, inEditable: true })).toBeNull();
+  });
+  it("is inert with an overlay open or a modifier held", () => {
+    expect(resolveGridShortcut({ ...trashBase, key: "Delete", selectionSize: 3, overlayOpen: true })).toBeNull();
+    expect(resolveGridShortcut({ ...trashBase, key: "Delete", selectionSize: 3, hasModifier: true })).toBeNull();
+  });
+});

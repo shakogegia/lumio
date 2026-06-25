@@ -4,6 +4,7 @@ import { LightboxTab } from "./lightbox-tab";
 export type GridShortcutAction =
   | { kind: "favorite" }
   | { kind: "open"; tab: LightboxTab }
+  | { kind: "trash" }
   | null;
 
 export interface GridShortcutInput {
@@ -45,6 +46,9 @@ export function resolveGridShortcut(input: GridShortcutInput): GridShortcutActio
       return input.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Info } : null;
     case "e":
       return input.selectionSize === 1 ? { kind: "open", tab: LightboxTab.Edit } : null;
+    case "backspace":
+    case "delete":
+      return input.selectionSize >= 1 ? { kind: "trash" } : null;
     default:
       return null;
   }
