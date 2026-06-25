@@ -56,6 +56,24 @@ async function existingAlbumIds(db: Db, catalogId: string, ids: string[]): Promi
   return rows.map((r) => r.id);
 }
 
+/**
+ * Optimistic trash: mark the given photos pending-trash (`trashedAt = now`),
+ * scoped to the catalog and skipping any already marked. Returns how many rows
+ * flipped — the caller enqueues the worker's `process_trash` job when > 0. The
+ * heavy lifting (snapshot + file moves) happens later in the worker.
+ */
+export async function markPhotosTrashed(
+  catalogId: string,
+  ids: string[],
+  db: Pick<PrismaClient, "photo"> = prisma,
+): Promise<{ trashed: number }> {
+  const { count } = await db.photo.updateMany({
+    where: { id: { in: ids }, catalogId, trashedAt: null },
+    data: { trashedAt: new Date() },
+  });
+  return { trashed: count };
+}
+
 export async function listTrash(
   catalogId: string,
   params: PhotosQuery,
