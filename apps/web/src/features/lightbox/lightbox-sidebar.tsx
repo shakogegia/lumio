@@ -34,14 +34,12 @@ import { removePhotoFromAlbum } from "@/lib/photo-mutations";
 import { usePhotoCollection } from "@/features/photo-grid";
 import { LightboxEditPanel } from "@/features/photo-editor";
 import { LightboxTab } from "@/lib/lightbox-tab";
+import { StandardMetadata } from "./standard-metadata";
 
 export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
   // Controlled by the shared collection state so the i/e keyboard shortcuts can
   // drive the tab from the lightbox-level keyboard handler.
   const { openTab, setOpenTab } = usePhotoCollection();
-  const camera =
-    [photo.exif.cameraMake, photo.exif.cameraModel].filter(Boolean).join(" ") ||
-    "—";
   const metadata = exifEntries(photo.exif);
 
   return (
@@ -67,12 +65,12 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
 
         <div className="p-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
           <TabsContent value={LightboxTab.Info} className="space-y-4">
+            <StandardMetadata exif={photo.exif} />
+            <Separator />
             <div className="space-y-3">
               <Row label="Source" value={<Badge>{photo.source}</Badge>} />
-              <Row label="Taken" value={photo.takenAt ?? "—"} />
               <Row label="File created" value={photo.fileCreatedAt ?? "—"} />
               <Row label="File modified" value={photo.fileModifiedAt ?? "—"} />
-              <Row label="Camera" value={camera} />
               <Row label="Hash" value={photo.hash ?? "—"} />
             </div>
             <Separator />
