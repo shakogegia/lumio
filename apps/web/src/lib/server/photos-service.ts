@@ -10,6 +10,7 @@ import type {
 import { monthRange } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/server/albums-service";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "photo">;
 
@@ -38,7 +39,7 @@ export async function listPhotosForWhere(
   params: { limit: number; offset: number; sort?: PhotoSort },
   db: Db = prisma,
 ): Promise<PhotosPage> {
-  const full: Prisma.PhotoWhereInput = { catalogId, ...where };
+  const full: Prisma.PhotoWhereInput = { catalogId, ...LIVE_PHOTO, ...where };
   const [rows, total] = await Promise.all([
     db.photo.findMany({
       where: full,
@@ -123,7 +124,7 @@ export async function photoOrTrashedExistsInCatalog(
 }
 
 export async function getPhoto(catalogId: string, id: string, db: Db = prisma) {
-  const row = await db.photo.findFirst({ where: { id, catalogId }, include: { albums: { select: { albumId: true } } } });
+  const row = await db.photo.findFirst({ where: { id, catalogId, ...LIVE_PHOTO }, include: { albums: { select: { albumId: true } } } });
   if (!row) return null;
   return { ...toPhotoDTO(row), albumIds: row.albums.map((a) => a.albumId) };
 }
@@ -172,7 +173,7 @@ export async function getNeighborsForWhere(
   const orderBy = photoOrderBy(sort);
   const [before, after] = await Promise.all([
     db.photo.findMany({
-      where,
+      where: { ...where, ...LIVE_PHOTO },
       cursor: { id: current.id },
       skip: 1,
       take: -window,
@@ -180,7 +181,7 @@ export async function getNeighborsForWhere(
       select,
     }),
     db.photo.findMany({
-      where,
+      where: { ...where, ...LIVE_PHOTO },
       cursor: { id: current.id },
       skip: 1,
       take: window,

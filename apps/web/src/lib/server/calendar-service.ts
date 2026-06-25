@@ -1,5 +1,6 @@
 import { type Prisma, type PrismaClient, prisma } from "@lumio/db";
 import type { CalendarFacets, CalendarMonthFacet } from "@lumio/shared";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "photo">;
 
@@ -29,7 +30,7 @@ export async function buildCalendarFacets(
   where: Prisma.PhotoWhereInput,
   db: Db = prisma,
 ): Promise<CalendarFacets> {
-  const scopedWhere: Prisma.PhotoWhereInput = { catalogId, ...where };
+  const scopedWhere: Prisma.PhotoWhereInput = { catalogId, ...LIVE_PHOTO, ...where };
   const rows = await db.photo.findMany({
     where: scopedWhere,
     select: { id: true, sortDate: true },

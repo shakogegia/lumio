@@ -82,6 +82,7 @@ describe("listPhotos", () => {
     await listPhotos(CAT, { limit: 50, offset: 0, month: "2026-06" }, db as never);
     expect(db.calls[0]?.where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       sortDate: {
         gte: new Date("2026-06-01T00:00:00.000Z"),
         lt: new Date("2026-07-01T00:00:00.000Z"),
@@ -92,19 +93,19 @@ describe("listPhotos", () => {
   it("uses only catalogId where when no month is set", async () => {
     const db = fakeDb([row("a")]);
     await listPhotos(CAT, { limit: 50, offset: 0 }, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
 
   it("filters by isFavorite AND catalogId when favorite is true", async () => {
     const db = fakeDb([row("a")]);
     await listPhotos(CAT, { limit: 50, offset: 0, favorite: true }, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, isFavorite: true });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null, isFavorite: true });
   });
 
   it("uses only catalogId where when favorite is false", async () => {
     const db = fakeDb([row("a")]);
     await listPhotos(CAT, { limit: 50, offset: 0, favorite: false }, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
 });
 
@@ -126,7 +127,7 @@ describe("getPhoto", () => {
     const result = await getPhoto(CAT, "foreign-id", db as never);
     expect(result).toBeNull();
     expect(findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "foreign-id", catalogId: CAT } }),
+      expect.objectContaining({ where: { id: "foreign-id", catalogId: CAT, trashedAt: null } }),
     );
   });
 

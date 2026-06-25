@@ -281,6 +281,7 @@ describe("listAlbumPhotos", () => {
     // and sortDate range are AND-combined alongside it.
     expect(calls[0]?.where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       AND: [
         { albums: { some: { albumId: "alb1" } } },
         {

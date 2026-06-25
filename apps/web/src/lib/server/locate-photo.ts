@@ -2,6 +2,7 @@ import { buildSearchWhere, type Prisma, type PrismaClient, prisma } from "@lumio
 import type { PhotoSort } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/server/albums-service";
 import type { DetailScope } from "@/lib/server/photo-detail-loader";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 export interface PhotoCursor {
   id: string;
@@ -63,13 +64,13 @@ export async function locatePhoto(
   db: LocateDb = prisma,
 ): Promise<number | null> {
   const row = await db.photo.findFirst({
-    where: { id, catalogId },
+    where: { id, catalogId, ...LIVE_PHOTO },
     select: { id: true, sortDate: true, createdAt: true, fileCreatedAt: true },
   });
   if (!row) return null;
   const scopeWhere = await scopeWhereFor(catalogId, scope, db);
   if (scopeWhere === null) return null;
-  const catalogScoped = { catalogId, ...scopeWhere };
+  const catalogScoped = { catalogId, ...LIVE_PHOTO, ...scopeWhere };
   const [index, inScope] = await Promise.all([
     db.photo.count({ where: { AND: [catalogScoped, beforeCursorWhere(scope.sort, row)] } }),
     db.photo.count({ where: { AND: [catalogScoped, { id }] } }),

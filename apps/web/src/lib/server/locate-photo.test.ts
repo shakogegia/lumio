@@ -104,7 +104,7 @@ describe("locatePhoto", () => {
     const fake = db({ row: cursor, before: 2, inScope: 1 });
     await locatePhoto(CAT, "p5", { kind: "library", sort: "taken-desc" }, fake as never);
     expect(fake.photo.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "p5", catalogId: CAT } }),
+      expect.objectContaining({ where: { id: "p5", catalogId: CAT, trashedAt: null } }),
     );
   });
 

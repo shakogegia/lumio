@@ -392,6 +392,7 @@ describe("listFolderPhotos", () => {
     // catalogId AND-combined with the folderPhotoWhere result
     expect(findMany.mock.calls[0][0].where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       OR: [{ albums: { some: { albumId: { in: ["rome"] } } } }],
     });
   });
