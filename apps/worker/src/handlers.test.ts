@@ -12,6 +12,7 @@ describe("buildHandlers", () => {
       scan,
       purgeAll: vi.fn(),
       emptyTrash: vi.fn(),
+      processTrash: vi.fn(),
     }));
     const report = vi.fn().mockResolvedValue(undefined);
 
@@ -24,7 +25,7 @@ describe("buildHandlers", () => {
 
   it("purge_all runs the purge and reports the final count", async () => {
     const purgeAll = vi.fn().mockResolvedValue({ deleted: 7 });
-    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll, emptyTrash: vi.fn() }));
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll, emptyTrash: vi.fn(), processTrash: vi.fn() }));
     const report = vi.fn().mockResolvedValue(undefined);
 
     await handlers[JobType.purge_all](report, { catalogId: "cat1" } as never);
@@ -35,7 +36,7 @@ describe("buildHandlers", () => {
 
   it("empty_trash runs the purge and reports the final count", async () => {
     const emptyTrash = vi.fn().mockResolvedValue({ deleted: 3 });
-    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash }));
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash, processTrash: vi.fn() }));
     const report = vi.fn().mockResolvedValue(undefined);
 
     await handlers[JobType.empty_trash](report, { catalogId: "cat1" } as never);
@@ -44,9 +45,20 @@ describe("buildHandlers", () => {
     expect(report).toHaveBeenLastCalledWith(3, 3, null);
   });
 
+  it("process_trash runs finalizeTrash and reports the final count", async () => {
+    const processTrash = vi.fn().mockResolvedValue({ finalized: 5 });
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash: vi.fn(), processTrash }));
+    const report = vi.fn().mockResolvedValue(undefined);
+
+    await handlers[JobType.process_trash](report, { catalogId: "cat1" } as never);
+
+    expect(processTrash).toHaveBeenCalledOnce();
+    expect(report).toHaveBeenLastCalledWith(5, 5, null);
+  });
+
   it("rescan is a no-op when catalogId is null", async () => {
     const scan = vi.fn();
-    const handlers = buildHandlers(() => ({ scan, purgeAll: vi.fn(), emptyTrash: vi.fn() }));
+    const handlers = buildHandlers(() => ({ scan, purgeAll: vi.fn(), emptyTrash: vi.fn(), processTrash: vi.fn() }));
     const report = vi.fn();
 
     await handlers[JobType.rescan](report, { catalogId: null } as never);
@@ -57,7 +69,7 @@ describe("buildHandlers", () => {
 
   it("purge_all is a no-op when catalogId is null", async () => {
     const purgeAll = vi.fn();
-    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll, emptyTrash: vi.fn() }));
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll, emptyTrash: vi.fn(), processTrash: vi.fn() }));
     const report = vi.fn();
 
     await handlers[JobType.purge_all](report, { catalogId: null } as never);
@@ -68,12 +80,23 @@ describe("buildHandlers", () => {
 
   it("empty_trash is a no-op when catalogId is null", async () => {
     const emptyTrash = vi.fn();
-    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash }));
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash, processTrash: vi.fn() }));
     const report = vi.fn();
 
     await handlers[JobType.empty_trash](report, { catalogId: null } as never);
 
     expect(emptyTrash).not.toHaveBeenCalled();
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it("process_trash is a no-op when catalogId is null", async () => {
+    const processTrash = vi.fn();
+    const handlers = buildHandlers(() => ({ scan: vi.fn(), purgeAll: vi.fn(), emptyTrash: vi.fn(), processTrash }));
+    const report = vi.fn();
+
+    await handlers[JobType.process_trash](report, { catalogId: null } as never);
+
+    expect(processTrash).not.toHaveBeenCalled();
     expect(report).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { getCatalogById, prisma } from "@lumio/db";
-import { type JobHandlers, purgeAllPhotos, purgeTrash } from "@lumio/jobs";
+import { type JobHandlers, finalizeTrash, purgeAllPhotos, purgeTrash } from "@lumio/jobs";
 import { JobType } from "@lumio/shared";
 import { CACHE_DIR, TRASH_DIR } from "./config.js";
 import { log } from "./log.js";
@@ -11,6 +11,7 @@ export interface HandlerDeps {
   scan: (onProgress?: (done: number, total: number) => void) => Promise<unknown>;
   purgeAll: () => Promise<{ deleted: number }>;
   emptyTrash: () => Promise<{ deleted: number }>;
+  processTrash: (onProgress?: (done: number) => void) => Promise<{ finalized: number }>;
 }
 
 /** Build the per-catalog deps a job needs, resolving the catalog row + its dirs. */
@@ -26,6 +27,14 @@ function depsForCatalog(catalogId: string): HandlerDeps {
       return purgeAllPhotos({ db: prisma, catalogId, photosDir: c.path, cacheDir: path.join(CACHE_DIR, catalogId) });
     },
     emptyTrash: () => purgeTrash(undefined, { db: prisma, catalogId, trashDir: path.join(TRASH_DIR, catalogId) }),
+    processTrash: async (onProgress) => {
+      const c = await getCatalogById(catalogId);
+      if (!c) return { finalized: 0 };
+      return finalizeTrash(
+        { db: prisma, catalogId, photosDir: c.path, cacheDir: path.join(CACHE_DIR, catalogId), trashDir: path.join(TRASH_DIR, catalogId) },
+        onProgress,
+      );
+    },
   };
 }
 
@@ -53,6 +62,14 @@ export function buildHandlers(makeDeps: (catalogId: string) => HandlerDeps = dep
       await report(0, null, "Emptying trash…");
       const { deleted } = await makeDeps(job.catalogId).emptyTrash();
       await report(deleted, deleted, null);
+    },
+    [JobType.process_trash]: async (report, job) => {
+      if (!job.catalogId) return;
+      await report(0, null, "Moving photos to Trash…");
+      const { finalized } = await makeDeps(job.catalogId).processTrash((done) => {
+        void report(done, null, "Moving photos to Trash…").catch(() => {});
+      });
+      await report(finalized, finalized, null);
     },
   };
 }
