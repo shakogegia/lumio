@@ -4,8 +4,7 @@ import { Palette } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
-import { thumbUrl } from "@/lib/rendition-url";
-import { useCatalog } from "@/components/providers/catalog-context";
+import { useRenditions } from "./rendition-context";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an
@@ -17,7 +16,7 @@ import { useCatalog } from "@/components/providers/catalog-context";
  * contain) keeps the default fill view pixel-crisp.
  */
 export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMode }) {
-  const { slug } = useCatalog();
+  const r = useRenditions();
   const [loaded, setLoaded] = useState(false);
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
@@ -47,7 +46,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={thumbUrl(slug, photo)}
+        src={r.thumb(photo)}
         alt={photo.path}
         loading="lazy"
         decoding="async"
