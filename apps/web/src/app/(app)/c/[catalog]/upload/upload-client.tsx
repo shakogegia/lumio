@@ -35,6 +35,7 @@ import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
 import { UploadTile } from "./upload-tile";
+import { UploadMetadataForm } from "./upload-metadata-form";
 
 const CONCURRENCY = 3;
 let nextRowId = 1;
@@ -67,6 +68,12 @@ export function UploadClient({
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [metaValues, setMetaValues] = useState<Record<string, string>>({});
+  const metaRef = useRef<Record<string, string>>({});
+  const setMeta = useCallback((next: Record<string, string>) => {
+    metaRef.current = next;
+    setMetaValues(next);
+  }, []);
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -78,6 +85,10 @@ export function UploadClient({
       const body = new FormData();
       body.set("file", file);
       body.set("lastModified", String(file.lastModified));
+      const filled = Object.entries(metaRef.current).filter(([, v]) => v.trim() !== "");
+      if (filled.length > 0) {
+        body.set("metadata", JSON.stringify(filled.map(([fieldId, value]) => ({ fieldId, value }))));
+      }
       try {
         const res = await fetch(catalogApiUrl(slug, "/uploads"), { method: "POST", body });
         const data: UploadResponse = await res.json();
@@ -332,6 +343,7 @@ export function UploadClient({
       )}
 
       <div className="space-y-6 pt-2">
+        <UploadMetadataForm values={metaValues} onChange={setMeta} />
         <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
