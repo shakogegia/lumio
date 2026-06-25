@@ -43,7 +43,7 @@ describe("applyMetadataPreset", () => {
         }),
     } as never;
 
-    await applyMetadataPreset("cat1", getPreset("film")!, db);
+    await applyMetadataPreset("cat1", getPreset("nlp")!, db);
 
     expect(created.groups).toHaveLength(4);
     expect(created.fields).toHaveLength(27);

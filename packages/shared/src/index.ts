@@ -23,3 +23,4 @@ export * from "./profile.js";
 export * from "./metadata-standard.js";
 export * from "./metadata-resolve.js";
 export * from "./metadata-presets.js";
+export * from "./metadata-preset-nlp.js";
