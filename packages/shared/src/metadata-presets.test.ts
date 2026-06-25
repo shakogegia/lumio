@@ -16,8 +16,11 @@ describe("built-in presets", () => {
       "Digitization",
       "Development",
     ]);
+    // 26 fields mirror NLP's documented sections 2–5, plus an intentional "Roll"
+    // (film frames share a roll; matches filmexif:RollID seen in real scans).
     const total = film.groups.reduce((n, g) => n + g.fields.length, 0);
     expect(total).toBe(27);
+    expect(film.groups[0]!.fields.some((f) => f.key === "roll")).toBe(true);
     // every Film field is custom
     expect(film.groups.every((g) => g.fields.every((f) => f.kind === FieldKind.Custom))).toBe(true);
     // unique keys

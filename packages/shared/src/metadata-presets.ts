@@ -36,8 +36,9 @@ const standard = (key: string, label: string, builtinKey: StandardFieldKey, type
   builtinKey,
 });
 
-/** Mirrors Negative Lab Pro's film-metadata sections 2–5
- *  (https://www.negativelabpro.com/guide/film-metadata/). All custom fields. */
+/** Mirrors Negative Lab Pro's film-metadata sections 2–5 (26 fields;
+ *  https://www.negativelabpro.com/guide/film-metadata/) plus an intentional
+ *  "Roll" field (frames share a roll; matches filmexif:RollID). All custom fields. */
 const FILM: PresetDef = {
   id: "film",
   name: "Film",
@@ -52,7 +53,7 @@ const FILM: PresetDef = {
         custom("film-stock", "Film Stock"),
         custom("film-iso", "Film ISO", t.Number),
         custom("film-format", "Film Format", t.Choice),
-        custom("roll-number", "Roll Number"),
+        custom("roll", "Roll"),
         custom("gear-notes", "Gear Notes", t.Textarea),
       ],
     },
