@@ -9,6 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * Toolbar download control. With no edited photos in the selection it's a plain
@@ -39,16 +44,20 @@ export function DownloadMenu({
 
   if (!anyEdited) {
     return (
-      <Button
-        variant="outline"
-        size="icon-sm"
-        disabled={disabled}
-        onClick={() => onDownload()}
-        aria-label="Download"
-        title="Download"
-      >
-        {icon}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            disabled={disabled}
+            onClick={() => onDownload()}
+            aria-label="Download"
+          >
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Download</TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -57,26 +66,30 @@ export function DownloadMenu({
   // once there's more than one.
   const prefix = count === 1 ? "" : `${count} photos `;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={disabled}
-          aria-label="Download"
-          title="Download"
-        >
-          {icon}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => onDownload("edited")}>
-          Download {prefix}edited
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onDownload("original")}>
-          Download {prefix}original
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Tooltip>
+      <DropdownMenu>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={disabled}
+              aria-label="Download"
+            >
+              {icon}
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => onDownload("edited")}>
+            Download {prefix}edited
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onDownload("original")}>
+            Download {prefix}original
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <TooltipContent>Download</TooltipContent>
+    </Tooltip>
   );
 }

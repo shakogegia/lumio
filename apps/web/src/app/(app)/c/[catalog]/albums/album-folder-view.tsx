@@ -14,6 +14,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import {
@@ -275,39 +280,49 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
           actions={
             <>
               {sel.count === 1 && selectedFolderIds.length === 1 && (
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="View all photos"
-                  title="View all photos"
-                  onClick={() => viewFolderPhotos(selectedFolderIds[0])}
-                >
-                  <Images aria-hidden />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label="View all photos"
+                      onClick={() => viewFolderPhotos(selectedFolderIds[0])}
+                    >
+                      <Images aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>View all photos</TooltipContent>
+                </Tooltip>
               )}
               {sel.count === 1 && (
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Rename"
-                  title="Rename"
-                  onClick={() => startRename([...sel.selected][0])}
-                >
-                  <Pencil aria-hidden />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label="Rename"
+                      onClick={() => startRename([...sel.selected][0])}
+                    >
+                      <Pencil aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rename</TooltipContent>
+                </Tooltip>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="Move to folder"
-                    title="Move to…"
-                  >
-                    <FolderInput aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-h-72 w-56 overflow-y-auto">
+              <Tooltip>
+                <DropdownMenu>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        aria-label="Move to folder"
+                      >
+                        <FolderInput aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <DropdownMenuContent align="end" className="max-h-72 w-56 overflow-y-auto">
                   <DropdownMenuLabel>Move to…</DropdownMenuLabel>
                   <MovePickerItems
                     Item={DropdownMenuItem}
@@ -316,18 +331,24 @@ export function FolderBrowser({ contents }: { contents: FolderContentsDTO }) {
                       void doMove({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds }, target)
                     }
                   />
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                variant="destructive"
-                size="icon-sm"
-                disabled={busy}
-                onClick={() => void requestDelete({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds })}
-                aria-label="Delete"
-                title="Delete"
-              >
-                {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-              </Button>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <TooltipContent>Move to folder</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="icon-sm"
+                    disabled={busy}
+                    onClick={() => void requestDelete({ folderIds: selectedFolderIds, albumIds: selectedAlbumIds })}
+                    aria-label="Delete"
+                  >
+                    {busy ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
             </>
           }
         />

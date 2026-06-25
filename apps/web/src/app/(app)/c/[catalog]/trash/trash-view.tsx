@@ -5,6 +5,11 @@ import { ArchiveRestore, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { JobType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAsyncJob } from "@/lib/hooks/use-async-job";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter } from "@/features/photo-grid";
@@ -125,26 +130,34 @@ export function TrashView() {
           <>
             {count > 0 && (
               <>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={pending || emptying}
-                  aria-label="Restore"
-                  title="Restore"
-                  onClick={() => void handleRestore()}
-                >
-                  <ArchiveRestore aria-hidden />
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="icon-sm"
-                  disabled={pending || emptying}
-                  aria-label="Delete permanently"
-                  title="Delete permanently"
-                  onClick={() => void handlePurge()}
-                >
-                  <Trash2 aria-hidden />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      disabled={pending || emptying}
+                      aria-label="Restore"
+                      onClick={() => void handleRestore()}
+                    >
+                      <ArchiveRestore aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Restore</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="icon-sm"
+                      disabled={pending || emptying}
+                      aria-label="Delete permanently"
+                      onClick={() => void handlePurge()}
+                    >
+                      <Trash2 aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete permanently</TooltipContent>
+                </Tooltip>
               </>
             )}
             <Button

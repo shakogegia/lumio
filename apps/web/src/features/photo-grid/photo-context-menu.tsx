@@ -9,6 +9,7 @@ import {
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuSeparator,
+  ContextMenuShortcut,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
@@ -123,6 +124,7 @@ export function PhotoContextMenu({
           <ContextMenuItem onSelect={() => void actions.favorite(targetIds, favoriteTarget)}>
             <Heart aria-hidden />
             {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
+            <ContextMenuShortcut>F</ContextMenuShortcut>
           </ContextMenuItem>
           {actions.albumCover && (
             count === 1 && targetIds[0] === actions.albumCover.coverPhotoId ? (
@@ -148,6 +150,7 @@ export function PhotoContextMenu({
         >
           <Trash2 aria-hidden />
           Delete {photos}
+          <ContextMenuShortcut>⌫</ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

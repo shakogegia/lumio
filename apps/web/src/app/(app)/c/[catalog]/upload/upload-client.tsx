@@ -10,6 +10,11 @@ import { errorMessage } from "@lumio/shared";
 import { countLabel } from "@/lib/count-label";
 import { postJson } from "@/lib/http";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { HeaderBar } from "@/components/header-bar";
 import { GridSizeMenu } from "@/components/grid-size-menu";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
@@ -267,26 +272,34 @@ export function UploadClient({
                 onPick={(albumId) => void album.addToAlbumDirect([...sel.selected], albumId)}
                 onCreateNew={() => album.addToAlbum([...sel.selected])}
               />
-              <Button
-                variant="outline"
-                size="icon-sm"
-                disabled={sel.count === 0 || downloading}
-                onClick={() => void handleDownload()}
-                aria-label="Download"
-                title="Download"
-              >
-                {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
-              </Button>
-              <Button
-                variant="destructive"
-                size="icon-sm"
-                disabled={sel.count === 0 || deleting}
-                onClick={() => void handleDelete()}
-                aria-label="Delete"
-                title="Delete"
-              >
-                {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={sel.count === 0 || downloading}
+                    onClick={() => void handleDownload()}
+                    aria-label="Download"
+                  >
+                    {downloading ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="icon-sm"
+                    disabled={sel.count === 0 || deleting}
+                    onClick={() => void handleDelete()}
+                    aria-label="Delete"
+                  >
+                    {deleting ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
             </>
           }
         />
