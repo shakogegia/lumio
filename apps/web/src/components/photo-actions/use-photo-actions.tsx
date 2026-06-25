@@ -10,6 +10,7 @@ import { favoritePhotos, setPhotoColorLabel } from "@/lib/photo-mutations";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { patchJson } from "@/lib/http";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
+import { useShareLink } from "@/components/photo-actions/use-share-link";
 import type { PhotoGridHandle } from "@/features/photo-grid";
 import { optimisticTrash } from "@/lib/trash-optimistic";
 
@@ -26,6 +27,8 @@ export interface PhotoActions {
   addToAlbum: (ids: string[], opts?: ActionOpts) => void;
   /** Add straight to an existing album, no dialog (the nested-menu path). */
   addToAlbumDirect: (ids: string[], albumId: string, opts?: ActionOpts) => Promise<void>;
+  /** Open the create-share-link dialog for the given photos. */
+  share: (ids: string[]) => void;
   /** The album currently being viewed, so album pickers can exclude it. */
   excludeAlbumId?: string;
   /** Present only in a regular-album view: the album to set covers on, plus its
@@ -73,6 +76,7 @@ export function usePhotoActions({
   // Add-to-album (quick-pick + "New album…" dialog) is grid-independent, so it
   // lives in its own hook shared with the upload page.
   const album = useAddToAlbum();
+  const shareLink = useShareLink();
 
   const download = useCallback(
     async (ids: string[], opts?: ActionOpts) => {
@@ -170,10 +174,16 @@ export function usePhotoActions({
     favorite,
     addToAlbum: album.addToAlbum,
     addToAlbumDirect: album.addToAlbumDirect,
+    share: shareLink.share,
     setAlbumCover,
     excludeAlbumId,
     albumCover,
     pending: { download: downloading, label: labelPending, trash: false, favorite: favoritePending },
-    element: album.element,
+    element: (
+      <>
+        {album.element}
+        {shareLink.element}
+      </>
+    ),
   };
 }

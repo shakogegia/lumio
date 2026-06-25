@@ -1,7 +1,8 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-import { computeFavoriteTarget } from "@lumio/shared";
+import { Share2, Trash2 } from "lucide-react";
+import { computeFavoriteTarget, FeatureKey } from "@lumio/shared";
+import { useFeature } from "@/components/features/features-provider";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -43,6 +44,7 @@ export function SelectionActions({
    *  since this toolbar renders outside it and can't read the grid directly. */
   anyEdited?: boolean;
 }) {
+  const sharingEnabled = useFeature(FeatureKey.Sharing);
   const ids = [...selectedIds];
   const none = ids.length === 0;
   return (
@@ -72,6 +74,22 @@ export function SelectionActions({
         pending={actions.pending.download}
         onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
       />
+      {sharingEnabled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={none}
+              onClick={() => actions.share(ids)}
+              aria-label="Share"
+            >
+              <Share2 aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share</TooltipContent>
+        </Tooltip>
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FolderPlus, Heart, ImageUp, Palette, Trash2 } from "lucide-react";
-import { COLOR_LABELS, computeFavoriteTarget, hasEdits } from "@lumio/shared";
+import { Download, FolderPlus, Heart, ImageUp, Palette, Share2, Trash2 } from "lucide-react";
+import { COLOR_LABELS, computeFavoriteTarget, FeatureKey, hasEdits } from "@lumio/shared";
+import { useFeature } from "@/components/features/features-provider";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -40,6 +41,7 @@ export function PhotoContextMenu({
   const actions = usePhotoActionsContext();
   const collection = usePhotoCollection();
   const [favoriteTarget, setFavoriteTarget] = useState(true);
+  const sharingEnabled = useFeature(FeatureKey.Sharing);
   if (!actions) return <>{children}</>;
 
   const count = targetIds.length;
@@ -74,6 +76,12 @@ export function PhotoContextMenu({
             <ContextMenuItem onSelect={() => void actions.download(targetIds)}>
               <Download aria-hidden />
               Download {photos}
+            </ContextMenuItem>
+          )}
+          {sharingEnabled && (
+            <ContextMenuItem onSelect={() => actions.share(targetIds)}>
+              <Share2 aria-hidden />
+              Share {photos}
             </ContextMenuItem>
           )}
           <ContextMenuSub>
