@@ -17,6 +17,7 @@ const JOB_VERB: Record<JobType, string> = {
   [JobType.rescan]: "Rescanning",
   [JobType.purge_all]: "Deleting all photos…",
   [JobType.empty_trash]: "Emptying trash…",
+  [JobType.process_trash]: "Moving to trash…",
 };
 
 /** Human label for the sidebar tooltip / aria-label. */

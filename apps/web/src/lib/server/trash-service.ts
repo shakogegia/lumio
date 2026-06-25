@@ -56,62 +56,6 @@ async function existingAlbumIds(db: Db, catalogId: string, ids: string[]): Promi
   return rows.map((r) => r.id);
 }
 
-export async function trashPhotos(
-  ids: string[],
-  deps: TrashDeps,
-): Promise<{ trashed: number }> {
-  let trashed = 0;
-  for (const id of ids) {
-    // Scope by catalog so a request can't trash (and thereby delete) a photo
-    // that belongs to another catalog by passing its id.
-    const photo = await deps.db.photo.findFirst({
-      where: { id, catalogId: deps.catalogId },
-      include: { albums: { select: { albumId: true } } },
-    });
-    if (!photo) continue;
-
-    // 1. Snapshot BEFORE any row deletion so no race can lose the metadata.
-    await deps.db.trashedPhoto.create({
-      data: {
-        id: photo.id,
-        catalogId: deps.catalogId,
-        originalPath: photo.path,
-        source: photo.source,
-        takenAt: photo.takenAt,
-        sortDate: photo.sortDate,
-        width: photo.width,
-        height: photo.height,
-        hash: photo.hash,
-        thumbhash: photo.thumbhash,
-        exif: photo.exif as object,
-        colorLabel: photo.colorLabel,
-        albumIds: photo.albums.map((a) => a.albumId),
-      },
-    });
-
-    // 2. Move renditions + original into the trash.
-    const ext = path.extname(photo.path);
-    await moveFile(
-      path.join(deps.cacheDir, "thumbnails", `${id}.webp`),
-      path.join(deps.trashDir, "thumbnails", `${id}.webp`),
-    );
-    await moveFile(
-      path.join(deps.cacheDir, "displays", `${id}.webp`),
-      path.join(deps.trashDir, "displays", `${id}.webp`),
-    );
-    await moveFile(
-      path.join(deps.photosDir, photo.path),
-      path.join(deps.trashDir, "originals", `${id}${ext}`),
-    );
-
-    // 3. Delete the Photo row. deleteMany is tolerant of "already gone" — the
-    //    watcher's unlink (fired by step 2) may delete it first; same end state.
-    await deps.db.photo.deleteMany({ where: { id, catalogId: deps.catalogId } });
-    trashed++;
-  }
-  return { trashed };
-}
-
 export async function listTrash(
   catalogId: string,
   params: PhotosQuery,

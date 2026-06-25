@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { listTrash, restorePhotos, trashPhotos } from "./trash-service.js";
+import { listTrash, restorePhotos } from "./trash-service.js";
 
 const CAT = "cat-1";
 
@@ -34,73 +34,6 @@ function trashRow(id: string) {
     deletedAt: new Date("2026-06-19T00:00:00.000Z"),
   };
 }
-
-describe("trashPhotos", () => {
-  it("snapshots (incl. catalogId + colorLabel + albums), moves files into trash, deletes the photo row", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    await writeFile(path.join(photosDir, "a.jpg"), "orig");
-    await writeFile(path.join(cacheDir, "thumbnails", "a.webp"), "thumb");
-    await writeFile(path.join(cacheDir, "displays", "a.webp"), "display");
-
-    const created: unknown[] = [];
-    const db = {
-      photo: {
-        findFirst: async () => ({
-          id: "a",
-          path: "a.jpg",
-          source: "filesystem",
-          takenAt: null,
-          sortDate: new Date("2024-01-01T00:00:00.000Z"),
-          width: 10,
-          height: 10,
-          hash: null,
-          exif: {},
-          colorLabel: "green",
-          albums: [{ albumId: "alb1" }],
-        }),
-        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
-      },
-      trashedPhoto: {
-        create: async (args: unknown) => {
-          created.push(args);
-          return {};
-        },
-      },
-    };
-
-    const result = await trashPhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
-
-    expect(result).toEqual({ trashed: 1 });
-    // Scoping assertion: trash snapshot includes catalogId
-    expect(created).toEqual([
-      expect.objectContaining({
-        data: expect.objectContaining({
-          id: "a",
-          catalogId: CAT,
-          originalPath: "a.jpg",
-          colorLabel: "green",
-          albumIds: ["alb1"],
-        }),
-      }),
-    ]);
-    expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(false);
-    expect(existsSync(path.join(trashDir, "originals", "a.jpg"))).toBe(true);
-    expect(existsSync(path.join(trashDir, "thumbnails", "a.webp"))).toBe(true);
-    expect(existsSync(path.join(trashDir, "displays", "a.webp"))).toBe(true);
-    expect(db.photo.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
-  });
-
-  it("skips ids that no longer exist", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    const db = {
-      photo: { findFirst: async () => null, deleteMany: vi.fn() },
-      trashedPhoto: { create: vi.fn() },
-    };
-    const result = await trashPhotos(["gone"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
-    expect(result).toEqual({ trashed: 0 });
-    expect(db.trashedPhoto.create).not.toHaveBeenCalled();
-  });
-});
 
 describe("listTrash", () => {
   it("returns a page with items + total scoped to the catalog, newest-first order", async () => {
