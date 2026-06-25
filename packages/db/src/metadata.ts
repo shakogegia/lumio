@@ -182,10 +182,12 @@ export async function suggestFieldValues(
       ...(q.trim() ? { value: { startsWith: q.trim(), mode: "insensitive" as const } } : {}),
     },
     _count: { _all: true },
-    take: 20,
   } as never) as Array<{ value: string; _count: { _all: number } }>;
+  // Sort + cap in JS: groupBy's `take` would force an implicit orderBy on `id`
+  // (not in `by`), which Prisma rejects.
   return rows
     .sort((a, b) => b._count._all - a._count._all)
+    .slice(0, 20)
     .map((r) => r.value);
 }
 
