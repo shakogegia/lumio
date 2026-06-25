@@ -13,6 +13,7 @@ import { z } from "zod";
 
 export enum FeatureKey {
   DiskExplorer = "diskExplorer",
+  Metadata = "metadata",
 }
 
 export enum FeatureScope {
@@ -34,6 +35,13 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = {
     key: FeatureKey.DiskExplorer,
     label: "Folder browser",
     description: "Browse the catalog's folders and files on disk.",
+    scopes: [FeatureScope.Global, FeatureScope.Catalog],
+    default: false,
+  },
+  [FeatureKey.Metadata]: {
+    key: FeatureKey.Metadata,
+    label: "Photo metadata",
+    description: "Custom fields, presets, and per-catalog metadata on photos.",
     scopes: [FeatureScope.Global, FeatureScope.Catalog],
     default: false,
   },
