@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeatureKey, FieldType, type MetadataSchema } from "@lumio/shared";
 import { postJson } from "@/lib/http";
@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const typeLabel = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
 export function MetadataConfigForm({
   catalogId,
@@ -95,7 +99,7 @@ export function MetadataConfigForm({
     }
   }
 
-  const hasFields = schema.some((g) => g.fields.length > 0);
+  const hasGroups = schema.length > 0;
 
   return (
     <div className="space-y-6">
@@ -140,76 +144,87 @@ export function MetadataConfigForm({
           <CardHeader>
             <CardTitle>Custom fields</CardTitle>
             <CardDescription>
-              {hasFields
+              {hasGroups
                 ? "Fields filled per photo in the Info tab."
                 : "Start from the Negative Lab Pro preset."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {hasFields ? (
+          <CardContent className="space-y-5">
+            {!hasGroups ? (
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={busy} onClick={applyPreset}>Apply Negative Lab Pro preset</Button>
+                <Button variant="outline" disabled={busy} onClick={() => void addGroup()}>Add group</Button>
+              </div>
+            ) : (
               <>
-                <div className="space-y-4">
-                  {schema
-                    .filter((g) => true)
-                    .map((group) => (
-                      <div key={group.id} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          {group.label}
-                        </p>
-                        <div className="space-y-1.5">
-                          {group.fields.map((f) => (
-                            <div key={f.id} className="flex items-center gap-2">
-                              <Input
-                                defaultValue={f.label}
-                                onBlur={(e) => {
-                                  const label = e.target.value.trim();
-                                  if (label && label !== f.label) void patchField(f.id, { label });
-                                }}
-                                className="h-8 flex-1"
-                              />
-                              <select
-                                defaultValue={f.type}
-                                onChange={(e) => void patchField(f.id, { type: e.target.value })}
-                                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-                              >
-                                {Object.values(FieldType).map((t) => (
-                                  <option key={t} value={t}>{t}</option>
-                                ))}
-                              </select>
-                              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                {schema.map((group) => (
+                  <div key={group.id} className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Field</TableHead>
+                          <TableHead className="w-32">Type</TableHead>
+                          <TableHead className="w-14">On</TableHead>
+                          <TableHead className="w-10" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.fields.map((f) => (
+                          <Fragment key={f.id}>
+                            <TableRow>
+                              <TableCell>
+                                <Input
+                                  defaultValue={f.label}
+                                  onBlur={(e) => {
+                                    const label = e.target.value.trim();
+                                    if (label && label !== f.label) void patchField(f.id, { label });
+                                  }}
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Select value={f.type} onValueChange={(v) => void patchField(f.id, { type: v })}>
+                                  <SelectTrigger className="h-8 w-full"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    {Object.values(FieldType).map((t) => (
+                                      <SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
                                 <Switch
                                   checked={f.enabled}
                                   onCheckedChange={(v) => void patchField(f.id, { enabled: v })}
+                                  aria-label={`${f.label} enabled`}
                                 />
-                                on
-                              </label>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={`Delete ${f.label}`}
-                                disabled={busy}
-                                onClick={() => void deleteField(f.id)}
-                              >
-                                <Trash2 aria-hidden />
-                              </Button>
-                            </div>
-                          ))}
-                          <AddField groupId={group.id} onAdd={addField} busy={busy} />
-                        </div>
-                      </div>
-                    ))}
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="icon-sm" aria-label={`Delete ${f.label}`} disabled={busy} onClick={() => void deleteField(f.id)}>
+                                  <Trash2 aria-hidden />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            {f.type === FieldType.Choice && (
+                              <TableRow>
+                                <TableCell colSpan={4} className="pt-0">
+                                  <OptionsEditor options={f.options} onChange={(next) => void patchField(f.id, { options: next })} />
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <AddField groupId={group.id} onAdd={addField} busy={busy} />
+                  </div>
+                ))}
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void addGroup()}>Add group</Button>
+                  <Button variant="outline" size="sm" disabled={busy} onClick={clear}>Clear all fields</Button>
                 </div>
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => void addGroup()}>
-                  <Plus aria-hidden /> Add group
-                </Button>
-                <Button variant="outline" size="sm" disabled={busy} onClick={clear}>
-                  Clear all fields
-                </Button>
               </>
-            ) : (
-              <Button disabled={busy} onClick={applyPreset}>
-                Apply Negative Lab Pro preset
-              </Button>
             )}
           </CardContent>
         </Card>
@@ -218,47 +233,42 @@ export function MetadataConfigForm({
   );
 }
 
-function AddField({
-  groupId,
-  onAdd,
-  busy,
-}: {
-  groupId: string;
-  onAdd: (groupId: string, label: string, type: string) => Promise<void>;
-  busy: boolean;
-}) {
+function AddField({ groupId, onAdd, busy }: { groupId: string; onAdd: (groupId: string, label: string, type: string) => Promise<void>; busy: boolean }) {
   const [label, setLabel] = useState("");
   const [type, setType] = useState<string>(FieldType.Text);
+  const submit = () => { const v = label.trim(); if (v) void onAdd(groupId, v, type).then(() => setLabel("")); };
   return (
     <div className="flex items-center gap-2 pt-1">
-      <Input
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder="Add field…"
-        className="h-8 flex-1"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && label.trim()) {
-            void onAdd(groupId, label.trim(), type).then(() => setLabel(""));
-          }
-        }}
+      <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Add field…" className="h-8 flex-1"
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
+      <Select value={type} onValueChange={setType}>
+        <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {Object.values(FieldType).map((t) => (<SelectItem key={t} value={t}>{typeLabel(t)}</SelectItem>))}
+        </SelectContent>
+      </Select>
+      <Button variant="outline" size="sm" disabled={busy || !label.trim()} onClick={submit}>Add</Button>
+    </div>
+  );
+}
+
+function OptionsEditor({ options, onChange }: { options: string[]; onChange: (next: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {options.map((o) => (
+        <span key={o} className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs">
+          {o}
+          <button type="button" aria-label={`Remove ${o}`} onClick={() => onChange(options.filter((x) => x !== o))} className="text-muted-foreground hover:text-foreground">×</button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="add option…"
+        className="h-6 w-28 rounded-md border border-border bg-background px-2 text-xs"
+        onKeyDown={(e) => { const v = draft.trim(); if (e.key === "Enter" && v && !options.includes(v)) { onChange([...options, v]); setDraft(""); } }}
       />
-      <select
-        value={type}
-        onChange={(e) => setType(e.target.value)}
-        className="h-8 rounded-md border border-border bg-background px-2 text-xs"
-      >
-        {Object.values(FieldType).map((t) => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={busy || !label.trim()}
-        onClick={() => void onAdd(groupId, label.trim(), type).then(() => setLabel(""))}
-      >
-        Add
-      </Button>
     </div>
   );
 }
