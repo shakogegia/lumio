@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FeatureKey, FieldType, type MetadataSchema } from "@lumio/shared";
 import { postJson } from "@/lib/http";
 import { apiPaths } from "@/lib/api-paths";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
+import { GripVertical, Trash2, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -56,6 +57,14 @@ export function MetadataConfigForm({
   const [custom, setCustom] = useState(customEnabled);
   const [busy, setBusy] = useState(false);
   const [addGroupOpen, setAddGroupOpen] = useState(false);
+  const [local, setLocal] = useState(schema);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setLocal(schema);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [schema]);
+  const [drag, setDrag] = useState<{ kind: "group" | "field"; id: string; groupId?: string } | null>(null);
 
   async function toggleFeature(key: FeatureKey, next: boolean, set: (v: boolean) => void) {
     set(next);
@@ -127,6 +136,52 @@ export function MetadataConfigForm({
     }
   }
 
+  function onGroupDragOver(targetId: string) {
+    if (drag?.kind !== "group" || drag.id === targetId) return;
+    setLocal((cur) => {
+      const ids = cur.map((g) => g.id);
+      const from = ids.indexOf(drag.id);
+      const to = ids.indexOf(targetId);
+      if (from === -1 || to === -1) return cur;
+      const next = [...cur];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved!);
+      return next;
+    });
+  }
+  function onGroupDrop() {
+    if (drag?.kind !== "group") return;
+    const idx = local.findIndex((g) => g.id === drag.id);
+    const afterId = idx > 0 ? local[idx - 1]!.id : null;
+    setDrag(null);
+    void reorder("group", drag.id, afterId);
+  }
+
+  function onFieldDragOver(groupId: string, targetId: string) {
+    if (drag?.kind !== "field" || drag.groupId !== groupId || drag.id === targetId) return;
+    setLocal((cur) =>
+      cur.map((g) => {
+        if (g.id !== groupId) return g;
+        const ids = g.fields.map((f) => f.id);
+        const from = ids.indexOf(drag.id);
+        const to = ids.indexOf(targetId);
+        if (from === -1 || to === -1) return g;
+        const fields = [...g.fields];
+        const [moved] = fields.splice(from, 1);
+        fields.splice(to, 0, moved!);
+        return { ...g, fields };
+      }),
+    );
+  }
+  function onFieldDrop(groupId: string) {
+    if (drag?.kind !== "field") return;
+    const g = local.find((x) => x.id === groupId);
+    const idx = g ? g.fields.findIndex((f) => f.id === drag.id) : -1;
+    const afterId = idx > 0 ? g!.fields[idx - 1]!.id : null;
+    setDrag(null);
+    void reorder("field", drag.id, afterId);
+  }
+
   const hasGroups = schema.length > 0;
 
   return (
@@ -189,23 +244,35 @@ export function MetadataConfigForm({
               </div>
             ) : (
               <>
-                {schema.map((group, gi) => (
-                  <div key={group.id} className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <p className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
-                      <Button variant="ghost" size="icon-sm" aria-label="Move group up" disabled={busy || gi === 0}
-                        onClick={() => void reorder("group", group.id, gi >= 2 ? schema[gi - 2]!.id : null)}>
-                        <ChevronUp aria-hidden />
-                      </Button>
-                      <Button variant="ghost" size="icon-sm" aria-label="Move group down" disabled={busy || gi === schema.length - 1}
-                        onClick={() => void reorder("group", group.id, schema[gi + 1]!.id)}>
-                        <ChevronDown aria-hidden />
-                      </Button>
+                {local.map((group) => (
+                  <div
+                    key={group.id}
+                    className={cn("space-y-2", drag?.kind === "group" && drag.id === group.id && "opacity-50")}
+                    draggable
+                    onDragStart={() => setDrag({ kind: "group", id: group.id })}
+                    onDragOver={(e) => { e.preventDefault(); onGroupDragOver(group.id); }}
+                    onDragEnd={onGroupDrop}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="cursor-grab text-muted-foreground/60 active:cursor-grabbing">
+                        <GripVertical className="size-4" aria-hidden />
+                      </span>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
                     </div>
                     <div className="space-y-1.5">
-                      {group.fields.map((f, fi) => (
-                        <div key={f.id} className="rounded-lg border bg-card px-3 py-2">
+                      {group.fields.map((f) => (
+                        <div
+                          key={f.id}
+                          className={cn("rounded-lg border bg-card px-3 py-2", drag?.kind === "field" && drag.id === f.id && "opacity-50")}
+                          draggable
+                          onDragStart={(e) => { e.stopPropagation(); setDrag({ kind: "field", id: f.id, groupId: group.id }); }}
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); onFieldDragOver(group.id, f.id); }}
+                          onDragEnd={(e) => { e.stopPropagation(); onFieldDrop(group.id); }}
+                        >
                           <div className="flex items-center gap-2">
+                            <span className="cursor-grab text-muted-foreground/60 active:cursor-grabbing">
+                              <GripVertical className="size-4" aria-hidden />
+                            </span>
                             <Input
                               defaultValue={f.label}
                               onBlur={(e) => {
@@ -233,14 +300,6 @@ export function MetadataConfigForm({
                               onCheckedChange={(v) => void patchField(f.id, { enabled: v })}
                               aria-label={`${f.label} enabled`}
                             />
-                            <Button variant="ghost" size="icon-sm" aria-label={`Move ${f.label} up`} disabled={busy || fi === 0}
-                              onClick={() => void reorder("field", f.id, fi >= 2 ? group.fields[fi - 2]!.id : null)}>
-                              <ChevronUp aria-hidden />
-                            </Button>
-                            <Button variant="ghost" size="icon-sm" aria-label={`Move ${f.label} down`} disabled={busy || fi === group.fields.length - 1}
-                              onClick={() => void reorder("field", f.id, group.fields[fi + 1]!.id)}>
-                              <ChevronDown aria-hidden />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="icon-sm"
