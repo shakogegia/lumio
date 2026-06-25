@@ -142,6 +142,21 @@ export function listShareLinkPhotosForDownload(
   });
 }
 
+/** Like listShareLinkPhotosForDownload but limited to the requested ids that are
+ *  actually live members of the link (never zips a non-member or trashed photo). */
+export function listShareLinkPhotosForDownloadSubset(
+  catalogId: string,
+  shareLinkId: string,
+  ids: string[],
+  db: Db = prisma,
+): Promise<{ id: string; path: string; edits: unknown; asShotTempK: number | null; asShotTint: number | null }[]> {
+  return db.photo.findMany({
+    where: { catalogId, ...LIVE_PHOTO, ...shareLinkPhotoWhere(shareLinkId), id: { in: ids } },
+    orderBy: PHOTO_ORDER,
+    select: { id: true, path: true, edits: true, asShotTempK: true, asShotTint: true },
+  });
+}
+
 export function shareLinkPhotoExists(shareLinkId: string, photoId: string, db: Db = prisma): Promise<boolean> {
   return shareLinkPhotoExistsRow(shareLinkId, photoId, db);
 }

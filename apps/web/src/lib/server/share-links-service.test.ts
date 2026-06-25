@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createShareLink,
   deleteShareLinkChecked,
+  listShareLinkPhotosForDownloadSubset,
   ShareLinkNotFoundError,
 } from "./share-links-service.js";
 
@@ -77,5 +78,42 @@ describe("deleteShareLinkChecked", () => {
     await expect(deleteShareLinkChecked(CAT, "missing", db as never)).rejects.toBeInstanceOf(
       ShareLinkNotFoundError,
     );
+  });
+});
+
+describe("listShareLinkPhotosForDownloadSubset", () => {
+  it("passes catalogId, LIVE_PHOTO, shareLinkPhotoWhere, and id: { in: ids } to findMany", async () => {
+    const rows = [
+      { id: "p1", path: "a.jpg", edits: null, asShotTempK: null, asShotTint: null },
+      { id: "p2", path: "b.jpg", edits: null, asShotTempK: 5500, asShotTint: 3 },
+    ];
+    const findMany = vi.fn().mockResolvedValue(rows);
+    const db = fakeDb({ photo: { findMany, count: vi.fn(), findFirst: vi.fn() } });
+
+    const result = await listShareLinkPhotosForDownloadSubset(CAT, "s1", ["p1", "p2"], db as never);
+
+    expect(result).toEqual(rows);
+    const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+    // catalogId
+    expect(call.where.catalogId).toBe(CAT);
+    // id subset filter
+    expect(call.where.id).toEqual({ in: ["p1", "p2"] });
+    // LIVE_PHOTO contributes trashedAt: null
+    expect(call.where.trashedAt).toBe(null);
+    // shareLinkPhotoWhere contributes shareLinks.some membership filter
+    expect(call.where.shareLinks).toEqual({ some: { shareLinkId: "s1" } });
+  });
+
+  it("returns only the subset matching ids (filters non-members server-side)", async () => {
+    const filtered = [{ id: "p1", path: "a.jpg", edits: null, asShotTempK: null, asShotTint: null }];
+    const findMany = vi.fn().mockResolvedValue(filtered);
+    const db = fakeDb({ photo: { findMany, count: vi.fn(), findFirst: vi.fn() } });
+
+    const result = await listShareLinkPhotosForDownloadSubset(CAT, "s1", ["p1", "nonmember"], db as never);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("p1");
+    const call = findMany.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(call.where.id).toEqual({ in: ["p1", "nonmember"] });
   });
 });
