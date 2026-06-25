@@ -9,8 +9,8 @@ filesystem, indexes every image, and keeps the library in sync as files come and
 Your originals stay exactly where they are, in the layout you chose, readable by any
 other tool. Lumio just adds the index, the thumbnails, and the interface on top.
 
-It's built for one person (or one household) running their own photo library on a NAS,
-home server, or any box they control — a self-hosted alternative to cloud photo services.
+It's self-hosted: run it on a NAS, home server, or any box you control — a self-hosted
+alternative to cloud photo services.
 
 ---
 
