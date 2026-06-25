@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FeatureKey, type MetadataSchema } from "@lumio/shared";
+import { FeatureKey, FieldType, type MetadataSchema } from "@lumio/shared";
 import { postJson } from "@/lib/http";
 import { apiPaths } from "@/lib/api-paths";
 import { catalogApiUrl } from "@/lib/catalog-api";
@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Trash2, Plus } from "lucide-react";
 
 export function MetadataConfigForm({
   catalogId,
@@ -55,6 +57,38 @@ export function MetadataConfigForm({
     setBusy(true);
     try {
       await postJson(catalogApiUrl(slug, "/metadata/clear"), {});
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function patchField(fieldId: string, data: Record<string, unknown>) {
+    await postJson(catalogApiUrl(slug, `/metadata/fields/${fieldId}`), data, "PATCH");
+    router.refresh();
+  }
+
+  async function deleteField(fieldId: string) {
+    setBusy(true);
+    try {
+      await postJson(catalogApiUrl(slug, `/metadata/fields/${fieldId}`), {}, "DELETE");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addField(groupId: string, label: string, type: string) {
+    await postJson(catalogApiUrl(slug, "/metadata/fields"), { groupId, label, type });
+    router.refresh();
+  }
+
+  async function addGroup() {
+    const label = window.prompt("New group name")?.trim();
+    if (!label) return;
+    setBusy(true);
+    try {
+      await postJson(catalogApiUrl(slug, "/metadata/groups"), { label });
       router.refresh();
     } finally {
       setBusy(false);
@@ -116,25 +150,58 @@ export function MetadataConfigForm({
               <>
                 <div className="space-y-4">
                   {schema
-                    .filter((g) => g.fields.length > 0)
+                    .filter((g) => true)
                     .map((group) => (
-                      <div key={group.id} className="space-y-1.5">
+                      <div key={group.id} className="space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           {group.label}
                         </p>
-                        <ul className="flex flex-wrap gap-1.5">
+                        <div className="space-y-1.5">
                           {group.fields.map((f) => (
-                            <li
-                              key={f.id}
-                              className="rounded-md border border-border bg-background px-2 py-0.5 text-xs"
-                            >
-                              {f.label}
-                            </li>
+                            <div key={f.id} className="flex items-center gap-2">
+                              <Input
+                                defaultValue={f.label}
+                                onBlur={(e) => {
+                                  const label = e.target.value.trim();
+                                  if (label && label !== f.label) void patchField(f.id, { label });
+                                }}
+                                className="h-8 flex-1"
+                              />
+                              <select
+                                defaultValue={f.type}
+                                onChange={(e) => void patchField(f.id, { type: e.target.value })}
+                                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                              >
+                                {Object.values(FieldType).map((t) => (
+                                  <option key={t} value={t}>{t}</option>
+                                ))}
+                              </select>
+                              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Switch
+                                  checked={f.enabled}
+                                  onCheckedChange={(v) => void patchField(f.id, { enabled: v })}
+                                />
+                                on
+                              </label>
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Delete ${f.label}`}
+                                disabled={busy}
+                                onClick={() => void deleteField(f.id)}
+                              >
+                                <Trash2 aria-hidden />
+                              </Button>
+                            </div>
                           ))}
-                        </ul>
+                          <AddField groupId={group.id} onAdd={addField} busy={busy} />
+                        </div>
                       </div>
                     ))}
                 </div>
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => void addGroup()}>
+                  <Plus aria-hidden /> Add group
+                </Button>
                 <Button variant="outline" size="sm" disabled={busy} onClick={clear}>
                   Clear all fields
                 </Button>
@@ -147,6 +214,51 @@ export function MetadataConfigForm({
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function AddField({
+  groupId,
+  onAdd,
+  busy,
+}: {
+  groupId: string;
+  onAdd: (groupId: string, label: string, type: string) => Promise<void>;
+  busy: boolean;
+}) {
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState<string>(FieldType.Text);
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <Input
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder="Add field…"
+        className="h-8 flex-1"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && label.trim()) {
+            void onAdd(groupId, label.trim(), type).then(() => setLabel(""));
+          }
+        }}
+      />
+      <select
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+        className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+      >
+        {Object.values(FieldType).map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy || !label.trim()}
+        onClick={() => void onAdd(groupId, label.trim(), type).then(() => setLabel(""))}
+      >
+        Add
+      </Button>
     </div>
   );
 }
