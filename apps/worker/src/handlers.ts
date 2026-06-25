@@ -1,6 +1,6 @@
 import path from "node:path";
 import { getCatalogById, prisma } from "@lumio/db";
-import { type JobHandlers, finalizeTrash, purgeAllPhotos, purgeTrash } from "@lumio/jobs";
+import { type JobHandlers, finalizeTrash, purgeAllPhotos, purgePendingPhotos, purgeTrash } from "@lumio/jobs";
 import { JobType } from "@lumio/shared";
 import { CACHE_DIR, TRASH_DIR } from "./config.js";
 import { log } from "./log.js";
@@ -26,7 +26,13 @@ function depsForCatalog(catalogId: string): HandlerDeps {
       if (!c) return { deleted: 0 };
       return purgeAllPhotos({ db: prisma, catalogId, photosDir: c.path, cacheDir: path.join(CACHE_DIR, catalogId) });
     },
-    emptyTrash: () => purgeTrash(undefined, { db: prisma, catalogId, trashDir: path.join(TRASH_DIR, catalogId) }),
+    emptyTrash: async () => {
+      const c = await getCatalogById(catalogId);
+      if (!c) return { deleted: 0 };
+      const a = await purgeTrash(undefined, { db: prisma, catalogId, trashDir: path.join(TRASH_DIR, catalogId) });
+      const b = await purgePendingPhotos(undefined, { db: prisma, catalogId, photosDir: c.path, cacheDir: path.join(CACHE_DIR, catalogId) });
+      return { deleted: a.deleted + b.deleted };
+    },
     processTrash: async (onProgress) => {
       const c = await getCatalogById(catalogId);
       if (!c) return { finalized: 0 };
