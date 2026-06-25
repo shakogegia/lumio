@@ -123,6 +123,7 @@ describe("restorePhotos", () => {
       },
       album: { findMany: async () => [{ id: "keep" }] },
       photo: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
         create: async (args: never) => {
           createArgs = args;
           return {};
@@ -158,6 +159,7 @@ describe("restorePhotos", () => {
       trashedPhoto: { findFirst: async () => trashRow("a"), deleteMany: async () => ({ count: 1 }) },
       album: { findMany: async () => [] },
       photo: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
         create: async (args: { data: { path: string } }) => {
           restoredPath = args.data.path;
           return {};
@@ -168,5 +170,25 @@ describe("restorePhotos", () => {
     await restorePhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
     expect(restoredPath).toBe("a (restored).jpg");
     expect(existsSync(path.join(photosDir, "a (restored).jpg"))).toBe(true);
+  });
+});
+
+describe("restorePhotos (dual-state)", () => {
+  it("clears trashedAt for pending ids without moving files", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const trashedFindFirst = vi.fn().mockResolvedValue(null); // not finalized
+    const db = {
+      photo: { updateMany, create: vi.fn() },
+      trashedPhoto: { findFirst: trashedFindFirst, deleteMany: vi.fn() },
+      album: { findMany: vi.fn().mockResolvedValue([]) },
+    } as never;
+    const result = await restorePhotos(["pend1"], {
+      db, catalogId: "cat1", photosDir: "/p", cacheDir: "/c", trashDir: "/t",
+    });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["pend1"] }, catalogId: "cat1", trashedAt: { not: null } },
+      data: { trashedAt: null },
+    });
+    expect(result.restored).toBe(1);
   });
 });

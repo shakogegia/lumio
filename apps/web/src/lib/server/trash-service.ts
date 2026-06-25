@@ -96,7 +96,14 @@ export async function restorePhotos(
   ids: string[],
   deps: TrashDeps,
 ): Promise<{ restored: number }> {
-  let restored = 0;
+  // Pending fast-path: ids still represented by a (marked) Photo row are restored
+  // by simply clearing the marker — their files were never moved. Counts toward
+  // restored; the finalized loop below skips them (no TrashedPhoto row exists).
+  const { count: unmarked } = await deps.db.photo.updateMany({
+    where: { id: { in: ids }, catalogId: deps.catalogId, trashedAt: { not: null } },
+    data: { trashedAt: null },
+  });
+  let restored = unmarked;
   for (const id of ids) {
     const t = await deps.db.trashedPhoto.findFirst({
       where: { id, catalogId: deps.catalogId },
