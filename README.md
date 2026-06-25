@@ -75,46 +75,6 @@ folder stays pristine.
 
 ---
 
-## Getting started (local development)
-
-**Prerequisites:** Node 24, pnpm 11, Docker (for Postgres).
-
-```bash
-pnpm install
-cp .env.example .env        # adjust DATABASE_URL / DB_PORT if 5432 is taken
-pnpm db:up                  # start Postgres in Docker
-pnpm db:migrate             # apply the schema
-
-# Add photos: drop image files under MEDIA_ROOT (./media by default),
-# or upload them through the web UI once it's running.
-
-pnpm ingest                 # scan + index + build thumbnails (one-shot)
-pnpm dev                    # web app on http://localhost:3000
-```
-
-Open <http://localhost:3000>. On first run you'll create the single admin account, then
-pick a folder for your first catalog with the built-in browser.
-
-Want the library to stay in sync while you add and remove files? Run the watcher alongside
-the app:
-
-```bash
-pnpm watch                  # live filesystem watcher (add / change / delete)
-```
-
-### Handy scripts
-
-| Command           | What it does                                          |
-| ----------------- | ----------------------------------------------------- |
-| `pnpm dev`        | Start the web app (Next.js)                           |
-| `pnpm ingest`     | One-shot scan + index + thumbnail build               |
-| `pnpm watch`      | Watch the filesystem and ingest changes live          |
-| `pnpm db:up`      | Start Postgres in Docker                               |
-| `pnpm db:migrate` | Apply database migrations                              |
-| `pnpm test`       | Run the test suite across all packages                |
-
----
-
 ## Deployment
 
 For self-hosting in production, Lumio runs as two containers (`web` + `worker`) plus
@@ -123,17 +83,6 @@ Postgres. Setup is covered in its own guides so this README can stay focused on 
 - **[Docker Compose](docs/deployment/docker-compose.md)** — download the compose file, set a
   few env vars, `docker compose up -d`.
 - **[Portainer](docs/deployment/portainer.md)** — paste the stack, set env vars, deploy.
-
----
-
-## Authentication — single-admin by design
-
-Lumio is a **single-admin application**. First-run setup creates one admin account; after
-that, signup is closed. There is intentionally no per-catalog ownership model — any
-authenticated session can read and manage any catalog. This is a deliberate choice for a
-self-hosted, single-user tool; multi-user support is deferred. Auth is handled by
-[Better Auth](https://www.better-auth.com/) (email + password, with optional two-factor and
-passkeys).
 
 ---
 
