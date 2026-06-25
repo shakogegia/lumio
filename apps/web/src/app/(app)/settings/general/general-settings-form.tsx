@@ -44,7 +44,7 @@ export function GeneralSettingsForm({ initial }: { initial: string | null }) {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="public-base-url">URL</Label>
+        <Label htmlFor="public-base-url">Public base URL</Label>
         <Input
           id="public-base-url"
           placeholder="https://photos.example.com"
