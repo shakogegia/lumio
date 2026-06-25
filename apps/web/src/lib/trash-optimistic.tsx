@@ -37,41 +37,41 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
   // Fire the trash POST in the background; keep the promise so Undo can wait for it.
   const trashed = trashPhotos(slug, ids);
 
-  const toastId = toast(`${label} moved to Trash`, {
-    duration: 6000,
-    closeButton: true,
-    // sonner v2 requires a ReactNode for the action slot — use a shadcn Button
-    // (same pattern as passkey-nudge.tsx). The button must dismiss the toast
-    // explicitly since custom nodes don't auto-dismiss.
-    action: (
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          undone = true;
-          toast.dismiss(toastId);
-          void (async () => {
-            // Wait for the trash POST to settle first, so restore can't run before
-            // the mark is applied (which would otherwise let the photo get trashed
-            // anyway). A trash failure is fine here — there's then nothing to undo.
-            try {
-              await trashed;
-            } catch {
-              /* trash never applied; restore below is a harmless no-op */
-            }
-            try {
-              await restorePhotos(slug, ids);
-              reload();
-            } catch {
-              toast.error("Failed to restore photos.");
-            }
-          })();
-        }}
-      >
+  // toastId is captured by the Undo handler, which only runs on click — after the
+  // assignment below, so the forward reference is safe.
+  let toastId: string | number = "";
+  const handleUndo = () => {
+    undone = true;
+    toast.dismiss(toastId);
+    void (async () => {
+      // Wait for the trash POST to settle first, so restore can't run before the
+      // mark is applied (which would otherwise let the photo get trashed anyway).
+      // A trash failure is fine here — there's then nothing to undo.
+      try {
+        await trashed;
+      } catch {
+        /* trash never applied; restore below is a harmless no-op */
+      }
+      try {
+        await restorePhotos(slug, ids);
+        reload();
+      } catch {
+        toast.error("Failed to restore photos.");
+      }
+    })();
+  };
+
+  // Render our own row so the message sits left and Undo sits at the end
+  // (space-between), rather than relying on sonner's action-slot placement.
+  toastId = toast(
+    <div className="flex w-full items-center justify-between gap-3">
+      <span className="min-w-0 truncate">{label} moved to Trash</span>
+      <Button size="sm" variant="outline" className="shrink-0" onClick={handleUndo}>
         Undo
       </Button>
-    ),
-  });
+    </div>,
+    { duration: 6000, closeButton: true },
+  );
 
   void trashed.catch(() => {
     if (undone) return; // user already undid; nothing to roll back
