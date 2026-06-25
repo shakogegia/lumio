@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
 import { useGridColumns } from "@/lib/hooks/use-grid-columns";
@@ -16,7 +16,6 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridSizeMenu } from "@/components/grid-size-menu";
-import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import {
   PhotoCapabilitiesProvider,
@@ -91,53 +90,58 @@ export function ShareGalleryView({
     <Skeleton className="inline-block h-3 w-16 align-middle" />
   );
 
-  const titleNode = <span className="truncate">{heading}</span>;
-
   return (
     <ShareRenditionProvider token={token}>
       <CatalogProvider catalog={{ id: "share", slug: token, name: heading }}>
         <PhotoCapabilitiesProvider value={PUBLIC_CAPABILITIES}>
           <PhotoActionsProvider value={actions}>
             <main className="mx-auto max-w-screen-2xl px-4 py-2">
-              {sel.count > 0 ? (
-                <SelectionToolbar
-                  title={titleNode}
-                  count={sel.count}
-                  totalLabel={totalLabel}
-                  onCancel={sel.clear}
-                  actions={
-                    <DownloadSelectedButton
-                      ids={[...sel.selected]}
-                      pending={actions.pending.download}
-                      onDownload={actions.download}
-                      onDone={sel.clear}
-                    />
-                  }
-                />
-              ) : (
-                <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-4 bg-background px-4 py-3">
-                  {/* Logo leads the toolbar as a prominent brand mark + wordmark. */}
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Logo className="size-8 shrink-0" />
-                    <div className="min-w-0">
-                      <h1 className="truncate text-sm font-semibold leading-tight">{heading}</h1>
-                      <div className="text-xs text-muted-foreground">{countSubtitle}</div>
+              {/* Single sticky toolbar: the logo always leads it (it stays put when a
+                  selection is active — only the subtitle + right-hand actions swap). */}
+              <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-4 bg-background px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Logo className="size-8 shrink-0" />
+                  <div className="min-w-0">
+                    <h1 className="truncate text-sm font-semibold leading-tight">{heading}</h1>
+                    <div className="text-xs text-muted-foreground">
+                      {sel.count > 0 ? `${sel.count} selected` : countSubtitle}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <GridViewMenu mode={mode} onModeChange={setMode} />
-                    <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                    {total !== null && total > 0 && (
-                      <Button asChild variant="outline" size="sm">
-                        <a href={shareDownloadAllUrl(token)} download>
-                          <Download aria-hidden />
-                          Download all
-                        </a>
-                      </Button>
-                    )}
-                  </div>
                 </div>
-              )}
+                <div className="flex shrink-0 items-center gap-2">
+                  {sel.count > 0 ? (
+                    <>
+                      <DownloadSelectedButton
+                        ids={[...sel.selected]}
+                        pending={actions.pending.download}
+                        onDownload={actions.download}
+                        onDone={sel.clear}
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={sel.clear}
+                        aria-label="Clear selection"
+                      >
+                        <X aria-hidden />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <GridViewMenu mode={mode} onModeChange={setMode} />
+                      <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+                      {total !== null && total > 0 && (
+                        <Button asChild variant="outline" size="sm">
+                          <a href={shareDownloadAllUrl(token)} download>
+                            <Download aria-hidden />
+                            Download all
+                          </a>
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
 
               <PhotoCollectionProvider
                 endpoint={sharePhotosEndpoint(token)}
