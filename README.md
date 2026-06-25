@@ -35,7 +35,7 @@ alternative to cloud photo services.
 - **Imports through the browser.** Drag-and-drop upload with content-hash de-duplication
   (the same photo won't land twice) and a configurable folder template that decides where
   uploads are filed on disk (default `{YYYY}/{YYYY}-{MM}-{DD}/{filename}`).
-- **Handles the formats real cameras produce.** JPEG, PNG, WebP, plus JXL and HEIC/HEIF
+- **Supported formats.** JPEG, PNG, WebP, and _JXL/HEIC/HEIF_
   via external decoders. Display-resolution renditions are generated so even non-browser
   formats preview instantly, with Display P3 color management end-to-end.
 - **Keeps the housekeeping sane.** Favorites, a soft-delete **trash** (restore or purge),
