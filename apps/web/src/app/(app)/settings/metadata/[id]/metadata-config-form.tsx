@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -185,7 +185,7 @@ export function MetadataConfigForm({
                               className="h-8 flex-1"
                             />
                             <Select value={f.type} onValueChange={(v) => void patchField(f.id, { type: v })}>
-                              <SelectTrigger className="h-8 w-28">
+                              <SelectTrigger size="sm" className="w-28">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -271,7 +271,7 @@ function AddField({
         }}
       />
       <Select value={type} onValueChange={setType}>
-        <SelectTrigger className="h-8 w-28">
+        <SelectTrigger size="sm" className="w-28">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -291,36 +291,43 @@ function AddField({
 
 function OptionsEditor({ options, onChange }: { options: string[]; onChange: (next: string[]) => void }) {
   const [draft, setDraft] = useState("");
+  function commit() {
+    const v = draft.trim();
+    if (v && !options.includes(v)) onChange([...options, v]);
+    setDraft("");
+  }
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 transition-colors focus-within:border-ring">
       {options.map((o) => (
         <span
           key={o}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+          className="inline-flex items-center gap-0.5 rounded-full bg-muted py-0.5 pr-1 pl-2 text-xs text-foreground"
         >
           {o}
           <button
             type="button"
             aria-label={`Remove ${o}`}
             onClick={() => onChange(options.filter((x) => x !== o))}
-            className="text-muted-foreground hover:text-foreground"
+            className="rounded-full text-muted-foreground transition-colors hover:text-foreground"
           >
-            ×
+            <X className="size-3" aria-hidden />
           </button>
         </span>
       ))}
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder="add option…"
-        className="h-6 w-28 rounded-md border border-border bg-background px-2 text-xs"
+        placeholder={options.length ? "Add…" : "Add an option…"}
+        className="h-5 min-w-20 flex-1 border-0 bg-transparent px-1 text-xs outline-none placeholder:text-muted-foreground"
         onKeyDown={(e) => {
-          const v = draft.trim();
-          if (e.key === "Enter" && v && !options.includes(v)) {
-            onChange([...options, v]);
-            setDraft("");
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Backspace" && !draft && options.length) {
+            onChange(options.slice(0, -1));
           }
         }}
+        onBlur={commit}
       />
     </div>
   );
