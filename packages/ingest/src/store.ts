@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Prisma, type PrismaClient } from "@lumio/db";
-import { parentDir, type PhotoSource } from "@lumio/shared";
+import { derivePromotedFields, parentDir, type PhotoSource } from "@lumio/shared";
 import type { ProcessedPhoto } from "./process.js";
 
 export interface StoreInput {
@@ -68,6 +68,7 @@ export async function storePhoto(
     fileMtimeMs,
     fileModifiedAt,
     fileCreatedAt,
+    ...derivePromotedFields(processed.exif),
   };
 
   const row = await deps.db.photo.upsert({

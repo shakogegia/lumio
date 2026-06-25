@@ -36,7 +36,7 @@ export async function loadPhotoDetail(
       : scope.kind === "search"
         ? getNeighborsForWhere(
             current,
-            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q }) },
+            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q, filter: scope.filter }) },
             scope.sort,
           )
         : getPhotoNeighbors(catalogId, current, null, scope.sort);

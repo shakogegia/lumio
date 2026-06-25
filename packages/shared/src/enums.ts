@@ -10,8 +10,21 @@ export enum MatchType {
   any = "any",
 }
 
-/** Supported smart-album rule operators (evaluation engine is a follow-up). */
+/** Supported filter/smart-album rule operators (used by buildPhotoWhere). */
 export enum RuleOp {
   eq = "eq",
+  ne = "ne",
+  contains = "contains",
+  gt = "gt",
+  gte = "gte",
+  lt = "lt",
+  lte = "lte",
+  between = "between",
+  exists = "exists",
+  not_exists = "not_exists",
+  in_album = "in_album",
+  not_in_album = "not_in_album",
+  in_list = "in_list",
+  not_in_list = "not_in_list",
   last_30_days = "last_30_days",
 }

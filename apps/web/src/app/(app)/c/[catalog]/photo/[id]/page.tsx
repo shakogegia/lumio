@@ -36,6 +36,7 @@ export default async function PhotoPage({
     q?: string;
     s?: string;
     sort?: string;
+    filter?: string;
     folder?: string;
   }>;
 }) {

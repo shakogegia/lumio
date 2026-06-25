@@ -5,7 +5,9 @@ import type Tribute from "tributejs";
 import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { type TributeFacetItem, loadAllOptions } from "./facets";
-import { type SearchFilters, buildFilters } from "./filters";
+import { type SearchFilters } from "./filters";
+import { type FilterRule, formatRuleLabel } from "@lumio/shared";
+import { mergeEditorRules } from "./editor-rules";
 
 const DEBOUNCE_MS = 250;
 const PLACEHOLDER = "Search photos…  (type @ to filter by album)";
@@ -33,23 +35,46 @@ function chipHtml(item: TributeFacetItem): string {
   );
 }
 
+function exifChipHtml(rule: FilterRule): string {
+  const json = escapeHtml(JSON.stringify(rule));
+  const label = escapeHtml(formatRuleLabel(rule));
+  return (
+    `<span contenteditable="false" data-facet="exif" data-rule="${json}" ` +
+    `class="mx-0.5 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 align-middle text-sm text-foreground">` +
+    `${label}` +
+    `<button type="button" data-chip-remove tabindex="-1" class="ml-0.5 leading-none text-muted-foreground hover:text-foreground">×</button>` +
+    `</span>&nbsp;`
+  );
+}
+
 /** Read the editor DOM into structured filters: chip spans → albums, text → q. */
-function readEditor(el: HTMLElement): SearchFilters {
+function readEditor(el: HTMLElement): Omit<SearchFilters, "match"> {
   const albums: string[] = [];
   el.querySelectorAll<HTMLElement>('[data-facet="album"]').forEach((chip) => {
     const value = chip.getAttribute("data-value");
     if (value) albums.push(value);
   });
 
+  const chipRules: FilterRule[] = [];
+  el.querySelectorAll<HTMLElement>('[data-facet="exif"]').forEach((chip) => {
+    const raw = chip.getAttribute("data-rule");
+    if (!raw) return;
+    try {
+      chipRules.push(JSON.parse(raw) as FilterRule);
+    } catch {
+      /* ignore a corrupt chip */
+    }
+  });
+
   let rawText = "";
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
-    // Skip text that lives inside a chip span.
     if (!node.parentElement?.closest("[data-facet]")) rawText += node.textContent ?? "";
     node = walker.nextNode();
   }
-  return buildFilters(albums, rawText);
+  const { rules, q } = mergeEditorRules(chipRules, rawText.replace(/\u00A0/g, " ").trim());
+  return { albums: Array.from(new Set(albums)), q, rules };
 }
 
 function isEditorEmpty(el: HTMLElement): boolean {
@@ -99,7 +124,10 @@ function adjacentChip(range: Range, dir: "back" | "forward"): HTMLElement | null
 
 /** Imperative handle so a parent can repopulate the box (e.g. re-run a recent search). */
 export interface SearchInputHandle {
-  applyFilters: (filters: SearchFilters) => void;
+  /** Rebuild the box from a filter set. `focus` defaults to true (for recent-search
+   *  recall); the facet panel passes `focus: false` so applying a filter doesn't steal
+   *  focus back to the box and dismiss the open popover. */
+  applyFilters: (filters: Omit<SearchFilters, "match">, opts?: { focus?: boolean }) => void;
 }
 
 /**
@@ -118,10 +146,10 @@ export function SearchInput({
   ref?: React.Ref<SearchInputHandle>;
   /** Compact styling once the box has moved to the top (vs. the centered hero). */
   compact: boolean;
-  onChange: (filters: SearchFilters) => void;
+  onChange: (filters: Omit<SearchFilters, "match">) => void;
   onActivate: () => void;
   /** Fired when focus leaves the box, with the settled filters (for recording recents). */
-  onCommit?: (filters: SearchFilters) => void;
+  onCommit?: (filters: Omit<SearchFilters, "match">) => void;
 }) {
   const { slug } = useCatalog();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -160,21 +188,23 @@ export function SearchInput({
   useImperativeHandle(
     ref,
     () => ({
-      applyFilters(filters: SearchFilters) {
+      applyFilters(filters: Omit<SearchFilters, "match">, opts?: { focus?: boolean }) {
         const el = editorRef.current;
         if (!el) return;
         void loadAllOptions(slugRef.current)
           .catch(() => [] as TributeFacetItem[])
-          .then((opts) => {
+          .then((opts2) => {
             const labelFor = (id: string) =>
-              opts.find((o) => o.facetKey === "album" && o.value === id)?.label ?? id;
-            el.innerHTML = filters.albums
-              .map((id) =>
-                chipHtml({ facetKey: "album", facetLabel: "Album", value: id, label: labelFor(id) }),
-              )
-              .join("");
+              opts2.find((o) => o.facetKey === "album" && o.value === id)?.label ?? id;
+            // filters.albums is assumed already-deduped (readEditor dedupes on the way in).
+            el.innerHTML =
+              filters.albums
+                .map((id) => chipHtml({ facetKey: "album", facetLabel: "Album", value: id, label: labelFor(id) }))
+                .join("") + filters.rules.map(exifChipHtml).join("");
             if (filters.q) el.appendChild(document.createTextNode(filters.q));
-            el.focus();
+            // Only steal focus back to the box for recent-search recall; the facet
+            // panel passes focus:false so its popover isn't dismissed on each edit.
+            if (opts?.focus !== false) el.focus();
             emitNow();
           });
       },
