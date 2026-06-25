@@ -12,7 +12,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Trash2, X } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { invalidateMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +48,10 @@ export function MetadataConfigForm({
   schema: MetadataSchema;
 }) {
   const router = useRouter();
+  const refresh = () => {
+    invalidateMetadataSchema(slug);
+    router.refresh();
+  };
   const [standard, setStandard] = useState(standardEnabled);
   const [custom, setCustom] = useState(customEnabled);
   const [busy, setBusy] = useState(false);
@@ -49,7 +61,7 @@ export function MetadataConfigForm({
     set(next);
     try {
       await postJson(apiPaths.features, { key, catalogId, enabled: next }, "PUT");
-      router.refresh();
+      refresh();
     } catch {
       set(!next);
     }
@@ -59,7 +71,7 @@ export function MetadataConfigForm({
     setBusy(true);
     try {
       await postJson(catalogApiUrl(slug, "/metadata/apply-preset"), { presetId: "nlp" });
-      router.refresh();
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -69,7 +81,7 @@ export function MetadataConfigForm({
     setBusy(true);
     try {
       await postJson(catalogApiUrl(slug, "/metadata/clear"), {});
-      router.refresh();
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -77,14 +89,14 @@ export function MetadataConfigForm({
 
   async function patchField(fieldId: string, data: Record<string, unknown>) {
     await postJson(catalogApiUrl(slug, `/metadata/fields/${fieldId}`), data, "PATCH");
-    router.refresh();
+    refresh();
   }
 
   async function deleteField(fieldId: string) {
     setBusy(true);
     try {
       await postJson(catalogApiUrl(slug, `/metadata/fields/${fieldId}`), {}, "DELETE");
-      router.refresh();
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -92,14 +104,14 @@ export function MetadataConfigForm({
 
   async function addField(groupId: string, label: string, type: string) {
     await postJson(catalogApiUrl(slug, "/metadata/fields"), { groupId, label, type });
-    router.refresh();
+    refresh();
   }
 
   async function addGroup(label: string) {
     setBusy(true);
     try {
       await postJson(catalogApiUrl(slug, "/metadata/groups"), { label });
-      router.refresh();
+      refresh();
     } finally {
       setBusy(false);
     }
@@ -189,11 +201,13 @@ export function MetadataConfigForm({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {Object.values(FieldType).map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {typeLabel(t)}
-                                  </SelectItem>
-                                ))}
+                                <SelectGroup>
+                                  {Object.values(FieldType).map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                      {typeLabel(t)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
                               </SelectContent>
                             </Select>
                             <Switch
@@ -275,11 +289,13 @@ function AddField({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {Object.values(FieldType).map((t) => (
-            <SelectItem key={t} value={t}>
-              {typeLabel(t)}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            {Object.values(FieldType).map((t) => (
+              <SelectItem key={t} value={t}>
+                {typeLabel(t)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
       <Button variant="outline" size="sm" disabled={busy || !label.trim()} onClick={submit}>

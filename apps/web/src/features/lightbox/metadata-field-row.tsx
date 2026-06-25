@@ -4,7 +4,14 @@
 import { useId, useRef, useState } from "react";
 import { FieldType, MetadataValueSource, type ResolvedField } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function MetadataFieldRow({
   slug,
@@ -63,13 +70,15 @@ export function MetadataFieldRow({
       <div className="flex items-center gap-1">
         {field.type === FieldType.Choice && field.options.length > 0 ? (
           <Select value={value || undefined} onValueChange={(v) => { setValue(v); void save(v); }}>
-            <SelectTrigger className="h-8 w-40">
+            <SelectTrigger size="sm" className="w-40">
               <SelectValue placeholder={isExif && field.value ? field.value : "—"} />
             </SelectTrigger>
             <SelectContent>
-              {field.options.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
+              <SelectGroup>
+                {field.options.map((o) => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         ) : field.type === FieldType.Textarea ? (
