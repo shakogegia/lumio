@@ -70,7 +70,10 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
         Undo
       </Button>
     </div>,
-    { duration: 6000, closeButton: true },
+    // `content: flex-1` makes sonner's content slot fill the toast width (it
+    // shrinks to its content by default), so our row's justify-between can push
+    // Undo to the end.
+    { duration: 6000, closeButton: true, classNames: { content: "flex-1" } },
   );
 
   void trashed.catch(() => {
