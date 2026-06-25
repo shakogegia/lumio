@@ -9,6 +9,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 
 /**
@@ -24,33 +29,38 @@ export function GridViewMenu({
   onModeChange: (mode: GridViewMode) => void;
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon-sm" aria-label="Grid view" title="Grid view">
-          <LayoutGrid />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        <DropdownMenuRadioGroup
-          value={mode}
-          onValueChange={(value) => {
-            if (value === "fill" || value === "fit" || value === "card") onModeChange(value);
-          }}
-        >
-          <DropdownMenuRadioItem value="fill">
-            <Maximize aria-hidden />
-            Fill
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="fit">
-            <Minimize aria-hidden />
-            Fit
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="card">
-            <ImageIcon aria-hidden />
-            Card
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Tooltip>
+      <DropdownMenu>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon-sm" aria-label="Grid view">
+              <LayoutGrid />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuRadioGroup
+            value={mode}
+            onValueChange={(value) => {
+              if (value === "fill" || value === "fit" || value === "card") onModeChange(value);
+            }}
+          >
+            <DropdownMenuRadioItem value="fill">
+              <Maximize aria-hidden />
+              Fill
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="fit">
+              <Minimize aria-hidden />
+              Fit
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="card">
+              <ImageIcon aria-hidden />
+              Card
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <TooltipContent>Grid view</TooltipContent>
+    </Tooltip>
   );
 }

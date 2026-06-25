@@ -67,19 +67,25 @@ export function LightboxActions({
       {confirmDialog}
       <div className="flex items-center gap-1">
         {edited && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            aria-label="Reset edits"
-            title={dirty ? "Reset edits (unsaved changes)" : "Reset edits"}
-            onClick={() => void resetEdits()}
-          >
-            <Palette
-              aria-hidden
-              className={dirty ? "text-amber-500" : "text-primary"}
-            />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Reset edits"
+                onClick={() => void resetEdits()}
+              >
+                <Palette
+                  aria-hidden
+                  className={dirty ? "text-amber-500" : "text-primary"}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {dirty ? "Reset edits (unsaved changes)" : "Reset edits"}
+            </TooltipContent>
+          </Tooltip>
         )}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -105,18 +111,20 @@ export function LightboxActions({
         </Tooltip>
 
         {hasEdits(photo.edits) ? (
+          <Tooltip>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                aria-label="Download"
-                title="Download"
-              >
-                <Download aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Download"
+                >
+                  <Download aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onSelect={() =>
@@ -138,31 +146,44 @@ export function LightboxActions({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <TooltipContent>Download</TooltipContent>
+          </Tooltip>
         ) : (
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            aria-label="Download"
-            title="Download"
-          >
-            <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
-              <Download aria-hidden />
-            </a>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Download"
+              >
+                <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
+                  <Download aria-hidden />
+                </a>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Download</TooltipContent>
+          </Tooltip>
         )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Move to Trash"
-          title="Move to Trash"
-          className="size-7 text-muted-foreground hover:text-destructive"
-          onClick={() => void trash()}
-        >
-          <Trash2 aria-hidden />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Move to Trash"
+              className="size-7 text-muted-foreground hover:text-destructive"
+              onClick={() => void trash()}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Move to Trash
+            <Kbd>⌫</Kbd>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </>
   );

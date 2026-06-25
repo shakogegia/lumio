@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { MAX_ZOOM } from "./zoom-math";
 import { ZoomSlider } from "./zoom-slider";
 
@@ -58,16 +63,21 @@ export function ZoomControls({
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        aria-label="Zoom out"
-        disabled={!canStepOut}
-        onClick={stepOut}
-      >
-        <Minus className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Zoom out"
+            disabled={!canStepOut}
+            onClick={stepOut}
+          >
+            <Minus className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Zoom out</TooltipContent>
+      </Tooltip>
       <ZoomSlider
         className="hidden w-20 sm:flex"
         min={min}
@@ -82,16 +92,21 @@ export function ZoomControls({
         showValue={showValue}
         aria-label="Zoom"
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        aria-label="Zoom in"
-        disabled={!canStepIn}
-        onClick={stepIn}
-      >
-        <Plus className="size-4" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="Zoom in"
+            disabled={!canStepIn}
+            onClick={stepIn}
+          >
+            <Plus className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Zoom in</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

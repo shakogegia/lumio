@@ -3,6 +3,12 @@
 import { Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
 import { ColorLabelMenu } from "@/components/photo-actions/color-label-menu";
 import { AddToAlbumMenu } from "@/components/photo-actions/add-to-album-menu";
@@ -66,16 +72,23 @@ export function SelectionActions({
         pending={actions.pending.download}
         onDownload={(variant) => void actions.download(ids, { variant, onSuccess: clearSelection })}
       />
-      <Button
-        variant="destructive"
-        size="icon-sm"
-        disabled={none}
-        onClick={() => void actions.trash(ids, { onSuccess: clearSelection })}
-        aria-label="Delete"
-        title="Delete"
-      >
-        <Trash2 aria-hidden />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="destructive"
+            size="icon-sm"
+            disabled={none}
+            onClick={() => void actions.trash(ids, { onSuccess: clearSelection })}
+            aria-label="Delete"
+          >
+            <Trash2 aria-hidden />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          Delete
+          <Kbd>⌫</Kbd>
+        </TooltipContent>
+      </Tooltip>
     </>
   );
 }

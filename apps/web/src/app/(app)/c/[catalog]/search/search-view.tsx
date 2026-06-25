@@ -11,6 +11,11 @@ import { GridSizeMenu } from "@/components/grid-size-menu";
 import { GridViewMenu } from "@/components/grid-view-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
@@ -155,15 +160,19 @@ export function SearchView() {
                         clearSelection={sel.clear}
                         anyEdited={anySelectedEdited}
                       />
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={sel.clear}
-                        aria-label="Cancel"
-                        title="Cancel"
-                      >
-                        <X aria-hidden />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            onClick={sel.clear}
+                            aria-label="Cancel"
+                          >
+                            <X aria-hidden />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Cancel</TooltipContent>
+                      </Tooltip>
                     </>
                   ) : (
                     <>

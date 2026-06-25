@@ -22,6 +22,11 @@ const DETAIL_GROUP = COLOR_FIELDS.filter((f) => f.group === "detail");
 const DETAIL_KEYS = DETAIL_GROUP.map((f) => f.key);
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEditSession } from "./use-edit-session";
@@ -37,6 +42,37 @@ const ASPECTS: { preset: AspectPreset; label: string }[] = [
   { preset: "3:2", label: "3:2" }, { preset: "2:3", label: "2:3" },
   { preset: "16:9", label: "16:9" }, { preset: "9:16", label: "9:16" },
 ];
+
+/** Tooltipped icon button for a section's "reset to neutral" affordance. The
+ *  buttons are icon-only (a circular-arrow glyph), so the tooltip carries what
+ *  they reset. No keyboard shortcut — these mirror the per-slider value reset. */
+function ResetButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground"
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+        >
+          <RefreshCcw aria-hidden />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 /** Edit-tab body: rotate/flip controls with undo/redo that drive the lightbox
  *  edit session, plus Apply (persist) and Reset (back to original, on Apply). */
@@ -157,16 +193,11 @@ export function LightboxEditPanel() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-medium text-muted-foreground">Crop</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground"
-              aria-label="Reset crop"
+            <ResetButton
+              label="Reset crop"
               disabled={working.crop == null}
               onClick={() => setAspect("free")}
-            >
-              <RefreshCcw aria-hidden />
-            </Button>
+            />
           </div>
           {/* A null crop is unconstrained regardless of the remembered preset, so
               Free lights up whenever there is no explicit crop. */}
@@ -201,31 +232,30 @@ export function LightboxEditPanel() {
           {applying ? "Applying" : "Apply"}
           <Kbd className="ml-auto bg-primary-foreground/15 text-primary-foreground">⌘S</Kbd>
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          disabled={!dirty || applying}
-          onClick={reset}
-          title="Discard unsaved changes"
-        >
-          Reset
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              disabled={!dirty || applying}
+              onClick={reset}
+            >
+              Reset
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Discard unsaved changes</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground">Transform</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            aria-label="Reset transform"
+          <ResetButton
+            label="Reset transform"
             disabled={working.rotate === 0 && !working.flipH && !working.flipV}
             onClick={resetTransform}
-          >
-            <RefreshCcw aria-hidden />
-          </Button>
+          />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" size="sm" onClick={rotateLeft}>
@@ -248,16 +278,11 @@ export function LightboxEditPanel() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground">Crop</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            aria-label="Reset crop & straighten"
+          <ResetButton
+            label="Reset crop & straighten"
             disabled={working.crop == null && (working.straighten ?? 0) === 0}
             onClick={resetCrop}
-          >
-            <RefreshCcw aria-hidden />
-          </Button>
+          />
         </div>
         <Button variant="outline" size="sm" className="w-full" onClick={enterCropMode}>
           <Crop aria-hidden /> Crop &amp; Straighten
@@ -268,16 +293,11 @@ export function LightboxEditPanel() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground">Adjust</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            aria-label="Reset adjustments"
+          <ResetButton
+            label="Reset adjustments"
             disabled={!hasColor(working)}
             onClick={() => resetColor()}
-          >
-            <RefreshCcw aria-hidden />
-          </Button>
+          />
         </div>
         {COLOR_GROUP.map(renderSlider)}
       </div>
@@ -285,16 +305,11 @@ export function LightboxEditPanel() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="font-medium text-muted-foreground">Detail &amp; Grain</p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 text-muted-foreground"
-            aria-label="Reset detail & grain"
+          <ResetButton
+            label="Reset detail & grain"
             disabled={DETAIL_KEYS.every((k) => (working[k] ?? 0) === 0)}
             onClick={() => resetColor(DETAIL_KEYS)}
-          >
-            <RefreshCcw aria-hidden />
-          </Button>
+          />
         </div>
         {DETAIL_GROUP.map(renderSlider)}
       </div>
@@ -312,16 +327,22 @@ export function LightboxEditPanel() {
             <Kbd className="ml-auto">⌘⇧Z</Kbd>
           </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-muted-foreground"
-          disabled={!hasEdits(working) || applying}
-          onClick={revertToOriginal}
-          title="Remove all edits and return to the unedited photo"
-        >
-          <History aria-hidden /> Revert to original
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-muted-foreground"
+              disabled={!hasEdits(working) || applying}
+              onClick={revertToOriginal}
+            >
+              <History aria-hidden /> Revert to original
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Remove all edits and return to the unedited photo
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FolderMinus, ImageUp, Images, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useConfirm } from "@/components/confirm-dialog";
 import { countLabel } from "@/lib/count-label";
 import {
@@ -70,29 +75,37 @@ export function AlbumView({
         headerActions={
           <>
             {!isSmart && (
-              <Button
-                asChild
-                variant="outline"
-                size="icon-sm"
-                aria-label="Upload to this album"
-                title="Upload to this album"
-              >
-                <a href={catalogPath(slug, `/upload?albumId=${albumId}`)}>
-                  <Upload aria-hidden />
-                </a>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label="Upload to this album"
+                  >
+                    <a href={catalogPath(slug, `/upload?albumId=${albumId}`)}>
+                      <Upload aria-hidden />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Upload to this album</TooltipContent>
+              </Tooltip>
             )}
-            <Button
-              asChild
-              variant="outline"
-              size="icon-sm"
-              aria-label="Download album"
-              title="Download album"
-            >
-              <a href={catalogApiUrl(slug, `/albums/${albumId}/download`)}>
-                <Download aria-hidden />
-              </a>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Download album"
+                >
+                  <a href={catalogApiUrl(slug, `/albums/${albumId}/download`)}>
+                    <Download aria-hidden />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download album</TooltipContent>
+            </Tooltip>
           </>
         }
         selectionActions={({ actions, selectedIds, clearSelection }) => {
@@ -132,32 +145,40 @@ export function AlbumView({
           return (
             <>
               {!isSmart && (
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  disabled={selectedIds.size !== 1}
-                  onClick={() => void actions.setAlbumCover([...selectedIds][0])}
-                  aria-label="Set as album cover"
-                  title="Set as album cover"
-                >
-                  <ImageUp aria-hidden />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      disabled={selectedIds.size !== 1}
+                      onClick={() => void actions.setAlbumCover([...selectedIds][0])}
+                      aria-label="Set as album cover"
+                    >
+                      <ImageUp aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Set as album cover</TooltipContent>
+                </Tooltip>
               )}
               {!isSmart && (
-                <Button
-                  variant="destructive"
-                  size="icon-sm"
-                  disabled={selectedIds.size === 0 || removing}
-                  onClick={() => void handleRemove()}
-                  aria-label="Remove from album"
-                  title="Remove from album"
-                >
-                  {removing ? (
-                    <Loader2 className="animate-spin" aria-hidden />
-                  ) : (
-                    <FolderMinus aria-hidden />
-                  )}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="icon-sm"
+                      disabled={selectedIds.size === 0 || removing}
+                      onClick={() => void handleRemove()}
+                      aria-label="Remove from album"
+                    >
+                      {removing ? (
+                        <Loader2 className="animate-spin" aria-hidden />
+                      ) : (
+                        <FolderMinus aria-hidden />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Remove from album</TooltipContent>
+                </Tooltip>
               )}
             </>
           );

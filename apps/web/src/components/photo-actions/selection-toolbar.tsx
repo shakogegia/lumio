@@ -2,6 +2,11 @@
 
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { HeaderBar } from "@/components/header-bar";
 
 export function SelectionToolbar({
@@ -27,15 +32,19 @@ export function SelectionToolbar({
       actions={
         <>
           {actions}
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={onCancel}
-            aria-label="Cancel"
-            title="Cancel"
-          >
-            <X aria-hidden />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={onCancel}
+                aria-label="Cancel"
+              >
+                <X aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Cancel</TooltipContent>
+          </Tooltip>
         </>
       }
     />

@@ -5,6 +5,11 @@ import { CalendarDays, Loader2 } from "lucide-react";
 import type { CalendarFacets } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
@@ -99,19 +104,21 @@ export function GridCalendarMenu({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size={value ? "sm" : "icon-sm"}
-          aria-label="Filter by month"
-          title="Filter by month"
-          aria-pressed={value != null}
-        >
-          <CalendarDays aria-hidden />
-          {value && <span>{formatMonth(value)}</span>}
-        </Button>
-      </PopoverTrigger>
+    <Tooltip>
+      <Popover open={open} onOpenChange={setOpen}>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size={value ? "sm" : "icon-sm"}
+              aria-label="Filter by month"
+              aria-pressed={value != null}
+            >
+              <CalendarDays aria-hidden />
+              {value && <span>{formatMonth(value)}</span>}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
       <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0">
         {loading ? (
           <div className="flex h-48 items-center justify-center">
@@ -213,6 +220,8 @@ export function GridCalendarMenu({
           </div>
         )}
       </PopoverContent>
-    </Popover>
+      </Popover>
+      <TooltipContent>Filter by month</TooltipContent>
+    </Tooltip>
   );
 }

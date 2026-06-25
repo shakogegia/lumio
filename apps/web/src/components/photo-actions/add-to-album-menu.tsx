@@ -13,6 +13,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AlbumPickerItems } from "./album-picker-items";
 
 /**
@@ -32,33 +37,37 @@ export function AddToAlbumMenu({
   onCreateNew: () => void;
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          disabled={disabled}
-          aria-label="Add to album"
-          title="Add to album"
-        >
-          <FolderPlus aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Add to album</DropdownMenuLabel>
-        <AlbumPickerItems
-          menu={{
-            Item: DropdownMenuItem,
-            Separator: DropdownMenuSeparator,
-            Sub: DropdownMenuSub,
-            SubTrigger: DropdownMenuSubTrigger,
-            SubContent: DropdownMenuSubContent,
-          }}
-          excludeAlbumId={excludeAlbumId}
-          onPick={onPick}
-          onCreateNew={onCreateNew}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Tooltip>
+      <DropdownMenu>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              disabled={disabled}
+              aria-label="Add to album"
+            >
+              <FolderPlus aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Add to album</DropdownMenuLabel>
+          <AlbumPickerItems
+            menu={{
+              Item: DropdownMenuItem,
+              Separator: DropdownMenuSeparator,
+              Sub: DropdownMenuSub,
+              SubTrigger: DropdownMenuSubTrigger,
+              SubContent: DropdownMenuSubContent,
+            }}
+            excludeAlbumId={excludeAlbumId}
+            onPick={onPick}
+            onCreateNew={onCreateNew}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <TooltipContent>Add to album</TooltipContent>
+    </Tooltip>
   );
 }
