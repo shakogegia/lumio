@@ -1,11 +1,10 @@
 "use client";
 
-import { toast } from "sonner";
 import { Download, Heart, Palette, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { trashPhotos } from "@/lib/photo-mutations";
+import { optimisticTrash } from "@/lib/trash-optimistic";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -34,28 +33,21 @@ export function LightboxActions({
   onTrashed: () => void;
 }) {
   const { slug } = useCatalog();
-  const { removePhotos } = usePhotoCollection();
+  const { removePhotos, reload } = usePhotoCollection();
   const { confirm, confirmDialog } = useConfirm();
   const { dirty, reset } = useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
   // Edited = unsaved working changes, or persisted edits baked into the photo.
   const edited = dirty || hasEdits(photo.edits);
 
-  async function trash() {
-    const ok = await confirm({
-      title: "Move to Trash?",
-      description: "You can restore it later.",
-      confirmLabel: "Move to Trash",
-      destructive: true,
+  function trash() {
+    optimisticTrash({
+      slug,
+      ids: [photo.id],
+      removePhotos,
+      reload,
+      onRemoved: onTrashed,
     });
-    if (!ok) return;
-    try {
-      await trashPhotos(slug, [photo.id]);
-      removePhotos(new Set([photo.id]));
-      onTrashed();
-    } catch {
-      toast.error("Failed to move to Trash.");
-    }
   }
 
   async function resetEdits() {
