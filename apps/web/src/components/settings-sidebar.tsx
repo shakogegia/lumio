@@ -2,19 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, FileClock, GalleryHorizontalEnd, ToggleRight, User, Users } from "lucide-react";
+import { ArrowLeft, FileClock, GalleryHorizontalEnd, Tags, ToggleRight, User, Users } from "lucide-react";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SettingsWorkerStatus } from "@/components/settings-worker-status";
-
-// Settings sections — absolute hrefs (not catalog-scoped). Catalogs matches its
-// detail pages too (`/settings/catalogs/<id>`) via the prefix check in isActive.
-const ITEMS: NavItem[] = [
-  { href: "/settings/account", label: "Account", icon: User, match: ["/settings/account"] },
-  { href: "/settings/catalogs", label: "Catalogs", icon: GalleryHorizontalEnd, match: ["/settings/catalogs"] },
-  { href: "/settings/features", label: "Features", icon: ToggleRight, match: ["/settings/features"] },
-  { href: "/settings/logs", label: "Logs", icon: FileClock, match: ["/settings/logs"] },
-  { href: "/settings/users", label: "Users", icon: Users, match: ["/settings/users"] },
-];
 
 /**
  * Settings rail. Mirrors the main {@link AppSidebar} look — a narrow 76px
@@ -25,12 +15,25 @@ const ITEMS: NavItem[] = [
 export function SettingsSidebar({
   backHref,
   catalogSlug,
+  showMetadata,
 }: {
   backHref: string;
   /** Default catalog for the global worker poll; null when no catalogs exist. */
   catalogSlug: string | null;
+  showMetadata: boolean;
 }) {
   const pathname = usePathname() ?? "/";
+
+  const items: NavItem[] = [
+    { href: "/settings/account", label: "Account", icon: User, match: ["/settings/account"] },
+    { href: "/settings/catalogs", label: "Catalogs", icon: GalleryHorizontalEnd, match: ["/settings/catalogs"] },
+    { href: "/settings/features", label: "Features", icon: ToggleRight, match: ["/settings/features"] },
+    ...(showMetadata
+      ? [{ href: "/settings/metadata", label: "Metadata", icon: Tags, match: ["/settings/metadata"] } as NavItem]
+      : []),
+    { href: "/settings/logs", label: "Logs", icon: FileClock, match: ["/settings/logs"] },
+    { href: "/settings/users", label: "Users", icon: Users, match: ["/settings/users"] },
+  ];
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex h-dvh w-[76px] flex-col items-center border-r border-border bg-background/80 backdrop-blur-sm">
@@ -50,7 +53,7 @@ export function SettingsSidebar({
 
       {/* Section nav — vertically centered, same NavLink as the main rail. */}
       <nav className="flex flex-1 flex-col items-center justify-center gap-1">
-        {ITEMS.map((item) => (
+        {items.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item)} />
         ))}
       </nav>
