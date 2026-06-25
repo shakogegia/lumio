@@ -46,9 +46,13 @@ export async function createShareLink(
   deps: CreateDeps = DEFAULT_DEPS,
 ): Promise<ShareLinkSummaryDTO> {
   // Only link photos that belong to this catalog and are live (never another
-  // catalog's ids, never trashed photos).
+  // catalog's ids, never trashed photos). Ordered canonically so the create-time
+  // cover (owned[0]) matches the cover listShareLinks later derives. If every id
+  // is filtered out the link is created with zero members — a harmless empty
+  // gallery; callers always pass a real in-catalog selection.
   const owned = await db.photo.findMany({
     where: { catalogId, ...LIVE_PHOTO, id: { in: input.photoIds } },
+    orderBy: PHOTO_ORDER,
     select: { id: true },
   });
   const passwordHash = input.password ? await deps.hashPassword(input.password) : null;
