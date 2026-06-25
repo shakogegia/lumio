@@ -5,6 +5,7 @@ import { Download, X } from "lucide-react";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
 import { makeColumnsStore } from "@/lib/columns-store";
+import { COLUMNS_MAX } from "@/lib/grid-layout";
 import {
   PhotoGrid,
   type PhotoGridHandle,
@@ -33,12 +34,15 @@ import {
 
 const NO_PARAMS = new URLSearchParams();
 
-// The public gallery defaults to larger preview tiles (3 columns) and persists
-// the viewer's own choice under a dedicated key (separate from the authed grid).
+// The grid-size slider runs many-columns/small (left) → few-columns/large
+// (right); the 3rd tick from the left is COLUMNS_MAX - 2 columns (the same
+// default density as /albums). The viewer's own choice persists under a
+// dedicated key, separate from the authed grid.
+const SHARE_DEFAULT_COLUMNS = COLUMNS_MAX - 2;
 const useShareGridColumns = makeColumnsStore({
   storageKey: "lumio:share-grid-columns",
   cssVar: null,
-  defaultColumns: 3,
+  defaultColumns: SHARE_DEFAULT_COLUMNS,
 });
 
 /** The single "Download selected" button rendered in the selection toolbar. */
@@ -104,10 +108,18 @@ export function ShareGalleryView({
       <CatalogProvider catalog={{ id: "share", slug: token, name: heading }}>
         <PhotoCapabilitiesProvider value={PUBLIC_CAPABILITIES}>
           <PhotoActionsProvider value={actions}>
-            {/* No app sidebar here, so the lightbox should go full-bleed. */}
+            {/* No app sidebar here, so the lightbox goes full-bleed (--lightbox-left-inset).
+                --grid-columns drives the loading skeleton's density; setting it from the
+                gallery's own column count keeps the skeleton in step with the real grid
+                (the root layout otherwise seeds it from the authed photo-grid default). */}
             <main
               className="mx-auto max-w-screen-2xl px-4 py-2"
-              style={{ "--lightbox-left-inset": "0px" } as React.CSSProperties}
+              style={
+                {
+                  "--lightbox-left-inset": "0px",
+                  "--grid-columns": String(columns),
+                } as React.CSSProperties
+              }
             >
               {/* Single sticky toolbar: the logo always leads it (it stays put when a
                   selection is active — only the subtitle + right-hand actions swap). */}
