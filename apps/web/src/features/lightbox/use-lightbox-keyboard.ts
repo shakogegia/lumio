@@ -19,6 +19,8 @@ export interface LightboxKeys {
   redo: () => void;
   /** Toggle the open photo's favorite state. */
   toggleFavorite: () => void;
+  /** Trash the open photo, then advance (or close if it was the last). */
+  trashCurrent: () => void;
   /** The currently active sidebar tab. */
   activeTab: LightboxTab;
   /** Switch the sidebar tab (i → Info, e → Edit). */
@@ -85,6 +87,12 @@ export function useLightboxKeyboard(keys: LightboxKeys): void {
       }
       // Unmodified single-press shortcuts.
       if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.repeat) {
+        // Move the open photo to Trash.
+        if (e.key === "Backspace" || e.key === "Delete") {
+          e.preventDefault();
+          k.trashCurrent();
+          return;
+        }
         // Favorite toggle.
         if (e.key === "f" || e.key === "F") {
           e.preventDefault();
