@@ -68,8 +68,10 @@ export function LightboxSidebar({ photo }: { photo: PhotoDTO }) {
 
         <div className="p-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
           <TabsContent value={LightboxTab.Info} className="space-y-4">
-            <StandardMetadata exif={photo.exif} />
-            <Separator />
+            <FeatureGate feature={FeatureKey.StandardMetadata}>
+              <StandardMetadata exif={photo.exif} />
+              <Separator />
+            </FeatureGate>
             <div className="space-y-3">
               <Row label="Source" value={<Badge>{photo.source}</Badge>} />
               <Row label="File created" value={photo.fileCreatedAt ?? "—"} />
