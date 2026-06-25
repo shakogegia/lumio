@@ -13,6 +13,7 @@ export interface MetadataFieldDef {
   builtinKey: StandardFieldKey | null;
   enabled: boolean;
   suggests: boolean;
+  options: string[];
 }
 
 export interface MetadataSchemaGroup {
@@ -31,6 +32,7 @@ export interface ResolvedField {
   type: FieldType;
   kind: FieldKind;
   suggests: boolean;
+  options: string[];
   value: string | null;
   source: MetadataValueSource;
 }
@@ -78,6 +80,7 @@ export function resolvePhotoMetadata(
           type: f.type,
           kind: f.kind,
           suggests: f.suggests,
+          options: f.options,
           value,
           source,
         };

@@ -30,6 +30,9 @@ describe("built-in presets", () => {
       label: "Film ISO",
       type: FieldType.Number,
     });
+    // choice fields ship with seeded options
+    const filmFormat = nlp.groups[0]!.fields.find((f) => f.key === "film-format");
+    expect(filmFormat?.options?.length).toBeGreaterThan(0);
   });
 
   it("getPreset returns undefined for an unknown id", () => {

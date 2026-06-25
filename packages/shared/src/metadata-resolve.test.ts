@@ -8,15 +8,15 @@ const schema: MetadataSchema = [
     id: "g1",
     label: "Camera & exposure",
     fields: [
-      { id: "f-cam", key: "camera", label: "Camera", type: FieldType.Text, kind: FieldKind.Standard, builtinKey: StandardFieldKey.Camera, enabled: true, suggests: false },
-      { id: "f-iso", key: "iso", label: "ISO", type: FieldType.Number, kind: FieldKind.Standard, builtinKey: StandardFieldKey.Iso, enabled: false, suggests: false },
+      { id: "f-cam", key: "camera", label: "Camera", type: FieldType.Text, kind: FieldKind.Standard, builtinKey: StandardFieldKey.Camera, enabled: true, suggests: false, options: [] },
+      { id: "f-iso", key: "iso", label: "ISO", type: FieldType.Number, kind: FieldKind.Standard, builtinKey: StandardFieldKey.Iso, enabled: false, suggests: false, options: [] },
     ],
   },
   {
     id: "g2",
     label: "Film",
     fields: [
-      { id: "f-stock", key: "film-stock", label: "Film stock", type: FieldType.Text, kind: FieldKind.Custom, builtinKey: null, enabled: true, suggests: true },
+      { id: "f-stock", key: "film-stock", label: "Film stock", type: FieldType.Text, kind: FieldKind.Custom, builtinKey: null, enabled: true, suggests: true, options: [] },
     ],
   },
 ];

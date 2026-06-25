@@ -8,6 +8,7 @@ export interface PresetField {
   kind: FieldKind;
   /** Set for kind === Standard: which STANDARD_FIELDS entry this field surfaces. */
   builtinKey?: string;
+  options?: string[];
 }
 
 export interface PresetGroup {
