@@ -31,6 +31,9 @@ describe("password hash/verify", () => {
   it("rejects a malformed stored value", async () => {
     expect(await verifyPassword("x", "garbage")).toBe(false);
   });
+  it("rejects a stored hash whose key is not the canonical length", async () => {
+    expect(await verifyPassword("hunter2", "00112233445566778899aabbccddeeff:ab")).toBe(false);
+  });
 });
 
 describe("unlock signature", () => {
