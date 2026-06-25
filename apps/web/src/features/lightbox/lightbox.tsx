@@ -14,6 +14,7 @@ import { optimisticTrash } from "@/lib/trash-optimistic";
 import { LightboxHeader } from "./lightbox-header";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
 type StripItem = { id: string; index: number; v: number };
 
@@ -68,6 +69,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
   const { slug } = useCatalog();
+  const caps = usePhotoCapabilities();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useBodyScrollLock(true, overlayRef);
@@ -148,7 +150,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
             />
           )}
         </div>
-        <LightboxSidebar photo={photo} />
+        {caps.details && <LightboxSidebar photo={photo} />}
       </div>
     </div>
   );

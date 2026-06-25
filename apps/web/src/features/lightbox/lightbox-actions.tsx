@@ -22,6 +22,7 @@ import {
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection, useToggleFavorite } from "@/features/photo-grid";
 import { useEditSession } from "@/features/photo-editor";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
 /** Icon-button row for the lightbox header: reset edits (when edited),
  *  favorite, download, move to trash. */
@@ -37,6 +38,7 @@ export function LightboxActions({
   const { confirm, confirmDialog } = useConfirm();
   const { dirty, reset } = useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
+  const caps = usePhotoCapabilities();
   // Edited = unsaved working changes, or persisted edits baked into the photo.
   const edited = dirty || hasEdits(photo.edits);
 
@@ -66,7 +68,7 @@ export function LightboxActions({
     <>
       {confirmDialog}
       <div className="flex items-center gap-1">
-        {edited && (
+        {caps.edit && edited && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -87,103 +89,109 @@ export function LightboxActions({
             </TooltipContent>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={
-                photo.isFavorite ? "Remove from favorites" : "Add to favorites"
-              }
-              onClick={() => void toggleFavorite()}
-            >
-              <Heart
-                fill={photo.isFavorite ? "currentColor" : "none"}
-                aria-hidden
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {photo.isFavorite ? "Remove from favorites" : "Favorite"}
-            <Kbd>F</Kbd>
-          </TooltipContent>
-        </Tooltip>
-
-        {hasEdits(photo.edits) ? (
+        {caps.favorite && (
           <Tooltip>
-          <DropdownMenu>
             <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label={
+                  photo.isFavorite ? "Remove from favorites" : "Add to favorites"
+                }
+                onClick={() => void toggleFavorite()}
+              >
+                <Heart
+                  fill={photo.isFavorite ? "currentColor" : "none"}
+                  aria-hidden
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {photo.isFavorite ? "Remove from favorites" : "Favorite"}
+              <Kbd>F</Kbd>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {caps.download && (
+          hasEdits(photo.edits) ? (
+            <Tooltip>
+            <DropdownMenu>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    aria-label="Download"
+                  >
+                    <Download aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() =>
+                    downloadFromUrl(
+                      catalogApiUrl(slug, `/photos/${photo.id}/edited?download=1`),
+                    )
+                  }
+                >
+                  Download edited
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    downloadFromUrl(
+                      catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`),
+                    )
+                  }
+                >
+                  Download original
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <TooltipContent>Download</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
+                  asChild
                   variant="ghost"
                   size="icon"
                   className="size-7"
                   aria-label="Download"
                 >
-                  <Download aria-hidden />
+                  <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
+                    <Download aria-hidden />
+                  </a>
                 </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() =>
-                  downloadFromUrl(
-                    catalogApiUrl(slug, `/photos/${photo.id}/edited?download=1`),
-                  )
-                }
-              >
-                Download edited
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  downloadFromUrl(
-                    catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`),
-                  )
-                }
-              >
-                Download original
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <TooltipContent>Download</TooltipContent>
-          </Tooltip>
-        ) : (
+              </TooltipTrigger>
+              <TooltipContent>Download</TooltipContent>
+            </Tooltip>
+          )
+        )}
+
+        {caps.trash && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                asChild
                 variant="ghost"
                 size="icon"
-                className="size-7"
-                aria-label="Download"
+                aria-label="Move to Trash"
+                className="size-7 text-muted-foreground hover:text-destructive"
+                onClick={() => void trash()}
               >
-                <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
-                  <Download aria-hidden />
-                </a>
+                <Trash2 aria-hidden />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Download</TooltipContent>
+            <TooltipContent>
+              Move to Trash
+              <Kbd>⌫</Kbd>
+            </TooltipContent>
           </Tooltip>
         )}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Move to Trash"
-              className="size-7 text-muted-foreground hover:text-destructive"
-              onClick={() => void trash()}
-            >
-              <Trash2 aria-hidden />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            Move to Trash
-            <Kbd>⌫</Kbd>
-          </TooltipContent>
-        </Tooltip>
       </div>
     </>
   );
