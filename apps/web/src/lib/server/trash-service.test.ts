@@ -40,6 +40,10 @@ describe("listTrash", () => {
     const rows = [trashRow("a"), trashRow("b")];
     const receivedWhere: unknown[] = [];
     const db = {
+      photo: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
       trashedPhoto: {
         findMany: async (args: { where?: unknown; skip?: number; take: number; orderBy?: unknown }) => {
           receivedWhere.push(args.where);
@@ -54,14 +58,19 @@ describe("listTrash", () => {
       },
     };
     const page = await listTrash(CAT, { limit: 2, offset: 0 }, db as never);
-    expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
+    // Same deletedAt → tiebreaker is descending id ("b" > "a")
+    expect(page.items.map((p) => p.id)).toEqual(["b", "a"]);
     expect(page.total).toBe(2);
-    // Scoping assertion: both findMany and count carry catalogId
+    // Scoping assertion: trashedPhoto findMany and count carry catalogId
     expect(receivedWhere).toEqual([{ catalogId: CAT }, { catalogId: CAT }]);
   });
 
   it("returns total = 1 when only one item exists in the catalog", async () => {
     const db = {
+      photo: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
       trashedPhoto: {
         findMany: async () => [trashRow("a")],
         count: async () => 1,
@@ -69,6 +78,30 @@ describe("listTrash", () => {
     };
     const page = await listTrash(CAT, { limit: 2, offset: 0 }, db as never);
     expect(page.total).toBe(1);
+  });
+});
+
+describe("listTrash (dual-state)", () => {
+  it("merges pending Photos + TrashedPhoto, newest-first, deduped by id", async () => {
+    const pending = [
+      { id: "p_new", path: "p_new.jpg", source: "filesystem", takenAt: null, sortDate: new Date(0),
+        width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null,
+        edits: null, asShotTempK: null, asShotTint: null, isFavorite: false,
+        fileModifiedAt: new Date(0), fileCreatedAt: new Date(0),
+        createdAt: new Date(0), updatedAt: new Date(0), trashedAt: new Date("2026-06-25T12:00:00Z") },
+    ];
+    const trashed = [
+      { id: "t_old", originalPath: "t_old.jpg", source: "filesystem", takenAt: null, sortDate: new Date(0),
+        width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null, albumIds: [],
+        deletedAt: new Date("2026-06-25T10:00:00Z"), catalogId: "cat1" },
+    ];
+    const db = {
+      photo: { findMany: vi.fn().mockResolvedValue(pending), count: vi.fn().mockResolvedValue(1) },
+      trashedPhoto: { findMany: vi.fn().mockResolvedValue(trashed), count: vi.fn().mockResolvedValue(1) },
+    } as never;
+    const page = await listTrash("cat1", { limit: 50, offset: 0 } as never, db);
+    expect(page.total).toBe(2);
+    expect(page.items.map((i) => i.id)).toEqual(["p_new", "t_old"]); // newest trash-time first
   });
 });
 

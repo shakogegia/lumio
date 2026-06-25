@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { type PrismaClient, prisma, toTrashedPhotoDTO } from "@lumio/db";
+import { type PrismaClient, prisma, toPhotoDTO, toTrashedPhotoDTO } from "@lumio/db";
 import { parentDir, type PhotosPage, type PhotosQuery } from "@lumio/shared";
 
 type Db = Pick<PrismaClient, "photo" | "trashedPhoto" | "album">;
@@ -59,19 +59,37 @@ async function existingAlbumIds(db: Db, catalogId: string, ids: string[]): Promi
 export async function listTrash(
   catalogId: string,
   params: PhotosQuery,
-  db: Db = prisma,
+  db: Pick<PrismaClient, "photo" | "trashedPhoto"> = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset } = params;
-  const [rows, total] = await Promise.all([
+  const window = offset + limit; // most rows this page could need from either source
+  const [pending, trashed, pendingCount, trashedCount] = await Promise.all([
+    db.photo.findMany({
+      where: { catalogId, trashedAt: { not: null } },
+      take: window,
+      orderBy: [{ trashedAt: "desc" }, { id: "desc" }],
+    }),
     db.trashedPhoto.findMany({
       where: { catalogId },
-      skip: offset,
-      take: limit,
+      take: window,
       orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
     }),
+    db.photo.count({ where: { catalogId, trashedAt: { not: null } } }),
     db.trashedPhoto.count({ where: { catalogId } }),
   ]);
-  return { items: rows.map(toTrashedPhotoDTO), total };
+
+  // Merge into one newest-trash-first stream. A photo mid-finalize can briefly
+  // exist in BOTH tables (same id) — dedupe, preferring the pending Photo row.
+  const seen = new Set<string>();
+  const merged = [
+    ...pending.map((p) => ({ id: p.id, at: p.trashedAt as Date, dto: toPhotoDTO(p) })),
+    ...trashed.map((t) => ({ id: t.id, at: t.deletedAt, dto: toTrashedPhotoDTO(t) })),
+  ]
+    .sort((a, b) => (b.at.getTime() - a.at.getTime()) || (a.id < b.id ? 1 : -1))
+    .filter((row) => (seen.has(row.id) ? false : (seen.add(row.id), true)));
+
+  const items = merged.slice(offset, offset + limit).map((r) => r.dto);
+  return { items, total: pendingCount + trashedCount };
 }
 
 export async function restorePhotos(
