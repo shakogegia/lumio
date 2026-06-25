@@ -34,6 +34,9 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
   let undone = false;
   const label = countLabel(ids.length, "photo", "photos");
 
+  // Fire the trash POST in the background; keep the promise so Undo can wait for it.
+  const trashed = trashPhotos(slug, ids);
+
   const toastId = toast(`${label} moved to Trash`, {
     duration: 6000,
     // sonner v2 requires a ReactNode for the action slot — use a shadcn Button
@@ -47,6 +50,14 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
           undone = true;
           toast.dismiss(toastId);
           void (async () => {
+            // Wait for the trash POST to settle first, so restore can't run before
+            // the mark is applied (which would otherwise let the photo get trashed
+            // anyway). A trash failure is fine here — there's then nothing to undo.
+            try {
+              await trashed;
+            } catch {
+              /* trash never applied; restore below is a harmless no-op */
+            }
             try {
               await restorePhotos(slug, ids);
               reload();
@@ -61,14 +72,10 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
     ),
   });
 
-  void (async () => {
-    try {
-      await trashPhotos(slug, ids);
-    } catch {
-      if (undone) return; // user already undid; nothing to roll back
-      toast.dismiss(toastId);
-      toast.error("Failed to move photos to Trash.");
-      reload(); // re-sync: the rows were never marked server-side
-    }
-  })();
+  void trashed.catch(() => {
+    if (undone) return; // user already undid; nothing to roll back
+    toast.dismiss(toastId);
+    toast.error("Failed to move photos to Trash.");
+    reload(); // re-sync: the rows were never marked server-side
+  });
 }
