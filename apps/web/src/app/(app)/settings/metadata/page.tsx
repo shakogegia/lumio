@@ -5,7 +5,13 @@ import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { FeatureKey } from "@lumio/shared";
 import { getGlobalFeatureStates, listCatalogs } from "@lumio/db";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/components/ui/item";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Metadata" };
@@ -23,24 +29,25 @@ export default async function MetadataSettingsPage() {
           Configure standard and custom photo metadata per catalog.
         </p>
       </div>
-      <Card>
-        <CardContent className="divide-y p-0">
-          {catalogs.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">No catalogs yet.</p>
-          ) : (
-            catalogs.map((c) => (
-              <Link
-                key={c.id}
-                href={`/settings/metadata/${c.id}`}
-                className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-muted"
-              >
-                <span className="font-medium">{c.name}</span>
-                <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+      {catalogs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No catalogs yet.</p>
+      ) : (
+        <ItemGroup className="gap-2.5">
+          {catalogs.map((c) => (
+            <Item key={c.id} asChild variant="outline" className="bg-card">
+              <Link href={`/settings/metadata/${c.id}`}>
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="truncate">{c.name}</ItemTitle>
+                  <ItemDescription className="truncate font-mono text-xs">
+                    {c.path}
+                  </ItemDescription>
+                </ItemContent>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden />
               </Link>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            </Item>
+          ))}
+        </ItemGroup>
+      )}
     </main>
   );
 }
