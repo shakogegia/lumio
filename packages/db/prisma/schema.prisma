@@ -19,6 +19,10 @@ model Catalog {
   slug           String         @unique
   path           String         @unique
   uploadTemplate String         @default("{YYYY}/{YYYY}-{MM}-{DD}/{filename}")
+  // Fractional-index key for custom ordering. The column is pinned to the C
+  // (bytewise) collation via migration 20260625140000 so it sorts the way the
+  // `fractional-indexing` alphabet expects (Prisma has no collation attribute
+  // for Postgres, so this can't be expressed here — see that migration).
   position       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

@@ -131,7 +131,9 @@ export function CatalogsList({ rows }: { rows: CatalogRow[] }) {
                 onDragOverRow(row.id);
               }}
               onDragEnd={onDragEnd}
-              className={cn(draggingId === row.id && "opacity-50")}
+              // Solid surface so the native HTML5 drag image (a snapshot of this
+              // row) isn't see-through while dragging.
+              className={cn("bg-card", draggingId === row.id && "opacity-50")}
             >
               <button
                 type="button"
