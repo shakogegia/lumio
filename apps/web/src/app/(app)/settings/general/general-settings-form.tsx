@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { apiPaths } from "@/lib/api-paths";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 
 export function GeneralSettingsForm({ initial }: { initial: string | null }) {
   const router = useRouter();
@@ -43,8 +43,8 @@ export function GeneralSettingsForm({ initial }: { initial: string | null }) {
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="public-base-url">Public base URL</Label>
+      <Field data-invalid={error ? true : undefined}>
+        <FieldLabel htmlFor="public-base-url">Public base URL</FieldLabel>
         <Input
           id="public-base-url"
           placeholder="https://photos.example.com"
@@ -52,13 +52,13 @@ export function GeneralSettingsForm({ initial }: { initial: string | null }) {
           onChange={(e) => setValue(e.target.value)}
           autoComplete="off"
           spellCheck={false}
+          aria-invalid={error ? true : undefined}
         />
-      </div>
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
+        <FieldDescription>
+          Include the scheme (https://) — a trailing slash is trimmed automatically.
+        </FieldDescription>
+        {error && <FieldError>{error}</FieldError>}
+      </Field>
       <Button type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save"}
       </Button>
