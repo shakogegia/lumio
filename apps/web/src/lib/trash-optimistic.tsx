@@ -39,6 +39,7 @@ export function optimisticTrash({ slug, ids, removePhotos, reload, onRemoved }: 
 
   const toastId = toast(`${label} moved to Trash`, {
     duration: 6000,
+    closeButton: true,
     // sonner v2 requires a ReactNode for the action slot — use a shadcn Button
     // (same pattern as passkey-nudge.tsx). The button must dismiss the toast
     // explicitly since custom nodes don't auto-dismiss.
