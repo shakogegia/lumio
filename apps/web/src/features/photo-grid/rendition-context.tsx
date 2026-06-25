@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 import type { PhotoDTO } from "@lumio/shared";
 import {
   thumbUrl,
@@ -81,5 +81,7 @@ export function catalogRenditions(slug: string): RenditionUrls {
 export function useRenditions(): RenditionUrls {
   const ctx = useContext(RenditionContext);
   const { slug } = useCatalog();
-  return ctx ?? catalogRenditions(slug);
+  // Memoize so the fallback returns a stable reference (it's read as a hook/effect
+  // dependency downstream; a fresh object each render would over-fire those effects).
+  return useMemo(() => ctx ?? catalogRenditions(slug), [ctx, slug]);
 }
