@@ -402,15 +402,25 @@ export function EditSessionProvider({
         go();
         return;
       }
-      // Leaving a photo with unsaved edits offers to save them (rather than
-      // discard): on confirm we apply, and only navigate once the save lands so a
-      // failed save keeps the user on the photo with their edits intact.
+      // Leaving a photo with unsaved edits prompts Save or Discard:
+      //  • Save    → apply, then navigate only once the save lands (a failed save
+      //              keeps the user on the photo with their edits intact);
+      //  • Discard → navigate now, dropping the working edits (re-seeding on the
+      //              next photo / unmounting the editor discards them for us);
+      //  • dismiss (Escape) → stay on the photo (there's no Cancel button).
       void confirm({
         title: "Save edits?",
         description: "Save your changes before leaving this photo?",
         confirmLabel: "Save",
-      }).then((ok) => {
-        if (!ok) return;
+        altLabel: "Discard",
+        altDestructive: true,
+        hideCancel: true,
+      }).then((result) => {
+        if (result === "alt") {
+          go();
+          return;
+        }
+        if (!result) return;
         void apply().then((saved) => {
           if (saved) go();
         });
