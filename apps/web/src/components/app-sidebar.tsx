@@ -19,9 +19,9 @@ const PRIMARY: NavItem[] = [
   { href: "/photos", label: "Photos", icon: Images, match: ["/photos", "/photo"] },
   { href: "/search", label: "Search", icon: Search, match: ["/search"] },
   { href: "/albums", label: "Albums", icon: GalleryVerticalEnd, match: ["/albums"] },
-  { href: "/shared", label: "Shared", icon: Share2, match: ["/shared"], feature: FeatureKey.Sharing },
   { href: "/folders", label: "Folders", icon: FolderSearch, match: ["/folders"], feature: FeatureKey.DiskExplorer },
   { href: "/favorites", label: "Favorites", icon: Heart, match: ["/favorites"] },
+  { href: "/shared", label: "Shared", icon: Share2, match: ["/shared"], feature: FeatureKey.Sharing },
   { href: "/upload", label: "Upload", icon: ImageUp, match: ["/upload"] },
 ];
 

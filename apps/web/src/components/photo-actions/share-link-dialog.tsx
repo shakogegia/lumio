@@ -168,7 +168,7 @@ export function ShareLinkDialog({
                 Advanced options
               </button>
             ) : (
-              <div className="space-y-4 rounded-lg border border-border p-3">
+              <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="share-expiry">Expires</Label>
                   <Select value={expiry} onValueChange={(v) => setExpiry(v as Expiry)}>
