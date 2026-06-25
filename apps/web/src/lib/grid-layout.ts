@@ -26,6 +26,12 @@ export const ALBUM_COLUMNS_STORAGE_KEY = "lumio:album-columns";
 // columns. (Photos keep their own DEFAULT_COLUMNS.)
 export const ALBUM_DEFAULT_COLUMNS = 10;
 
+// Public share-gallery photo grid: its own persisted density (so a viewer's
+// choice never touches the authed grids) defaulting to the "3rd grid-size tick
+// from the left" (COLUMNS_MAX - 2 columns), matching the /albums default density.
+export const SHARE_COLUMNS_STORAGE_KEY = "lumio:share-grid-columns";
+export const SHARE_DEFAULT_COLUMNS = COLUMNS_MAX - 2;
+
 export function rowCount(itemCount: number, columns: number): number {
   if (columns <= 0 || itemCount <= 0) return 0;
   return Math.ceil(itemCount / columns);

@@ -5,7 +5,7 @@ import { Download, X } from "lucide-react";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
 import { makeColumnsStore } from "@/lib/columns-store";
-import { COLUMNS_MAX } from "@/lib/grid-layout";
+import { SHARE_COLUMNS_STORAGE_KEY, SHARE_DEFAULT_COLUMNS } from "@/lib/grid-layout";
 import {
   PhotoGrid,
   type PhotoGridHandle,
@@ -34,13 +34,12 @@ import {
 
 const NO_PARAMS = new URLSearchParams();
 
-// The grid-size slider runs many-columns/small (left) → few-columns/large
-// (right); the 3rd tick from the left is COLUMNS_MAX - 2 columns (the same
-// default density as /albums). The viewer's own choice persists under a
-// dedicated key, separate from the authed grid.
-const SHARE_DEFAULT_COLUMNS = COLUMNS_MAX - 2;
+// Density store for the public gallery (key + default centralized in grid-layout
+// so the root layout's pre-paint script seeds --grid-columns identically — no
+// skeleton flash). cssVar is null because the gallery's own <main> drives
+// --grid-columns reactively from `columns` below.
 const useShareGridColumns = makeColumnsStore({
-  storageKey: "lumio:share-grid-columns",
+  storageKey: SHARE_COLUMNS_STORAGE_KEY,
   cssVar: null,
   defaultColumns: SHARE_DEFAULT_COLUMNS,
 });
