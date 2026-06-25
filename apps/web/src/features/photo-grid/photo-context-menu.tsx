@@ -78,12 +78,6 @@ export function PhotoContextMenu({
               Download {photos}
             </ContextMenuItem>
           )}
-          {sharingEnabled && (
-            <ContextMenuItem onSelect={() => actions.share(targetIds)}>
-              <Share2 aria-hidden />
-              Share {photos}
-            </ContextMenuItem>
-          )}
           <ContextMenuSub>
             <ContextMenuSubTrigger className="gap-2.5">
               <FolderPlus aria-hidden />
@@ -134,6 +128,12 @@ export function PhotoContextMenu({
             {favoriteTarget ? `Favorite ${photos}` : `Remove ${photos} from Favorites`}
             <ContextMenuShortcut>F</ContextMenuShortcut>
           </ContextMenuItem>
+          {sharingEnabled && (
+            <ContextMenuItem onSelect={() => actions.share(targetIds)}>
+              <Share2 aria-hidden />
+              Share {photos}
+            </ContextMenuItem>
+          )}
           {actions.albumCover && (
             count === 1 && targetIds[0] === actions.albumCover.coverPhotoId ? (
               <ContextMenuItem disabled>
