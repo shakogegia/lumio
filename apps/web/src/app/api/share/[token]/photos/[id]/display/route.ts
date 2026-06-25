@@ -7,6 +7,9 @@ import { shareLinkPhotoExists } from "@/lib/server/share-links-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Public viewers always get the edited rendition (edits baked in). Deliberately
+// NO `?base=1` support (unlike the authed route) — exposing the un-edited base
+// over a public link would defeat the point of baking edits in.
 export const GET = withShare<{ id: string }>(async (_request, context, { shareLink, catalog }) => {
   const { id } = await context.params;
   if (!(await shareLinkPhotoExists(shareLink.id, id))) return errorJson("Not found", 404);

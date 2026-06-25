@@ -7,6 +7,9 @@ import { shareLinkPhotoExists } from "@/lib/server/share-links-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Deliberately NO trash-thumbnail fallback (unlike the authed route): a photo
+// trashed after the link was created keeps its ShareLinkPhoto row but must 404
+// publicly rather than serve its trashed rendition. Keep it that way.
 export const GET = withShare<{ id: string }>(async (_request, context, { shareLink, catalog }) => {
   const { id } = await context.params;
   if (!(await shareLinkPhotoExists(shareLink.id, id))) return errorJson("Not found", 404);
