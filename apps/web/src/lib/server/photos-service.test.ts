@@ -405,4 +405,27 @@ describe("getNeighborsForWhere ordering", () => {
       [{ createdAt: "asc" }, { id: "asc" }],
     ]);
   });
+
+  it("excludes trashed photos from both neighbor pages via trashedAt: null", async () => {
+    const wheres: Array<Record<string, unknown>> = [];
+    const db = {
+      photo: {
+        findMany: async (args: { where: Record<string, unknown> }) => {
+          wheres.push(args.where);
+          return [];
+        },
+      },
+    };
+    await getNeighborsForWhere(
+      { id: "p0", path: "p0.jpg" },
+      { catalogId: CAT },
+      "taken-desc",
+      5,
+      db as never,
+    );
+    expect(wheres).toHaveLength(2);
+    for (const w of wheres) {
+      expect(w).toMatchObject({ catalogId: CAT, trashedAt: null });
+    }
+  });
 });

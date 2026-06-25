@@ -30,10 +30,10 @@ export interface FolderSummaryDeps {
 
 const folderSummaryDeps: FolderSummaryDeps = {
   readdir: (absPath) => readdir(absPath, { withFileTypes: true }),
-  countPhotos: (catalogId, rel) => prisma.photo.count({ where: { ...subtreeWhere(catalogId, rel), ...LIVE_PHOTO } }),
+  countPhotos: (catalogId, rel) => prisma.photo.count({ where: { catalogId, ...LIVE_PHOTO, ...subtreeWhere(catalogId, rel) } }),
   previewPhotoIds: (catalogId, rel) =>
     prisma.photo
-      .findMany({ where: { ...subtreeWhere(catalogId, rel), ...LIVE_PHOTO }, orderBy: PHOTO_ORDER, take: 4, select: { id: true } })
+      .findMany({ where: { catalogId, ...LIVE_PHOTO, ...subtreeWhere(catalogId, rel) }, orderBy: PHOTO_ORDER, take: 4, select: { id: true } })
       .then((rows) => rows.map((r) => r.id)),
 };
 
