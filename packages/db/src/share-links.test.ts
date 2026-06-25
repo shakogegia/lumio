@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { findShareLinkByToken, deleteShareLink, shareLinkPhotoExists } from "./share-links.js";
+import {
+  findShareLinkByToken,
+  listShareLinksForCatalog,
+  deleteShareLink,
+  shareLinkPhotoExists,
+  shareLinkPhotoWhere,
+} from "./share-links.js";
 
 describe("findShareLinkByToken", () => {
   it("looks up by unique token", async () => {
@@ -8,6 +14,16 @@ describe("findShareLinkByToken", () => {
     const db = { shareLink: { findUnique } };
     expect(await findShareLinkByToken("tok", db as never)).toBe(row);
     expect(findUnique).toHaveBeenCalledWith({ where: { token: "tok" } });
+  });
+});
+
+describe("listShareLinksForCatalog", () => {
+  it("lists a catalog's links newest-first", async () => {
+    const rows = [{ id: "s1" }, { id: "s2" }];
+    const findMany = vi.fn().mockResolvedValue(rows);
+    const db = { shareLink: { findMany } };
+    expect(await listShareLinksForCatalog("c1", db as never)).toBe(rows);
+    expect(findMany).toHaveBeenCalledWith({ where: { catalogId: "c1" }, orderBy: { createdAt: "desc" } });
   });
 });
 
@@ -28,5 +44,11 @@ describe("shareLinkPhotoExists", () => {
   it("returns false when none", async () => {
     const db = { shareLinkPhoto: { findUnique: async () => null } };
     expect(await shareLinkPhotoExists("s1", "p1", db as never)).toBe(false);
+  });
+});
+
+describe("shareLinkPhotoWhere", () => {
+  it("builds the membership relation filter", () => {
+    expect(shareLinkPhotoWhere("s1")).toEqual({ shareLinks: { some: { shareLinkId: "s1" } } });
   });
 });
