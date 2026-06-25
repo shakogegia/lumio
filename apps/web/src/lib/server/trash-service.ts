@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { copyFile, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { type PrismaClient, prisma, toTrashedPhotoDTO } from "@lumio/db";
+import { type PrismaClient, prisma, toPhotoDTO, toTrashedPhotoDTO } from "@lumio/db";
 import { parentDir, type PhotosPage, type PhotosQuery } from "@lumio/shared";
 
 type Db = Pick<PrismaClient, "photo" | "trashedPhoto" | "album">;
@@ -56,85 +56,72 @@ async function existingAlbumIds(db: Db, catalogId: string, ids: string[]): Promi
   return rows.map((r) => r.id);
 }
 
-export async function trashPhotos(
+/**
+ * Optimistic trash: mark the given photos pending-trash (`trashedAt = now`),
+ * scoped to the catalog and skipping any already marked. Returns how many rows
+ * flipped — the caller enqueues the worker's `process_trash` job when > 0. The
+ * heavy lifting (snapshot + file moves) happens later in the worker.
+ */
+export async function markPhotosTrashed(
+  catalogId: string,
   ids: string[],
-  deps: TrashDeps,
+  db: Pick<PrismaClient, "photo"> = prisma,
 ): Promise<{ trashed: number }> {
-  let trashed = 0;
-  for (const id of ids) {
-    // Scope by catalog so a request can't trash (and thereby delete) a photo
-    // that belongs to another catalog by passing its id.
-    const photo = await deps.db.photo.findFirst({
-      where: { id, catalogId: deps.catalogId },
-      include: { albums: { select: { albumId: true } } },
-    });
-    if (!photo) continue;
-
-    // 1. Snapshot BEFORE any row deletion so no race can lose the metadata.
-    await deps.db.trashedPhoto.create({
-      data: {
-        id: photo.id,
-        catalogId: deps.catalogId,
-        originalPath: photo.path,
-        source: photo.source,
-        takenAt: photo.takenAt,
-        sortDate: photo.sortDate,
-        width: photo.width,
-        height: photo.height,
-        hash: photo.hash,
-        thumbhash: photo.thumbhash,
-        exif: photo.exif as object,
-        colorLabel: photo.colorLabel,
-        albumIds: photo.albums.map((a) => a.albumId),
-      },
-    });
-
-    // 2. Move renditions + original into the trash.
-    const ext = path.extname(photo.path);
-    await moveFile(
-      path.join(deps.cacheDir, "thumbnails", `${id}.webp`),
-      path.join(deps.trashDir, "thumbnails", `${id}.webp`),
-    );
-    await moveFile(
-      path.join(deps.cacheDir, "displays", `${id}.webp`),
-      path.join(deps.trashDir, "displays", `${id}.webp`),
-    );
-    await moveFile(
-      path.join(deps.photosDir, photo.path),
-      path.join(deps.trashDir, "originals", `${id}${ext}`),
-    );
-
-    // 3. Delete the Photo row. deleteMany is tolerant of "already gone" — the
-    //    watcher's unlink (fired by step 2) may delete it first; same end state.
-    await deps.db.photo.deleteMany({ where: { id, catalogId: deps.catalogId } });
-    trashed++;
-  }
-  return { trashed };
+  const { count } = await db.photo.updateMany({
+    where: { id: { in: ids }, catalogId, trashedAt: null },
+    data: { trashedAt: new Date() },
+  });
+  return { trashed: count };
 }
 
 export async function listTrash(
   catalogId: string,
   params: PhotosQuery,
-  db: Db = prisma,
+  db: Pick<PrismaClient, "photo" | "trashedPhoto"> = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset } = params;
-  const [rows, total] = await Promise.all([
+  const window = offset + limit; // most rows this page could need from either source
+  const [pending, trashed, pendingCount, trashedCount] = await Promise.all([
+    db.photo.findMany({
+      where: { catalogId, trashedAt: { not: null } },
+      take: window,
+      orderBy: [{ trashedAt: "desc" }, { id: "desc" }],
+    }),
     db.trashedPhoto.findMany({
       where: { catalogId },
-      skip: offset,
-      take: limit,
+      take: window,
       orderBy: [{ deletedAt: "desc" }, { id: "desc" }],
     }),
+    db.photo.count({ where: { catalogId, trashedAt: { not: null } } }),
     db.trashedPhoto.count({ where: { catalogId } }),
   ]);
-  return { items: rows.map(toTrashedPhotoDTO), total };
+
+  // Merge into one newest-trash-first stream. A photo mid-finalize can briefly
+  // exist in BOTH tables (same id) — dedupe, preferring the pending Photo row.
+  const seen = new Set<string>();
+  const merged = [
+    ...pending.map((p) => ({ id: p.id, at: p.trashedAt as Date, dto: toPhotoDTO(p) })),
+    ...trashed.map((t) => ({ id: t.id, at: t.deletedAt, dto: toTrashedPhotoDTO(t) })),
+  ]
+    .sort((a, b) => (b.at.getTime() - a.at.getTime()) || (a.id < b.id ? 1 : -1))
+    .filter((row) => (seen.has(row.id) ? false : (seen.add(row.id), true)));
+
+  const items = merged.slice(offset, offset + limit).map((r) => r.dto);
+  return { items, total: pendingCount + trashedCount };
 }
 
 export async function restorePhotos(
   ids: string[],
   deps: TrashDeps,
 ): Promise<{ restored: number }> {
-  let restored = 0;
+  // Pending fast-path: ids still represented by a (marked) Photo row are restored
+  // by simply clearing the marker — their files were never moved. Counts toward
+  // restored; the finalized loop below skips them (no TrashedPhoto row exists).
+  const { count: unmarked } = await deps.db.photo.updateMany({
+    where: { id: { in: ids }, catalogId: deps.catalogId, trashedAt: { not: null } },
+    data: { trashedAt: null },
+  });
+  let restored = unmarked;
   for (const id of ids) {
     const t = await deps.db.trashedPhoto.findFirst({
       where: { id, catalogId: deps.catalogId },
@@ -158,8 +145,12 @@ export async function restorePhotos(
     //    `add` upserts in place (keeps id + album links) instead of recreating.
     //    Reuses the trashed id, which is safe because a trashed photo's row was
     //    deleted on trash, so no live Photo can hold this id.
-    await deps.db.photo.create({
-      data: {
+    //    Upsert (not create) so a concurrent worker that hasn't deleted the
+    //    pending Photo row yet doesn't throw P2002 — we just clear trashedAt on
+    //    the still-existing row instead.
+    await deps.db.photo.upsert({
+      where: { id: t.id },
+      create: {
         id: t.id,
         catalogId: deps.catalogId,
         path: destRel,
@@ -179,6 +170,7 @@ export async function restorePhotos(
         fileCreatedAt: new Date(fileBirthtimeMs),
         albums: { create: albumIds.map((albumId) => ({ albumId })) },
       },
+      update: { trashedAt: null }, // pending row already live; just ensure the marker is cleared
     });
 
     // 2. Move renditions + original back.

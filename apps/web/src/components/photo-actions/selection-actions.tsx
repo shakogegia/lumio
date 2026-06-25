@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { computeFavoriteTarget } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/components/photo-actions/favorite-button";
@@ -69,12 +69,12 @@ export function SelectionActions({
       <Button
         variant="destructive"
         size="icon-sm"
-        disabled={none || actions.pending.trash}
+        disabled={none}
         onClick={() => void actions.trash(ids, { onSuccess: clearSelection })}
         aria-label="Delete"
         title="Delete"
       >
-        {actions.pending.trash ? <Loader2 className="animate-spin" aria-hidden /> : <Trash2 aria-hidden />}
+        <Trash2 aria-hidden />
       </Button>
     </>
   );

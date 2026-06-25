@@ -14,6 +14,7 @@ import { PHOTO_ORDER } from "@/lib/photo-order";
 import { albumSummary } from "@/lib/server/albums-service";
 import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "folder" | "album" | "albumPhoto" | "photo" | "$transaction">;
 
@@ -64,7 +65,7 @@ async function folderSummary(
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums, descendantIds);
   const childFolderCount = allFolders.filter((f) => f.parentId === folder.id).length;
   const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
-  const where = { catalogId, ...scopedWhere };
+  const where = { catalogId, ...LIVE_PHOTO, ...scopedWhere };
   const [totalPhotoCount, previews] = await Promise.all([
     db.photo.count({ where }),
     db.photo.findMany({ where, orderBy: PHOTO_ORDER, take: 4, select: { id: true } }),
@@ -135,7 +136,7 @@ export async function listFolderContents(
     const descendantIds = new Set(collectDescendantFolderIds(allFolders, folderId));
     const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
     const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
-    currentPhotoCount = await db.photo.count({ where: { catalogId, ...scopedWhere } });
+    currentPhotoCount = await db.photo.count({ where: { catalogId, ...LIVE_PHOTO, ...scopedWhere } });
   }
 
   return { folder, breadcrumbs, subfolders, albums, currentPhotoCount };

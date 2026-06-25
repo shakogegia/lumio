@@ -10,6 +10,7 @@ import {
   photoAt as photoAtOf,
   photosByIds,
   removeIds,
+  resetStore,
   setPage,
   type PageStore,
 } from "./photo-page-store";
@@ -93,11 +94,15 @@ export function usePhotoPages(endpoint: string, params?: URLSearchParams, pageSi
     mutationGen.current += 1;
     setStore((prev) => removeIds(prev, ids));
   }, []);
+  const reload = useCallback(() => {
+    mutationGen.current += 1; // drop any in-flight page fetch
+    setStore((prev) => resetStore(prev));
+  }, []);
   const retry = useCallback(() => {
     setError(false);
     const [s, e] = lastRange.current;
     ensureRange(s, e);
   }, [ensureRange]);
 
-  return { total: store.total, photoAt, getLoadedIds, getPhotos, ensureRange, patchPhotos, removePhotos, error, retry };
+  return { total: store.total, photoAt, getLoadedIds, getPhotos, ensureRange, patchPhotos, removePhotos, reload, error, retry };
 }

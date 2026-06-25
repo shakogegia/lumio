@@ -52,8 +52,6 @@ export function AlbumView({
         actionOptions={{
           excludeAlbumId: albumId,
           albumCover: isSmart ? undefined : { albumId, coverPhotoId },
-          trashDescription:
-            "This removes them from your whole library. You can restore them from Trash.",
           onTrashed: () => router.refresh(),
         }}
         empty={

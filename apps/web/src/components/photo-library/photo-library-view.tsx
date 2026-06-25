@@ -42,7 +42,6 @@ export interface PhotoLibraryViewProps {
   actionOptions?: {
     excludeAlbumId?: string;
     albumCover?: { albumId: string; coverPhotoId: string | null };
-    trashDescription?: string;
     onTrashed?: (ids: string[]) => void;
     dropOnUnfavorite?: boolean;
   };

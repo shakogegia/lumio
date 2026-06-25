@@ -3,6 +3,7 @@ import { originalPath } from "@/lib/server/server-paths";
 import { joinRel } from "@/lib/catalog-fs";
 import { type Prisma, prisma } from "@lumio/db";
 import { PHOTO_ORDER } from "@/lib/photo-order";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 export interface FolderSummary {
   name: string;
@@ -29,10 +30,10 @@ export interface FolderSummaryDeps {
 
 const folderSummaryDeps: FolderSummaryDeps = {
   readdir: (absPath) => readdir(absPath, { withFileTypes: true }),
-  countPhotos: (catalogId, rel) => prisma.photo.count({ where: subtreeWhere(catalogId, rel) }),
+  countPhotos: (catalogId, rel) => prisma.photo.count({ where: { catalogId, ...LIVE_PHOTO, ...subtreeWhere(catalogId, rel) } }),
   previewPhotoIds: (catalogId, rel) =>
     prisma.photo
-      .findMany({ where: subtreeWhere(catalogId, rel), orderBy: PHOTO_ORDER, take: 4, select: { id: true } })
+      .findMany({ where: { catalogId, ...LIVE_PHOTO, ...subtreeWhere(catalogId, rel) }, orderBy: PHOTO_ORDER, take: 4, select: { id: true } })
       .then((rows) => rows.map((r) => r.id)),
 };
 

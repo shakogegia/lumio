@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { listTrash, restorePhotos, trashPhotos } from "./trash-service.js";
+import { listTrash, restorePhotos } from "./trash-service.js";
 
 const CAT = "cat-1";
 
@@ -35,78 +35,15 @@ function trashRow(id: string) {
   };
 }
 
-describe("trashPhotos", () => {
-  it("snapshots (incl. catalogId + colorLabel + albums), moves files into trash, deletes the photo row", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    await writeFile(path.join(photosDir, "a.jpg"), "orig");
-    await writeFile(path.join(cacheDir, "thumbnails", "a.webp"), "thumb");
-    await writeFile(path.join(cacheDir, "displays", "a.webp"), "display");
-
-    const created: unknown[] = [];
-    const db = {
-      photo: {
-        findFirst: async () => ({
-          id: "a",
-          path: "a.jpg",
-          source: "filesystem",
-          takenAt: null,
-          sortDate: new Date("2024-01-01T00:00:00.000Z"),
-          width: 10,
-          height: 10,
-          hash: null,
-          exif: {},
-          colorLabel: "green",
-          albums: [{ albumId: "alb1" }],
-        }),
-        deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
-      },
-      trashedPhoto: {
-        create: async (args: unknown) => {
-          created.push(args);
-          return {};
-        },
-      },
-    };
-
-    const result = await trashPhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
-
-    expect(result).toEqual({ trashed: 1 });
-    // Scoping assertion: trash snapshot includes catalogId
-    expect(created).toEqual([
-      expect.objectContaining({
-        data: expect.objectContaining({
-          id: "a",
-          catalogId: CAT,
-          originalPath: "a.jpg",
-          colorLabel: "green",
-          albumIds: ["alb1"],
-        }),
-      }),
-    ]);
-    expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(false);
-    expect(existsSync(path.join(trashDir, "originals", "a.jpg"))).toBe(true);
-    expect(existsSync(path.join(trashDir, "thumbnails", "a.webp"))).toBe(true);
-    expect(existsSync(path.join(trashDir, "displays", "a.webp"))).toBe(true);
-    expect(db.photo.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
-  });
-
-  it("skips ids that no longer exist", async () => {
-    const { photosDir, cacheDir, trashDir } = await dirs();
-    const db = {
-      photo: { findFirst: async () => null, deleteMany: vi.fn() },
-      trashedPhoto: { create: vi.fn() },
-    };
-    const result = await trashPhotos(["gone"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
-    expect(result).toEqual({ trashed: 0 });
-    expect(db.trashedPhoto.create).not.toHaveBeenCalled();
-  });
-});
-
 describe("listTrash", () => {
   it("returns a page with items + total scoped to the catalog, newest-first order", async () => {
     const rows = [trashRow("a"), trashRow("b")];
     const receivedWhere: unknown[] = [];
     const db = {
+      photo: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
       trashedPhoto: {
         findMany: async (args: { where?: unknown; skip?: number; take: number; orderBy?: unknown }) => {
           receivedWhere.push(args.where);
@@ -121,14 +58,19 @@ describe("listTrash", () => {
       },
     };
     const page = await listTrash(CAT, { limit: 2, offset: 0 }, db as never);
-    expect(page.items.map((p) => p.id)).toEqual(["a", "b"]);
+    // Same deletedAt → tiebreaker is descending id ("b" > "a")
+    expect(page.items.map((p) => p.id)).toEqual(["b", "a"]);
     expect(page.total).toBe(2);
-    // Scoping assertion: both findMany and count carry catalogId
+    // Scoping assertion: trashedPhoto findMany and count carry catalogId
     expect(receivedWhere).toEqual([{ catalogId: CAT }, { catalogId: CAT }]);
   });
 
   it("returns total = 1 when only one item exists in the catalog", async () => {
     const db = {
+      photo: {
+        findMany: vi.fn().mockResolvedValue([]),
+        count: vi.fn().mockResolvedValue(0),
+      },
       trashedPhoto: {
         findMany: async () => [trashRow("a")],
         count: async () => 1,
@@ -136,6 +78,30 @@ describe("listTrash", () => {
     };
     const page = await listTrash(CAT, { limit: 2, offset: 0 }, db as never);
     expect(page.total).toBe(1);
+  });
+});
+
+describe("listTrash (dual-state)", () => {
+  it("merges pending Photos + TrashedPhoto, newest-first, deduped by id", async () => {
+    const pending = [
+      { id: "p_new", path: "p_new.jpg", source: "filesystem", takenAt: null, sortDate: new Date(0),
+        width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null,
+        edits: null, asShotTempK: null, asShotTint: null, isFavorite: false,
+        fileModifiedAt: new Date(0), fileCreatedAt: new Date(0),
+        createdAt: new Date(0), updatedAt: new Date(0), trashedAt: new Date("2026-06-25T12:00:00Z") },
+    ];
+    const trashed = [
+      { id: "t_old", originalPath: "t_old.jpg", source: "filesystem", takenAt: null, sortDate: new Date(0),
+        width: 1, height: 1, hash: null, thumbhash: null, exif: {}, colorLabel: null, albumIds: [],
+        deletedAt: new Date("2026-06-25T10:00:00Z"), catalogId: "cat1" },
+    ];
+    const db = {
+      photo: { findMany: vi.fn().mockResolvedValue(pending), count: vi.fn().mockResolvedValue(1) },
+      trashedPhoto: { findMany: vi.fn().mockResolvedValue(trashed), count: vi.fn().mockResolvedValue(1) },
+    } as never;
+    const page = await listTrash("cat1", { limit: 50, offset: 0 } as never, db);
+    expect(page.total).toBe(2);
+    expect(page.items.map((i) => i.id)).toEqual(["p_new", "t_old"]); // newest trash-time first
   });
 });
 
@@ -149,7 +115,7 @@ describe("restorePhotos", () => {
     await writeFile(path.join(trashDir, "thumbnails", "a.webp"), "thumb");
     await writeFile(path.join(trashDir, "displays", "a.webp"), "display");
 
-    let createArgs: { data: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } } } | null = null;
+    let upsertArgs: { where: { id: string }; create: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } }; update: { trashedAt: null } } | null = null;
     const db = {
       trashedPhoto: {
         findFirst: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
@@ -157,8 +123,9 @@ describe("restorePhotos", () => {
       },
       album: { findMany: async () => [{ id: "keep" }] },
       photo: {
-        create: async (args: never) => {
-          createArgs = args;
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        upsert: async (args: never) => {
+          upsertArgs = args;
           return {};
         },
       },
@@ -167,15 +134,17 @@ describe("restorePhotos", () => {
     const result = await restorePhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
 
     expect(result).toEqual({ restored: 1 });
-    expect(createArgs!.data.id).toBe("a");
+    expect(upsertArgs!.where).toEqual({ id: "a" });
+    expect(upsertArgs!.create.id).toBe("a");
     // Scoping assertion: restored photo carries catalogId
-    expect(createArgs!.data.catalogId).toBe(CAT);
-    expect(createArgs!.data.path).toBe("a.jpg");
-    expect(createArgs!.data.colorLabel).toBe("blue");
-    expect(createArgs!.data.albums.create).toEqual([{ albumId: "keep" }]);
-    expect(createArgs!.data.fileSize).toBe(4); // "orig" is 4 bytes
-    expect(createArgs!.data.fileModifiedAt).toBeInstanceOf(Date);
-    expect(createArgs!.data.fileCreatedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.create.catalogId).toBe(CAT);
+    expect(upsertArgs!.create.path).toBe("a.jpg");
+    expect(upsertArgs!.create.colorLabel).toBe("blue");
+    expect(upsertArgs!.create.albums.create).toEqual([{ albumId: "keep" }]);
+    expect(upsertArgs!.create.fileSize).toBe(4); // "orig" is 4 bytes
+    expect(upsertArgs!.create.fileModifiedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.create.fileCreatedAt).toBeInstanceOf(Date);
+    expect(upsertArgs!.update).toEqual({ trashedAt: null });
     expect(existsSync(path.join(photosDir, "a.jpg"))).toBe(true);
     expect(existsSync(path.join(cacheDir, "thumbnails", "a.webp"))).toBe(true);
     expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { id: "a", catalogId: CAT } });
@@ -192,8 +161,9 @@ describe("restorePhotos", () => {
       trashedPhoto: { findFirst: async () => trashRow("a"), deleteMany: async () => ({ count: 1 }) },
       album: { findMany: async () => [] },
       photo: {
-        create: async (args: { data: { path: string } }) => {
-          restoredPath = args.data.path;
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        upsert: async (args: { create: { path: string } }) => {
+          restoredPath = args.create.path;
           return {};
         },
       },
@@ -202,5 +172,25 @@ describe("restorePhotos", () => {
     await restorePhotos(["a"], { db: db as never, catalogId: CAT, photosDir, cacheDir, trashDir });
     expect(restoredPath).toBe("a (restored).jpg");
     expect(existsSync(path.join(photosDir, "a (restored).jpg"))).toBe(true);
+  });
+});
+
+describe("restorePhotos (dual-state)", () => {
+  it("clears trashedAt for pending ids without moving files", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const trashedFindFirst = vi.fn().mockResolvedValue(null); // not finalized
+    const db = {
+      photo: { updateMany, upsert: vi.fn() },
+      trashedPhoto: { findFirst: trashedFindFirst, deleteMany: vi.fn() },
+      album: { findMany: vi.fn().mockResolvedValue([]) },
+    } as never;
+    const result = await restorePhotos(["pend1"], {
+      db, catalogId: "cat1", photosDir: "/p", cacheDir: "/c", trashDir: "/t",
+    });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["pend1"] }, catalogId: "cat1", trashedAt: { not: null } },
+      data: { trashedAt: null },
+    });
+    expect(result.restored).toBe(1);
   });
 });

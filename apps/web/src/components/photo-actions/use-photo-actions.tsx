@@ -6,15 +6,12 @@ import { toast } from "sonner";
 import type { ColorLabel, DownloadVariant } from "@lumio/shared";
 import { downloadSelection } from "@/lib/download-client";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { favoritePhotos, setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
+import { favoritePhotos, setPhotoColorLabel } from "@/lib/photo-mutations";
 import { useCatalog } from "@/components/providers/catalog-context";
-import { useConfirm } from "@/components/confirm-dialog";
-import { countLabel } from "@/lib/count-label";
 import { patchJson } from "@/lib/http";
 import { useAddToAlbum } from "@/components/photo-actions/use-add-to-album";
 import type { PhotoGridHandle } from "@/features/photo-grid";
-import { playSound } from "@/lib/sound/player";
-import { SoundEffect } from "@/lib/sound/registry";
+import { optimisticTrash } from "@/lib/trash-optimistic";
 
 /** Per-call hook into a successful action (e.g. clear/cancel the selection). */
 export type ActionOpts = { onSuccess?: () => void; variant?: DownloadVariant };
@@ -37,25 +34,22 @@ export interface PhotoActions {
   /** Pin a single photo as the current album's cover. No-op without `albumCover`. */
   setAlbumCover: (photoId: string, opts?: ActionOpts) => Promise<void>;
   pending: { download: boolean; label: boolean; trash: boolean; favorite: boolean };
-  /** Dialogs (add-to-album + trash confirm). Render once per view. */
+  /** Dialogs (add-to-album). Render once per view. */
   element: React.ReactNode;
 }
-
-const DEFAULT_TRASH_DESCRIPTION = "They'll be moved to Trash. You can restore them later.";
 
 /**
  * The four photo operations (download, color label, add-to-album, trash) over an
  * explicit id array. Owns the network call + optimistic grid update + error
  * toast + in-flight guard — the part that is identical across the photo views.
  * Each caller supplies its own aftermath via `opts.onSuccess` (e.g. the toolbar
- * clears the selection; the context menu leaves it alone). Mirrors `useConfirm`:
- * returns the action functions plus an `element` to render.
+ * clears the selection; the context menu leaves it alone). Returns the action
+ * functions plus an `element` to render.
  */
 export function usePhotoActions({
   gridRef,
   excludeAlbumId,
   albumCover,
-  trashDescription = DEFAULT_TRASH_DESCRIPTION,
   onTrashed,
   dropOnUnfavorite = false,
 }: {
@@ -64,8 +58,6 @@ export function usePhotoActions({
   excludeAlbumId?: string;
   /** Enable "set as album cover" for a regular album (see PhotoActions.albumCover). */
   albumCover?: { albumId: string; coverPhotoId: string | null };
-  /** Confirm-dialog body for trash (album view phrases it differently). */
-  trashDescription?: string;
   /** Fires after any successful trash, for view-level side effects (e.g. a
    *  search result count or an album `router.refresh()`). */
   onTrashed?: (ids: string[]) => void;
@@ -75,10 +67,8 @@ export function usePhotoActions({
 }): PhotoActions {
   const router = useRouter();
   const { slug } = useCatalog();
-  const { confirm, confirmDialog } = useConfirm();
   const [downloading, setDownloading] = useState(false);
   const [labelPending, setLabelPending] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [favoritePending, setFavoritePending] = useState(false);
   // Add-to-album (quick-pick + "New album…" dialog) is grid-independent, so it
   // lives in its own hook shared with the upload page.
@@ -139,30 +129,21 @@ export function usePhotoActions({
   );
 
   const trash = useCallback(
-    async (ids: string[], opts?: ActionOpts) => {
-      if (ids.length === 0 || deleting) return;
-      const label = countLabel(ids.length, "photo", "photos");
-      const ok = await confirm({
-        title: `Move ${label} to Trash?`,
-        description: trashDescription,
-        confirmLabel: "Move to Trash",
-        destructive: true,
+    (ids: string[], opts?: ActionOpts) => {
+      if (ids.length === 0) return Promise.resolve();
+      optimisticTrash({
+        slug,
+        ids,
+        removePhotos: (set) => gridRef.current?.removePhotos(set),
+        reload: () => gridRef.current?.reload(),
+        onRemoved: () => {
+          onTrashed?.(ids);
+          opts?.onSuccess?.();
+        },
       });
-      if (!ok) return;
-      setDeleting(true);
-      try {
-        await trashPhotos(slug, ids);
-        gridRef.current?.removePhotos(new Set(ids));
-        playSound(SoundEffect.MoveToTrash);
-        onTrashed?.(ids);
-        opts?.onSuccess?.();
-      } catch {
-        toast.error("Failed to move photos to Trash.");
-      } finally {
-        setDeleting(false);
-      }
+      return Promise.resolve();
     },
-    [deleting, confirm, trashDescription, gridRef, onTrashed, slug],
+    [slug, gridRef, onTrashed],
   );
 
   const setAlbumCover = useCallback(
@@ -182,13 +163,6 @@ export function usePhotoActions({
     [albumCover, router, slug],
   );
 
-  const element = (
-    <>
-      {confirmDialog}
-      {album.element}
-    </>
-  );
-
   return {
     download,
     applyLabel,
@@ -199,7 +173,7 @@ export function usePhotoActions({
     setAlbumCover,
     excludeAlbumId,
     albumCover,
-    pending: { download: downloading, label: labelPending, trash: deleting, favorite: favoritePending },
-    element,
+    pending: { download: downloading, label: labelPending, trash: false, favorite: favoritePending },
+    element: album.element,
   };
 }

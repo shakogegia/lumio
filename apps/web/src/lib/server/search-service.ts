@@ -1,6 +1,7 @@
 import { type PrismaClient, buildSearchWhere, prisma } from "@lumio/db";
 import { type PhotosPage, type SearchQuery, monthRange } from "@lumio/shared";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "photo">;
 
@@ -21,7 +22,7 @@ function searchInnerWhere(params: SearchQuery) {
 function searchWhere(catalogId: string, params: SearchQuery) {
   // Merge catalogId into the base where (spread is safe: buildSearchWhere returns
   // either {} or { AND: [...] }, so catalogId just adds a key).
-  const withCatalog = { catalogId, ...buildSearchWhere(params) };
+  const withCatalog = { catalogId, ...LIVE_PHOTO, ...buildSearchWhere(params) };
   return params.month
     ? { AND: [withCatalog, { sortDate: monthRange(params.month) }] }
     : withCatalog;

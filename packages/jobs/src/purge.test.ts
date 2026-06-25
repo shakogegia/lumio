@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { purgeAllPhotos, purgeTrash } from "./purge.js";
+import { purgeAllPhotos, purgePendingPhotos, purgeTrash } from "./purge.js";
 
 async function photoDirs() {
   const photosDir = await mkdtemp(path.join(tmpdir(), "lumio-photos-"));
@@ -88,5 +88,20 @@ describe("purgeTrash", () => {
     expect(result).toEqual({ deleted: 1 });
     expect(db.trashedPhoto.findMany).toHaveBeenCalledWith({ where: { catalogId: "cat1", id: { in: ["a"] } }, select: { id: true, originalPath: true } });
     expect(db.trashedPhoto.deleteMany).toHaveBeenCalledWith({ where: { catalogId: "cat1", id: { in: ["a"] } } });
+  });
+});
+
+describe("purgePendingPhotos", () => {
+  it("hard-deletes selected pending Photo rows", async () => {
+    const findMany = vi.fn().mockResolvedValue([{ id: "p1", path: "p1.jpg" }]);
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const db = { photo: { findMany, deleteMany } } as never;
+    const result = await purgePendingPhotos(["p1"], { db, catalogId: "cat1", photosDir: "/p", cacheDir: "/c" });
+    expect(result).toEqual({ deleted: 1 });
+    expect(findMany).toHaveBeenCalledWith({
+      where: { catalogId: "cat1", trashedAt: { not: null }, id: { in: ["p1"] } },
+      select: { id: true, path: true },
+    });
+    expect(deleteMany).toHaveBeenCalled();
   });
 });

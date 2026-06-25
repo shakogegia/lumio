@@ -10,6 +10,7 @@ import {
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
 
@@ -25,7 +26,7 @@ export async function albumSummary(
   const base = toAlbumDTO(row);
   if (row.isSmart) {
     const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now);
-    const where = { catalogId, ...smartWhere };
+    const where = { catalogId, ...LIVE_PHOTO, ...smartWhere };
     const [photoCount, cover] = await Promise.all([
       db.photo.count({ where }),
       db.photo.findFirst({ where, orderBy: PHOTO_ORDER, select: { id: true } }),
@@ -150,7 +151,7 @@ export async function listAlbumPhotosForDownload(
   // Scope by catalog (see listAlbumPhotos) so a smart album never zips photos
   // from another catalog.
   return db.photo.findMany({
-    where: { catalogId, ...scoped },
+    where: { catalogId, ...LIVE_PHOTO, ...scoped },
     orderBy: PHOTO_ORDER,
     select: { id: true, path: true },
   });
@@ -193,7 +194,7 @@ export async function addPhotosToAlbum(
   if (album.isSmart) throw new SmartAlbumMutationError("cannot add photos to a smart album");
   // Only link photos that belong to this catalog — never another catalog's ids.
   const owned = await db.photo.findMany({
-    where: { catalogId, id: { in: photoIds } },
+    where: { catalogId, ...LIVE_PHOTO, id: { in: photoIds } },
     select: { id: true },
   });
   const result = await db.albumPhoto.createMany({

@@ -18,6 +18,10 @@ export async function trashPhotos(slug: string, ids: string[]): Promise<void> {
   await postJson(catalogApiUrl(slug, "/photos/trash"), { ids });
 }
 
+export async function restorePhotos(slug: string, ids: string[]): Promise<void> {
+  await postJson(catalogApiUrl(slug, "/trash/restore"), { ids });
+}
+
 export async function addPhotosToAlbum(slug: string, albumId: string, photoIds: string[]): Promise<void> {
   await postJson(catalogApiUrl(slug, `/albums/${albumId}/photos`), { photoIds });
 }

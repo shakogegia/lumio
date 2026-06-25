@@ -44,6 +44,7 @@ describe("searchPhotos", () => {
     expect(page.total).toBe(2);
     expect(db.calls[0]?.where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       AND: [
         { albums: { some: { albumId: { in: ["alb1"] } } } },
         { path: { contains: "beach", mode: "insensitive" } },
@@ -55,7 +56,7 @@ describe("searchPhotos", () => {
   it("scopes to catalogId even when there are no other filters", async () => {
     const db = fakeDb([row("a")]);
     const page = await searchPhotos(CAT, { limit: 2, offset: 0, album: [] }, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
     expect(page.total).toBe(1);
   });
 
@@ -72,6 +73,7 @@ describe("searchPhotos", () => {
     // filter and sortDate range are AND-combined alongside it.
     expect(db.calls[0]?.where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       AND: [
         {},
         {
@@ -105,6 +107,7 @@ describe("countSearchPhotos", () => {
     expect(total).toBe(42);
     expect(db.calls[0]?.where).toEqual({
       catalogId: CAT,
+      trashedAt: null,
       AND: [
         { albums: { some: { albumId: { in: ["alb1"] } } } },
         { path: { contains: "beach", mode: "insensitive" } },
@@ -116,7 +119,7 @@ describe("countSearchPhotos", () => {
     const db = fakeCountDb(0);
     const total = await countSearchPhotos(CAT, { limit: 50, offset: 0, album: [] }, db as never);
     expect(total).toBe(0);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
 
   it("counts with the plain catalogId where when no month is set", async () => {
@@ -131,7 +134,7 @@ describe("countSearchPhotos", () => {
     };
     const total = await countSearchPhotos(CAT, { limit: 50, offset: 0, album: [] }, db as never);
     expect(total).toBe(7);
-    expect(counts[0]?.where).toEqual({ catalogId: CAT });
+    expect(counts[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
 
   it("ANDs a sortDate range into the count where when month is set", async () => {
@@ -147,7 +150,7 @@ describe("countSearchPhotos", () => {
     await countSearchPhotos(CAT, { limit: 50, offset: 0, album: [], month: "2026-06" }, db as never);
     expect(counts[0]?.where).toEqual({
       AND: [
-        { catalogId: CAT },
+        { catalogId: CAT, trashedAt: null },
         {
           sortDate: {
             gte: new Date("2026-06-01T00:00:00.000Z"),

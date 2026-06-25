@@ -35,6 +35,34 @@ export interface PurgeTrashDeps {
   trashDir: string;
 }
 
+export interface PurgePendingDeps {
+  db: Pick<PrismaClient, "photo">;
+  catalogId: string;
+  photosDir: string;
+  cacheDir: string;
+}
+
+/** Permanently remove pending-trash Photo rows (all when `ids` is undefined) +
+ *  their on-disk originals/renditions. Mirrors purgeAllPhotos, scoped to
+ *  trashedAt IS NOT NULL. */
+export async function purgePendingPhotos(
+  ids: string[] | undefined,
+  deps: PurgePendingDeps,
+): Promise<{ deleted: number }> {
+  const where = { catalogId: deps.catalogId, trashedAt: { not: null }, ...(ids ? { id: { in: ids } } : {}) };
+  const rows = await deps.db.photo.findMany({ where, select: { id: true, path: true } });
+  await Promise.all(
+    rows.flatMap((p) => [
+      rm(path.join(deps.photosDir, p.path), { force: true }),
+      rm(path.join(deps.cacheDir, "thumbnails", `${p.id}.webp`), { force: true }),
+      rm(path.join(deps.cacheDir, "displays", `${p.id}.webp`), { force: true }),
+      rm(path.join(deps.cacheDir, "displays-edited", `${p.id}.webp`), { force: true }),
+    ]),
+  );
+  const { count } = await deps.db.photo.deleteMany({ where });
+  return { deleted: count };
+}
+
 /** Permanently remove trashed photos (all when `ids` is undefined) + their files. */
 export async function purgeTrash(
   ids: string[] | undefined,

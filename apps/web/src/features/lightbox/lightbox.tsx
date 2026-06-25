@@ -9,6 +9,8 @@ import { EditSessionProvider, useEditSession } from "@/features/photo-editor";
 import { ZoomableImage } from "@/features/photo-editor";
 import { useLightboxKeyboard } from "./use-lightbox-keyboard";
 import { useToggleFavorite } from "@/features/photo-grid";
+import { useCatalog } from "@/components/providers/catalog-context";
+import { optimisticTrash } from "@/lib/trash-optimistic";
 import { LightboxHeader } from "./lightbox-header";
 import { LightboxSidebar } from "./lightbox-sidebar";
 import { FilmStrip } from "./film-strip";
@@ -61,13 +63,31 @@ export function Lightbox() {
 }
 
 function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[] }) {
-  const { openIndex, total, step, close, open, openTab, setOpenTab } = usePhotoCollection();
+  const { openIndex, total, step, close, open, openTab, setOpenTab, removePhotos, reload } = usePhotoCollection();
   const { guard, dirty, undo, redo, canUndo, canRedo, cropMode, enterCropMode, doneCropMode, cancelCropMode } =
     useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
+  const { slug } = useCatalog();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useBodyScrollLock(true, overlayRef);
+
+  const onTrashed = useCallback(() => {
+    // Were we on the last photo? close. Otherwise the store shifts the next photo
+    // into this index and the provider's URL-sync effect updates the address bar.
+    if (openIndex === null || total === null || openIndex >= total - 1) close();
+  }, [openIndex, total, close]);
+
+  const trashCurrent = useCallback(() => {
+    optimisticTrash({
+      slug,
+      ids: [photo.id],
+      removePhotos,
+      reload,
+      onRemoved: onTrashed, // advances by index-shift, or closes if it was the last
+    });
+  }, [slug, photo.id, removePhotos, reload, onTrashed]);
+
   useLightboxKeyboard({
     openIndex,
     total,
@@ -80,6 +100,7 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     undo,
     redo,
     toggleFavorite: () => void toggleFavorite(),
+    trashCurrent,
     activeTab: openTab,
     setTab: setOpenTab,
     cropMode,
@@ -87,12 +108,6 @@ function LightboxOverlay({ photo, strip }: { photo: PhotoDTO; strip: StripItem[]
     doneCropMode,
     cancelCropMode,
   });
-
-  const onTrashed = useCallback(() => {
-    // Were we on the last photo? close. Otherwise the store shifts the next photo
-    // into this index and the provider's URL-sync effect updates the address bar.
-    if (openIndex === null || total === null || openIndex >= total - 1) close();
-  }, [openIndex, total, close]);
 
   const hasPrev = openIndex !== null && openIndex > 0;
   const hasNext = openIndex !== null && total !== null && openIndex < total - 1;

@@ -5,3 +5,4 @@ export * from "./progress.js";
 export * from "./consumer.js";
 export * from "./purge.js";
 export * from "./log.js";
+export { finalizeTrash, type FinalizeTrashDeps } from "./finalize-trash.js";

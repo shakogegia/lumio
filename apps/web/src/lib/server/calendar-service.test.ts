@@ -24,7 +24,7 @@ describe("buildCalendarFacets", () => {
   it("queries minimal rows newest-first scoped by the where AND catalogId", async () => {
     const db = fakeDb([]);
     await buildCalendarFacets(CAT, { albums: { some: { albumId: "a" } } }, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, albums: { some: { albumId: "a" } } });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null, albums: { some: { albumId: "a" } } });
     expect(db.calls[0]?.select).toEqual({ id: true, sortDate: true });
     expect(db.calls[0]?.orderBy).toEqual([{ sortDate: "desc" }, { id: "desc" }]);
   });
@@ -32,7 +32,7 @@ describe("buildCalendarFacets", () => {
   it("always includes catalogId in the where even for an empty scope", async () => {
     const db = fakeDb([]);
     await buildCalendarFacets(CAT, {}, db as never);
-    expect(db.calls[0]?.where).toEqual({ catalogId: CAT });
+    expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
 
   it("buckets photos into descending years and months with counts", async () => {

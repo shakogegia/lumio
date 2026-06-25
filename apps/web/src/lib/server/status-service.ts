@@ -3,6 +3,7 @@ import path from "node:path";
 import { prisma } from "@lumio/db";
 import { SUPPORTED_EXTENSIONS } from "@lumio/shared";
 import { CACHE_DIR, TRASH_DIR } from "@/lib/server/server-paths";
+import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 /**
  * Sum the bytes of every file under `dir` (recursively); 0 if the dir is absent.
@@ -60,9 +61,9 @@ export async function countImageFiles(dir: string): Promise<number> {
 /** Catalog facts that are cheap to read from the DB (indexed count + latest row). */
 export async function getCatalogStats(catalogId: string) {
   const [photoCount, latest] = await Promise.all([
-    prisma.photo.count({ where: { catalogId } }),
+    prisma.photo.count({ where: { catalogId, ...LIVE_PHOTO } }),
     prisma.photo.findFirst({
-      where: { catalogId },
+      where: { catalogId, ...LIVE_PHOTO },
       orderBy: { updatedAt: "desc" },
       select: { updatedAt: true },
     }),
