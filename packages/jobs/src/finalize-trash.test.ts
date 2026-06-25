@@ -51,8 +51,8 @@ describe("finalizeTrash", () => {
     expect(deleteMany).toHaveBeenCalledWith({ where: { id: "p2", catalogId: "cat1" } });
 
     // Sequencing for p1: snapshot → move → delete.
-    expect(upsert.mock.invocationCallOrder[0]).toBeLessThan(moveFile.mock.invocationCallOrder[0]);
-    expect(moveFile.mock.invocationCallOrder[0]).toBeLessThan(deleteMany.mock.invocationCallOrder[0]);
+    expect(upsert.mock.invocationCallOrder[0]!).toBeLessThan(moveFile.mock.invocationCallOrder[0]!);
+    expect(moveFile.mock.invocationCallOrder[0]!).toBeLessThan(deleteMany.mock.invocationCallOrder[0]!);
 
     // Progress reported after each photo.
     expect(onProgress).toHaveBeenNthCalledWith(1, 1);
