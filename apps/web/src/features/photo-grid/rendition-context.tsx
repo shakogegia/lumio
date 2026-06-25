@@ -33,6 +33,10 @@ export interface RenditionUrls {
   /** Full-res source for an edited photo's deep zoom (the baked edited rendition,
    *  versioned by updatedAt). */
   fullEdited(photo: Pick<PhotoDTO, "id" | "updatedAt">): string;
+  /** Attachment URL for the lightbox's per-photo download control. `variant`
+   *  selects edited vs. original on the authed catalog (defaults to original); a
+   *  restricted surface that serves a single baked variant ignores it. */
+  download(photo: Pick<PhotoDTO, "id">, variant?: "edited" | "original"): string;
 }
 
 const RenditionContext = createContext<RenditionUrls | null>(null);
@@ -68,6 +72,13 @@ export function catalogRenditions(slug: string): RenditionUrls {
       catalogApiUrl(
         slug,
         `/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`,
+      ),
+    // Byte-identical to the URLs the lightbox built inline before this seam: the
+    // edited/original attachment variant under the catalog API.
+    download: (photo, variant = "original") =>
+      catalogApiUrl(
+        slug,
+        `/photos/${photo.id}/${variant === "edited" ? "edited" : "original"}?download=1`,
       ),
   };
 }

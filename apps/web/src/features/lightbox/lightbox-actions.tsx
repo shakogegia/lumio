@@ -3,7 +3,6 @@
 import { Download, Heart, Palette, Trash2 } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import { downloadFromUrl } from "@/lib/download-client";
-import { catalogApiUrl } from "@/lib/catalog-api";
 import { optimisticTrash } from "@/lib/trash-optimistic";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useConfirm } from "@/components/confirm-dialog";
 import { usePhotoCollection, useToggleFavorite } from "@/features/photo-grid";
+import { useRenditions } from "@/features/photo-grid/rendition-context";
 import { useEditSession } from "@/features/photo-editor";
 import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
@@ -39,6 +39,7 @@ export function LightboxActions({
   const { dirty, reset } = useEditSession();
   const toggleFavorite = useToggleFavorite(photo);
   const caps = usePhotoCapabilities();
+  const r = useRenditions();
   // Edited = unsaved working changes, or persisted edits baked into the photo.
   const edited = dirty || hasEdits(photo.edits);
 
@@ -132,20 +133,12 @@ export function LightboxActions({
               </TooltipTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onSelect={() =>
-                    downloadFromUrl(
-                      catalogApiUrl(slug, `/photos/${photo.id}/edited?download=1`),
-                    )
-                  }
+                  onSelect={() => downloadFromUrl(r.download(photo, "edited"))}
                 >
                   Download edited
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onSelect={() =>
-                    downloadFromUrl(
-                      catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`),
-                    )
-                  }
+                  onSelect={() => downloadFromUrl(r.download(photo, "original"))}
                 >
                   Download original
                 </DropdownMenuItem>
@@ -163,7 +156,7 @@ export function LightboxActions({
                   className="size-7"
                   aria-label="Download"
                 >
-                  <a href={catalogApiUrl(slug, `/photos/${photo.id}/original?download=1`)}>
+                  <a href={r.download(photo, "original")}>
                     <Download aria-hidden />
                   </a>
                 </Button>

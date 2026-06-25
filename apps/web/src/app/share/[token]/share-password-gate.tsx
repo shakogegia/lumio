@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
+import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ export function SharePasswordGate({ token, title }: { token: string; title: stri
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-6">
       <form onSubmit={(e) => void handleSubmit(e)} className="w-full max-w-sm space-y-4 text-center">
+        <Logo className="mx-auto size-8 text-muted-foreground" />
         <Lock className="mx-auto size-8 text-muted-foreground/70" aria-hidden />
         <h1 className="text-xl font-semibold tracking-tight">{title ?? "Protected gallery"}</h1>
         <p className="text-sm text-muted-foreground">Enter the password to view these photos.</p>

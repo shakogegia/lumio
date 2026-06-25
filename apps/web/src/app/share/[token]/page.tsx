@@ -7,7 +7,7 @@ import { verifyUnlock } from "@/lib/server/share-crypto";
 import { unlockCookieName } from "@/lib/server/with-share";
 import { ShareUnavailable } from "./share-unavailable";
 import { SharePasswordGate } from "./share-password-gate";
-import { ShareGallery } from "./share-gallery";
+import { ShareGalleryView } from "./share-gallery-view";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Shared photos", robots: { index: false, follow: false } };
@@ -25,5 +25,5 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     if (!verifyUnlock(token, cookieVal)) return <SharePasswordGate token={token} title={link.title} />;
   }
 
-  return <ShareGallery token={token} title={link.title} />;
+  return <ShareGalleryView token={token} title={link.title} />;
 }
