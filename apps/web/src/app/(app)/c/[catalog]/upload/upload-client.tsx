@@ -11,7 +11,6 @@ import { countLabel } from "@/lib/count-label";
 import { postJson } from "@/lib/http";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -275,8 +274,8 @@ export function UploadClient({
     <>
       {confirmDialog}
 
-      <div className={cn("flex", showMeta && hasMeta && "h-[calc(100dvh-1.5rem)]")}>
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full">
+        <div className="flex min-w-0 flex-1 flex-col px-4">
       {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
@@ -370,7 +369,7 @@ export function UploadClient({
         />
       )}
 
-          <div className={cn("space-y-6 pt-2", showMeta && hasMeta && "flex-1 overflow-y-auto")}>
+          <div className="flex-1 space-y-6 overflow-y-auto pt-2 pb-6">
           <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
