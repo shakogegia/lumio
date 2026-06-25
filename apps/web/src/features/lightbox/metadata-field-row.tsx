@@ -6,7 +6,12 @@ import { MetadataValueSource, type ResolvedField } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { MetadataValueInput } from "@/components/metadata/metadata-value-input";
 
-export function MetadataFieldRow({
+/**
+ * The value slot for one custom field in the Info tab: an editable input
+ * (autocomplete / choice / textarea) that saves per-photo on commit. The field
+ * label + row layout live in the shared `MetadataFieldsList`.
+ */
+export function MetadataValueField({
   slug,
   photoId,
   field,
@@ -16,8 +21,8 @@ export function MetadataFieldRow({
   field: ResolvedField;
 }) {
   const isExif = field.source === MetadataValueSource.Exif;
-  // Show the user-entered value; for a standard field with only an EXIF value,
-  // keep the input empty and show the EXIF value as the placeholder.
+  // Show the user-entered value; a standard field with only an EXIF value keeps
+  // the input empty and shows the EXIF value as the placeholder.
   const [value, setValue] = useState(isExif ? "" : (field.value ?? ""));
   const saved = useRef(isExif ? "" : (field.value ?? ""));
 
@@ -31,24 +36,17 @@ export function MetadataFieldRow({
     }).catch(() => {});
   }
 
-  const placeholder = isExif && field.value ? field.value : "—";
-
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="shrink-0 text-muted-foreground">{field.label}</span>
-      <div className="flex items-center gap-1">
-        <MetadataValueInput
-          slug={slug}
-          fieldId={field.id}
-          type={field.type}
-          options={field.options}
-          suggests={field.suggests}
-          value={value}
-          placeholder={placeholder}
-          onChange={setValue}
-          onCommit={save}
-        />
-      </div>
-    </div>
+    <MetadataValueInput
+      slug={slug}
+      fieldId={field.id}
+      type={field.type}
+      options={field.options}
+      suggests={field.suggests}
+      value={value}
+      placeholder={isExif && field.value ? field.value : "—"}
+      onChange={setValue}
+      onCommit={save}
+    />
   );
 }

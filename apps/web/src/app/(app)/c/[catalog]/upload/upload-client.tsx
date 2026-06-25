@@ -366,7 +366,7 @@ export function UploadClient({
         />
       )}
 
-      <div className="flex gap-6 pt-2">
+      <div className="flex pt-2">
         <div className="min-w-0 flex-1 space-y-6">
           <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
@@ -406,7 +406,7 @@ export function UploadClient({
         ) : null}
         </div>
         {showMeta && hasMeta && (
-          <aside className="w-80 shrink-0">
+          <aside className="w-80 shrink-0 border-l pl-6">
             <div className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
               <UploadMetadataForm values={metaValues} onChange={setMeta} />
             </div>
