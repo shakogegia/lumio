@@ -178,6 +178,14 @@ export function SearchInput({
     metaLabelsRef.current = metaLabels;
   });
 
+  // Warm the `@` option cache when the box mounts, so the first `@` is instant
+  // (no wait for the schema + per-field value fetches). loadAllOptions caches
+  // per slug, so the later Tribute `values` call reuses this in-flight/resolved
+  // promise rather than re-fetching.
+  useEffect(() => {
+    void loadAllOptions(slug).catch(() => {});
+  }, [slug]);
+
   // Parse the editor and report filters now. Also refreshes the placeholder.
   const emitNow = useCallback(() => {
     const el = editorRef.current;
