@@ -1,8 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { MatchType, RuleOp } from "@lumio/shared";
+import {
+  buildSearchRegistry,
+  FieldKind,
+  FieldType,
+  MatchType,
+  RuleOp,
+  type MetadataSchema,
+} from "@lumio/shared";
 import { folderPhotoWhere } from "./folders.js";
 
 const NOW = new Date("2026-06-21T00:00:00.000Z");
+
+/** A catalog schema with one custom Choice field, matching what getCatalogSchema returns. */
+const CHOICE_SCHEMA: MetadataSchema = [
+  {
+    id: "g1",
+    label: "Equipment",
+    fields: [
+      {
+        id: "fld_film_format",
+        key: "film-format",
+        label: "Film Format",
+        type: FieldType.Choice,
+        kind: FieldKind.Custom,
+        builtinKey: null,
+        enabled: true,
+        suggests: false,
+        options: ["35mm", "6×6"],
+      },
+    ],
+  },
+];
 
 describe("folderPhotoWhere", () => {
   it("returns a never-match clause when there are no albums", () => {
@@ -29,6 +57,25 @@ describe("folderPhotoWhere", () => {
     );
     expect(where).toEqual({
       OR: [{ AND: [{ exif: { path: ["cameraModel"], equals: "X" } }] }],
+    });
+  });
+
+  it("resolves a custom-field smart-album rule via the per-catalog registry", () => {
+    const registry = buildSearchRegistry(CHOICE_SCHEMA);
+    const where = folderPhotoWhere(
+      {
+        regularAlbumIds: [],
+        smartAlbums: [
+          { rules: { match: MatchType.all, rules: [{ field: "film-format", op: RuleOp.in_list, value: ["35mm", "6×6"] }] } },
+        ],
+      },
+      NOW,
+      registry,
+    );
+    expect(where).toEqual({
+      OR: [
+        { AND: [{ metadataValues: { some: { fieldId: "fld_film_format", value: { in: ["35mm", "6×6"] } } } }] },
+      ],
     });
   });
 
