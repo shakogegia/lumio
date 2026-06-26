@@ -1,3 +1,8 @@
+> **⚠️ SUPERSEDED (2026-06-26)** by `2026-06-26-selection-inspector-panel.md`.
+> Bulk-fill is delivered by the docked **selection inspector** (live per-field
+> across the selection via the existing `/metadata/selection` route), not by the
+> dialog + new `/metadata/bulk` route described below. Do not implement this plan.
+
 # Photo Metadata 1f — Bulk-Fill a Roll Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
