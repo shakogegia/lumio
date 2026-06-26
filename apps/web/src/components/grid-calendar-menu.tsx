@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { type CalendarField, type CalendarFacets, metaCalendarField } from "@lumio/shared";
 import type { DateSortField } from "@/lib/grid-sort";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Tooltip,
@@ -142,9 +143,7 @@ export function GridCalendarMenu({
           </Tabs>
         </div>
         {loading ? (
-          <div className="flex h-48 items-center justify-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-          </div>
+          <CalendarSkeleton />
         ) : error ? (
           <div className="flex h-48 flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
             <span>Couldn&apos;t load dates.</span>
@@ -244,5 +243,24 @@ export function GridCalendarMenu({
       </Popover>
       <TooltipContent>Filter by month</TooltipContent>
     </Tooltip>
+  );
+}
+
+/** Loading placeholder that mirrors the two-pane picker: a years column and a
+ *  3-column grid of month-cover tiles, so the flyout doesn't jump on load. */
+function CalendarSkeleton() {
+  return (
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 w-24 space-y-2 border-r py-2 pl-3 pr-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-5 w-12" />
+        ))}
+      </div>
+      <div className="ml-24 grid auto-rows-min grid-cols-3 gap-2 p-2">
+        {Array.from({ length: 12 }, (_, i) => (
+          <Skeleton key={i} className="aspect-square rounded-md" />
+        ))}
+      </div>
+    </div>
   );
 }
