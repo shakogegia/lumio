@@ -30,7 +30,7 @@ export function MetadataValueInput({
       <Select value={value || undefined} onValueChange={(v) => { onChange(v); void onCommit?.(v); }}>
         <SelectTrigger
           size="sm"
-          className="h-auto w-40 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right shadow-none focus-visible:ring-0"
+          className="w-40 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right shadow-none focus-visible:ring-0 data-[size=sm]:h-5 data-placeholder:text-muted-foreground/40"
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -50,7 +50,7 @@ export function MetadataValueInput({
         rows={2}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => void onCommit?.()}
-        className="w-40 resize-none border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground"
+        className="w-40 resize-none border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground/40"
       />
     );
   }
@@ -87,7 +87,7 @@ function Autocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => { void load(); setOpen(true); }}
         onBlur={() => { setTimeout(() => setOpen(false), 120); void onCommit?.(); }}
-        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       {open && suggests && matches.length > 0 && (
         <ul className="absolute right-0 z-30 mt-1 max-h-48 w-48 overflow-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md">
