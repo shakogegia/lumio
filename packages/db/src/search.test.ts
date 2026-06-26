@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MatchType, RuleOp } from "@lumio/shared";
+import { MatchType, RuleOp, ValueType, type FieldDef, type SearchRegistry } from "@lumio/shared";
 import { buildSearchWhere } from "./search.js";
 
 describe("buildSearchWhere", () => {
@@ -79,5 +79,28 @@ describe("buildSearchWhere", () => {
     ).toEqual({
       OR: [{ iso: { gte: 800 } }, { lensModel: { not: null } }],
     });
+  });
+});
+
+describe("buildSearchWhere — metadata registry", () => {
+  const reg: SearchRegistry = new Map<string, FieldDef>([
+    ["film", { key: "film", label: "Film", type: ValueType.string, storage: { kind: "metadata", fieldId: "f1" }, ops: [] }],
+  ]);
+  const NOW = new Date("2026-06-26T00:00:00Z");
+
+  it("compiles a known metadata field via the registry", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "film", op: RuleOp.eq, value: "Portra" }] } },
+      NOW, reg,
+    );
+    expect(JSON.stringify(where)).toContain('"fieldId":"f1"');
+  });
+
+  it("drops a filter rule whose field is not a configured field", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "exif.SecretTag", op: RuleOp.eq, value: "x" }] } },
+      NOW, reg,
+    );
+    expect(where).toEqual({});
   });
 });

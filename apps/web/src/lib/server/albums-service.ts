@@ -1,5 +1,6 @@
-import { type Album, type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
+import { type Album, type Prisma, type PrismaClient, getCatalogSchema, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
 import {
+  buildSearchRegistry,
   monthRange,
   type AlbumDTO,
   type AlbumSummaryDTO,
@@ -24,7 +25,8 @@ export async function albumCoverId(
   now: Date = new Date(),
 ): Promise<string | null> {
   if (row.isSmart) {
-    const smartWhere = smartAlbumWhere(toAlbumDTO(row).rules as SmartAlbumRules, now);
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    const smartWhere = smartAlbumWhere(toAlbumDTO(row).rules as SmartAlbumRules, now, registry);
     const cover = await db.photo.findFirst({
       where: { catalogId, ...LIVE_PHOTO, ...smartWhere },
       orderBy: PHOTO_ORDER,
@@ -73,7 +75,8 @@ export async function albumSummary(
 ): Promise<AlbumSummaryDTO> {
   const base = toAlbumDTO(row);
   if (row.isSmart) {
-    const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now);
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now, registry);
     const where = { catalogId, ...LIVE_PHOTO, ...smartWhere };
     const [photoCount, coverPhotoId] = await Promise.all([
       db.photo.count({ where }),
@@ -149,9 +152,11 @@ export async function albumPhotoWhere(
   const album = await db.album.findFirst({ where: { id: albumId, catalogId } });
   if (!album) return null;
   const dto = toAlbumDTO(album);
-  return dto.isSmart
-    ? smartAlbumWhere(dto.rules as SmartAlbumRules, new Date())
-    : { albums: { some: { albumId } } };
+  if (dto.isSmart) {
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    return smartAlbumWhere(dto.rules as SmartAlbumRules, new Date(), registry);
+  }
+  return { albums: { some: { albumId } } };
 }
 
 export async function listAlbumPhotos(

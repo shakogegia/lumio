@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import type { SmartAlbumRules } from "@lumio/shared";
+import type { SmartAlbumRules, SearchRegistry } from "@lumio/shared";
 import { buildPhotoWhere } from "./photo-where.js";
 
 /**
@@ -8,9 +8,9 @@ import { buildPhotoWhere } from "./photo-where.js";
  * empty-rules sentinel: a smart album with no rules matches nothing.
  * `now` is injected so the function stays pure and testable.
  */
-export function smartAlbumWhere(rules: SmartAlbumRules, now: Date): Prisma.PhotoWhereInput {
+export function smartAlbumWhere(rules: SmartAlbumRules, now: Date, registry?: SearchRegistry): Prisma.PhotoWhereInput {
   if (rules.rules.length === 0) return { id: { in: [] } };
   // SmartAlbumRules is structurally assignable to FilterSet — same { match, rules }
   // shape. If those types ever diverge, add an explicit adapter here.
-  return buildPhotoWhere(rules, now);
+  return buildPhotoWhere(rules, now, registry);
 }
