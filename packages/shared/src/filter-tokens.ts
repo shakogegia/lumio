@@ -184,6 +184,8 @@ export function formatRuleLabel(rule: FilterRule, fieldLabel?: string): string {
     }
     case RuleOp.contains:
       return `${name} contains ${String(rule.value)}`;
+    case RuleOp.not_contains:
+      return `${name} doesn't contain ${String(rule.value)}`;
     case RuleOp.ne:
       return `${name} ≠ ${String(rule.value)}`;
     case RuleOp.gt:

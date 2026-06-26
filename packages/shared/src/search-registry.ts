@@ -21,11 +21,11 @@ export function metadataFieldToValueType(t: FieldType): ValueType {
   return ValueType.string; // text | textarea | choice
 }
 
-const STRING_OPS = [RuleOp.eq, RuleOp.contains, RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
+const STRING_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.contains, RuleOp.not_contains, RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
 const CHOICE_OPS = [RuleOp.eq, RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
-const CUSTOM_NUM_OPS = [RuleOp.eq, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]; // no range (text-stored)
-const STD_NUM_OPS = [RuleOp.eq, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
-const STD_DATE_OPS = [RuleOp.eq, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.last_30_days, RuleOp.exists, RuleOp.not_exists];
+const CUSTOM_NUM_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]; // no range (text-stored)
+const STD_NUM_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
+const STD_DATE_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.last_30_days, RuleOp.exists, RuleOp.not_exists];
 
 /**
  * Build a per-catalog field registry from the metadata schema. Only enabled

@@ -109,8 +109,12 @@ function metadataClause(def: FieldDef, rule: FilterRule): Prisma.PhotoWhereInput
   switch (rule.op) {
     case RuleOp.eq:
       return { metadataValues: { some: { fieldId, value: { equals: rule.value as string, mode: "insensitive" } } } };
+    case RuleOp.ne:
+      return { metadataValues: { none: { fieldId, value: { equals: rule.value as string, mode: "insensitive" } } } };
     case RuleOp.contains:
       return { metadataValues: { some: { fieldId, value: { contains: rule.value as string, mode: "insensitive" } } } };
+    case RuleOp.not_contains:
+      return { metadataValues: { none: { fieldId, value: { contains: rule.value as string, mode: "insensitive" } } } };
     case RuleOp.in_list:
       return { metadataValues: { some: { fieldId, value: { in: rule.value as string[] } } } };
     case RuleOp.not_in_list:
@@ -143,8 +147,18 @@ function standardClause(def: FieldDef, rule: FilterRule, now: Date): Prisma.Phot
   switch (rule.op) {
     case RuleOp.eq:
       return { OR: [some({ equals: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ equals: rule.value, mode: "insensitive" })] };
+    case RuleOp.ne:
+      return { OR: [
+        some({ not: { equals: rule.value as string, mode: "insensitive" } }),
+        overrideAbsentAnd({ not: { equals: rule.value, mode: "insensitive" } }),
+      ] };
     case RuleOp.contains:
       return { OR: [some({ contains: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ contains: rule.value, mode: "insensitive" })] };
+    case RuleOp.not_contains:
+      return { OR: [
+        some({ not: { contains: rule.value as string, mode: "insensitive" } }),
+        overrideAbsentAnd({ not: { contains: rule.value, mode: "insensitive" } }),
+      ] };
     case RuleOp.in_list:
       return { OR: [some({ in: rule.value as string[] }), overrideAbsentAnd({ in: rule.value })] };
     case RuleOp.not_in_list:

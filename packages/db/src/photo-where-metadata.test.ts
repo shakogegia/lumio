@@ -42,6 +42,23 @@ describe("buildPhotoWhere — custom metadata fields", () => {
   });
 });
 
+describe("buildPhotoWhere — custom metadata fields (negative ops)", () => {
+  it("ne → metadataValues.none on fieldId (insensitive equals)", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "film", op: RuleOp.ne, value: "Portra" }] },
+      NOW, reg(custom("film", "f1")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { none: { fieldId: "f1", value: { equals: "Portra", mode: "insensitive" } } } }] });
+  });
+  it("not_contains → none.value.contains insensitive", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "dev", op: RuleOp.not_contains, value: "D76" }] },
+      NOW, reg(custom("dev", "f2")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { none: { fieldId: "f2", value: { contains: "D76", mode: "insensitive" } } } }] });
+  });
+});
+
 describe("buildPhotoWhere — standard string fields (effective value)", () => {
   it("eq matches the override OR (no override AND EXIF column)", () => {
     const where = buildPhotoWhere(
@@ -71,6 +88,26 @@ describe("buildPhotoWhere — standard string fields (effective value)", () => {
     expect(where).toEqual({ AND: [{ OR: [
       { metadataValues: { some: { fieldId: "s1", value: { notIn: ["Pentax"] } } } },
       { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { notIn: ["Pentax"] } }] },
+    ] }] });
+  });
+  it("ne → override-isn't OR (no-override AND column-isn't)", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "camera", op: RuleOp.ne, value: "Hasselblad" }] },
+      NOW, reg(standardStr("camera", "s1", "cameraModel")),
+    );
+    expect(where).toEqual({ AND: [{ OR: [
+      { metadataValues: { some: { fieldId: "s1", value: { not: { equals: "Hasselblad", mode: "insensitive" } } } } },
+      { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { not: { equals: "Hasselblad", mode: "insensitive" } } }] },
+    ] }] });
+  });
+  it("not_contains → override-not-contains OR (no-override AND column-not-contains)", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "camera", op: RuleOp.not_contains, value: "blad" }] },
+      NOW, reg(standardStr("camera", "s1", "cameraModel")),
+    );
+    expect(where).toEqual({ AND: [{ OR: [
+      { metadataValues: { some: { fieldId: "s1", value: { not: { contains: "blad", mode: "insensitive" } } } } },
+      { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { not: { contains: "blad", mode: "insensitive" } } }] },
     ] }] });
   });
 });

@@ -43,10 +43,16 @@ function opLabel(op: RuleOp, type: FieldType): string {
   switch (op) {
     case RuleOp.eq:
       return "is";
+    case RuleOp.ne:
+      return "isn't";
     case RuleOp.contains:
       return "contains";
+    case RuleOp.not_contains:
+      return "doesn't contain";
     case RuleOp.in_list:
       return "is any of";
+    case RuleOp.not_in_list:
+      return "is none of";
     case RuleOp.gte:
       return isDate ? "on or after" : "≥";
     case RuleOp.lte:
@@ -68,16 +74,17 @@ function opLabel(op: RuleOp, type: FieldType): string {
  *  multiple values = multiple rows + Match "any" — no list op / no reordering.) */
 function opsForField(field: MetadataFieldDef): RuleOp[] {
   if (field.type === FieldType.Choice) {
-    return [RuleOp.in_list, RuleOp.exists, RuleOp.not_exists];
+    return [RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
   }
   if (field.type === FieldType.Text || field.type === FieldType.Textarea) {
-    return [RuleOp.contains, RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
+    return [RuleOp.contains, RuleOp.not_contains, RuleOp.eq, RuleOp.ne, RuleOp.exists, RuleOp.not_exists];
   }
   // Number or Date
   if (field.kind === FieldKind.Standard) {
     if (field.type === FieldType.Date) {
       return [
         RuleOp.eq,
+        RuleOp.ne,
         RuleOp.gte,
         RuleOp.lte,
         RuleOp.between,
@@ -86,10 +93,10 @@ function opsForField(field: MetadataFieldDef): RuleOp[] {
         RuleOp.not_exists,
       ];
     }
-    return [RuleOp.eq, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
+    return [RuleOp.eq, RuleOp.ne, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
   }
   // custom Number/Date (text-stored): no range
-  return [RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
+  return [RuleOp.eq, RuleOp.ne, RuleOp.exists, RuleOp.not_exists];
 }
 
 // ─── Value coercion ─────────────────────────────────────────────────────────

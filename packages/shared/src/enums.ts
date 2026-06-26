@@ -15,6 +15,7 @@ export enum RuleOp {
   eq = "eq",
   ne = "ne",
   contains = "contains",
+  not_contains = "not_contains",
   gt = "gt",
   gte = "gte",
   lt = "lt",

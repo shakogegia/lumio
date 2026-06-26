@@ -28,7 +28,7 @@ describe("buildSearchRegistry", () => {
     const reg = buildSearchRegistry(schema([field({ id: "f2", key: "frames", type: FieldType.Number })]));
     const def = reg.get("frames")!;
     expect(def.type).toBe(ValueType.number);
-    expect(def.ops).toEqual([RuleOp.eq, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]);
+    expect(def.ops).toEqual([RuleOp.eq, RuleOp.ne, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]);
   });
 
   it("maps a standard camera field to the cameraModel column with effective-value string ops", () => {
