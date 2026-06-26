@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isFeatureEnabled } from "@lumio/db";
-import { FeatureKey } from "@lumio/shared";
+import { FeatureKey, coerceCalendarField } from "@lumio/shared";
 import { buildCalendarFacets } from "@/lib/server/calendar-service";
 import { errorJson } from "@/lib/server/route-helpers";
 import { withCatalog } from "@/lib/server/with-catalog";
@@ -17,7 +17,9 @@ export const GET = withCatalog(async (request, _context, { catalog }) => {
   if (!(await isFeatureEnabled(catalog.id, FeatureKey.DiskExplorer))) {
     return errorJson("Not found", 404);
   }
-  const dir = new URL(request.url).searchParams.get("path") ?? "";
-  const facets = await buildCalendarFacets(catalog.id, { dirPath: dir });
+  const { searchParams } = new URL(request.url);
+  const dir = searchParams.get("path") ?? "";
+  const dateField = coerceCalendarField(searchParams.get("dateField") ?? undefined);
+  const facets = await buildCalendarFacets(catalog.id, { dirPath: dir }, dateField);
   return NextResponse.json(facets);
 });

@@ -108,6 +108,29 @@ describe("listPhotos", () => {
     await listPhotos(CAT, { limit: 50, offset: 0, favorite: false }, db as never);
     expect(db.calls[0]?.where).toEqual({ catalogId: CAT, trashedAt: null });
   });
+
+  it("filters by createdAt range when dateField is 'imported'", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos(CAT, { limit: 50, offset: 0, month: "2024-06", dateField: "imported" }, db as never);
+    expect(db.calls[0]?.where).toEqual({
+      catalogId: CAT,
+      trashedAt: null,
+      createdAt: {
+        gte: new Date("2024-06-01T00:00:00.000Z"),
+        lt: new Date("2024-07-01T00:00:00.000Z"),
+      },
+    });
+  });
+
+  it("filters by metadataValues when dateField is a meta: field", async () => {
+    const db = fakeDb([row("a")]);
+    await listPhotos(CAT, { limit: 50, offset: 0, month: "2024-06", dateField: "meta:clx1" }, db as never);
+    expect(db.calls[0]?.where).toEqual({
+      catalogId: CAT,
+      trashedAt: null,
+      metadataValues: { some: { fieldId: "clx1", value: { gte: "2024-06-01", lt: "2024-07-01" } } },
+    });
+  });
 });
 
 describe("listPhotosForDownload", () => {

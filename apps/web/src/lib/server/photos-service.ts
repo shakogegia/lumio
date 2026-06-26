@@ -7,8 +7,9 @@ import type {
   PhotosQuery,
   PhotoStripItem,
 } from "@lumio/shared";
-import { monthRange } from "@lumio/shared";
+import { DEFAULT_CALENDAR_FIELD } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/server/albums-service";
+import { calendarWhere } from "@/lib/server/calendar-where";
 import { listPhotosByMetadata, metadataNeighbors, resolveSort } from "@/lib/server/metadata-sort";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
@@ -24,7 +25,7 @@ export async function listPhotos(
 ): Promise<PhotosPage> {
   const { limit, offset, sort, month, favorite } = params;
   const where: Prisma.PhotoWhereInput = {};
-  if (month) where.sortDate = monthRange(month);
+  if (month) Object.assign(where, calendarWhere(params.dateField ?? DEFAULT_CALENDAR_FIELD, month));
   if (favorite) where.isFavorite = true;
   return listPhotosForWhere(catalogId, where, { limit, offset, sort }, db);
 }

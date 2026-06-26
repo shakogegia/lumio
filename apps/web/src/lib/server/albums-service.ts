@@ -1,7 +1,7 @@
 import { type Album, type Prisma, type PrismaClient, getCatalogSchema, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
 import {
+  DEFAULT_CALENDAR_FIELD,
   buildSearchRegistry,
-  monthRange,
   type AlbumDTO,
   type AlbumSummaryDTO,
   type CreateAlbumInput,
@@ -11,6 +11,7 @@ import {
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
+import { calendarWhere } from "@/lib/server/calendar-where";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
@@ -213,7 +214,7 @@ export async function listAlbumPhotos(
   // catalog constraint), so without this it would match photos in EVERY catalog.
   // listPhotosForWhere adds catalogId at the top level; AND the month range in alongside scoped.
   const innerWhere: Prisma.PhotoWhereInput = month
-    ? { AND: [scoped, { sortDate: monthRange(month) }] }
+    ? { AND: [scoped, calendarWhere(params.dateField ?? DEFAULT_CALENDAR_FIELD, month)] }
     : scoped;
   return listPhotosForWhere(catalogId, innerWhere, { limit, offset, sort }, db);
 }

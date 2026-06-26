@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { type Prisma, isFeatureEnabled } from "@lumio/db";
-import { coercePhotoSort, FeatureKey, monthParamSchema, monthRange } from "@lumio/shared";
+import { coerceCalendarField, coercePhotoSort, FeatureKey, monthParamSchema } from "@lumio/shared";
+import { calendarWhere } from "@/lib/server/calendar-where";
 import { withCatalog } from "@/lib/server/with-catalog";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { errorJson } from "@/lib/server/route-helpers";
@@ -26,10 +27,11 @@ export const GET = withCatalog(async (request, _context, { catalog }) => {
   const offset = Math.max(0, Number(searchParams.get("offset")) || 0);
 
   // Direct membership: the folder's OWN photos. An optional ?month filter narrows
-  // by sortDate (same as the library/album calendar); an invalid month is ignored.
+  // by the chosen date dimension (same as the library/album calendar); an invalid month is ignored.
   const where: Prisma.PhotoWhereInput = { dirPath: dir };
+  const dateField = coerceCalendarField(searchParams.get("dateField") ?? undefined);
   const month = monthParamSchema.safeParse(searchParams.get("month") ?? undefined);
-  if (month.success) where.sortDate = monthRange(month.data);
+  if (month.success) Object.assign(where, calendarWhere(dateField, month.data));
 
   const page = await listPhotosForWhere(catalog.id, where, { limit, offset, sort });
   return NextResponse.json(page);
