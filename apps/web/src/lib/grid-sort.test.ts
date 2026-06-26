@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { FieldType, type MetadataSchema } from "@lumio/shared";
+import { FieldKind, FieldType, type MetadataSchema } from "@lumio/shared";
 import { dateSortFields, effectiveGridSort } from "./grid-sort";
 
 function field(id: string, type: FieldType, enabled = true) {
-  return { id, key: id, label: `L-${id}`, type, kind: "custom" as const, builtinKey: null, enabled, suggests: false, options: [] };
+  return { id, key: id, label: `L-${id}`, type, kind: FieldKind.Custom, builtinKey: null, enabled, suggests: false, options: [] };
 }
 
 const schema: MetadataSchema = [
