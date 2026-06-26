@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_USER: lumio
@@ -9,7 +9,9 @@ services:
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
-      - lumio_pgdata:/var/lib/postgresql/data
+      # postgres:18+ stores data in a version-specific subdir and wants the mount
+      # at the parent dir (not .../data). This path also works for 16/17.
+      - lumio_pgdata:/var/lib/postgresql
 
 volumes:
   lumio_pgdata:
