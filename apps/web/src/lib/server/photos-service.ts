@@ -184,6 +184,9 @@ export async function getNeighborsForWhere(
   window = 25,
   db: Db = prisma,
 ): Promise<PhotoNeighbors> {
+  // All real callers put a string `catalogId` in `where`; if it's absent we can't
+  // validate a metadata field, so treat the sort as standard. A meta: sort that
+  // reached here without a catalogId falls through to photoOrderBy's default order.
   const catalogId = typeof where.catalogId === "string" ? where.catalogId : null;
   const resolved = catalogId
     ? await resolveSort(catalogId, sort, db)
