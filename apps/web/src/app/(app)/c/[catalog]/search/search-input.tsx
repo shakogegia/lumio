@@ -11,7 +11,7 @@ import { type FilterRule, formatRuleLabel } from "@lumio/shared";
 import { mergeEditorRules } from "./editor-rules";
 
 const DEBOUNCE_MS = 250;
-const PLACEHOLDER = "Search photos…  (type @ to filter by album)";
+const PLACEHOLDER = "Search photos…  (type @ to filter by album or metadata)";
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -237,7 +237,9 @@ export function SearchInput({
       tribute = new TributeCtor<TributeFacetItem>({
         trigger: "@",
         allowSpaces: true,
-        lookup: "label",
+        // Match the typed text against the field/facet label AND the value, so
+        // "@film" finds the Film stock field and "@portra" finds the value.
+        lookup: (item: TributeFacetItem) => `${item.facetLabel} ${item.label}`,
         fillAttr: "label",
         // chipHtml already ends with one trailing space; suppress Tribute's own
         // default \xA0 suffix so a selected chip isn't followed by two spaces.
@@ -254,7 +256,14 @@ export function SearchInput({
         },
         menuItemTemplate: (item) =>
           `<span class="text-muted-foreground">${escapeHtml(item.original.facetLabel)}</span> · ${escapeHtml(item.original.label)}`,
-        selectTemplate: (item) => (item ? chipHtml(item.original) : ""),
+        // A metadata option (carries a rule) inserts an exif filter chip; an
+        // album option inserts an album chip.
+        selectTemplate: (item) =>
+          item
+            ? item.original.rule
+              ? exifChipHtml(item.original.rule, metaLabelsRef.current)
+              : chipHtml(item.original)
+            : "",
         noMatchTemplate: () => "",
       });
       tribute.attach(el);

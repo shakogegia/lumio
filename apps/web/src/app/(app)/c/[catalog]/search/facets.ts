@@ -1,4 +1,5 @@
-import type { AlbumSummaryDTO } from "@lumio/shared";
+import type { AlbumSummaryDTO, FilterRule, MetadataSchema } from "@lumio/shared";
+import { FieldType, RuleOp } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
 
 /** One selectable value within a facet (album: value=id, label=name). */
@@ -17,12 +18,58 @@ export interface SearchFacet {
   loadOptions: (slug: string) => Promise<FacetOption[]>;
 }
 
-/** Flattened option as fed to TributeJS — carries its facet identity. */
+/** Flattened option as fed to TributeJS — carries its facet identity.
+ *  `rule` present → picking it inserts a metadata filter chip (e.g. a custom
+ *  field value); absent → an album chip. */
 export interface TributeFacetItem {
   facetKey: string;
   facetLabel: string;
   value: string;
   label: string;
+  rule?: FilterRule;
+}
+
+/**
+ * Metadata `@` options: every choice field's options (so you can pick a value
+ * even before any photo uses it) + existing values for text fields (incl. the
+ * standard camera/lens overrides) via the suggest endpoint. Choice → `in_list`,
+ * text → `contains`. Numeric/date fields are filtered via the panel, not `@`.
+ */
+async function loadMetadataOptions(slug: string): Promise<TributeFacetItem[]> {
+  const res = await fetch(catalogApiUrl(slug, "/metadata/schema")).catch(() => null);
+  if (!res || !res.ok) return [];
+  const { schema } = (await res.json()) as { schema: MetadataSchema };
+  const fields = schema.flatMap((g) => g.fields).filter((f) => f.enabled);
+
+  const items: TributeFacetItem[] = [];
+  for (const f of fields) {
+    if (f.type === FieldType.Choice) {
+      for (const opt of f.options) {
+        items.push({
+          facetKey: f.key, facetLabel: f.label, value: opt, label: opt,
+          rule: { field: f.key, op: RuleOp.in_list, value: [opt] },
+        });
+      }
+    }
+  }
+  const textFields = fields.filter((f) => f.type === FieldType.Text || f.type === FieldType.Textarea);
+  const lists = await Promise.all(
+    textFields.map((f) =>
+      fetch(catalogApiUrl(slug, `/metadata/suggest?field=${encodeURIComponent(f.id)}`))
+        .then((r) => (r.ok ? (r.json() as Promise<{ values: string[] }>) : { values: [] }))
+        .then((d) => ({ f, values: d.values ?? [] }))
+        .catch(() => ({ f, values: [] as string[] })),
+    ),
+  );
+  for (const { f, values } of lists) {
+    for (const v of values) {
+      items.push({
+        facetKey: f.key, facetLabel: f.label, value: v, label: v,
+        rule: { field: f.key, op: RuleOp.contains, value: v },
+      });
+    }
+  }
+  return items;
 }
 
 const albumFacet: SearchFacet = {
@@ -53,8 +100,8 @@ const cache = new Map<string, Promise<TributeFacetItem[]>>();
 export function loadAllOptions(slug: string): Promise<TributeFacetItem[]> {
   let cached = cache.get(slug);
   if (!cached) {
-    cached = Promise.all(
-      FACETS.map((facet) =>
+    cached = Promise.all([
+      ...FACETS.map((facet) =>
         facet.loadOptions(slug).then((opts) =>
           opts.map((o) => ({
             facetKey: facet.key,
@@ -64,7 +111,8 @@ export function loadAllOptions(slug: string): Promise<TributeFacetItem[]> {
           })),
         ),
       ),
-    )
+      loadMetadataOptions(slug),
+    ])
       .then((groups) => groups.flat())
       .catch((err) => {
         cache.delete(slug); // don't memoize a failure — allow retry on the next trigger
