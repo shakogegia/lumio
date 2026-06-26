@@ -65,6 +65,28 @@ export function parseExifDate(value: unknown): Date | null {
 }
 
 /**
+ * Flattened-metadata keys that carry a photo's capture date, in priority order:
+ * the standard EXIF capture/digitized tags first, then the IPTC/XMP creation
+ * dates (film scans often carry *only* `xmp:CreateDate`). Modification and
+ * metadata dates are deliberately excluded — they reflect edits, not capture.
+ */
+const CAPTURE_DATE_KEYS = [
+  "DateTimeOriginal",
+  "CreateDate",
+  "photoshop:DateCreated",
+  "xmp:CreateDate",
+] as const;
+
+/** First parseable capture date from a flattened metadata record, or null. */
+export function captureDate(meta: Record<string, unknown>): Date | null {
+  for (const key of CAPTURE_DATE_KEYS) {
+    const d = parseExifDate(meta[key]);
+    if (d) return d;
+  }
+  return null;
+}
+
+/**
  * exifr block groups whose keys are hoisted to the top level (keeping their
  * friendly names, e.g. `Make`, `FNumber`, `LightSource`). Everything else in
  * mergeOutput:false output is an XMP namespace (e.g. `filmexif`, `aux`, `crs`,
@@ -140,7 +162,7 @@ export async function extractMetadata(
   const flat = flattenMetadata(raw);
   const exif = sanitizeMetadata(flat) as ExifData;
 
-  const takenAt = parseExifDate(flat.DateTimeOriginal ?? flat.CreateDate);
+  const takenAt = captureDate(flat);
   const curated: ExifData = {
     takenAt: takenAt ? takenAt.toISOString() : undefined,
     // Derive the camera strings from the already-sanitized `exif` (NUL-stripped),

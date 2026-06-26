@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@lumio/db";
-import { parseExifDate } from "./metadata.js";
+import { captureDate } from "./metadata.js";
 
 /**
  * Backfill `takenAt` (and the derived `sortDate`) for photos whose `takenAt` is
@@ -19,7 +19,7 @@ export async function backfillTakenAt(db: Pick<PrismaClient, "photo">): Promise<
   let updated = 0;
   for (const row of rows) {
     const exif = (row.exif ?? {}) as Record<string, unknown>;
-    const taken = parseExifDate(exif.DateTimeOriginal ?? exif.CreateDate);
+    const taken = captureDate(exif);
     if (!taken) continue;
     await db.photo.update({ where: { id: row.id }, data: { takenAt: taken, sortDate: taken } });
     updated += 1;
