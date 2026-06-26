@@ -50,7 +50,7 @@ describe("buildPhotoWhere — standard string fields (effective value)", () => {
     );
     expect(where).toEqual({ AND: [{ OR: [
       { metadataValues: { some: { fieldId: "s1", value: { equals: "Hasselblad", mode: "insensitive" } } } },
-      { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { equals: "Hasselblad" } }] },
+      { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { equals: "Hasselblad", mode: "insensitive" } }] },
     ] }] });
   });
   it("exists → override exists OR column not null", () => {

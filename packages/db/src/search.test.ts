@@ -103,4 +103,15 @@ describe("buildSearchWhere — metadata registry", () => {
     );
     expect(where).toEqual({});
   });
+
+  it("drops a filter rule whose op is not allowed for the configured field", () => {
+    const r2: SearchRegistry = new Map<string, FieldDef>([
+      ["fmt", { key: "fmt", label: "Format", type: ValueType.string, storage: { kind: "metadata", fieldId: "f9" }, ops: [RuleOp.in_list] }],
+    ]);
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "fmt", op: RuleOp.contains, value: "x" }] } },
+      new Date("2026-06-26T00:00:00Z"), r2,
+    );
+    expect(where).toEqual({});
+  });
 });

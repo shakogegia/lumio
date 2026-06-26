@@ -97,4 +97,11 @@ describe("in_list operator", () => {
     expect(bad1.success).toBe(false);
     expect(bad2.success).toBe(false);
   });
+  it("accepts in_list on an unknown (metadata) field key — ops are gated by the per-catalog registry, not the wire", () => {
+    const r = filterSetSchema.safeParse({
+      match: MatchType.all,
+      rules: [{ field: "format", op: RuleOp.in_list, value: ["6×6", "6×7"] }],
+    });
+    expect(r.success).toBe(true);
+  });
 });

@@ -25,7 +25,10 @@ export function buildSearchWhere(
   // configured (registered) metadata field. Legacy album/filename rules are
   // never dropped — they are engine-internal and not user-supplied field names.
   const filterRules = registry
-    ? (p.filter?.rules ?? []).filter((r) => registry.has(r.field))
+    ? (p.filter?.rules ?? []).filter((r) => {
+        const d = registry.get(r.field);
+        return !!d && (d.ops.length === 0 || d.ops.includes(r.op));
+      })
     : (p.filter?.rules ?? []);
   const filter = p.filter ? { match: p.filter.match, rules: filterRules } : undefined;
 

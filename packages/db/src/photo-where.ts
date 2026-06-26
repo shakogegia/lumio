@@ -142,7 +142,7 @@ function standardClause(def: FieldDef, rule: FilterRule, now: Date): Prisma.Phot
 
   switch (rule.op) {
     case RuleOp.eq:
-      return { OR: [some({ equals: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ equals: rule.value })] };
+      return { OR: [some({ equals: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ equals: rule.value, mode: "insensitive" })] };
     case RuleOp.contains:
       return { OR: [some({ contains: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ contains: rule.value, mode: "insensitive" })] };
     case RuleOp.in_list:

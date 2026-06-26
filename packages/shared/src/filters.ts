@@ -115,7 +115,11 @@ const ruleSchema = z
   })
   .superRefine((rule, ctx) => {
     const def = resolveField(rule.field);
-    if (!def.ops.includes(rule.op)) {
+    // Known static fields keep strict op-gating. An unknown key resolves to a
+    // generic `exif.*` def; its real ops are decided by the per-catalog metadata
+    // registry at the search boundary, so don't reject its op here.
+    const generic = def.key.startsWith("exif.");
+    if (!generic && !def.ops.includes(rule.op)) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: `op ${rule.op} invalid for field ${rule.field}` });
       return;
     }
