@@ -16,6 +16,12 @@ import {
 // sentinel that maps back to an empty value (which the save paths treat as a clear).
 const NONE_VALUE = "__none__";
 
+// Date-input calendar bounds: a wide year range so the month/year dropdowns let
+// users jump to distant years without paging month-by-month. Module-level for a
+// stable reference (the current year won't change within a session).
+const DATE_PICKER_START = new Date(1900, 0);
+const DATE_PICKER_END = new Date(new Date().getFullYear() + 10, 11);
+
 export interface MetadataValueInputProps {
   slug: string;
   fieldId: string;
@@ -118,7 +124,15 @@ function DateField({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto p-0">
-        <Calendar mode="single" selected={date} defaultMonth={date} onSelect={set} />
+        <Calendar
+          mode="single"
+          captionLayout="dropdown"
+          startMonth={DATE_PICKER_START}
+          endMonth={DATE_PICKER_END}
+          selected={date}
+          defaultMonth={date}
+          onSelect={set}
+        />
         <div className="border-t p-1.5">
           <Button
             variant="ghost"
