@@ -33,7 +33,7 @@ export function FilterPanel({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline">
           <SlidersHorizontal aria-hidden />
           Filters{activeCount > 0 ? ` (${activeCount})` : ""}
         </Button>
