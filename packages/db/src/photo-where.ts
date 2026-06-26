@@ -148,7 +148,7 @@ function standardClause(def: FieldDef, rule: FilterRule, now: Date): Prisma.Phot
     case RuleOp.in_list:
       return { OR: [some({ in: rule.value as string[] }), overrideAbsentAnd({ in: rule.value })] };
     case RuleOp.not_in_list:
-      return { AND: [none(), col({ notIn: rule.value })] };
+      return { OR: [some({ notIn: rule.value }), overrideAbsentAnd({ notIn: rule.value })] };
     case RuleOp.exists:
       return { OR: [{ metadataValues: { some: { fieldId } } }, col({ not: null })] };
     case RuleOp.not_exists:

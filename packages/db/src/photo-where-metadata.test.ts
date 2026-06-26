@@ -63,6 +63,16 @@ describe("buildPhotoWhere — standard string fields (effective value)", () => {
       { cameraModel: { not: null } },
     ] }] });
   });
+  it("not_in_list honors the override (override-not-in-list OR no-override-and-column-not-in-list)", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "camera", op: RuleOp.not_in_list, value: ["Pentax"] }] },
+      NOW, reg(standardStr("camera", "s1", "cameraModel")),
+    );
+    expect(where).toEqual({ AND: [{ OR: [
+      { metadataValues: { some: { fieldId: "s1", value: { notIn: ["Pentax"] } } } },
+      { AND: [{ metadataValues: { none: { fieldId: "s1" } } }, { cameraModel: { notIn: ["Pentax"] } }] },
+    ] }] });
+  });
 });
 
 describe("buildPhotoWhere — standard numeric fields (typed column)", () => {
