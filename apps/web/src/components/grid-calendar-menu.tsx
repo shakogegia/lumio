@@ -41,13 +41,17 @@ export function GridCalendarMenu({
   value,
   onChange,
   field,
+  appliedField,
   onFieldChange,
   dateFields,
 }: {
   facetsEndpoint: string;
   value: string | null;
   onChange: (month: string | null) => void;
+  /** The tab currently being browsed (drives the facets shown). */
   field: CalendarField;
+  /** The dimension the active month is actually applied under (drives the grid). */
+  appliedField: CalendarField;
   onFieldChange: (f: CalendarField) => void;
   dateFields: DateSortField[];
 }) {
@@ -59,11 +63,13 @@ export function GridCalendarMenu({
   // Which year's months are shown in the right pane.
   const [activeYear, setActiveYear] = useState<number | null>(null);
 
+  // The applied month is highlighted only while browsing its own dimension's tab,
+  // so a month applied under one date field doesn't look selected under another.
   const selected = useMemo(() => {
-    if (!value) return null;
+    if (!value || field !== appliedField) return null;
     const [year, month] = value.split("-").map(Number);
     return { year, month };
-  }, [value]);
+  }, [value, field, appliedField]);
 
   // Fetch facets when the popover opens (or its scope endpoint changes while open).
   useEffect(() => {
@@ -131,6 +137,9 @@ export function GridCalendarMenu({
         </TooltipTrigger>
       <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0">
         <div className="border-b p-1">
+          {/* Switching tabs only changes which facets are browsed — it does NOT
+              touch the grid. The dimension is committed to the grid (via onChange)
+              only when a month tile is picked. */}
           <Tabs value={field} onValueChange={(v) => onFieldChange(v as CalendarField)}>
             <TabsList className="flex w-full justify-start overflow-x-auto">
               <TabsTrigger value="taken">Taken</TabsTrigger>
@@ -142,7 +151,10 @@ export function GridCalendarMenu({
             </TabsList>
           </Tabs>
         </div>
-        {loading ? (
+        {/* Skeleton only on the first load. A tab-switch (or reopen) refetch keeps
+            the current month/year tiles visible and swaps them in place when the
+            new dimension's facets arrive — no jarring full-flyout flash. */}
+        {loading && !facets ? (
           <CalendarSkeleton />
         ) : error ? (
           <FlyoutMessage>
