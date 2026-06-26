@@ -46,12 +46,12 @@ export function AlbumView({
       {confirmDialog}
       <PhotoLibraryView
         title={albumName}
-        collection={({ sort, month }) => ({
+        collection={({ sort, month, field }) => ({
           endpoint: catalogApiUrl(slug, `/albums/${albumId}/photos`),
-          params: new URLSearchParams(month ? { sort, month } : { sort }),
+          params: new URLSearchParams(month ? { sort, month, dateField: field } : { sort }),
           urlForId: (id) => photoHref(slug, id, albumId, sort),
           baseUrl: catalogPath(slug, `/albums/${albumId}`),
-          key: `${albumId}:${sort}:${month ?? ""}:${reloadKey}`,
+          key: `${albumId}:${sort}:${month ?? ""}:${field}:${reloadKey}`,
         })}
         calendar={{ facetsEndpoint: catalogApiUrl(slug, `/albums/${albumId}/calendar`) }}
         actionOptions={{

@@ -19,19 +19,19 @@ export function FolderExplorer({ rel, subfolders }: { rel: string; subfolders: F
       // neither subfolders nor photos falls back to the grid's default empty state.
       empty={subfolders.length > 0 ? null : undefined}
       calendar={{ facetsEndpoint: catalogApiUrl(slug, `/fs/calendar?path=${encodeURIComponent(rel)}`) }}
-      collection={({ sort, month }) => {
+      collection={({ sort, month, field }) => {
         const q = detailScopeQuery({ kind: "folder", dir: rel, sort });
         return {
           endpoint: catalogApiUrl(slug, "/fs/photos"),
           params: new URLSearchParams(
-            month ? { path: rel, sort, month } : { path: rel, sort },
+            month ? { path: rel, sort, month, dateField: field } : { path: rel, sort },
           ),
           urlForId: (id) =>
             catalogPath(slug, q ? `/photo/${id}?${q}` : `/photo/${id}`),
           baseUrl: rel
             ? `${catalogPath(slug, "/folders")}?path=${encodeURIComponent(rel)}`
             : catalogPath(slug, "/folders"),
-          key: `folder:${rel}:${sort}:${month ?? ""}`,
+          key: `folder:${rel}:${sort}:${month ?? ""}:${field}`,
         };
       }}
     />
