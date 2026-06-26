@@ -7,6 +7,7 @@ import {
   MatchType,
   RuleOp,
   resolveField,
+  type SearchRegistry,
 } from "@lumio/shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -102,9 +103,64 @@ function filenameClause(rule: FilterRule): Prisma.PhotoWhereInput {
   return unsupported(rule);
 }
 
-function compileRule(rule: FilterRule, now: Date): Prisma.PhotoWhereInput {
-  const def = resolveField(rule.field);
-  if (!def.ops.includes(rule.op)) unsupported(rule);
+/** Custom field → EXISTS over the PhotoMetadataValue relation. */
+function metadataClause(def: FieldDef, rule: FilterRule): Prisma.PhotoWhereInput {
+  const fieldId = (def.storage as { fieldId: string }).fieldId;
+  switch (rule.op) {
+    case RuleOp.eq:
+      return { metadataValues: { some: { fieldId, value: { equals: rule.value as string, mode: "insensitive" } } } };
+    case RuleOp.contains:
+      return { metadataValues: { some: { fieldId, value: { contains: rule.value as string, mode: "insensitive" } } } };
+    case RuleOp.in_list:
+      return { metadataValues: { some: { fieldId, value: { in: rule.value as string[] } } } };
+    case RuleOp.not_in_list:
+      return { metadataValues: { none: { fieldId, value: { in: rule.value as string[] } } } };
+    case RuleOp.exists:
+      return { metadataValues: { some: { fieldId } } };
+    case RuleOp.not_exists:
+      return { metadataValues: { none: { fieldId } } };
+    default:
+      return unsupported(rule);
+  }
+}
+
+/** Standard field. String fields match the effective value (override ?? EXIF
+ *  column); numeric/date fields compile straight onto the typed column. */
+function standardClause(def: FieldDef, rule: FilterRule, now: Date): Prisma.PhotoWhereInput {
+  const { column, fieldId } = def.storage as { column: string; fieldId: string };
+  if (def.type !== ValueType.string) {
+    // numeric/date → reuse the column compiler (typed, correct ranges)
+    return columnClause(def, rule, now);
+  }
+  const some = (value: unknown): Prisma.PhotoWhereInput =>
+    ({ metadataValues: { some: { fieldId, value } } }) as Prisma.PhotoWhereInput;
+  const none = (): Prisma.PhotoWhereInput =>
+    ({ metadataValues: { none: { fieldId } } }) as Prisma.PhotoWhereInput;
+  const col = (predicate: unknown): Prisma.PhotoWhereInput =>
+    ({ [column]: predicate }) as Prisma.PhotoWhereInput;
+  const overrideAbsentAnd = (colPred: unknown): Prisma.PhotoWhereInput => ({ AND: [none(), col(colPred)] });
+
+  switch (rule.op) {
+    case RuleOp.eq:
+      return { OR: [some({ equals: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ equals: rule.value })] };
+    case RuleOp.contains:
+      return { OR: [some({ contains: rule.value as string, mode: "insensitive" }), overrideAbsentAnd({ contains: rule.value, mode: "insensitive" })] };
+    case RuleOp.in_list:
+      return { OR: [some({ in: rule.value as string[] }), overrideAbsentAnd({ in: rule.value })] };
+    case RuleOp.not_in_list:
+      return { AND: [none(), col({ notIn: rule.value })] };
+    case RuleOp.exists:
+      return { OR: [{ metadataValues: { some: { fieldId } } }, col({ not: null })] };
+    case RuleOp.not_exists:
+      return { AND: [none(), col({ equals: null })] };
+    default:
+      return unsupported(rule);
+  }
+}
+
+function compileRule(rule: FilterRule, now: Date, registry?: SearchRegistry): Prisma.PhotoWhereInput {
+  const def = registry?.get(rule.field) ?? resolveField(rule.field);
+  if (def.ops.length > 0 && !def.ops.includes(rule.op)) unsupported(rule);
   switch (def.storage.kind) {
     case "column":
       return columnClause(def, rule, now);
@@ -114,6 +170,10 @@ function compileRule(rule: FilterRule, now: Date): Prisma.PhotoWhereInput {
       return albumClause(rule);
     case "filename":
       return filenameClause(rule);
+    case "metadata":
+      return metadataClause(def, rule);
+    case "standard":
+      return standardClause(def, rule, now);
     default:
       return unsupported(rule);
   }
@@ -124,8 +184,8 @@ function compileRule(rule: FilterRule, now: Date): Prisma.PhotoWhereInput {
  * injected for relative-date ops. Empty rules → {} (matches the whole library).
  * The shared compiler behind both buildSearchWhere and smartAlbumWhere.
  */
-export function buildPhotoWhere(filter: FilterSet, now: Date): Prisma.PhotoWhereInput {
+export function buildPhotoWhere(filter: FilterSet, now: Date, registry?: SearchRegistry): Prisma.PhotoWhereInput {
   if (filter.rules.length === 0) return {};
-  const clauses = filter.rules.map((r) => compileRule(r, now));
+  const clauses = filter.rules.map((r) => compileRule(r, now, registry));
   return filter.match === MatchType.all ? { AND: clauses } : { OR: clauses };
 }
