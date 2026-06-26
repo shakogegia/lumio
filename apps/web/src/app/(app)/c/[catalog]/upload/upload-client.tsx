@@ -369,7 +369,7 @@ export function UploadClient({
         />
       )}
 
-          <div className="flex-1 space-y-6 overflow-y-auto pt-2 pb-6">
+          <div className="-mr-4 flex-1 space-y-6 overflow-y-auto pr-4 pt-2 pb-6">
           <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
