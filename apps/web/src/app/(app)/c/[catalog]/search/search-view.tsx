@@ -34,6 +34,8 @@ import { FilterPanel } from "./filter-panel";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
+import { dateSortFields, effectiveGridSort } from "@/lib/grid-sort";
 
 const EMPTY: SearchFilters = { albums: [], q: "", rules: [], match: MatchType.all };
 
@@ -52,7 +54,10 @@ export function SearchView() {
   const [recent, setRecent] = useState<SearchFilters[]>(loadRecentSearches);
   const inputRef = useRef<SearchInputHandle>(null);
   const { columns, setColumns } = useGridColumns();
-  const { sort, setSort } = useGridSort();
+  const schema = useCatalogMetadataSchema(slug);
+  const dateFields = schema ? dateSortFields(schema) : undefined;
+  const { sort: storedSort, setSort } = useGridSort();
+  const sort = effectiveGridSort(storedSort, dateFields);
   const { mode, setMode } = useGridView();
   const [month, setMonth] = useState<string | null>(null);
   const sel = useGridSelection();
@@ -202,7 +207,7 @@ export function SearchView() {
                       <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                      <GridSortMenu sort={sort} onSortChange={setSort} />
+                      <GridSortMenu sort={sort} onSortChange={setSort} dateFields={dateFields ?? []} />
                       <GridCalendarMenu
                         facetsEndpoint={catalogApiUrl(slug, `/search/calendar?${paramsFor(filters).toString()}`)}
                         value={month}

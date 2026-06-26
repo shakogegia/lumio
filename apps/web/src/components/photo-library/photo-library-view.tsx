@@ -13,6 +13,9 @@ import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
+import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
+import { dateSortFields, effectiveGridSort } from "@/lib/grid-sort";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HeaderBar } from "@/components/header-bar";
@@ -77,7 +80,11 @@ export function PhotoLibraryView({
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
-  const { sort, setSort } = useGridSort();
+  const { slug } = useCatalog();
+  const schema = useCatalogMetadataSchema(slug);
+  const dateFields = schema ? dateSortFields(schema) : undefined;
+  const { sort: storedSort, setSort } = useGridSort();
+  const sort = effectiveGridSort(storedSort, dateFields);
   const [month, setMonth] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
   // Whether any selected photo is edited — reported up from inside the provider
@@ -130,7 +137,7 @@ export function PhotoLibraryView({
                 {headerActions}
                 <GridViewMenu mode={mode} onModeChange={setMode} />
                 <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                <GridSortMenu sort={sort} onSortChange={setSort} />
+                <GridSortMenu sort={sort} onSortChange={setSort} dateFields={dateFields ?? []} />
                 {calendar && (
                   <GridCalendarMenu
                     facetsEndpoint={calendar.facetsEndpoint}
