@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   MatchType,
   RuleOp,
@@ -10,7 +9,7 @@ import {
   type FilterRule,
   type MetadataFieldDef,
 } from "@lumio/shared";
-import { GripVertical, X, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,10 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
-import { MetadataValueInput } from "@/components/metadata/metadata-value-input";
 
 // ─── Public contract ────────────────────────────────────────────────────────
 
@@ -43,7 +40,8 @@ const OP_LABELS: Partial<Record<RuleOp, string>> = {
 
 const NO_VALUE_OPS = new Set<RuleOp>([RuleOp.exists, RuleOp.not_exists]);
 
-/** Curated op sets per field type / kind. */
+/** Curated op sets per field type / kind. (Order is irrelevant for all/any, so
+ *  multiple values = multiple rows + Match "any" — no list op / no reordering.) */
 function opsForField(field: MetadataFieldDef): RuleOp[] {
   if (field.type === FieldType.Choice) {
     return [RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
@@ -55,34 +53,30 @@ function opsForField(field: MetadataFieldDef): RuleOp[] {
   if (field.kind === FieldKind.Standard) {
     return [RuleOp.eq, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
   }
-  // custom Number/Date
+  // custom Number/Date (text-stored): no range
   return [RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
 }
 
 // ─── Value coercion ─────────────────────────────────────────────────────────
 
-/**
- * Coerce a raw string (or pair) from the widget into the typed FilterRule.value.
- * Standard Number → JS number; Standard Date → ISO string; custom Number/Date → string.
- */
+/** Coerce the widget's raw string(s) into the typed FilterRule.value.
+ *  Standard Number → JS number; everything else → string(s). */
 function coerceValue(
   field: MetadataFieldDef,
   op: RuleOp,
   raw: string | [string, string],
 ): FilterRule["value"] {
   if (NO_VALUE_OPS.has(op)) return undefined;
-
-  const isStdNum =
-    field.kind === FieldKind.Standard && field.type === FieldType.Number;
+  const isStdNum = field.kind === FieldKind.Standard && field.type === FieldType.Number;
 
   if (op === RuleOp.between && Array.isArray(raw)) {
-    const [a, b] = raw as [string, string];
+    const [a, b] = raw;
     if (isStdNum) {
       const na = Number(a);
       const nb = Number(b);
       return Number.isFinite(na) && Number.isFinite(nb) ? [na, nb] : undefined;
     }
-    return [a, b]; // date strings
+    return [a, b];
   }
 
   const s = raw as string;
@@ -93,21 +87,14 @@ function coerceValue(
   return s;
 }
 
-// ─── Completeness helper (exported) ─────────────────────────────────────────
+// ─── Completeness helper (exported; gates the dialogs' submit) ───────────────
 
-/**
- * True iff `rules.length > 0` and every rule is fully filled-in.
- * - no-value ops (exists / not_exists) → always complete
- * - between → both tuple parts non-empty
- * - all others → value must be a non-empty string or finite number
- */
 export function rulesComplete(rules: FilterRule[]): boolean {
   if (rules.length === 0) return false;
   return rules.every((r) => {
     if (NO_VALUE_OPS.has(r.op)) return true;
     if (r.value === undefined || r.value === null) return false;
     if (Array.isArray(r.value)) {
-      // between tuple — both parts must be non-empty
       return (
         r.value.length === 2 &&
         r.value[0] !== "" &&
@@ -122,7 +109,10 @@ export function rulesComplete(rules: FilterRule[]): boolean {
   });
 }
 
-// ─── Value widget ────────────────────────────────────────────────────────────
+// ─── Value widgets (all flex to fill the row) ────────────────────────────────
+
+const INPUT_CLS =
+  "h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring";
 
 function BetweenWidget({
   field,
@@ -144,27 +134,25 @@ function BetweenWidget({
         type={inputType}
         value={tuple[0]}
         onChange={(e) => onChange([e.target.value, tuple[1]])}
-        className="h-8 w-24 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+        className={INPUT_CLS}
       />
-      <span className="text-xs text-muted-foreground">–</span>
+      <span className="shrink-0 text-xs text-muted-foreground">–</span>
       <input
         type={inputType}
         value={tuple[1]}
         onChange={(e) => onChange([tuple[0], e.target.value])}
-        className="h-8 w-24 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+        className={INPUT_CLS}
       />
     </div>
   );
 }
 
 function ValueWidget({
-  slug,
   field,
   op,
   value,
   onChange,
 }: {
-  slug: string;
   field: MetadataFieldDef;
   op: RuleOp;
   value: FilterRule["value"];
@@ -177,67 +165,43 @@ function ValueWidget({
       <BetweenWidget
         field={field}
         value={value}
-        onChange={(pair) => {
-          onChange(coerceValue(field, op, pair));
-        }}
+        onChange={(pair) => onChange(coerceValue(field, op, pair))}
       />
     );
   }
 
-  // Single-value ops
   const strValue = value === undefined || value === null ? "" : String(value);
 
   if (field.type === FieldType.Choice) {
     return (
-      <MetadataValueInput
-        slug={slug}
-        fieldId={field.id}
-        type={field.type}
-        options={field.options}
-        suggests={field.suggests}
-        value={strValue}
-        onChange={(v) => onChange(coerceValue(field, op, v))}
-      />
+      <Select value={strValue || undefined} onValueChange={(v) => onChange(coerceValue(field, op, v))}>
+        <SelectTrigger size="sm" className="w-full">
+          <SelectValue placeholder="Select…" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {field.options.map((o) => (
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
     );
   }
 
-  if (field.type === FieldType.Text || field.type === FieldType.Textarea) {
-    return (
-      <MetadataValueInput
-        slug={slug}
-        fieldId={field.id}
-        type={field.type}
-        options={field.options}
-        suggests={field.suggests}
-        value={strValue}
-        onChange={(v) => onChange(coerceValue(field, op, v))}
-      />
-    );
-  }
-
-  if (field.type === FieldType.Number) {
-    return (
-      <input
-        type="number"
-        value={strValue}
-        onChange={(e) => onChange(coerceValue(field, op, e.target.value))}
-        className="h-8 w-28 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
-      />
-    );
-  }
-
-  if (field.type === FieldType.Date) {
-    return (
-      <input
-        type="date"
-        value={strValue}
-        onChange={(e) => onChange(coerceValue(field, op, e.target.value))}
-        className="h-8 w-36 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
-      />
-    );
-  }
-
-  return null;
+  const inputType =
+    field.type === FieldType.Number ? "number" : field.type === FieldType.Date ? "date" : "text";
+  return (
+    <input
+      type={inputType}
+      value={strValue}
+      placeholder="value"
+      onChange={(e) => onChange(coerceValue(field, op, e.target.value))}
+      className={INPUT_CLS}
+    />
+  );
 }
 
 // ─── Rule row ────────────────────────────────────────────────────────────────
@@ -246,22 +210,12 @@ function RuleRow({
   rule,
   index,
   allFields,
-  slug,
-  isDragging,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
   onChange,
   onRemove,
 }: {
   rule: FilterRule;
   index: number;
   allFields: MetadataFieldDef[];
-  slug: string;
-  isDragging: boolean;
-  onDragStart: () => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDragEnd: () => void;
   onChange: (next: FilterRule) => void;
   onRemove: () => void;
 }) {
@@ -274,39 +228,20 @@ function RuleRow({
   function handleFieldChange(key: string) {
     const nextField = allFields.find((f) => f.key === key);
     if (!nextField) return;
-    const nextOps = opsForField(nextField);
-    const nextOp = nextOps[0] ?? RuleOp.eq;
+    const nextOp = opsForField(nextField)[0] ?? RuleOp.eq;
     onChange({ field: key, op: nextOp, value: undefined });
   }
 
   function handleOpChange(op: RuleOp) {
-    // Clear value when switching to/from no-value ops or between
-    const prevNoVal = NO_VALUE_OPS.has(rule.op);
-    const nextNoVal = NO_VALUE_OPS.has(op);
-    const prevBetween = rule.op === RuleOp.between;
-    const nextBetween = op === RuleOp.between;
     const resetValue =
-      prevNoVal !== nextNoVal || prevBetween !== nextBetween;
+      NO_VALUE_OPS.has(rule.op) !== NO_VALUE_OPS.has(op) ||
+      (rule.op === RuleOp.between) !== (op === RuleOp.between);
     onChange({ ...rule, op, value: resetValue ? undefined : rule.value });
   }
 
   return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      className={cn(
-        "flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5",
-        isDragging && "opacity-50",
-      )}
-    >
-      {/* Grip */}
-      <span className="cursor-grab text-muted-foreground/60 active:cursor-grabbing shrink-0">
-        <GripVertical className="size-4" aria-hidden />
-      </span>
-
-      {/* Field selector */}
+    <div className="flex items-center gap-2">
+      {/* Field */}
       <Select value={field.key} onValueChange={handleFieldChange}>
         <SelectTrigger size="sm" className="w-32 shrink-0">
           <SelectValue />
@@ -322,9 +257,9 @@ function RuleRow({
         </SelectContent>
       </Select>
 
-      {/* Operator selector */}
+      {/* Operator */}
       <Select value={currentOp} onValueChange={(v) => handleOpChange(v as RuleOp)}>
-        <SelectTrigger size="sm" className="w-28 shrink-0">
+        <SelectTrigger size="sm" className="w-24 shrink-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -338,10 +273,9 @@ function RuleRow({
         </SelectContent>
       </Select>
 
-      {/* Value widget */}
-      <div className="flex-1 min-w-0">
+      {/* Value */}
+      <div className="min-w-0 flex-1">
         <ValueWidget
-          slug={slug}
           field={field}
           op={currentOp}
           value={rule.value}
@@ -376,73 +310,37 @@ export function SmartAlbumRulesEditor({
   const { slug } = useCatalog();
   const schema = useCatalogMetadataSchema(slug);
 
-  // Build the registry and flat field list from the schema
   const registry = buildSearchRegistry(schema ?? []);
   const allFields: MetadataFieldDef[] = (schema ?? []).flatMap((g) =>
     g.fields.filter((f) => f.enabled && registry.has(f.key)),
   );
 
-  // DnD state — which row index is being dragged
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
-
-  // ── Loading / empty states ──
-  if (schema === undefined) return null;
+  if (schema === undefined) return null; // loading
 
   if (allFields.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        This catalog has no metadata fields to filter on. Add fields in Settings
-        → Metadata first.
+        This catalog has no metadata fields to filter on. Add fields in Settings → Metadata first.
       </p>
     );
   }
 
-  // ── Helpers ──
   function setRules(next: FilterRule[]) {
     onChange({ ...value, rules: next });
   }
 
   function addRule() {
     const f = allFields[0]!;
-    const ops = opsForField(f);
-    const op = ops[0] ?? RuleOp.eq;
+    const op = opsForField(f)[0] ?? RuleOp.eq;
     setRules([...value.rules, { field: f.key, op, value: undefined }]);
-  }
-
-  function removeRule(i: number) {
-    setRules(value.rules.filter((_, idx) => idx !== i));
-  }
-
-  function updateRule(i: number, next: FilterRule) {
-    setRules(value.rules.map((r, idx) => (idx === i ? next : r)));
-  }
-
-  // DnD handlers — reorder a local copy while dragging; commit on drop
-  function handleDragOver(e: React.DragEvent, targetIdx: number) {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === targetIdx) return;
-    const next = [...value.rules];
-    const [moved] = next.splice(dragIdx, 1);
-    next.splice(targetIdx, 0, moved!);
-    setDragIdx(targetIdx);
-    setRules(next);
-  }
-
-  function handleDragEnd() {
-    setDragIdx(null);
   }
 
   return (
     <div className="space-y-3">
-      {/* Header: match selector */}
+      {/* Match all/any */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Match</span>
-        <Select
-          value={value.match}
-          onValueChange={(v) =>
-            onChange({ ...value, match: v as MatchType })
-          }
-        >
+        <Select value={value.match} onValueChange={(v) => onChange({ ...value, match: v as MatchType })}>
           <SelectTrigger size="sm" className="w-20">
             <SelectValue />
           </SelectTrigger>
@@ -456,7 +354,7 @@ export function SmartAlbumRulesEditor({
         <span className="text-muted-foreground">of the rules</span>
       </div>
 
-      {/* Rule rows */}
+      {/* Rules */}
       {value.rules.length > 0 && (
         <div className="space-y-1.5">
           {value.rules.map((rule, i) => (
@@ -465,26 +363,14 @@ export function SmartAlbumRulesEditor({
               rule={rule}
               index={i}
               allFields={allFields}
-              slug={slug}
-              isDragging={dragIdx === i}
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => handleDragOver(e, i)}
-              onDragEnd={handleDragEnd}
-              onChange={(next) => updateRule(i, next)}
-              onRemove={() => removeRule(i)}
+              onChange={(next) => setRules(value.rules.map((r, idx) => (idx === i ? next : r)))}
+              onRemove={() => setRules(value.rules.filter((_, idx) => idx !== i))}
             />
           ))}
         </div>
       )}
 
-      {/* Add rule */}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={addRule}
-        className="gap-1.5"
-      >
+      <Button type="button" variant="outline" size="sm" onClick={addRule} className="gap-1.5">
         <Plus className="size-3.5" aria-hidden />
         Add rule
       </Button>

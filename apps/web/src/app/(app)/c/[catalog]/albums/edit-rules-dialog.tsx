@@ -54,7 +54,7 @@ export function EditRulesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit smart album rules</DialogTitle>
         </DialogHeader>
