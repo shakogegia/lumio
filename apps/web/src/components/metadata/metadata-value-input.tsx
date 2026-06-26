@@ -87,7 +87,7 @@ function Autocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => { void load(); setOpen(true); }}
         onBlur={() => { setTimeout(() => setOpen(false), 120); void onCommit?.(); }}
-        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground"
+        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       {open && suggests && matches.length > 0 && (
         <ul className="absolute right-0 z-30 mt-1 max-h-48 w-48 overflow-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md">

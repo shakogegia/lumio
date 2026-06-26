@@ -29,9 +29,9 @@ export function SelectionInfoPanel({ selectedIds }: { selectedIds: Set<string> }
     const photo = getPhotos(new Set(ids))[0];
     if (!photo) {
       return (
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-7 w-full" />
+            <Skeleton key={i} className="h-4 w-full" />
           ))}
         </div>
       );

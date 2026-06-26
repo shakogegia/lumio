@@ -83,7 +83,7 @@ export function SelectionMetadataForm({ selectedIds }: { selectedIds: Set<string
                 />
               );
             }
-            if (loading || !loaded) return <Skeleton className="h-7 w-40" />;
+            if (loading || !loaded) return <Skeleton className="h-4 w-24" />;
             // Keyed by selection so switching photos remounts with fresh values.
             return (
               <SelectionMetadataField

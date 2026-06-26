@@ -46,11 +46,11 @@ export function MetadataPanel({ photo }: { photo: PhotoDTO }) {
   // Very first load (cache cold): show a brief skeleton so the panel doesn't pop in.
   if (schema === undefined) {
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center justify-between gap-3">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-4 w-24" />
           </div>
         ))}
       </div>
@@ -63,7 +63,7 @@ export function MetadataPanel({ photo }: { photo: PhotoDTO }) {
     <MetadataFieldsList
       groups={groups}
       renderValue={(field) => {
-        if (resolved === null) return <Skeleton className="h-7 w-40" />;
+        if (resolved === null) return <Skeleton className="h-4 w-24" />;
         const r = resolved.get(field.id);
         // In the cached schema but gone from fresh values (deleted in Settings) — skip.
         if (!r) return null;
