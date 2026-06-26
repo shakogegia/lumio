@@ -53,12 +53,15 @@ export function seedMetadataSchema(slug: string, schema: MetadataSchema): void {
  */
 export function useCatalogMetadataSchema(slug: string): MetadataSchema | undefined {
   const [schema, setSchema] = useState<MetadataSchema | undefined>(() => cache.get(slug));
+  // Re-sync to the new catalog's cached schema when the slug changes (instant
+  // when warm). Render-time adjust — not an effect — so no cascading-render.
+  const [prevSlug, setPrevSlug] = useState(slug);
+  if (slug !== prevSlug) {
+    setPrevSlug(slug);
+    setSchema(cache.get(slug));
+  }
   useEffect(() => {
-    const cached = cache.get(slug);
-    if (cached) {
-      setSchema(cached);
-      return;
-    }
+    if (cache.has(slug)) return; // warm: seeded server-side or already fetched
     let alive = true;
     void fetchSchema(slug).then((s) => {
       if (alive) setSchema(s);
