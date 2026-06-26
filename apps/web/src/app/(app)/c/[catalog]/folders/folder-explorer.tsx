@@ -31,7 +31,7 @@ export function FolderExplorer({ rel, subfolders }: { rel: string; subfolders: F
           baseUrl: rel
             ? `${catalogPath(slug, "/folders")}?path=${encodeURIComponent(rel)}`
             : catalogPath(slug, "/folders"),
-          key: `folder:${rel}:${sort}:${month ?? ""}:${field}`,
+          key: `folder:${rel}:${sort}:${month ?? ""}${month ? `:${field}` : ""}`,
         };
       }}
     />

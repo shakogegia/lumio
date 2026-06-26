@@ -42,7 +42,7 @@ export function FavoritesView() {
         ),
         urlForId: (id) => photoHref(slug, id, undefined, sort),
         baseUrl: catalogPath(slug, "/favorites"),
-        key: `fav:${sort}:${month ?? ""}:${field}`,
+        key: `fav:${sort}:${month ?? ""}${month ? `:${field}` : ""}`,
       })}
     />
   );

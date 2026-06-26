@@ -223,7 +223,7 @@ export function SearchView() {
                 </div>
               </div>
               <PhotoCollectionProvider
-                key={`${serialized}:${sort}:${month ?? ""}:${calField}`}
+                key={`${serialized}:${sort}:${month ?? ""}${month ? `:${calField}` : ""}`}
                 endpoint={catalogApiUrl(slug, "/search")}
                 params={(() => {
                   const p = paramsFor(filters, sort);

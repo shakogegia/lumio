@@ -16,7 +16,7 @@ export function LibraryView() {
         params: new URLSearchParams(month ? { sort, month, dateField: field } : { sort }),
         urlForId: (id) => photoHref(slug, id, undefined, sort),
         baseUrl: catalogPath(slug, "/photos"),
-        key: `${sort}:${month ?? ""}:${field}`,
+        key: `${sort}:${month ?? ""}${month ? `:${field}` : ""}`,
       })}
     />
   );

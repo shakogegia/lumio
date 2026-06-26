@@ -51,7 +51,7 @@ export function AlbumView({
           params: new URLSearchParams(month ? { sort, month, dateField: field } : { sort }),
           urlForId: (id) => photoHref(slug, id, albumId, sort),
           baseUrl: catalogPath(slug, `/albums/${albumId}`),
-          key: `${albumId}:${sort}:${month ?? ""}:${field}:${reloadKey}`,
+          key: `${albumId}:${sort}:${month ?? ""}${month ? `:${field}` : ""}:${reloadKey}`,
         })}
         calendar={{ facetsEndpoint: catalogApiUrl(slug, `/albums/${albumId}/calendar`) }}
         actionOptions={{
