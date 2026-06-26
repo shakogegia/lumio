@@ -1,5 +1,6 @@
-import { type Prisma, type PrismaClient, type Folder, prisma, folderPhotoWhere, toFolderDTO } from "@lumio/db";
+import { type Prisma, type PrismaClient, type Folder, getCatalogSchema, prisma, folderPhotoWhere, toFolderDTO } from "@lumio/db";
 import {
+  buildSearchRegistry,
   monthRange,
   type AlbumSummaryDTO,
   type CreateFolderInput,
@@ -8,6 +9,7 @@ import {
   type FolderSummaryDTO,
   type PhotosPage,
   type PhotosQuery,
+  type SearchRegistry,
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
@@ -77,12 +79,13 @@ async function folderSummary(
   allAlbums: AlbumLite[],
   coverMap: Map<string, string | null>,
   now: Date,
+  registry: SearchRegistry,
   db: Db,
 ): Promise<FolderSummaryDTO> {
   const descendantIds = new Set(collectDescendantFolderIds(allFolders, folder.id));
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums, descendantIds);
   const childFolderCount = allFolders.filter((f) => f.parentId === folder.id).length;
-  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now, registry);
   const where = { catalogId, ...LIVE_PHOTO, ...scopedWhere };
 
   // Album covers first (direct children before nested), deduped, up to 4.
@@ -152,11 +155,14 @@ export async function listFolderContents(
   db: Db = prisma,
 ): Promise<FolderContentsDTO | null> {
   const now = new Date();
-  const [allFolders, allAlbums] = await Promise.all([
+  const [allFolders, allAlbums, registry] = await Promise.all([
     db.folder.findMany({ where: { catalogId } }),
     // createdAt-asc is the canonical album order (matches listAlbumSummaries); it
     // becomes the within-tier tiebreak for folder-preview album covers.
     db.album.findMany({ where: { catalogId }, orderBy: { createdAt: "asc" } }),
+    // Per-catalog field registry: descendant smart albums may filter on custom
+    // metadata fields, which only resolve through it (else `unsupported rule`).
+    getCatalogSchema(catalogId).then(buildSearchRegistry),
   ]);
   // Resolve every album's cover once so each folder preview reuses them.
   const coverMap = await albumCoverMap(catalogId, allAlbums, db, now);
@@ -174,7 +180,7 @@ export async function listFolderContents(
   const directChildFolders = allFolders.filter((f) => f.parentId === folderId);
   const subfolders = await Promise.all(
     directChildFolders.map((child) =>
-      folderSummary(catalogId, child, allFolders, allAlbums as AlbumLite[], coverMap, now, db),
+      folderSummary(catalogId, child, allFolders, allAlbums as AlbumLite[], coverMap, now, registry, db),
     ),
   );
   subfolders.sort((a, b) => a.name.localeCompare(b.name));
@@ -188,7 +194,7 @@ export async function listFolderContents(
   if (folderId !== null) {
     const descendantIds = new Set(collectDescendantFolderIds(allFolders, folderId));
     const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
-    const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+    const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now, registry);
     currentPhotoCount = await db.photo.count({ where: { catalogId, ...LIVE_PHOTO, ...scopedWhere } });
   }
 
@@ -270,12 +276,16 @@ export async function listFolderPhotos(
   const allFolders = await db.folder.findMany({ where: { catalogId }, select: { id: true, parentId: true } });
   if (!allFolders.some((f) => f.id === id)) return null;
   const descendantIds = new Set(collectDescendantFolderIds(allFolders, id));
-  const allAlbums = await db.album.findMany({
-    where: { catalogId },
-    select: { id: true, isSmart: true, rules: true, folderId: true },
-  });
+  const [allAlbums, registry] = await Promise.all([
+    db.album.findMany({
+      where: { catalogId },
+      select: { id: true, isSmart: true, rules: true, folderId: true },
+    }),
+    // Needed so descendant smart albums filtering on custom fields resolve.
+    getCatalogSchema(catalogId).then(buildSearchRegistry),
+  ]);
   const { regularAlbumIds, smartAlbums } = albumsForSubtree(allAlbums as AlbumLite[], descendantIds);
-  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now);
+  const scopedWhere = folderPhotoWhere({ regularAlbumIds, smartAlbums }, now, registry);
   const { limit, offset, sort, month } = params;
   // listPhotosForWhere adds catalogId at the top level; AND the month range alongside scopedWhere.
   const innerWhere: Prisma.PhotoWhereInput = month
