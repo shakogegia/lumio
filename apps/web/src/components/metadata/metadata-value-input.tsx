@@ -8,6 +8,10 @@ import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
+// Radix forbids "" as a SelectItem value, so the "None" (clear) option uses a
+// sentinel that maps back to an empty value (which the save paths treat as a clear).
+const NONE_VALUE = "__none__";
+
 export interface MetadataValueInputProps {
   slug: string;
   fieldId: string;
@@ -27,7 +31,14 @@ export function MetadataValueInput({
 }: MetadataValueInputProps) {
   if (type === FieldType.Choice && options.length > 0) {
     return (
-      <Select value={value || undefined} onValueChange={(v) => { onChange(v); void onCommit?.(v); }}>
+      <Select
+        value={value || undefined}
+        onValueChange={(v) => {
+          const next = v === NONE_VALUE ? "" : v;
+          onChange(next);
+          void onCommit?.(next);
+        }}
+      >
         <SelectTrigger
           size="sm"
           className="w-40 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right shadow-none focus-visible:ring-0 data-[size=sm]:h-5 data-placeholder:text-muted-foreground/40"
@@ -36,6 +47,9 @@ export function MetadataValueInput({
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
+            <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+              None
+            </SelectItem>
             {options.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
           </SelectGroup>
         </SelectContent>
