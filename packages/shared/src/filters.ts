@@ -164,5 +164,5 @@ const ruleSchema = z
 
 export const filterSetSchema = z.object({
   match: z.nativeEnum(MatchType),
-  rules: z.array(ruleSchema),
+  rules: z.array(ruleSchema).max(100),
 });

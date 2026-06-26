@@ -33,6 +33,9 @@ export const PUT = withCatalog<{ id: string }>(async (request, context, { catalo
     return NextResponse.json({ error: "Metadata feature disabled" }, { status: 404 });
   }
   const { id } = await context.params;
+  const photo = await getPhoto(catalog.id, id);
+  if (!photo) return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+
   const body = (await request.json().catch(() => null)) as
     | { fieldId?: string; value?: string }
     | null;

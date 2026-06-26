@@ -123,6 +123,16 @@ export async function photoOrTrashedExistsInCatalog(
   return photo !== null || trashed !== null;
 }
 
+/** Of the given ids, the ones that belong to this catalog (drops foreign/unknown ids). */
+export async function filterCatalogPhotoIds(catalogId: string, ids: string[], db: Db = prisma): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const rows = await db.photo.findMany({
+    where: { catalogId, id: { in: ids } },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
+}
+
 export async function getPhoto(catalogId: string, id: string, db: Db = prisma) {
   const row = await db.photo.findFirst({ where: { id, catalogId, ...LIVE_PHOTO }, include: { albums: { select: { albumId: true } } } });
   if (!row) return null;

@@ -7,6 +7,7 @@ import {
   isFeatureEnabled,
 } from "@lumio/db";
 import { withCatalog } from "@/lib/server/with-catalog";
+import { filterCatalogPhotoIds } from "@/lib/server/photos-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,12 @@ export const POST = withCatalog(async (request, _context, { catalog }) => {
   if (photoIds.length === 0) {
     return NextResponse.json({ error: "photoIds must be a non-empty array" }, { status: 400 });
   }
-  const agg = await aggregatePhotoMetadataValues(photoIds);
+  if (photoIds.length > 5000) {
+    return NextResponse.json({ error: "too many photoIds" }, { status: 400 });
+  }
+  const owned = await filterCatalogPhotoIds(catalog.id, photoIds);
+  if (owned.length === 0) return NextResponse.json({ values: {} });
+  const agg = await aggregatePhotoMetadataValues(owned);
   return NextResponse.json({ values: Object.fromEntries(agg) });
 });
 
@@ -45,6 +51,9 @@ export const PUT = withCatalog(async (request, _context, { catalog }) => {
   if (photoIds.length === 0) {
     return NextResponse.json({ error: "photoIds must be a non-empty array" }, { status: 400 });
   }
+  if (photoIds.length > 5000) {
+    return NextResponse.json({ error: "too many photoIds" }, { status: 400 });
+  }
   if (typeof body?.fieldId !== "string" || typeof body.value !== "string") {
     return NextResponse.json({ error: "fieldId and value are required" }, { status: 400 });
   }
@@ -53,6 +62,9 @@ export const PUT = withCatalog(async (request, _context, { catalog }) => {
   const known = schema.some((g) => g.fields.some((f) => f.id === body.fieldId));
   if (!known) return NextResponse.json({ error: "Unknown field" }, { status: 400 });
 
-  await bulkUpsertPhotoMetadataField(photoIds, body.fieldId, body.value);
+  // Only operate on photos owned by this catalog — drop any foreign ids.
+  const owned = await filterCatalogPhotoIds(catalog.id, photoIds);
+  if (owned.length === 0) return NextResponse.json({ ok: true });
+  await bulkUpsertPhotoMetadataField(owned, body.fieldId, body.value);
   return NextResponse.json({ ok: true });
 });
