@@ -56,7 +56,7 @@ export function UploadMetadataForm({
         <p className="font-medium">Batch metadata</p>
         <p className="text-xs text-muted-foreground">
           {noSelection
-            ? "Select one or more photos below to fill in metadata."
+            ? "Select photos to fill in metadata."
             : `Filling ${selectedIds.size} selected photo${selectedIds.size === 1 ? "" : "s"}.`}
         </p>
       </div>
