@@ -334,10 +334,15 @@ export function UploadClient({
                   <X className="size-3.5" aria-hidden />
                 </button>
               </span>
-            ) : undefined
+            ) : hasRows ? (
+              countLabel(summary.total, "photo", "photos")
+            ) : (
+              "Drag photos here or click to upload"
+            )
           }
           actions={
             <div className="flex items-center gap-2">
+              {hasRows && <GridSizeMenu columns={columns} onColumnsChange={setColumns} />}
               {hasMeta && (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -354,7 +359,6 @@ export function UploadClient({
                   <TooltipContent>Batch metadata</TooltipContent>
                 </Tooltip>
               )}
-              {hasRows && <GridSizeMenu columns={columns} onColumnsChange={setColumns} />}
             </div>
           }
         />
