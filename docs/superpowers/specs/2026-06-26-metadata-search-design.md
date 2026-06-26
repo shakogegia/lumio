@@ -147,6 +147,8 @@ Three shippable slices (mirrors the EXIF-search 2a/2b split):
 - Numeric-override coalescing for standard numeric fields (rare) — deferred.
 - Raw arbitrary-EXIF search (`exif.<key>`) — intentionally dropped (decision §2.2).
 - Free-text full-catalog metadata search (one box matching across all fields) — possible later; v1 is field-scoped predicates.
+- **Persisting metadata-field rules in *smart albums*** needs the write-side rule schema (`smartRuleSchema` in `apps/web/src/.../albums.ts`, currently a hardcoded `last_30_days` + `cameraModel:eq` union) extended to accept registry-validated rules — deferred to **2c** alongside the smart-album rule builder. The read/compile path (`smartAlbumWhere` → `buildPhotoWhere` + registry) is already metadata-aware as of 2a.
+- The per-catalog registry is rebuilt per request (one `getCatalogSchema` call per search / smart-album evaluation, and twice in `albumSummary`→`albumCoverId`). Acceptable for now; cache or thread the registry down if it shows up hot.
 
 ## 11. Open questions
 
