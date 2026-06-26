@@ -161,4 +161,14 @@ describe("formatRuleLabel", () => {
       "Lens is not FE 50mm",
     );
   });
+
+  it("uses a supplied fieldLabel override for per-catalog metadata fields", () => {
+    expect(
+      formatRuleLabel({ field: "film-stock", op: RuleOp.contains, value: "Portra" }, "Film stock"),
+    ).toBe("Film stock contains Portra");
+    // without the override, an unknown key falls back to the raw key
+    expect(formatRuleLabel({ field: "film-stock", op: RuleOp.contains, value: "Portra" })).toBe(
+      "film-stock contains Portra",
+    );
+  });
 });

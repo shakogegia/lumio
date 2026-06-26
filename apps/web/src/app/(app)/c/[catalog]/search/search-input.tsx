@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type Tribute from "tributejs";
 import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { type TributeFacetItem, loadAllOptions } from "./facets";
 import { type SearchFilters } from "./filters";
 import { type FilterRule, formatRuleLabel } from "@lumio/shared";
@@ -35,9 +36,9 @@ function chipHtml(item: TributeFacetItem): string {
   );
 }
 
-function exifChipHtml(rule: FilterRule): string {
+function exifChipHtml(rule: FilterRule, labels?: Map<string, string>): string {
   const json = escapeHtml(JSON.stringify(rule));
-  const label = escapeHtml(formatRuleLabel(rule));
+  const label = escapeHtml(formatRuleLabel(rule, labels?.get(rule.field)));
   return (
     `<span contenteditable="false" data-facet="exif" data-rule="${json}" ` +
     `class="mx-0.5 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 align-middle text-sm text-foreground">` +
@@ -152,6 +153,14 @@ export function SearchInput({
   onCommit?: (filters: Omit<SearchFilters, "match">) => void;
 }) {
   const { slug } = useCatalog();
+  // Per-catalog field key → human label, so metadata-field chips read "Film stock"
+  // not the raw "film-stock" key (the shared formatRuleLabel only knows static fields).
+  const schema = useCatalogMetadataSchema(slug);
+  const metaLabels = useMemo(
+    () => new Map((schema ?? []).flatMap((g) => g.fields.map((f) => [f.key, f.label] as const))),
+    [schema],
+  );
+  const metaLabelsRef = useRef(metaLabels);
   const editorRef = useRef<HTMLDivElement>(null);
   const tributeRef = useRef<Tribute<TributeFacetItem> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -166,6 +175,7 @@ export function SearchInput({
   useEffect(() => {
     onChangeRef.current = onChange;
     slugRef.current = slug;
+    metaLabelsRef.current = metaLabels;
   });
 
   // Parse the editor and report filters now. Also refreshes the placeholder.
@@ -200,7 +210,7 @@ export function SearchInput({
             el.innerHTML =
               filters.albums
                 .map((id) => chipHtml({ facetKey: "album", facetLabel: "Album", value: id, label: labelFor(id) }))
-                .join("") + filters.rules.map(exifChipHtml).join("");
+                .join("") + filters.rules.map((r) => exifChipHtml(r, metaLabelsRef.current)).join("");
             if (filters.q) el.appendChild(document.createTextNode(filters.q));
             // Only steal focus back to the box for recent-search recall; the facet
             // panel passes focus:false so its popover isn't dismissed on each edit.

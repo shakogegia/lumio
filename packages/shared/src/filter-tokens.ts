@@ -166,9 +166,11 @@ export function ruleToToken(rule: FilterRule): string {
   }
 }
 
-/** Human-readable label for a rule chip, e.g. "ISO ≥ 800", "Camera contains Sony". */
-export function formatRuleLabel(rule: FilterRule): string {
-  const name = resolveField(rule.field).label;
+/** Human-readable label for a rule chip, e.g. "ISO ≥ 800", "Camera contains Sony".
+ *  `fieldLabel` overrides the field name (the static registry can't know a
+ *  per-catalog metadata field's human label — the caller supplies it). */
+export function formatRuleLabel(rule: FilterRule, fieldLabel?: string): string {
+  const name = fieldLabel ?? resolveField(rule.field).label;
   switch (rule.op) {
     case RuleOp.exists:
       return `${name} is set`;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock } from "lucide-react";
 import { formatRuleLabel, MatchType } from "@lumio/shared";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { loadAllOptions } from "./facets";
 import { type SearchFilters, serialize } from "./filters";
 
@@ -71,6 +72,11 @@ export function RecentSearches({
   onPick: (filters: SearchFilters) => void;
 }) {
   const { slug } = useCatalog();
+  const schema = useCatalogMetadataSchema(slug);
+  const metaLabels = useMemo(
+    () => new Map((schema ?? []).flatMap((g) => g.fields.map((f) => [f.key, f.label] as const))),
+    [schema],
+  );
   const [albumNames, setAlbumNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -125,7 +131,7 @@ export function RecentSearches({
                     key={`${rule.field}:${rule.op}:${i}`}
                     className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground"
                   >
-                    {formatRuleLabel(rule)}
+                    {formatRuleLabel(rule, metaLabels.get(rule.field))}
                   </span>
                 ))}
                 {filters.q && <span>{filters.q}</span>}
