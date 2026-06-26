@@ -369,7 +369,8 @@ export function UploadClient({
         />
       )}
 
-          <div className="-mr-4 flex-1 space-y-6 overflow-y-auto pr-4 pt-2 pb-6">
+          <ScrollArea className="-mr-4 min-h-0 flex-1">
+          <div className="space-y-6 pr-4 pt-2 pb-6">
           <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
@@ -407,6 +408,7 @@ export function UploadClient({
           </div>
         ) : null}
           </div>
+          </ScrollArea>
         </div>
         {showMeta && hasMeta && (
           <aside className="w-80 shrink-0 border-l">
