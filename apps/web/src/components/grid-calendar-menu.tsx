@@ -142,7 +142,10 @@ export function GridCalendarMenu({
             </TabsList>
           </Tabs>
         </div>
-        {loading ? (
+        {/* Skeleton only on the first load. A tab-switch (or reopen) refetch keeps
+            the current month/year tiles visible and swaps them in place when the
+            new dimension's facets arrive — no jarring full-flyout flash. */}
+        {loading && !facets ? (
           <CalendarSkeleton />
         ) : error ? (
           <FlyoutMessage>
