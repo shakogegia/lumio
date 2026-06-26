@@ -122,11 +122,10 @@ export function NewAlbumDialog({
       )}
       <DialogContent
         className={smart ? "sm:max-w-2xl" : "sm:max-w-md"}
-        onInteractOutside={(e) => {
-          // While a Select/Popover is open, an outside-click is dismissing IT,
-          // not the dialog — don't close the dialog.
-          if (document.querySelector("[data-radix-popper-content-wrapper]")) e.preventDefault();
-        }}
+        // Never close on an outside click — it's far too easy to dismiss by
+        // accident (especially while a Select/Popover dropdown is open, where the
+        // click is really dismissing the dropdown). Close via the X / Cancel / Esc.
+        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

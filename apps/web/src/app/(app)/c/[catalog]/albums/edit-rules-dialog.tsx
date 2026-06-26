@@ -56,11 +56,9 @@ export function EditRulesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-2xl"
-        onInteractOutside={(e) => {
-          // While a Select/Popover is open, an outside-click is dismissing IT,
-          // not the dialog — don't close the dialog.
-          if (document.querySelector("[data-radix-popper-content-wrapper]")) e.preventDefault();
-        }}
+        // Never close on an outside click — it's far too easy to dismiss by
+        // accident (especially while a dropdown is open). Close via the X / Esc.
+        onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Edit smart album rules</DialogTitle>
