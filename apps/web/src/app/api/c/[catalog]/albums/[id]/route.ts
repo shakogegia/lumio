@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { renameAlbumSchema, setAlbumCoverSchema } from "@lumio/shared";
+import { renameAlbumSchema, setAlbumCoverSchema, updateSmartAlbumRulesSchema, type SmartAlbumRules } from "@lumio/shared";
 import {
   deleteAlbum,
   getAlbum,
+  invalidRuleFields,
   renameAlbum,
   setAlbumCover,
+  updateAlbumRules,
 } from "@/lib/server/albums-service";
 import { errorJson, mapServiceError } from "@/lib/server/route-helpers";
 import { withCatalog } from "@/lib/server/with-catalog";
@@ -39,6 +41,20 @@ export const PATCH = withCatalog<{ id: string }>(
         if (mapped) return mapped;
         throw err;
       }
+    }
+
+    const rulesUpdate = updateSmartAlbumRulesSchema.safeParse(body);
+    if (rulesUpdate.success) {
+      const bad = await invalidRuleFields(catalog.id, rulesUpdate.data.rules.rules);
+      if (bad.length) return errorJson("Unknown filter field(s): " + bad.join(", "), 400);
+      const album = await updateAlbumRules(catalog.id, id, rulesUpdate.data.rules as SmartAlbumRules);
+      if (!album) {
+        // Either not found in catalog, or not a smart album — distinguish by checking existence.
+        const existing = await getAlbum(catalog.id, id);
+        if (!existing) return NextResponse.json({ error: "Album not found" }, { status: 404 });
+        return errorJson("Cannot update rules on a non-smart album", 400);
+      }
+      return NextResponse.json(album);
     }
 
     const cover = setAlbumCoverSchema.safeParse(body);

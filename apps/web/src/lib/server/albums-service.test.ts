@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { MatchType } from "@lumio/shared";
+import { MatchType, RuleOp, type SearchRegistry, type FieldDef, ValueType } from "@lumio/shared";
 import {
   addPhotosToAlbum,
   albumPhotoWhere,
   AlbumNotFoundError,
   deleteAlbums,
+  invalidRuleFields,
   listAlbumPhotos,
   listAlbumSummaries,
   PhotoNotInAlbumError,
@@ -14,6 +15,7 @@ import {
   setAlbumCover,
   SmartAlbumMutationError,
   createAlbum,
+  updateAlbumRules,
 } from "./albums-service.js";
 
 const CAT = "cat1";
@@ -543,5 +545,101 @@ describe("renameAlbum", () => {
     await expect(renameAlbum(CAT, "missing", "x", fakeDb as never)).rejects.toBeInstanceOf(
       AlbumNotFoundError,
     );
+  });
+});
+
+// ── Helpers to build fake SearchRegistry entries ──────────────────────────────
+
+function makeFieldDef(key: string, ops: RuleOp[]): FieldDef {
+  return {
+    key,
+    label: key,
+    type: ValueType.string,
+    storage: { kind: "column", column: key },
+    ops,
+  };
+}
+
+function makeRegistry(entries: [string, FieldDef][]): SearchRegistry {
+  return new Map(entries);
+}
+
+// ── invalidRuleFields ─────────────────────────────────────────────────────────
+
+describe("invalidRuleFields", () => {
+  it("returns empty array when all rules match the registry", async () => {
+    const registry = makeRegistry([
+      ["takenAt", makeFieldDef("takenAt", [RuleOp.last_30_days, RuleOp.gt])],
+    ]);
+    const bad = await invalidRuleFields(CAT, [{ field: "takenAt", op: RuleOp.last_30_days }], registry);
+    expect(bad).toEqual([]);
+  });
+
+  it("flags a field that is not in the registry", async () => {
+    const registry = makeRegistry([
+      ["takenAt", makeFieldDef("takenAt", [RuleOp.last_30_days])],
+    ]);
+    const bad = await invalidRuleFields(CAT, [{ field: "unknownField", op: RuleOp.eq }], registry);
+    expect(bad).toEqual(["unknownField"]);
+  });
+
+  it("flags a rule whose op is not in the field's allowed ops", async () => {
+    const registry = makeRegistry([
+      ["cameraModel", makeFieldDef("cameraModel", [RuleOp.eq, RuleOp.contains])],
+    ]);
+    // between is not in the allowed ops for cameraModel
+    const bad = await invalidRuleFields(CAT, [{ field: "cameraModel", op: RuleOp.between }], registry);
+    expect(bad).toEqual(["cameraModel"]);
+  });
+
+  it("returns empty for a field with an empty ops list (no restrictions)", async () => {
+    // ops: [] means no restriction check (all ops pass the `d.ops.length > 0` guard)
+    const registry = makeRegistry([
+      ["flexField", makeFieldDef("flexField", [])],
+    ]);
+    const bad = await invalidRuleFields(CAT, [{ field: "flexField", op: RuleOp.eq }], registry);
+    expect(bad).toEqual([]);
+  });
+});
+
+// ── updateAlbumRules ──────────────────────────────────────────────────────────
+
+describe("updateAlbumRules", () => {
+  const newRules = { match: MatchType.all, rules: [{ field: "takenAt", op: RuleOp.last_30_days }] };
+
+  it("updates the album rules and returns the DTO", async () => {
+    const updatedRow = albumRow({ id: "s1", isSmart: true, rules: newRules as object });
+    const update = vi.fn().mockResolvedValue(updatedRow);
+    const fakeDb = {
+      album: { findFirst: async () => albumRow({ id: "s1", isSmart: true, rules: null }), update },
+      albumPhoto: {},
+      photo: {},
+    };
+    const dto = await updateAlbumRules(CAT, "s1", newRules, fakeDb as never);
+    expect(dto).not.toBeNull();
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "s1" },
+      data: { rules: newRules },
+    });
+  });
+
+  it("returns null when the album does not exist in the catalog", async () => {
+    const fakeDb = {
+      album: { findFirst: async () => null },
+      albumPhoto: {},
+      photo: {},
+    };
+    const dto = await updateAlbumRules(CAT, "missing", newRules, fakeDb as never);
+    expect(dto).toBeNull();
+  });
+
+  it("returns null when the album exists but is not smart", async () => {
+    const fakeDb = {
+      album: { findFirst: async () => albumRow({ id: "alb1", isSmart: false }) },
+      albumPhoto: {},
+      photo: {},
+    };
+    const dto = await updateAlbumRules(CAT, "alb1", newRules, fakeDb as never);
+    expect(dto).toBeNull();
   });
 });

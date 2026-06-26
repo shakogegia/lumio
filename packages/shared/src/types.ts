@@ -1,6 +1,7 @@
 import type { ColorLabel } from "./color-labels.js";
-import type { MatchType, PhotoSource, RuleOp } from "./enums.js";
+import type { MatchType, PhotoSource } from "./enums.js";
 import type { CurvePoint } from "./tone-curve.js";
+import type { FilterRule } from "./filters.js";
 
 export type { CurvePoint };
 
@@ -117,11 +118,7 @@ export interface PhotoDTO {
   albumIds?: string[];
 }
 
-export interface SmartAlbumRule {
-  field: string; // e.g. "takenAt" | "exif.cameraModel"
-  op: RuleOp;
-  value?: string | number;
-}
+export type SmartAlbumRule = FilterRule;
 
 export interface SmartAlbumRules {
   match: MatchType;

@@ -7,6 +7,7 @@ import {
   type CreateAlbumInput,
   type PhotosPage,
   type PhotosQuery,
+  type SearchRegistry,
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
@@ -201,6 +202,44 @@ export class AlbumNotFoundError extends Error {
   constructor(message = "Album not found") {
     super(message);
   }
+}
+
+/**
+ * Returns the field names of rules that are not valid for this catalog's
+ * configured metadata schema. An empty array means all rules are valid.
+ *
+ * Accepts an optional pre-built `registry` to enable unit testing without
+ * hitting the database.
+ */
+export async function invalidRuleFields(
+  catalogId: string,
+  rules: { field: string; op: string }[],
+  registry?: SearchRegistry,
+): Promise<string[]> {
+  const reg = registry ?? buildSearchRegistry(await getCatalogSchema(catalogId));
+  return rules
+    .filter((r) => {
+      const d = reg.get(r.field);
+      return !d || (d.ops.length > 0 && !d.ops.includes(r.op as never));
+    })
+    .map((r) => r.field);
+}
+
+/**
+ * Replace the rules of an existing smart album. Returns the updated DTO, or
+ * null if the album does not exist in this catalog or is not a smart album.
+ */
+export async function updateAlbumRules(
+  catalogId: string,
+  albumId: string,
+  rules: SmartAlbumRules,
+  db: Db = prisma,
+): Promise<AlbumDTO | null> {
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId } });
+  if (!album) return null;
+  if (!album.isSmart) return null;
+  const updated = await db.album.update({ where: { id: albumId }, data: { rules: rules as object } });
+  return toAlbumDTO(updated);
 }
 
 export class PhotoNotInAlbumError extends Error {

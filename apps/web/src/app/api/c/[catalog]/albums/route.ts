@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAlbumSchema, deleteAlbumsSchema } from "@lumio/shared";
-import { createAlbum, deleteAlbums, listAlbumSummaries } from "@/lib/server/albums-service";
-import { parseJson } from "@/lib/server/route-helpers";
+import { createAlbum, deleteAlbums, invalidRuleFields, listAlbumSummaries } from "@/lib/server/albums-service";
+import { errorJson, parseJson } from "@/lib/server/route-helpers";
 import { withCatalog } from "@/lib/server/with-catalog";
 
 export const runtime = "nodejs";
@@ -15,6 +15,10 @@ export const GET = withCatalog(async (_request, _context, { catalog }) => {
 export const POST = withCatalog(async (request, _context, { catalog }) => {
   const parsed = await parseJson(request, createAlbumSchema);
   if ("response" in parsed) return parsed.response;
+  if (parsed.data.isSmart && parsed.data.rules) {
+    const bad = await invalidRuleFields(catalog.id, parsed.data.rules.rules);
+    if (bad.length) return errorJson("Unknown filter field(s): " + bad.join(", "), 400);
+  }
   const album = await createAlbum(catalog.id, parsed.data);
   return NextResponse.json(album, { status: 201 });
 });
