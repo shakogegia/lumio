@@ -48,14 +48,14 @@ describe("toggle mapping", () => {
 
 describe("date range mapping", () => {
   it("reads ISO back to YYYY-MM-DD and applies between/gte/lte with full ISO", () => {
-    expect(readDateRange([{ field: "takenAt", op: RuleOp.between, value: ["2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999Z"] }])).toEqual({ from: "2024-01-01", to: "2024-12-31" });
-    expect(applyDateRange([], { from: "2024-01-01", to: "" })).toEqual([{ field: "takenAt", op: RuleOp.gte, value: "2024-01-01T00:00:00.000Z" }]);
-    expect(applyDateRange([], { from: "", to: "2024-12-31" })).toEqual([{ field: "takenAt", op: RuleOp.lte, value: "2024-12-31T23:59:59.999Z" }]);
-    expect(applyDateRange([], { from: "2024-01-01", to: "2024-12-31" })).toEqual([{ field: "takenAt", op: RuleOp.between, value: ["2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999Z"] }]);
-    expect(applyDateRange([{ field: "takenAt", op: RuleOp.gte, value: "x" }], { from: "", to: "" })).toEqual([]);
+    expect(readDateRange([{ field: "takenAt", op: RuleOp.between, value: ["2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999Z"] }], "takenAt")).toEqual({ from: "2024-01-01", to: "2024-12-31" });
+    expect(applyDateRange([], "takenAt", { from: "2024-01-01", to: "" })).toEqual([{ field: "takenAt", op: RuleOp.gte, value: "2024-01-01T00:00:00.000Z" }]);
+    expect(applyDateRange([], "takenAt", { from: "", to: "2024-12-31" })).toEqual([{ field: "takenAt", op: RuleOp.lte, value: "2024-12-31T23:59:59.999Z" }]);
+    expect(applyDateRange([], "takenAt", { from: "2024-01-01", to: "2024-12-31" })).toEqual([{ field: "takenAt", op: RuleOp.between, value: ["2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999Z"] }]);
+    expect(applyDateRange([{ field: "takenAt", op: RuleOp.gte, value: "x" }], "takenAt", { from: "", to: "" })).toEqual([]);
   });
   it("leaves other fields untouched", () => {
-    expect(applyDateRange([{ field: "iso", op: RuleOp.gt, value: 800 }], { from: "2024-01-01", to: "" })).toEqual([
+    expect(applyDateRange([{ field: "iso", op: RuleOp.gt, value: 800 }], "takenAt", { from: "2024-01-01", to: "" })).toEqual([
       { field: "iso", op: RuleOp.gt, value: 800 },
       { field: "takenAt", op: RuleOp.gte, value: "2024-01-01T00:00:00.000Z" },
     ]);

@@ -55,9 +55,9 @@ export interface DateRangeValue {
   to: string;
 }
 
-export function readDateRange(rules: FilterRule[]): DateRangeValue {
+export function readDateRange(rules: FilterRule[], field: string): DateRangeValue {
   const day = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "");
-  const r = rules.find((x) => x.field === "takenAt");
+  const r = rules.find((x) => x.field === field);
   if (!r) return { from: "", to: "" };
   if (r.op === RuleOp.between) {
     const [a, b] = r.value as [string, string];
@@ -68,13 +68,13 @@ export function readDateRange(rules: FilterRule[]): DateRangeValue {
   return { from: "", to: "" };
 }
 
-export function applyDateRange(rules: FilterRule[], { from, to }: DateRangeValue): FilterRule[] {
-  const rest = rules.filter((r) => r.field !== "takenAt");
+export function applyDateRange(rules: FilterRule[], field: string, { from, to }: DateRangeValue): FilterRule[] {
+  const rest = rules.filter((r) => r.field !== field);
   const start = (d: string) => `${d}T00:00:00.000Z`; // inclusive start of day (UTC)
   const end = (d: string) => `${d}T23:59:59.999Z`; // inclusive end of day (UTC)
-  if (from && to) return [...rest, { field: "takenAt", op: RuleOp.between, value: [start(from), end(to)] }];
-  if (from) return [...rest, { field: "takenAt", op: RuleOp.gte, value: start(from) }];
-  if (to) return [...rest, { field: "takenAt", op: RuleOp.lte, value: end(to) }];
+  if (from && to) return [...rest, { field, op: RuleOp.between, value: [start(from), end(to)] }];
+  if (from) return [...rest, { field, op: RuleOp.gte, value: start(from) }];
+  if (to) return [...rest, { field, op: RuleOp.lte, value: end(to) }];
   return rest;
 }
 

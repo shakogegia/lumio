@@ -48,7 +48,7 @@ export function FilterPanel({
           <FacetRange label="ISO" fieldKey="iso" rules={filters.rules} onRules={setRules} />
           <FacetRange label="Aperture" fieldKey="aperture" step="0.1" rules={filters.rules} onRules={setRules} />
           <FacetRange label="Focal length (mm)" fieldKey="focalLength" rules={filters.rules} onRules={setRules} />
-          <FacetDate rules={filters.rules} onRules={setRules} />
+          <FacetDate label="Date taken" fieldKey="takenAt" rules={filters.rules} onRules={setRules} />
           <FacetToggles rules={filters.rules} onRules={setRules} />
           <FacetGeneric rules={filters.rules} onRules={setRules} />
         </div>
