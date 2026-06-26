@@ -1,4 +1,3 @@
-// apps/web/src/features/lightbox/metadata-panel.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +6,7 @@ import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetadataFieldsList } from "@/components/metadata/metadata-fields-list";
-import { useCatalogMetadataSchema } from "./use-metadata-schema";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { MetadataValueField } from "./metadata-field-row";
 
 export function MetadataPanel({ photo }: { photo: PhotoDTO }) {

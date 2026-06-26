@@ -1,4 +1,3 @@
-// apps/web/src/features/lightbox/metadata-field-row.tsx
 "use client";
 
 import { useRef, useState } from "react";
