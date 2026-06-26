@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MatchType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,34 +14,29 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
+import {
+  SmartAlbumRulesEditor,
+  rulesComplete,
+  type SmartRulesValue,
+} from "./smart-album-rules-editor";
 
-type RuleType = "last_30_days" | "camera_eq";
-
-interface RuleRow {
-  id: number;
-  type: RuleType;
-  value: string;
-}
-
-let nextId = 1;
-
-function buildRule(row: RuleRow) {
-  if (row.type === "last_30_days") {
-    return { field: "takenAt", op: "last_30_days" as const };
-  }
-  return { field: "exif.cameraModel", op: "eq" as const, value: row.value };
-}
-
+/**
+ * Create an album. `smart` makes it a dedicated smart-album dialog: the metadata
+ * rule builder is shown directly (no toggle, no card wrapper) and the album is
+ * created with its rules. "New album" and "New smart album" are two menu items
+ * sharing this one dialog + the reusable SmartAlbumRulesEditor.
+ */
 export function NewAlbumDialog({
   folderId = null,
+  smart = false,
   open,
   onOpenChange,
 }: {
   folderId?: string | null;
+  smart?: boolean;
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
 } = {}) {
@@ -50,47 +46,31 @@ export function NewAlbumDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlled ? open : internalOpen;
   const [name, setName] = useState("");
-  const [isSmart, setIsSmart] = useState(false);
-  const [match, setMatch] = useState<"all" | "any">("all");
-  const [rules, setRules] = useState<RuleRow[]>([]);
+  const [smartRules, setSmartRules] = useState<SmartRulesValue>({
+    match: MatchType.all,
+    rules: [],
+  });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+
+  const title = smart ? "New smart album" : "New album";
 
   function reset() {
     setName("");
-    setIsSmart(false);
-    setMatch("all");
-    setRules([]);
+    setSmartRules({ match: MatchType.all, rules: [] });
     setError(null);
   }
 
-  function addRule() {
-    setRules((prev) => [...prev, { id: nextId++, type: "last_30_days", value: "" }]);
+  // Reset to a fresh form when the dialog OPENS — not on close — so the content
+  // doesn't blank out mid close-animation.
+  if (isOpen !== prevOpen) {
+    setPrevOpen(isOpen);
+    if (isOpen) reset();
   }
-
-  function removeRule(id: number) {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  function updateRuleType(id: number, type: RuleType) {
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, type, value: "" } : r)),
-    );
-  }
-
-  function updateRuleValue(id: number, value: string) {
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, value } : r)));
-  }
-
-  const cameraRulesWithEmptyValue = isSmart
-    ? rules.some((r) => r.type === "camera_eq" && r.value.trim() === "")
-    : false;
 
   const disabled =
-    pending ||
-    name.trim() === "" ||
-    (isSmart && rules.length === 0) ||
-    cameraRulesWithEmptyValue;
+    pending || name.trim() === "" || (smart && !rulesComplete(smartRules.rules));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,16 +78,8 @@ export function NewAlbumDialog({
     setPending(true);
     setError(null);
     try {
-      const body = isSmart
-        ? {
-            name: name.trim(),
-            isSmart: true,
-            folderId,
-            rules: {
-              match,
-              rules: rules.map(buildRule),
-            },
-          }
+      const body = smart
+        ? { name: name.trim(), isSmart: true, folderId, rules: smartRules }
         : { name: name.trim(), isSmart: false, folderId };
 
       const res = await fetch(catalogApiUrl(slug, "/albums"), {
@@ -139,19 +111,24 @@ export function NewAlbumDialog({
   function handleOpenChange(value: boolean) {
     if (controlled) onOpenChange?.(value);
     else setInternalOpen(value);
-    if (!value) reset();
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {!controlled && (
         <DialogTrigger asChild>
-          <Button size="sm">New album</Button>
+          <Button size="sm">{title}</Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className={smart ? "sm:max-w-2xl" : "sm:max-w-md"}
+        // Never close on an outside click — it's far too easy to dismiss by
+        // accident (especially while a Select/Popover dropdown is open, where the
+        // click is really dismissing the dropdown). Close via the X / Cancel / Esc.
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>New album</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-1.5">
@@ -165,68 +142,8 @@ export function NewAlbumDialog({
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Switch
-              id="is-smart"
-              checked={isSmart}
-              onCheckedChange={(val) => {
-                setIsSmart(val);
-                if (!val) setRules([]);
-              }}
-            />
-            <Label htmlFor="is-smart">Smart album</Label>
-          </div>
-
-          {isSmart && (
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="match-select">Match</Label>
-                <select
-                  id="match-select"
-                  value={match}
-                  onChange={(e) => setMatch(e.target.value as "all" | "any")}
-                  className="rounded-md border border-input bg-transparent px-2 py-1 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
-                >
-                  <option value="all">all</option>
-                  <option value="any">any</option>
-                </select>
-                <span className="text-sm text-muted-foreground">of the following rules</span>
-              </div>
-
-              {rules.map((rule) => (
-                <div key={rule.id} className="flex items-center gap-2">
-                  <select
-                    value={rule.type}
-                    onChange={(e) => updateRuleType(rule.id, e.target.value as RuleType)}
-                    className="rounded-md border border-input bg-transparent px-2 py-1 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
-                  >
-                    <option value="last_30_days">Taken in the last 30 days</option>
-                    <option value="camera_eq">Camera model equals</option>
-                  </select>
-                  {rule.type === "camera_eq" && (
-                    <Input
-                      placeholder="Camera model"
-                      value={rule.value}
-                      onChange={(e) => updateRuleValue(rule.id, e.target.value)}
-                      className="flex-1"
-                    />
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => removeRule(rule.id)}
-                    aria-label="Remove rule"
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-
-              <Button type="button" variant="outline" size="sm" onClick={addRule}>
-                Add rule
-              </Button>
-            </div>
+          {smart && (
+            <SmartAlbumRulesEditor value={smartRules} onChange={setSmartRules} />
           )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}

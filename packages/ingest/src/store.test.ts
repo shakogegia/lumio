@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { Prisma } from "@lumio/db";
-import { PhotoSource } from "@lumio/shared";
+import { PhotoSource, derivePromotedFields } from "@lumio/shared";
 import { storePhoto } from "./store.js";
 import type { ProcessedPhoto } from "./process.js";
 
@@ -16,7 +16,7 @@ const processed: ProcessedPhoto = {
   takenAt: new Date("2024-03-14T09:26:53.000Z"),
   hash: "deadbeef",
   thumbhash: "AAAA",
-  exif: { cameraMake: "Lumio" },
+  exif: { cameraMake: "Apple", cameraModel: "iPhone 15", ISO: 200, FNumber: 1.6, latitude: 37.7749, longitude: -122.4194 },
   thumbnail: Buffer.from("fake-webp-bytes"),
   display: Buffer.from("fake-display-bytes"),
   asShot: null,
@@ -71,6 +71,10 @@ describe("storePhoto", () => {
     expect(args.create.fileMtimeMs).toBe(1710408413000.5);
     expect(args.update.fileSize).toBe(12345);
     expect(args.update.fileMtimeMs).toBe(1710408413000.5);
+
+    const expectedPromoted = derivePromotedFields(processed.exif);
+    expect(args.create).toMatchObject(expectedPromoted);
+    expect(args.update).toMatchObject(expectedPromoted);
   });
 
   it("sets source on create only, never on update (provenance is immutable)", async () => {

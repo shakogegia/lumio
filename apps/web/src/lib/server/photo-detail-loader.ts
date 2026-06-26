@@ -1,4 +1,5 @@
-import { buildSearchWhere } from "@lumio/db";
+import { buildSearchWhere, getCatalogSchema } from "@lumio/db";
+import { buildSearchRegistry } from "@lumio/shared";
 import { listAlbumSummaries } from "@/lib/server/albums-service";
 import { getNeighborsForWhere, getPhoto, getPhotoNeighbors } from "@/lib/server/photos-service";
 import type { DetailScope } from "@/lib/detail-scope";
@@ -30,13 +31,17 @@ export async function loadPhotoDetail(
   const photo = await getPhoto(catalogId, id);
   if (!photo) return null;
   const current = { id: photo.id, path: photo.path };
+  const registry =
+    scope.kind === "search"
+      ? buildSearchRegistry(await getCatalogSchema(catalogId))
+      : undefined;
   const neighbors$ =
     scope.kind === "album"
       ? getPhotoNeighbors(catalogId, current, scope.albumId, scope.sort)
       : scope.kind === "search"
         ? getNeighborsForWhere(
             current,
-            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q }) },
+            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q, filter: scope.filter }, new Date(), registry) },
             scope.sort,
           )
         : getPhotoNeighbors(catalogId, current, null, scope.sort);

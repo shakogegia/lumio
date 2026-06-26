@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { colorLabelSchema } from "./color-labels.js";
+import { type FilterSet, filterSetSchema } from "./filters.js";
 import { COLOR_FIELDS } from "./photo-color.js";
 import type { PhotoDTO } from "./types.js";
 
@@ -121,6 +122,27 @@ export const searchQuerySchema = z.object({
     .union([z.string(), z.array(z.string())])
     .optional()
     .transform((v) => (v == null ? [] : Array.isArray(v) ? v : [v])),
+  filter: z
+    .string()
+    .optional()
+    .transform((v, ctx) => {
+      if (v == null || v === "") return undefined;
+      let json: unknown;
+      try {
+        json = JSON.parse(v);
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "filter is not valid JSON" });
+        return z.NEVER;
+      }
+      const result = filterSetSchema.safeParse(json);
+      if (!result.success) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "invalid filter" });
+        return z.NEVER;
+      }
+      // ruleSchema types `value` as `unknown` (it's validated imperatively in
+      // superRefine, not statically narrowed), so cast to the declared interface.
+      return result.data as FilterSet;
+    }),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),

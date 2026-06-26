@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { PhotoSort } from "@lumio/shared";
+import { cn } from "@/lib/utils";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
 import { useGridColumns } from "@/lib/hooks/use-grid-columns";
@@ -19,6 +20,8 @@ import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { usePhotoActions, type PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
+import { SidePanel } from "@/components/ui/side-panel";
+import { SelectionInfoPanel, InspectorToggle, InspectorShortcut } from "@/features/photo-info";
 
 /** The paginated source + lightbox URLs for the current sort/month. */
 export interface PhotoCollectionSource {
@@ -80,6 +83,7 @@ export function PhotoLibraryView({
   // Whether any selected photo is edited — reported up from inside the provider
   // (the toolbar renders outside it), so Download can offer edited vs original.
   const [anySelectedEdited, setAnySelectedEdited] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, ...actionOptions });
 
@@ -90,75 +94,88 @@ export function PhotoLibraryView({
   return (
     <>
       {actions.element}
-      {sel.count > 0 ? (
-        <SelectionToolbar
-          title={title}
-          count={sel.count}
-          totalLabel={totalLabel}
-          onCancel={sel.clear}
-          actions={
-            <>
-              {selectionActions?.({
-                actions,
-                selectedIds: sel.selected,
-                clearSelection: sel.clear,
-              })}
-              <SelectionActions
-                actions={actions}
-                selectedIds={sel.selected}
-                gridRef={gridRef}
-                clearSelection={sel.clear}
-                clearOnFavorite={!!actionOptions?.dropOnUnfavorite}
-                anyEdited={anySelectedEdited}
-              />
-            </>
-          }
-        />
-      ) : (
-        <HeaderBar
-          title={title}
-          subtitle={countSubtitle}
-          actions={
-            <>
-              {headerActions}
-              <GridViewMenu mode={mode} onModeChange={setMode} />
-              <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-              <GridSortMenu sort={sort} onSortChange={setSort} />
-              {calendar && (
-                <GridCalendarMenu
-                  facetsEndpoint={calendar.facetsEndpoint}
-                  value={month}
-                  onChange={setMonth}
+      <div className={cn("transition-[padding] duration-300", panelOpen && "pr-80")}>
+        {sel.count > 0 ? (
+          <SelectionToolbar
+            title={title}
+            count={sel.count}
+            totalLabel={totalLabel}
+            onCancel={sel.clear}
+            actions={
+              <>
+                <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
+                {selectionActions?.({
+                  actions,
+                  selectedIds: sel.selected,
+                  clearSelection: sel.clear,
+                })}
+                <SelectionActions
+                  actions={actions}
+                  selectedIds={sel.selected}
+                  gridRef={gridRef}
+                  clearSelection={sel.clear}
+                  clearOnFavorite={!!actionOptions?.dropOnUnfavorite}
+                  anyEdited={anySelectedEdited}
                 />
-              )}
-            </>
-          }
-        />
-      )}
-
-      <PhotoCollectionProvider
-        key={src.key}
-        endpoint={src.endpoint}
-        params={src.params}
-        urlForId={src.urlForId}
-        baseUrl={src.baseUrl}
-      >
-        <CollectionTotalReporter onTotal={setTotal} />
-        <SelectionEditReporter selectedIds={sel.selected} onAnyEdited={setAnySelectedEdited} />
-        <PhotoActionsProvider value={actions}>
-          {aboveGrid}
-          <PhotoGrid
-            apiRef={gridRef}
-            mode={mode}
-            columns={columns}
-            selectedIds={sel.selected}
-            onSelectionChange={sel.setSelected}
-            empty={empty}
+              </>
+            }
           />
-          <Lightbox />
-          <GridShortcuts selectedIds={sel.selected} />
-        </PhotoActionsProvider>
-      </PhotoCollectionProvider>
+        ) : (
+          <HeaderBar
+            title={title}
+            subtitle={countSubtitle}
+            actions={
+              <>
+                <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
+                {headerActions}
+                <GridViewMenu mode={mode} onModeChange={setMode} />
+                <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
+                <GridSortMenu sort={sort} onSortChange={setSort} />
+                {calendar && (
+                  <GridCalendarMenu
+                    facetsEndpoint={calendar.facetsEndpoint}
+                    value={month}
+                    onChange={setMonth}
+                  />
+                )}
+              </>
+            }
+          />
+        )}
+
+        <PhotoCollectionProvider
+          key={src.key}
+          endpoint={src.endpoint}
+          params={src.params}
+          urlForId={src.urlForId}
+          baseUrl={src.baseUrl}
+        >
+          <CollectionTotalReporter onTotal={setTotal} />
+          <SelectionEditReporter selectedIds={sel.selected} onAnyEdited={setAnySelectedEdited} />
+          <PhotoActionsProvider value={actions}>
+            {aboveGrid}
+            <PhotoGrid
+              apiRef={gridRef}
+              mode={mode}
+              columns={columns}
+              selectedIds={sel.selected}
+              onSelectionChange={sel.setSelected}
+              empty={empty}
+            />
+            <Lightbox />
+            <GridShortcuts selectedIds={sel.selected} />
+          </PhotoActionsProvider>
+          <InspectorShortcut onToggle={() => setPanelOpen((o) => !o)} />
+          {panelOpen && (
+            <SidePanel
+              title={sel.count > 1 ? `${sel.count} selected` : "Details"}
+              onClose={() => setPanelOpen(false)}
+            >
+              <SelectionInfoPanel selectedIds={sel.selected} />
+            </SidePanel>
+          )}
+        </PhotoCollectionProvider>
+      </div>
     </>
   );
 }

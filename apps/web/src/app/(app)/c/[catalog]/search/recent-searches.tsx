@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock } from "lucide-react";
+import { formatRuleLabel, MatchType } from "@lumio/shared";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { loadAllOptions } from "./facets";
 import { type SearchFilters, serialize } from "./filters";
 
@@ -10,7 +12,7 @@ const KEY = "lumio.recentSearches";
 const MAX = 8;
 
 function isEmptyFilters(f: SearchFilters): boolean {
-  return f.albums.length === 0 && f.q === "";
+  return f.albums.length === 0 && f.q === "" && f.rules.length === 0;
 }
 
 /** Load recent searches (most-recent first) from localStorage. */
@@ -21,12 +23,20 @@ export function loadRecentSearches(): SearchFilters[] {
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (f): f is SearchFilters =>
-        !!f &&
-        Array.isArray((f as SearchFilters).albums) &&
-        typeof (f as SearchFilters).q === "string",
-    );
+    return parsed
+      .filter(
+        (f): f is SearchFilters =>
+          !!f &&
+          Array.isArray((f as SearchFilters).albums) &&
+          typeof (f as SearchFilters).q === "string",
+      )
+      // Normalize entries stored before `rules` existed (the type guard doesn't
+      // require it) so downstream `.map` over rules never hits undefined.
+      .map((f) => ({
+        ...f,
+        rules: Array.isArray(f.rules) ? f.rules : [],
+        match: f.match === MatchType.any ? MatchType.any : MatchType.all,
+      }));
   } catch {
     return [];
   }
@@ -62,6 +72,11 @@ export function RecentSearches({
   onPick: (filters: SearchFilters) => void;
 }) {
   const { slug } = useCatalog();
+  const schema = useCatalogMetadataSchema(slug);
+  const metaLabels = useMemo(
+    () => new Map((schema ?? []).flatMap((g) => g.fields.map((f) => [f.key, f.label] as const))),
+    [schema],
+  );
   const [albumNames, setAlbumNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -109,6 +124,14 @@ export function RecentSearches({
                   >
                     <span className="text-muted-foreground">Album:</span>{" "}
                     {albumNames.get(id) ?? "…"}
+                  </span>
+                ))}
+                {filters.rules.map((rule, i) => (
+                  <span
+                    key={`${rule.field}:${rule.op}:${i}`}
+                    className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground"
+                  >
+                    {formatRuleLabel(rule, metaLabels.get(rule.field))}
                   </span>
                 ))}
                 {filters.q && <span>{filters.q}</span>}

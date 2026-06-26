@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { buildSearchWhere } from "@lumio/db";
-import { searchQuerySchema } from "@lumio/shared";
+import { buildSearchWhere, getCatalogSchema } from "@lumio/db";
+import { buildSearchRegistry, searchQuerySchema } from "@lumio/shared";
 import { buildCalendarFacets } from "@/lib/server/calendar-service";
 import { errorJson } from "@/lib/server/route-helpers";
 import { withCatalog } from "@/lib/server/with-catalog";
@@ -18,7 +18,8 @@ export const GET = withCatalog(async (request, _context, { catalog }) => {
   if (!parsed.success) {
     return errorJson("Invalid query parameters", 400, parsed.error.flatten());
   }
+  const registry = buildSearchRegistry(await getCatalogSchema(catalog.id));
   // buildSearchWhere reads only album + q, so any `month` param is ignored here.
-  const facets = await buildCalendarFacets(catalog.id, buildSearchWhere(parsed.data));
+  const facets = await buildCalendarFacets(catalog.id, buildSearchWhere(parsed.data, new Date(), registry));
   return NextResponse.json(facets);
 });

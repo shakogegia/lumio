@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useGridSelectionNav } from "@/lib/hooks/use-grid-selection-nav";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Loader2, Trash2, X } from "lucide-react";
+import { Download, Loader2, PanelRight, Trash2, X } from "lucide-react";
 import type { ColorLabel } from "@lumio/shared";
 import { errorMessage } from "@lumio/shared";
 import { countLabel } from "@/lib/count-label";
 import { postJson } from "@/lib/http";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,7 @@ import { downloadSelection } from "@/lib/download-client";
 import { setPhotoColorLabel, trashPhotos } from "@/lib/photo-mutations";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { partitionSupported } from "@/lib/upload-collect";
 import { albumTargetIds, summarizeRows, type Row, type RowStatus } from "@/lib/upload-rows";
 import { playSound } from "@/lib/sound/player";
@@ -35,6 +37,7 @@ import { SelectionToolbar } from "@/components/photo-actions/selection-toolbar";
 import { UploadDropzone } from "./upload-dropzone";
 import { UploadCommandBar } from "./upload-command-bar";
 import { UploadTile } from "./upload-tile";
+import { UploadMetadataForm } from "./upload-metadata-form";
 
 const CONCURRENCY = 3;
 let nextRowId = 1;
@@ -67,6 +70,11 @@ export function UploadClient({
   const [labelPending, setLabelPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Batch-metadata side panel: off by default, toggled from the toolbar; only
+  // available when the catalog actually has custom fields.
+  const [showMeta, setShowMeta] = useState(false);
+  const metaSchema = useCatalogMetadataSchema(slug);
+  const hasMeta = (metaSchema ?? []).some((g) => g.fields.some((f) => f.enabled));
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -256,6 +264,8 @@ export function UploadClient({
     <>
       {confirmDialog}
 
+      <div className="flex h-full">
+        <div className="flex min-w-0 flex-1 flex-col px-4">
       {sel.count > 0 ? (
         <SelectionToolbar
           title="Select photos"
@@ -323,16 +333,39 @@ export function UploadClient({
                   <X className="size-3.5" aria-hidden />
                 </button>
               </span>
-            ) : undefined
+            ) : hasRows ? (
+              countLabel(summary.total, "photo", "photos")
+            ) : (
+              "Drag photos here or click to upload"
+            )
           }
           actions={
-            hasRows ? <GridSizeMenu columns={columns} onColumnsChange={setColumns} /> : null
+            <div className="flex items-center gap-2">
+              {hasRows && <GridSizeMenu columns={columns} onColumnsChange={setColumns} />}
+              {hasMeta && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={showMeta ? "default" : "outline"}
+                      size="icon-sm"
+                      aria-pressed={showMeta}
+                      onClick={() => setShowMeta((v) => !v)}
+                      aria-label="Batch metadata"
+                    >
+                      <PanelRight aria-hidden />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Batch metadata</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           }
         />
       )}
 
-      <div className="space-y-6 pt-2">
-        <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
+          <ScrollArea className="-mr-4 min-h-0 flex-1">
+          <div className="space-y-6 pr-4 pt-2 pb-6">
+          <UploadDropzone variant={hasRows ? "slim" : "hero"} onFiles={(f) => void addFiles(f)} />
 
         {hasRows ? (
           <UploadCommandBar
@@ -368,6 +401,18 @@ export function UploadClient({
             ))}
           </div>
         ) : null}
+          </div>
+          </ScrollArea>
+        </div>
+        {showMeta && hasMeta && (
+          <aside className="w-80 shrink-0 border-l">
+            <ScrollArea className="h-full">
+              <div className="p-4">
+                <UploadMetadataForm selectedIds={sel.selected} />
+              </div>
+            </ScrollArea>
+          </aside>
+        )}
       </div>
 
       {album.element}

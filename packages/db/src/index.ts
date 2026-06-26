@@ -1,4 +1,6 @@
 export { prisma } from "./client.js";
+export { buildPhotoWhere } from "./photo-where.js";
+export { backfillPromoted } from "./backfill-promoted.js";
 export * from "./mappers.js";
 export * from "./smart-albums.js";
 export * from "./folders.js";
@@ -7,6 +9,7 @@ export * from "./users.js";
 export * from "./catalogs.js";
 export * from "./user-settings.js";
 export * from "./features.js";
+export * from "./metadata.js";
 export * from "./app-settings.js";
 export * from "./share-links.js";
 export { PhotoSource, Prisma } from "@prisma/client";

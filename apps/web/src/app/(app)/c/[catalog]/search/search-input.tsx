@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type Tribute from "tributejs";
 import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { type TributeFacetItem, loadAllOptions } from "./facets";
-import { type SearchFilters, buildFilters } from "./filters";
+import { type SearchFilters } from "./filters";
+import { type FilterRule, formatRuleLabel } from "@lumio/shared";
+import { mergeEditorRules } from "./editor-rules";
 
 const DEBOUNCE_MS = 250;
-const PLACEHOLDER = "Search photos…  (type @ to filter by album)";
+const PLACEHOLDER = "Search photos…  (type @ to filter by album or metadata)";
 
 function escapeHtml(s: string): string {
   return s.replace(
@@ -33,23 +36,46 @@ function chipHtml(item: TributeFacetItem): string {
   );
 }
 
+function exifChipHtml(rule: FilterRule, labels?: Map<string, string>): string {
+  const json = escapeHtml(JSON.stringify(rule));
+  const label = escapeHtml(formatRuleLabel(rule, labels?.get(rule.field)));
+  return (
+    `<span contenteditable="false" data-facet="exif" data-rule="${json}" ` +
+    `class="mx-0.5 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 align-middle text-sm text-foreground">` +
+    `${label}` +
+    `<button type="button" data-chip-remove tabindex="-1" class="ml-0.5 leading-none text-muted-foreground hover:text-foreground">×</button>` +
+    `</span>&nbsp;`
+  );
+}
+
 /** Read the editor DOM into structured filters: chip spans → albums, text → q. */
-function readEditor(el: HTMLElement): SearchFilters {
+function readEditor(el: HTMLElement): Omit<SearchFilters, "match"> {
   const albums: string[] = [];
   el.querySelectorAll<HTMLElement>('[data-facet="album"]').forEach((chip) => {
     const value = chip.getAttribute("data-value");
     if (value) albums.push(value);
   });
 
+  const chipRules: FilterRule[] = [];
+  el.querySelectorAll<HTMLElement>('[data-facet="exif"]').forEach((chip) => {
+    const raw = chip.getAttribute("data-rule");
+    if (!raw) return;
+    try {
+      chipRules.push(JSON.parse(raw) as FilterRule);
+    } catch {
+      /* ignore a corrupt chip */
+    }
+  });
+
   let rawText = "";
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let node = walker.nextNode();
   while (node) {
-    // Skip text that lives inside a chip span.
     if (!node.parentElement?.closest("[data-facet]")) rawText += node.textContent ?? "";
     node = walker.nextNode();
   }
-  return buildFilters(albums, rawText);
+  const { rules, q } = mergeEditorRules(chipRules, rawText.replace(/\u00A0/g, " ").trim());
+  return { albums: Array.from(new Set(albums)), q, rules };
 }
 
 function isEditorEmpty(el: HTMLElement): boolean {
@@ -99,7 +125,10 @@ function adjacentChip(range: Range, dir: "back" | "forward"): HTMLElement | null
 
 /** Imperative handle so a parent can repopulate the box (e.g. re-run a recent search). */
 export interface SearchInputHandle {
-  applyFilters: (filters: SearchFilters) => void;
+  /** Rebuild the box from a filter set. `focus` defaults to true (for recent-search
+   *  recall); the facet panel passes `focus: false` so applying a filter doesn't steal
+   *  focus back to the box and dismiss the open popover. */
+  applyFilters: (filters: Omit<SearchFilters, "match">, opts?: { focus?: boolean }) => void;
 }
 
 /**
@@ -118,12 +147,20 @@ export function SearchInput({
   ref?: React.Ref<SearchInputHandle>;
   /** Compact styling once the box has moved to the top (vs. the centered hero). */
   compact: boolean;
-  onChange: (filters: SearchFilters) => void;
+  onChange: (filters: Omit<SearchFilters, "match">) => void;
   onActivate: () => void;
   /** Fired when focus leaves the box, with the settled filters (for recording recents). */
-  onCommit?: (filters: SearchFilters) => void;
+  onCommit?: (filters: Omit<SearchFilters, "match">) => void;
 }) {
   const { slug } = useCatalog();
+  // Per-catalog field key → human label, so metadata-field chips read "Film stock"
+  // not the raw "film-stock" key (the shared formatRuleLabel only knows static fields).
+  const schema = useCatalogMetadataSchema(slug);
+  const metaLabels = useMemo(
+    () => new Map((schema ?? []).flatMap((g) => g.fields.map((f) => [f.key, f.label] as const))),
+    [schema],
+  );
+  const metaLabelsRef = useRef(metaLabels);
   const editorRef = useRef<HTMLDivElement>(null);
   const tributeRef = useRef<Tribute<TributeFacetItem> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,7 +175,16 @@ export function SearchInput({
   useEffect(() => {
     onChangeRef.current = onChange;
     slugRef.current = slug;
+    metaLabelsRef.current = metaLabels;
   });
+
+  // Warm the `@` option cache when the box mounts, so the first `@` is instant
+  // (no wait for the schema + per-field value fetches). loadAllOptions caches
+  // per slug, so the later Tribute `values` call reuses this in-flight/resolved
+  // promise rather than re-fetching.
+  useEffect(() => {
+    void loadAllOptions(slug).catch(() => {});
+  }, [slug]);
 
   // Parse the editor and report filters now. Also refreshes the placeholder.
   const emitNow = useCallback(() => {
@@ -160,21 +206,23 @@ export function SearchInput({
   useImperativeHandle(
     ref,
     () => ({
-      applyFilters(filters: SearchFilters) {
+      applyFilters(filters: Omit<SearchFilters, "match">, opts?: { focus?: boolean }) {
         const el = editorRef.current;
         if (!el) return;
         void loadAllOptions(slugRef.current)
           .catch(() => [] as TributeFacetItem[])
-          .then((opts) => {
+          .then((opts2) => {
             const labelFor = (id: string) =>
-              opts.find((o) => o.facetKey === "album" && o.value === id)?.label ?? id;
-            el.innerHTML = filters.albums
-              .map((id) =>
-                chipHtml({ facetKey: "album", facetLabel: "Album", value: id, label: labelFor(id) }),
-              )
-              .join("");
+              opts2.find((o) => o.facetKey === "album" && o.value === id)?.label ?? id;
+            // filters.albums is assumed already-deduped (readEditor dedupes on the way in).
+            el.innerHTML =
+              filters.albums
+                .map((id) => chipHtml({ facetKey: "album", facetLabel: "Album", value: id, label: labelFor(id) }))
+                .join("") + filters.rules.map((r) => exifChipHtml(r, metaLabelsRef.current)).join("");
             if (filters.q) el.appendChild(document.createTextNode(filters.q));
-            el.focus();
+            // Only steal focus back to the box for recent-search recall; the facet
+            // panel passes focus:false so its popover isn't dismissed on each edit.
+            if (opts?.focus !== false) el.focus();
             emitNow();
           });
       },
@@ -197,7 +245,9 @@ export function SearchInput({
       tribute = new TributeCtor<TributeFacetItem>({
         trigger: "@",
         allowSpaces: true,
-        lookup: "label",
+        // Match the typed text against the field/facet label AND the value, so
+        // "@film" finds the Film stock field and "@portra" finds the value.
+        lookup: (item: TributeFacetItem) => `${item.facetLabel} ${item.label}`,
         fillAttr: "label",
         // chipHtml already ends with one trailing space; suppress Tribute's own
         // default \xA0 suffix so a selected chip isn't followed by two spaces.
@@ -214,7 +264,14 @@ export function SearchInput({
         },
         menuItemTemplate: (item) =>
           `<span class="text-muted-foreground">${escapeHtml(item.original.facetLabel)}</span> · ${escapeHtml(item.original.label)}`,
-        selectTemplate: (item) => (item ? chipHtml(item.original) : ""),
+        // A metadata option (carries a rule) inserts an exif filter chip; an
+        // album option inserts an album chip.
+        selectTemplate: (item) =>
+          item
+            ? item.original.rule
+              ? exifChipHtml(item.original.rule, metaLabelsRef.current)
+              : chipHtml(item.original)
+            : "",
         noMatchTemplate: () => "",
       });
       tribute.attach(el);
@@ -307,9 +364,9 @@ export function SearchInput({
       className={cn(
         // Mirrors the shadcn input pill, but as a wrapper (focus-within ring)
         // so the inner editable is content-height and the caret stays centered.
-        "relative flex w-full items-center rounded-4xl border border-input bg-input/30 py-1.5 text-base transition-all duration-300",
+        "relative flex min-h-9 w-full items-center rounded-4xl border border-input bg-input/30 py-1 text-base transition-all duration-300",
         "focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
-        compact ? "min-h-10 px-4 md:text-sm" : "min-h-14 px-5 text-base",
+        compact ? "px-4 md:text-sm" : "px-5 md:text-sm",
       )}
       onMouseDown={(e) => {
         // Clicking the padding (not a chip or text) focuses the editable.

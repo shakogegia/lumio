@@ -29,7 +29,8 @@ export interface CalendarFacets {
  * The caller must pass a month already validated by `monthParamSchema`.
  */
 export function monthRange(month: string): { gte: Date; lt: Date } {
-  const [y, m] = month.split("-").map(Number); // m is 1–12
+  // monthParamSchema guarantees a valid `YYYY-MM`, so the split yields exactly two numbers.
+  const [y, m] = month.split("-").map(Number) as [number, number]; // m is 1–12
   return {
     gte: new Date(Date.UTC(y, m - 1, 1)),
     lt: new Date(Date.UTC(y, m, 1)), // m === 12 → Date.UTC(y, 12, 1) is next-year Jan 1

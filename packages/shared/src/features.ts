@@ -13,6 +13,8 @@ import { z } from "zod";
 
 export enum FeatureKey {
   DiskExplorer = "diskExplorer",
+  Metadata = "metadata",
+  StandardMetadata = "standardMetadata",
   Sharing = "sharing",
 }
 
@@ -37,6 +39,20 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = {
     description: "Browse the catalog's folders and files on disk.",
     scopes: [FeatureScope.Global, FeatureScope.Catalog],
     default: false,
+  },
+  [FeatureKey.Metadata]: {
+    key: FeatureKey.Metadata,
+    label: "Photo metadata",
+    description: "Custom fields, presets, and per-catalog metadata on photos.",
+    scopes: [FeatureScope.Global, FeatureScope.Catalog],
+    default: false,
+  },
+  [FeatureKey.StandardMetadata]: {
+    key: FeatureKey.StandardMetadata,
+    label: "Standard metadata",
+    description: "Show camera, lens, and exposure (from EXIF) on photos.",
+    scopes: [FeatureScope.Catalog],
+    default: true,
   },
   [FeatureKey.Sharing]: {
     key: FeatureKey.Sharing,

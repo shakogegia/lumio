@@ -30,7 +30,7 @@ export default async function UploadPage({
   }
 
   return (
-    <main className="w-full px-4 pb-6">
+    <main className="h-dvh w-full overflow-hidden">
       <UploadClient targetAlbum={targetAlbum} />
     </main>
   );

@@ -17,24 +17,28 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
+import { MatchType } from "@lumio/shared";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
+import { SidePanel } from "@/components/ui/side-panel";
+import { SelectionInfoPanel, InspectorToggle, InspectorShortcut } from "@/features/photo-info";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
 import { type SearchFilters, paramsFor, scopeQuery, serialize } from "./filters";
 import { useSearchCount } from "./use-search-count";
+import { FilterPanel } from "./filter-panel";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
 
-const EMPTY: SearchFilters = { albums: [], q: "" };
+const EMPTY: SearchFilters = { albums: [], q: "", rules: [], match: MatchType.all };
 
 function isEmptyFilters(f: SearchFilters): boolean {
-  return f.albums.length === 0 && f.q === "";
+  return f.albums.length === 0 && f.q === "" && f.rules.length === 0;
 }
 
 export function SearchView() {
@@ -56,6 +60,7 @@ export function SearchView() {
   // Any selected photo edited → Download offers edited vs original. Reported up
   // from inside the provider, since this toolbar renders outside it.
   const [anySelectedEdited, setAnySelectedEdited] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const empty = isEmptyFilters(filters);
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
@@ -81,13 +86,24 @@ export function SearchView() {
     resetSelection();
   }, [serialized, month, resetSelection]);
 
-  function handleCommit(f: SearchFilters) {
+  function handleCommit(partial: Omit<SearchFilters, "match">) {
+    const f: SearchFilters = { ...partial, match: filters.match };
     if (!isEmptyFilters(f)) setRecent(recordRecentSearch(f));
   }
 
   function applyRecent(f: SearchFilters) {
     setFilters(f);
-    inputRef.current?.applyFilters(f);
+    inputRef.current?.applyFilters({ albums: f.albums, q: f.q, rules: f.rules });
+  }
+
+  function applyPanel(next: SearchFilters) {
+    setActive(true);
+    setFilters(next);
+    // focus:false so editing a filter doesn't pull focus back to the box and dismiss the popover.
+    inputRef.current?.applyFilters(
+      { albums: next.albums, q: next.q, rules: next.rules },
+      { focus: false },
+    );
   }
 
   return (
@@ -100,6 +116,7 @@ export function SearchView() {
           // the box in flow, so its sticky header band never sweeps over the grid.
           "transition-[padding] duration-500 ease-out",
           active ? "pt-0" : "pt-[32vh]",
+          panelOpen && "pr-80",
         )}
       >
         {/* Sticky search header. The full-width band (-mx-4/px-4 bg-background) only
@@ -120,13 +137,18 @@ export function SearchView() {
               <h1 className="text-3xl font-semibold">Search library</h1>
               <p className="mt-2 text-sm text-muted-foreground">Type @ to filter by album</p>
             </div>
-            <SearchInput
-              ref={inputRef}
-              compact={active}
-              onActivate={() => setActive(true)}
-              onChange={setFilters}
-              onCommit={handleCommit}
-            />
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <SearchInput
+                  ref={inputRef}
+                  compact={active}
+                  onActivate={() => setActive(true)}
+                  onChange={(partial) => setFilters((prev) => ({ ...partial, match: prev.match }))}
+                  onCommit={handleCommit}
+                />
+              </div>
+              <FilterPanel filters={filters} onChange={applyPanel} />
+            </div>
           </div>
         </div>
 
@@ -153,6 +175,7 @@ export function SearchView() {
                 <div className="flex items-center gap-2">
                   {sel.count > 0 ? (
                     <>
+                      <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <SelectionActions
                         actions={actions}
                         selectedIds={sel.selected}
@@ -176,6 +199,7 @@ export function SearchView() {
                     </>
                   ) : (
                     <>
+                      <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
@@ -212,6 +236,15 @@ export function SearchView() {
                   <Lightbox />
                   <GridShortcuts selectedIds={sel.selected} />
                 </PhotoActionsProvider>
+                <InspectorShortcut onToggle={() => setPanelOpen((o) => !o)} />
+                {panelOpen && (
+                  <SidePanel
+                    title={sel.count > 1 ? `${sel.count} selected` : "Details"}
+                    onClose={() => setPanelOpen(false)}
+                  >
+                    <SelectionInfoPanel selectedIds={sel.selected} />
+                  </SidePanel>
+                )}
               </PhotoCollectionProvider>
             </div>
           ))}

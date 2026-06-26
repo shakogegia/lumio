@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FolderPlus, Images } from "lucide-react";
+import { ChevronDown, FolderPlus, Images, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import { NewAlbumDialog } from "./new-album-dialog";
 export function NewItemMenu({ parentId }: { parentId: string | null }) {
   const [folderOpen, setFolderOpen] = useState(false);
   const [albumOpen, setAlbumOpen] = useState(false);
+  const [smartOpen, setSmartOpen] = useState(false);
 
   return (
     <>
@@ -39,10 +40,15 @@ export function NewItemMenu({ parentId }: { parentId: string | null }) {
             <Images aria-hidden />
             New album
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSmartOpen(true)}>
+            <Sparkles aria-hidden />
+            New smart album
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <NewFolderDialog parentId={parentId} open={folderOpen} onOpenChange={setFolderOpen} />
       <NewAlbumDialog folderId={parentId} open={albumOpen} onOpenChange={setAlbumOpen} />
+      <NewAlbumDialog folderId={parentId} smart open={smartOpen} onOpenChange={setSmartOpen} />
     </>
   );
 }

@@ -56,7 +56,7 @@ describe("toPhotoDTO", () => {
     const dto = toPhotoDTO({ ...baseRow, edits: { rotate: 90, flipH: true, flipV: false } } as any);
     // coercePhotoEdits normalizes to the full recipe shape, defaulting the
     // crop/straighten fields added by the crop & straighten feature.
-    expect(dto.edits).toEqual({ version: 1, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
+    expect(dto.edits).toEqual({ version: 3, rotate: 90, flipH: true, flipV: false, straighten: 0, crop: null });
   });
   it("maps null edits to null", () => {
     const dto = toPhotoDTO({ ...baseRow, edits: null } as any);
@@ -70,10 +70,12 @@ describe("toPhotoDTO", () => {
   it("round-trips color fields and omits neutral ones", () => {
     const dto = toPhotoDTO({
       ...baseRow,
-      edits: { rotate: 0, flipH: false, flipV: false, brightness: 40, vignette: 0 },
+      // `contrast` round-trips as-is; `brightness` is now a legacy field that
+      // coercePhotoEdits migrates to `exposure`, so it's unsuitable for a round-trip.
+      edits: { rotate: 0, flipH: false, flipV: false, contrast: 40, vignette: 0 },
     } as any);
     expect(dto.edits).toEqual({
-      version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, brightness: 40,
+      version: 3, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 40,
     });
   });
 
@@ -83,7 +85,7 @@ describe("toPhotoDTO", () => {
       edits: { rotate: 0, flipH: false, flipV: false, contrast: 9999 },
     } as any);
     expect(dto.edits).toEqual({
-      version: 1, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 100,
+      version: 3, rotate: 0, flipH: false, flipV: false, straighten: 0, crop: null, contrast: 100,
     });
   });
 });

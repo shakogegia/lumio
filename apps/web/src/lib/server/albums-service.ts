@@ -1,11 +1,13 @@
-import { type Album, type Prisma, type PrismaClient, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
+import { type Album, type Prisma, type PrismaClient, getCatalogSchema, prisma, smartAlbumWhere, toAlbumDTO } from "@lumio/db";
 import {
+  buildSearchRegistry,
   monthRange,
   type AlbumDTO,
   type AlbumSummaryDTO,
   type CreateAlbumInput,
   type PhotosPage,
   type PhotosQuery,
+  type SearchRegistry,
   type SmartAlbumRules,
 } from "@lumio/shared";
 import { PHOTO_ORDER } from "@/lib/photo-order";
@@ -24,7 +26,8 @@ export async function albumCoverId(
   now: Date = new Date(),
 ): Promise<string | null> {
   if (row.isSmart) {
-    const smartWhere = smartAlbumWhere(toAlbumDTO(row).rules as SmartAlbumRules, now);
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    const smartWhere = smartAlbumWhere(toAlbumDTO(row).rules as SmartAlbumRules, now, registry);
     const cover = await db.photo.findFirst({
       where: { catalogId, ...LIVE_PHOTO, ...smartWhere },
       orderBy: PHOTO_ORDER,
@@ -73,7 +76,8 @@ export async function albumSummary(
 ): Promise<AlbumSummaryDTO> {
   const base = toAlbumDTO(row);
   if (row.isSmart) {
-    const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now);
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    const smartWhere = smartAlbumWhere(base.rules as SmartAlbumRules, now, registry);
     const where = { catalogId, ...LIVE_PHOTO, ...smartWhere };
     const [photoCount, coverPhotoId] = await Promise.all([
       db.photo.count({ where }),
@@ -149,9 +153,11 @@ export async function albumPhotoWhere(
   const album = await db.album.findFirst({ where: { id: albumId, catalogId } });
   if (!album) return null;
   const dto = toAlbumDTO(album);
-  return dto.isSmart
-    ? smartAlbumWhere(dto.rules as SmartAlbumRules, new Date())
-    : { albums: { some: { albumId } } };
+  if (dto.isSmart) {
+    const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+    return smartAlbumWhere(dto.rules as SmartAlbumRules, new Date(), registry);
+  }
+  return { albums: { some: { albumId } } };
 }
 
 export async function listAlbumPhotos(
@@ -196,6 +202,44 @@ export class AlbumNotFoundError extends Error {
   constructor(message = "Album not found") {
     super(message);
   }
+}
+
+/**
+ * Returns the field names of rules that are not valid for this catalog's
+ * configured metadata schema. An empty array means all rules are valid.
+ *
+ * Accepts an optional pre-built `registry` to enable unit testing without
+ * hitting the database.
+ */
+export async function invalidRuleFields(
+  catalogId: string,
+  rules: { field: string; op: string }[],
+  registry?: SearchRegistry,
+): Promise<string[]> {
+  const reg = registry ?? buildSearchRegistry(await getCatalogSchema(catalogId));
+  return rules
+    .filter((r) => {
+      const d = reg.get(r.field);
+      return !d || (d.ops.length > 0 && !d.ops.includes(r.op as never));
+    })
+    .map((r) => r.field);
+}
+
+/**
+ * Replace the rules of an existing smart album. Returns the updated DTO, or
+ * null if the album does not exist in this catalog or is not a smart album.
+ */
+export async function updateAlbumRules(
+  catalogId: string,
+  albumId: string,
+  rules: SmartAlbumRules,
+  db: Db = prisma,
+): Promise<AlbumDTO | null> {
+  const album = await db.album.findFirst({ where: { id: albumId, catalogId } });
+  if (!album) return null;
+  if (!album.isSmart) return null;
+  const updated = await db.album.update({ where: { id: albumId }, data: { rules: rules as object } });
+  return toAlbumDTO(updated);
 }
 
 export class PhotoNotInAlbumError extends Error {

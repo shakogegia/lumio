@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { albumPhotosSchema, createAlbumSchema, deleteAlbumsSchema, renameAlbumSchema, setAlbumCoverSchema, smartRulesSchema } from "./albums.js";
+import { albumPhotosSchema, createAlbumSchema, deleteAlbumsSchema, renameAlbumSchema, setAlbumCoverSchema, updateSmartAlbumRulesSchema } from "./albums.js";
+import { filterSetSchema } from "./filters.js";
 
-describe("smartRulesSchema", () => {
+describe("filterSetSchema (smart album rules)", () => {
   it("parses last_30_days rule", () => {
-    const result = smartRulesSchema.parse({
+    const result = filterSetSchema.parse({
       match: "all",
       rules: [{ field: "takenAt", op: "last_30_days" }],
     });
@@ -15,7 +16,7 @@ describe("smartRulesSchema", () => {
   });
 
   it("parses cameraModel eq rule", () => {
-    const result = smartRulesSchema.parse({
+    const result = filterSetSchema.parse({
       match: "any",
       rules: [{ field: "exif.cameraModel", op: "eq", value: "iPhone" }],
     });
@@ -23,23 +24,37 @@ describe("smartRulesSchema", () => {
     const rule = result.rules[0];
     expect(rule?.field).toBe("exif.cameraModel");
     expect(rule?.op).toBe("eq");
-    // @ts-expect-error -- discriminated union, value exists on cameraEq branch
     expect(rule?.value).toBe("iPhone");
   });
 
-  it("rejects cameraModel rule missing value", () => {
+  it("rejects cameraModel eq rule missing value", () => {
     expect(() =>
-      smartRulesSchema.parse({
+      filterSetSchema.parse({
         match: "all",
         rules: [{ field: "exif.cameraModel", op: "eq" }],
       }),
     ).toThrow();
   });
 
-  it("rejects empty rules array", () => {
+  it("accepts empty rules array (min-1 now enforced at createAlbumSchema level)", () => {
+    // filterSetSchema itself allows empty rules; the min-1 check is in createAlbumSchema
     expect(() =>
-      smartRulesSchema.parse({ match: "all", rules: [] }),
-    ).toThrow();
+      filterSetSchema.parse({ match: "all", rules: [] }),
+    ).not.toThrow();
+  });
+});
+
+describe("updateSmartAlbumRulesSchema", () => {
+  it("accepts a valid rules payload", () => {
+    const result = updateSmartAlbumRulesSchema.parse({
+      rules: { match: "all", rules: [{ field: "takenAt", op: "last_30_days" }] },
+    });
+    expect(result.rules.match).toBe("all");
+    expect(result.rules.rules).toHaveLength(1);
+  });
+
+  it("rejects missing rules key", () => {
+    expect(() => updateSmartAlbumRulesSchema.parse({})).toThrow();
   });
 });
 

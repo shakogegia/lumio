@@ -31,6 +31,8 @@ model Catalog {
   folders         Folder[]
   trashedPhotos   TrashedPhoto[]
   featureSettings FeatureSetting[]
+  metadataGroups  MetadataGroup[]
+  metadataFields  MetadataField[]
   shareLinks      ShareLink[]
 }
 
@@ -89,6 +91,16 @@ model Photo {
   fileModifiedAt DateTime // readable mirror of fileMtimeMs; feeds sortDate's fallback chain
   fileCreatedAt  DateTime // birthtime mirror; the other input to sortDate's earliest() fallback
   exif           Json
+  cameraMake     String?
+  cameraModel    String?
+  lensModel      String?
+  iso            Int?
+  fNumber        Float?
+  focalLength    Float?
+  exposureTime   Float?
+  hasGps         Boolean?
+  gpsLat         Float?
+  gpsLng         Float?
   colorLabel     ColorLabel?
   edits          Json? // PhotoEdits recipe; null = unedited
   asShotTempK    Float? // estimated as-shot white-balance temperature (K); null = use 6500
@@ -98,6 +110,7 @@ model Photo {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
+  metadataValues PhotoMetadataValue[]
   shareLinks     ShareLinkPhoto[]
 
   @@unique([catalogId, path])
@@ -108,6 +121,12 @@ model Photo {
   @@index([hash])
   @@index([isFavorite, sortDate])
   @@index([catalogId, trashedAt])
+  @@index([takenAt])
+  @@index([cameraModel])
+  @@index([lensModel])
+  @@index([iso])
+  @@index([fNumber])
+  @@index([focalLength])
 }
 
 model Album {
@@ -300,6 +319,17 @@ model WorkerLog {
   @@index([level, createdAt])
 }
 
+model MetadataGroup {
+  id        String          @id @default(cuid())
+  catalogId String
+  catalog   Catalog         @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  label     String
+  position  String
+  fields    MetadataField[]
+
+  @@index([catalogId])
+}
+
 model AppSetting {
   key       String   @id
   value     String
@@ -319,6 +349,41 @@ model ShareLink {
   photos       ShareLinkPhoto[]
 
   @@index([catalogId])
+}
+
+model MetadataField {
+  id         String               @id @default(cuid())
+  catalogId  String
+  catalog    Catalog              @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  groupId    String?
+  group      MetadataGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  key        String
+  label      String
+  type       String
+  kind       String
+  builtinKey String?
+  enabled    Boolean              @default(true)
+  suggests   Boolean              @default(true)
+  options    String[]             @default([])
+  position   String
+  values     PhotoMetadataValue[]
+
+  @@unique([catalogId, key])
+  @@index([catalogId])
+}
+
+model PhotoMetadataValue {
+  id       String        @id @default(cuid())
+  photoId  String
+  photo    Photo         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  fieldId  String
+  field    MetadataField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value    String
+  numValue Float? // shadow column for numeric range queries; null for non-numeric values
+
+  @@unique([photoId, fieldId])
+  @@index([fieldId, value])
+  @@index([fieldId, numValue])
 }
 
 model ShareLinkPhoto {

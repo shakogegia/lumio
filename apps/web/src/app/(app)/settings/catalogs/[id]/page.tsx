@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
-import { getCatalogById, getCatalogFeatureStates } from "@lumio/db";
+import { getCatalogById, getCatalogFeatureStates, getCatalogSchema } from "@lumio/db";
+import { FeatureKey } from "@lumio/shared";
 import {
   getCatalogStats,
   getPhotoFileCount,
@@ -26,6 +27,7 @@ import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
 import { UploadTemplateForm } from "./upload-template-form";
 import { CatalogFeaturesForm } from "./catalog-features-form";
+import { MetadataConfigForm } from "./metadata-config-form";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +63,13 @@ export default async function CatalogSettingsPage({
   const stats = await getCatalogStats(catalog.id);
   const featureStates = await getCatalogFeatureStates(catalog.id);
 
+  // Metadata config (standard + custom fields) lives in its own tab, gated on the
+  // global "Photo metadata" feature being enabled — mirrors the old standalone page.
+  const customMetadata = featureStates.find((f) => f.key === FeatureKey.Metadata);
+  const standardMetadata = featureStates.find((f) => f.key === FeatureKey.StandardMetadata);
+  const showMetadata = customMetadata?.globalEnabled ?? false;
+  const schema = showMetadata ? await getCatalogSchema(catalog.id) : [];
+
   return (
     <CatalogProvider catalog={{ id: catalog.id, slug: catalog.slug, name: catalog.name }}>
       <main className="mx-auto max-w-3xl space-y-8 p-4 py-8">
@@ -79,6 +88,7 @@ export default async function CatalogSettingsPage({
           <TabsList>
             <TabsTrigger value="catalog">Catalog</TabsTrigger>
             <TabsTrigger value="uploads">Uploads</TabsTrigger>
+            {showMetadata && <TabsTrigger value="metadata">Metadata</TabsTrigger>}
             <TabsTrigger value="features">Features</TabsTrigger>
             <TabsTrigger value="danger">Danger zone</TabsTrigger>
           </TabsList>
@@ -149,6 +159,22 @@ export default async function CatalogSettingsPage({
               </CardContent>
             </Card>
           </TabsContent>
+
+          {showMetadata && (
+            <TabsContent value="metadata">
+              <MetadataConfigForm
+                catalogId={catalog.id}
+                slug={catalog.slug}
+                standardEnabled={standardMetadata?.catalogEnabled ?? true}
+                customEnabled={
+                  (customMetadata?.globalEnabled ?? false) &&
+                  (customMetadata?.catalogEnabled ?? true)
+                }
+                customAvailable={customMetadata?.globalEnabled ?? false}
+                schema={schema}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="features">
             <Card>
