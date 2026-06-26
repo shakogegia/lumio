@@ -131,7 +131,17 @@ export function GridCalendarMenu({
         </TooltipTrigger>
       <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0">
         <div className="border-b p-1">
-          <Tabs value={field} onValueChange={(v) => onFieldChange(v as CalendarField)}>
+          <Tabs
+            value={field}
+            onValueChange={(v) => {
+              // Switching dimension clears any selected month: a month picked under
+              // one date field doesn't carry meaning to another, and keeping it would
+              // refetch the grid into a half-transferred filter. Pick a fresh month
+              // in the new tab. The popover stays open.
+              if (value) onChange(null);
+              onFieldChange(v as CalendarField);
+            }}
+          >
             <TabsList className="flex w-full justify-start overflow-x-auto">
               <TabsTrigger value="taken">Taken</TabsTrigger>
               <TabsTrigger value="imported">Imported</TabsTrigger>
