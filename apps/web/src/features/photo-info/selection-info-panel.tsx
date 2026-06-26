@@ -31,7 +31,7 @@ export function SelectionInfoPanel({ selectedIds }: { selectedIds: Set<string> }
       return (
         <div className="space-y-1.5">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-4 w-full" />
+            <Skeleton key={i} className="h-5 w-full" />
           ))}
         </div>
       );
