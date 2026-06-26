@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Loader2 } from "lucide-react";
-import type { CalendarFacets } from "@lumio/shared";
+import { type CalendarField, type CalendarFacets, metaCalendarField } from "@lumio/shared";
+import type { DateSortField } from "@/lib/grid-sort";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -10,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
@@ -37,10 +39,16 @@ export function GridCalendarMenu({
   facetsEndpoint,
   value,
   onChange,
+  field,
+  onFieldChange,
+  dateFields,
 }: {
   facetsEndpoint: string;
   value: string | null;
   onChange: (month: string | null) => void;
+  field: CalendarField;
+  onFieldChange: (f: CalendarField) => void;
+  dateFields: DateSortField[];
 }) {
   const { slug } = useCatalog();
   const [open, setOpen] = useState(false);
@@ -63,7 +71,8 @@ export function GridCalendarMenu({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(false);
-    fetch(facetsEndpoint)
+    const url = facetsEndpoint + (facetsEndpoint.includes("?") ? "&" : "?") + "dateField=" + encodeURIComponent(field);
+    fetch(url)
       .then((res) => (res.ok ? (res.json() as Promise<CalendarFacets>) : Promise.reject(new Error(`${res.status} ${res.url}`))))
       .then((data) => {
         if (cancelled) return;
@@ -89,7 +98,7 @@ export function GridCalendarMenu({
     // `selected` is read only at open time to seed the default year — excluding it
     // keeps the fetch from re-running when the parent's value changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, facetsEndpoint]);
+  }, [open, facetsEndpoint, field]);
 
   const year = facets?.years.find((y) => y.year === activeYear) ?? null;
 
@@ -120,6 +129,18 @@ export function GridCalendarMenu({
           </PopoverTrigger>
         </TooltipTrigger>
       <PopoverContent align="end" className="w-[22rem] overflow-hidden p-0">
+        <div className="border-b p-1">
+          <Tabs value={field} onValueChange={(v) => onFieldChange(v as CalendarField)}>
+            <TabsList className="flex w-full justify-start overflow-x-auto">
+              <TabsTrigger value="taken">Taken</TabsTrigger>
+              <TabsTrigger value="imported">Imported</TabsTrigger>
+              <TabsTrigger value="created">Created</TabsTrigger>
+              {dateFields.map((f) => (
+                <TabsTrigger key={f.id} value={metaCalendarField(f.id)}>{f.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
         {loading ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
