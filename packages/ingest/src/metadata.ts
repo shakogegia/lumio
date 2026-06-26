@@ -45,9 +45,23 @@ const EXIFR_OPTIONS = {
   mergeOutput: false,
 };
 
-function parseExifDate(value: unknown): Date | null {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
-  return null;
+/**
+ * Parse an EXIF capture date into a Date, or null. exifr revives JPEG EXIF dates
+ * to a `Date`, but returns a *string* for some files (e.g. PNG / XMP-sourced
+ * dates), so we also parse strings — both EXIF "YYYY:MM:DD HH:MM:SS" and ISO
+ * forms. Zoneless values are read as UTC (matching exifr's revived dates) so the
+ * derived `sortDate` is deterministic regardless of server timezone.
+ */
+export function parseExifDate(value: unknown): Date | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // EXIF "YYYY:MM:DD HH:MM:SS" → ISO "YYYY-MM-DDTHH:MM:SS" (only the date colons).
+  let s = trimmed.replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3").replace(" ", "T");
+  if (!/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) s += "Z"; // zoneless → UTC
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 /**
