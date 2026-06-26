@@ -13,6 +13,7 @@ import {
   deleteMetadataField,
   reorderMetadataField,
   reorderMetadataGroup,
+  bulkSetPhotoMetadataValues,
 } from "./metadata.js";
 
 describe("getCatalogSchema", () => {
@@ -200,6 +201,40 @@ describe("reorderMetadataField", () => {
     // move "c" to the front (afterId null)
     await reorderMetadataField("g1", "c", null, db);
     expect(updated.some((u) => u.id === "c")).toBe(true); // the moved row got a new key
+  });
+});
+
+describe("bulkSetPhotoMetadataValues", () => {
+  it("upserts each non-empty value for every photo, skipping blank values", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const create = vi.fn().mockResolvedValue({});
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ photoMetadataValue: { updateMany, create } }),
+    } as never;
+    await bulkSetPhotoMetadataValues(
+      ["p1", "p2"],
+      [
+        { fieldId: "f1", value: "Kodak Portra" },
+        { fieldId: "f2", value: "  " }, // blank — must be skipped
+        { fieldId: "f3", value: "120" },
+      ],
+      db,
+    );
+    // blank "f2" is filtered: only f1 and f3 per photo → 4 upsert attempts
+    expect(updateMany).toHaveBeenCalledTimes(4);
+    expect(create).toHaveBeenCalledTimes(4); // count was 0 each time → create called
+    // ensure blank was never attempted
+    expect(updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ fieldId: "f2" }) }));
+  });
+
+  it("is a no-op when no photos or no non-empty values are provided", async () => {
+    const $transaction = vi.fn();
+    const db = { $transaction } as never;
+    await bulkSetPhotoMetadataValues([], [{ fieldId: "f1", value: "x" }], db);
+    await bulkSetPhotoMetadataValues(["p1"], [], db);
+    await bulkSetPhotoMetadataValues(["p1"], [{ fieldId: "f1", value: "   " }], db);
+    expect($transaction).not.toHaveBeenCalled();
   });
 });
 
