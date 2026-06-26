@@ -28,7 +28,12 @@ export function MetadataValueInput({
   if (type === FieldType.Choice && options.length > 0) {
     return (
       <Select value={value || undefined} onValueChange={(v) => { onChange(v); void onCommit?.(v); }}>
-        <SelectTrigger size="sm" className="w-40"><SelectValue placeholder={placeholder} /></SelectTrigger>
+        <SelectTrigger
+          size="sm"
+          className="h-auto w-40 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right shadow-none focus-visible:ring-0"
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
         <SelectContent>
           <SelectGroup>
             {options.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
@@ -45,7 +50,7 @@ export function MetadataValueInput({
         rows={2}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => void onCommit?.()}
-        className="w-40 resize-none rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+        className="w-40 resize-none border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground"
       />
     );
   }
@@ -82,7 +87,7 @@ function Autocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => { void load(); setOpen(true); }}
         onBlur={() => { setTimeout(() => setOpen(false), 120); void onCommit?.(); }}
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground"
       />
       {open && suggests && matches.length > 0 && (
         <ul className="absolute right-0 z-30 mt-1 max-h-48 w-48 overflow-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md">

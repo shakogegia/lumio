@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
 import { SidePanel } from "@/components/ui/side-panel";
-import { SelectionInfoPanel, InspectorToggle } from "@/features/photo-info";
+import { SelectionInfoPanel, InspectorToggle, InspectorShortcut } from "@/features/photo-info";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
@@ -199,6 +199,7 @@ export function SearchView() {
                     </>
                   ) : (
                     <>
+                      <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
                       <GridSortMenu sort={sort} onSortChange={setSort} />
@@ -235,6 +236,7 @@ export function SearchView() {
                   <Lightbox />
                   <GridShortcuts selectedIds={sel.selected} />
                 </PhotoActionsProvider>
+                <InspectorShortcut onToggle={() => setPanelOpen((o) => !o)} />
                 {panelOpen && (
                   <SidePanel
                     title={sel.count > 1 ? `${sel.count} selected` : "Details"}

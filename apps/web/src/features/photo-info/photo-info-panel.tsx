@@ -16,7 +16,7 @@ import { AlbumMembership } from "./album-membership";
  */
 export function PhotoInfoPanel({ photo }: { photo: PhotoDTO }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <FeatureGate feature={FeatureKey.StandardMetadata}>
         <StandardMetadata exif={photo.exif} />
         <Separator />

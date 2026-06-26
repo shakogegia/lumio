@@ -17,9 +17,9 @@ export function MetadataFieldsList({
   renderValue: (field: MetadataFieldDef) => ReactNode;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {groups.map((group) => (
-        <div key={group.id} className="space-y-1.5">
+        <div key={group.id} className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group.label}
           </p>

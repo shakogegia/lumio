@@ -21,7 +21,7 @@ import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { usePhotoActions, type PhotoActions } from "@/components/photo-actions/use-photo-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { SidePanel } from "@/components/ui/side-panel";
-import { SelectionInfoPanel, InspectorToggle } from "@/features/photo-info";
+import { SelectionInfoPanel, InspectorToggle, InspectorShortcut } from "@/features/photo-info";
 
 /** The paginated source + lightbox URLs for the current sort/month. */
 export interface PhotoCollectionSource {
@@ -126,6 +126,7 @@ export function PhotoLibraryView({
             subtitle={countSubtitle}
             actions={
               <>
+                <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                 {headerActions}
                 <GridViewMenu mode={mode} onModeChange={setMode} />
                 <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
@@ -164,6 +165,7 @@ export function PhotoLibraryView({
             <Lightbox />
             <GridShortcuts selectedIds={sel.selected} />
           </PhotoActionsProvider>
+          <InspectorShortcut onToggle={() => setPanelOpen((o) => !o)} />
           {panelOpen && (
             <SidePanel
               title={sel.count > 1 ? `${sel.count} selected` : "Details"}

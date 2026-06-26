@@ -1,7 +1,8 @@
 "use client";
 
-import { PanelRight } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Tooltip,
   TooltipContent,
@@ -24,12 +25,15 @@ export function InspectorToggle({
           size="icon-sm"
           aria-pressed={open}
           onClick={onToggle}
-          aria-label="Toggle details panel"
+          aria-label="Toggle info panel"
         >
-          <PanelRight aria-hidden />
+          <Info aria-hidden />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Details</TooltipContent>
+      <TooltipContent>
+        Info
+        <Kbd>i</Kbd>
+      </TooltipContent>
     </Tooltip>
   );
 }

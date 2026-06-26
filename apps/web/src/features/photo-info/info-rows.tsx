@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 /** The fixed per-photo facts shown in the Info tab. */
 export function InfoRows({ photo }: { photo: PhotoDTO }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       <Row label="Source" value={<Badge>{photo.source}</Badge>} />
       <Row label="File created" value={photo.fileCreatedAt ?? "—"} />
       <Row label="File modified" value={photo.fileModifiedAt ?? "—"} />
