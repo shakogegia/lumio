@@ -6,6 +6,7 @@ import {
   getPhotoNeighbors,
   listPhotos,
   listPhotosForDownload,
+  listPhotosForWhere,
   photoExistsInCatalog,
   photoOrTrashedExistsInCatalog,
   setPhotoColorLabel,
@@ -427,5 +428,58 @@ describe("getNeighborsForWhere ordering", () => {
     for (const w of wheres) {
       expect(w).toMatchObject({ catalogId: CAT, trashedAt: null });
     }
+  });
+});
+
+describe("listPhotosForWhere — metadata sort routing", () => {
+  it("routes a valid meta sort to the value-side reader", async () => {
+    const db = {
+      metadataField: { findFirst: async () => ({ id: "d1" }) },
+      photo: {
+        count: async () => 1,
+        findMany: async () => [], // unvalued segment
+      },
+      photoMetadataValue: {
+        count: async () => 1,
+        findMany: async () => [{ photo: row("a") }],
+      },
+    };
+    const page = await listPhotosForWhere(CAT, {}, { limit: 50, offset: 0, sort: "meta:d1:asc" }, db as never);
+    expect(page.items.map((p) => p.id)).toEqual(["a"]);
+  });
+
+  it("falls back to the standard reader when the meta field is invalid", async () => {
+    const orderBys: unknown[] = [];
+    const db = {
+      metadataField: { findFirst: async () => null },
+      photo: {
+        count: async () => 1,
+        findMany: async (args: { orderBy: unknown }) => {
+          orderBys.push(args.orderBy);
+          return [row("a")];
+        },
+      },
+    };
+    const page = await listPhotosForWhere(CAT, {}, { limit: 50, offset: 0, sort: "meta:zzz:asc" }, db as never);
+    expect(page.items.map((p) => p.id)).toEqual(["a"]);
+    // invalid meta -> default ordering (imported-desc)
+    expect(orderBys[0]).toEqual([{ createdAt: "desc" }, { id: "desc" }]);
+  });
+});
+
+describe("getNeighborsForWhere — metadata sort routing", () => {
+  it("takes the metadata window branch for a valid Date field (degrades to [current] when the window is empty)", async () => {
+    const db = {
+      metadataField: { findFirst: async () => ({ id: "d1" }) },
+      photoMetadataValue: {
+        findUnique: async () => ({ value: "v" }), // current is valued
+        count: async () => 0, // seg1count and "before" both 0 -> index 0
+      },
+      photo: { findMany: async () => [] }, // no unvalued rows in the window
+    };
+    const n = await getNeighborsForWhere({ id: "p0", path: "p0.jpg" }, { catalogId: CAT }, "meta:d1:asc", 5, db as never);
+    expect(n.strip.map((s) => s.id)).toEqual(["p0"]);
+    expect(n.prevId).toBeNull();
+    expect(n.nextId).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 // Needs `album` access too: tagged albums are resolved to a smart-aware predicate
 // (membership OR smart-album rules) before compiling the search where.
-type Db = Pick<PrismaClient, "photo" | "album">;
+type Db = Pick<PrismaClient, "photo" | "album" | "photoMetadataValue" | "metadataField">;
 
 /**
  * Inner (catalog-free) search where for `listPhotosForWhere` delegation. Returns

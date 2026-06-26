@@ -9,12 +9,13 @@ import type {
 } from "@lumio/shared";
 import { monthRange } from "@lumio/shared";
 import { albumPhotoWhere } from "@/lib/server/albums-service";
+import { listPhotosByMetadata, metadataNeighbors, resolveSort } from "@/lib/server/metadata-sort";
 import { PHOTO_ORDER, photoOrderBy } from "@/lib/photo-order";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
-type Db = Pick<PrismaClient, "photo">;
+type Db = Pick<PrismaClient, "photo" | "photoMetadataValue" | "metadataField">;
 
-type NeighborDb = Pick<PrismaClient, "photo" | "album">;
+type NeighborDb = Pick<PrismaClient, "photo" | "album" | "photoMetadataValue" | "metadataField">;
 
 export async function listPhotos(
   catalogId: string,
@@ -40,12 +41,16 @@ export async function listPhotosForWhere(
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const full: Prisma.PhotoWhereInput = { catalogId, ...LIVE_PHOTO, ...where };
+  const resolved = await resolveSort(catalogId, params.sort, db);
+  if (resolved.kind === "metadata") {
+    return listPhotosByMetadata(full, resolved, { limit: params.limit, offset: params.offset }, db);
+  }
   const [rows, total] = await Promise.all([
     db.photo.findMany({
       where: full,
       skip: params.offset,
       take: params.limit,
-      orderBy: photoOrderBy(params.sort),
+      orderBy: photoOrderBy(resolved.sort),
     }),
     db.photo.count({ where: full }),
   ]);
@@ -179,8 +184,15 @@ export async function getNeighborsForWhere(
   window = 25,
   db: Db = prisma,
 ): Promise<PhotoNeighbors> {
+  const catalogId = typeof where.catalogId === "string" ? where.catalogId : null;
+  const resolved = catalogId
+    ? await resolveSort(catalogId, sort, db)
+    : ({ kind: "standard", sort } as const);
+  if (resolved.kind === "metadata") {
+    return metadataNeighbors({ ...where, ...LIVE_PHOTO }, resolved, current, window, db);
+  }
   const select = { id: true, path: true } as const;
-  const orderBy = photoOrderBy(sort);
+  const orderBy = photoOrderBy(resolved.sort);
   const [before, after] = await Promise.all([
     db.photo.findMany({
       where: { ...where, ...LIVE_PHOTO },

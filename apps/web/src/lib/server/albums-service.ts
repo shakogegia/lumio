@@ -14,7 +14,7 @@ import { PHOTO_ORDER } from "@/lib/photo-order";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
-type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo">;
+type Db = Pick<PrismaClient, "album" | "albumPhoto" | "photo" | "photoMetadataValue" | "metadataField">;
 
 /** The effective cover photo id for one album: the pinned cover while it is still a
  *  member, otherwise the most-recent member; smart albums use the newest rule-match.

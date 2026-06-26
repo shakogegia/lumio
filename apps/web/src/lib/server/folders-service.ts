@@ -18,7 +18,7 @@ import { collectDescendantFolderIds, folderBreadcrumbs } from "@/lib/folder-tree
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
-type Db = Pick<PrismaClient, "folder" | "album" | "albumPhoto" | "photo" | "$transaction">;
+type Db = Pick<PrismaClient, "folder" | "album" | "albumPhoto" | "photo" | "$transaction" | "photoMetadataValue" | "metadataField">;
 
 /** Album fields needed to split a subtree into regular vs smart membership. */
 type AlbumLite = {
