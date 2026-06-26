@@ -21,10 +21,20 @@ export function FacetText({
   rules: FilterRule[];
   onRules: (next: FilterRule[]) => void;
 }) {
-  const initial =
+  const ruleValue =
     (rules.find((r) => r.field === fieldKey && r.op === RuleOp.contains)?.value as string) ?? "";
-  const [value, setValue] = useState<string>(initial);
+  const [value, setValue] = useState<string>(ruleValue);
+  const [syncedRuleValue, setSyncedRuleValue] = useState<string>(ruleValue);
   const [open, setOpen] = useState(false);
+
+  // Track the rule changing from OUTSIDE this input (chip removed in the search
+  // box, a saved search recalled). Idiomatic React state-sync during render (the
+  // repo bans setState-in-effect) — stops the input going stale and stops a
+  // removed filter from resurrecting on the next blur.
+  if (ruleValue !== syncedRuleValue) {
+    setSyncedRuleValue(ruleValue);
+    setValue(ruleValue);
+  }
 
   const suggestions = useMetadataValues(slug, suggests ? fieldId : null, value);
   const matches = suggestions.filter((s) => s !== value).slice(0, 8);

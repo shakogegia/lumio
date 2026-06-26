@@ -22,6 +22,8 @@ export function SmartAlbumRulesEditor({
     .map((g) => ({ ...g, fields: g.fields.filter((f) => f.enabled) }))
     .filter((g) => g.fields.length > 0);
 
+  if (schema === undefined) return null; // still loading — don't flash the empty-state hint
+
   if (enabledGroups.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
