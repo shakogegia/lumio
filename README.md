@@ -14,6 +14,24 @@ alternative to cloud photo services.
 
 <img width="1286" height="929" alt="image" src="https://github.com/user-attachments/assets/97a52dfb-fba5-448a-9b98-755fc2028a92" />
 
+<details>
+  <summary>Screenshots</summary>
+
+  <img width="1286" height="929" alt="1" src="https://github.com/user-attachments/assets/72863708-35ca-450d-b600-0c9156900e5f" />
+  <img width="1286" height="929" alt="3" src="https://github.com/user-attachments/assets/cfc73e66-b21b-4c4d-9244-121b8a6d2d74" />
+  <img width="1286" height="929" alt="2" src="https://github.com/user-attachments/assets/7aaff2f3-27d0-49e3-b9fb-18068b81dd22" />
+  <img width="1286" height="929" alt="4" src="https://github.com/user-attachments/assets/72d5e86a-4d8e-4a02-9759-6badfc36a299" />
+  <img width="1286" height="929" alt="5" src="https://github.com/user-attachments/assets/09372c79-dd4f-4a55-8e8a-7d47105ce943" />
+  <img width="1286" height="929" alt="6" src="https://github.com/user-attachments/assets/20ef3755-5364-40cf-98a9-2b3874d68f07" />
+  <img width="1286" height="929" alt="7" src="https://github.com/user-attachments/assets/9d9c00d3-70ac-4d53-b1fb-8813e0156001" />
+  <img width="1286" height="929" alt="8" src="https://github.com/user-attachments/assets/92347f3f-8859-4807-a894-439858735512" />
+  <img width="1286" height="929" alt="9" src="https://github.com/user-attachments/assets/4bbbdd18-aa00-46c2-a184-6ec7f5cedd8c" />
+  <img width="1286" height="929" alt="10" src="https://github.com/user-attachments/assets/1a33f849-1a72-4f1f-9e03-4d95be4d7b88" />
+  <img width="1286" height="929" alt="11" src="https://github.com/user-attachments/assets/3cdd5d20-2bb3-4abc-8d19-e418d74505b3" />
+  <img width="1286" height="929" alt="12" src="https://github.com/user-attachments/assets/c47e23de-bb65-44f6-be34-7d30b713b700" />
+  <img width="1286" height="929" alt="13" src="https://github.com/user-attachments/assets/20fe624e-2e19-4761-959d-10e29854cac6" />
+  
+</details>
 
 ---
 
