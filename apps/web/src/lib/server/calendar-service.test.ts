@@ -16,9 +16,7 @@ function fakeDb(rows: Array<{ id: string; sortDate: Date; createdAt?: Date; file
       },
     },
     photoMetadataValue: {
-      findMany: async (_args: unknown) => {
-        return [];
-      },
+      findMany: async () => [],
     },
   };
 }
