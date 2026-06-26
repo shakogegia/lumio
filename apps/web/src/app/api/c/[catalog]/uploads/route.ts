@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma, isFeatureEnabled, upsertPhotoMetadataValue } from "@lumio/db";
-import { FeatureKey } from "@lumio/shared";
+import { prisma } from "@lumio/db";
 import { handleUpload } from "@/lib/server/upload-service";
 import { catalogCacheDirs } from "@/lib/server/server-paths";
 import { withCatalog } from "@/lib/server/with-catalog";
@@ -35,22 +34,6 @@ export const POST = withCatalog(async (request, _context, { catalog }) => {
       uploadTemplate: catalog.uploadTemplate,
     },
   );
-
-  if (result.status === "added") {
-    const metaRaw = form.get("metadata");
-    if (typeof metaRaw === "string" && metaRaw && (await isFeatureEnabled(catalog.id, FeatureKey.Metadata))) {
-      try {
-        const values = JSON.parse(metaRaw) as Array<{ fieldId?: unknown; value?: unknown }>;
-        for (const v of values) {
-          if (typeof v.fieldId === "string" && typeof v.value === "string" && v.value.trim()) {
-            await upsertPhotoMetadataValue(result.id, v.fieldId, v.value).catch(() => {});
-          }
-        }
-      } catch {
-        /* malformed metadata — ignore, the photo is already added */
-      }
-    }
-  }
 
   const code =
     result.status === "added"
