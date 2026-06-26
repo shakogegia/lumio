@@ -1,6 +1,6 @@
 import { buildSearchWhere, type Prisma, type PrismaClient, prisma } from "@lumio/db";
 import type { PhotoSort } from "@lumio/shared";
-import { albumPhotoWhere } from "@/lib/server/albums-service";
+import { albumPhotoWhere, albumsSearchWhere } from "@/lib/server/albums-service";
 import type { DetailScope } from "@/lib/server/photo-detail-loader";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
@@ -42,7 +42,12 @@ async function scopeWhereFor(
   db: LocateDb,
 ): Promise<Prisma.PhotoWhereInput | null> {
   if (scope.kind === "album") return albumPhotoWhere(catalogId, scope.albumId, db);
-  if (scope.kind === "search") return buildSearchWhere({ album: scope.albums, q: scope.q });
+  if (scope.kind === "search") {
+    // Smart-aware album resolution so deep-link indices line up when the search
+    // scope tags a smart album (registry built lazily inside, only if needed).
+    const albumWhere = await albumsSearchWhere(catalogId, scope.albums, { db });
+    return buildSearchWhere({ album: scope.albums, q: scope.q }, new Date(), undefined, albumWhere);
+  }
   if (scope.kind === "folder") return { dirPath: scope.dir };
   return {};
 }

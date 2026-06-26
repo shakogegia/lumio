@@ -1,6 +1,6 @@
 import { buildSearchWhere, getCatalogSchema } from "@lumio/db";
 import { buildSearchRegistry } from "@lumio/shared";
-import { listAlbumSummaries } from "@/lib/server/albums-service";
+import { albumsSearchWhere, listAlbumSummaries } from "@/lib/server/albums-service";
 import { getNeighborsForWhere, getPhoto, getPhotoNeighbors } from "@/lib/server/photos-service";
 import type { DetailScope } from "@/lib/detail-scope";
 
@@ -31,9 +31,16 @@ export async function loadPhotoDetail(
   const photo = await getPhoto(catalogId, id);
   if (!photo) return null;
   const current = { id: photo.id, path: photo.path };
+  const now = new Date();
   const registry =
     scope.kind === "search"
       ? buildSearchRegistry(await getCatalogSchema(catalogId))
+      : undefined;
+  // Resolve the search scope's tagged albums to a smart-aware predicate so lightbox
+  // prev/next stays in scope when the search includes a smart album.
+  const albumWhere =
+    scope.kind === "search"
+      ? await albumsSearchWhere(catalogId, scope.albums, { now, registry })
       : undefined;
   const neighbors$ =
     scope.kind === "album"
@@ -41,7 +48,7 @@ export async function loadPhotoDetail(
       : scope.kind === "search"
         ? getNeighborsForWhere(
             current,
-            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q, filter: scope.filter }, new Date(), registry) },
+            { catalogId, ...buildSearchWhere({ album: scope.albums, q: scope.q, filter: scope.filter }, now, registry, albumWhere) },
             scope.sort,
           )
         : getPhotoNeighbors(catalogId, current, null, scope.sort);

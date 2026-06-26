@@ -160,6 +160,46 @@ export async function albumPhotoWhere(
   return { albums: { some: { albumId } } };
 }
 
+/**
+ * Prisma `where` selecting the photos in ANY of the given albums — the album
+ * scope for SEARCH (multiple tagged albums = OR). Regular albums contribute an
+ * AlbumPhoto membership clause; smart albums contribute their rule predicate
+ * (`smartAlbumWhere`). The branches are OR-combined.
+ *
+ * This is the search-path counterpart to `albumPhotoWhere` (single album, album
+ * view). It exists because the pure `buildSearchWhere` compiler has no DB access
+ * and so cannot tell which tagged ids are smart — without this, smart albums
+ * compile to a membership query and match nothing (they have no AlbumPhoto rows).
+ *
+ *  • no ids            → undefined (no album constraint)
+ *  • all ids unknown   → { id: { in: [] } } (match nothing, like a stale membership query)
+ *  • registry omitted  → built lazily, only when a smart album is present
+ */
+export async function albumsSearchWhere(
+  catalogId: string,
+  albumIds: string[],
+  opts: { db?: Pick<PrismaClient, "album">; now?: Date; registry?: SearchRegistry } = {},
+): Promise<Prisma.PhotoWhereInput | undefined> {
+  if (albumIds.length === 0) return undefined;
+  const db = opts.db ?? prisma;
+  const albums = await db.album.findMany({ where: { catalogId, id: { in: albumIds } } });
+  if (albums.length === 0) return { id: { in: [] } };
+
+  const branches: Prisma.PhotoWhereInput[] = [];
+  const regularIds = albums.filter((a) => !a.isSmart).map((a) => a.id);
+  if (regularIds.length > 0) branches.push({ albums: { some: { albumId: { in: regularIds } } } });
+
+  const smartAlbums = albums.filter((a) => a.isSmart);
+  if (smartAlbums.length > 0) {
+    const now = opts.now ?? new Date();
+    const registry = opts.registry ?? buildSearchRegistry(await getCatalogSchema(catalogId));
+    for (const album of smartAlbums) {
+      branches.push(smartAlbumWhere(toAlbumDTO(album).rules as SmartAlbumRules, now, registry));
+    }
+  }
+  return branches.length === 1 ? branches[0] : { OR: branches };
+}
+
 export async function listAlbumPhotos(
   catalogId: string,
   id: string,

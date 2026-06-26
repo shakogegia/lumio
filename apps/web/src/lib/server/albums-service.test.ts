@@ -3,6 +3,7 @@ import { MatchType, RuleOp, type SearchRegistry, type FieldDef, ValueType } from
 import {
   addPhotosToAlbum,
   albumPhotoWhere,
+  albumsSearchWhere,
   AlbumNotFoundError,
   deleteAlbums,
   invalidRuleFields,
@@ -523,6 +524,61 @@ describe("albumPhotoWhere", () => {
     await albumPhotoWhere(CAT, "alb1", db as never);
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT, id: "alb1" }) }),
+    );
+  });
+});
+
+describe("albumsSearchWhere", () => {
+  const SMART_RULES = { match: "all", rules: [{ field: "cameraModel", op: "eq", value: "X" }] };
+  // A registry that resolves `cameraModel` to a plain column so smart-rule
+  // compilation stays hermetic (no getCatalogSchema / DB round-trip).
+  const REG = makeRegistry([["cameraModel", makeFieldDef("cameraModel", [])]]);
+
+  it("returns undefined when no album ids are given", async () => {
+    const findMany = vi.fn();
+    const where = await albumsSearchWhere(CAT, [], { db: { album: { findMany } } as never });
+    expect(where).toBeUndefined();
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns plain membership for regular albums", async () => {
+    const db = { album: { findMany: async () => [albumRow({ id: "a1" }), albumRow({ id: "a2" })] } };
+    const where = await albumsSearchWhere(CAT, ["a1", "a2"], { db: db as never });
+    expect(where).toEqual({ albums: { some: { albumId: { in: ["a1", "a2"] } } } });
+  });
+
+  it("returns a rule predicate (never a membership clause) for a smart album", async () => {
+    const db = { album: { findMany: async () => [albumRow({ id: "s1", isSmart: true, rules: SMART_RULES })] } };
+    const where = await albumsSearchWhere(CAT, ["s1"], { db: db as never, registry: REG });
+    expect(where).not.toBeUndefined();
+    expect((where as Record<string, unknown>).albums).toBeUndefined();
+  });
+
+  it("ORs regular membership with each smart album's rule predicate when mixed", async () => {
+    const db = {
+      album: {
+        findMany: async () => [albumRow({ id: "a1" }), albumRow({ id: "s1", isSmart: true, rules: SMART_RULES })],
+      },
+    };
+    const where = await albumsSearchWhere(CAT, ["a1", "s1"], { db: db as never, registry: REG });
+    const or = (where as { OR?: Record<string, unknown>[] }).OR;
+    expect(or).toHaveLength(2);
+    expect(or?.[0]).toEqual({ albums: { some: { albumId: { in: ["a1"] } } } });
+    // The smart branch is a rule predicate, not membership.
+    expect(or?.[1]).not.toHaveProperty("albums");
+  });
+
+  it("matches nothing when every tagged album id is unknown", async () => {
+    const db = { album: { findMany: async () => [] } };
+    const where = await albumsSearchWhere(CAT, ["gone"], { db: db as never });
+    expect(where).toEqual({ id: { in: [] } });
+  });
+
+  it("scopes the album lookup by catalogId", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    await albumsSearchWhere(CAT, ["a1"], { db: { album: { findMany } } as never });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ catalogId: CAT, id: { in: ["a1"] } }) }),
     );
   });
 });

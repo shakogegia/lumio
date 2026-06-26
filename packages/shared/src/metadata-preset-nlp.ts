@@ -12,11 +12,16 @@ const custom = (key: string, label: string, type: FieldType = FieldType.Text, op
 
 /** Mirrors Negative Lab Pro's film-metadata sections 2–5 (26 fields;
  *  https://www.negativelabpro.com/guide/film-metadata/) plus an intentional
- *  "Roll" field (frames share a roll; matches filmexif:RollID). All custom fields. */
+ *  "Roll" field (frames share a roll; matches filmexif:RollID), kept in a leading
+ *  "General" group. All custom fields. */
 export const NLP_PRESET: PresetDef = {
   id: "nlp",
   name: "Negative Lab Pro",
   groups: [
+    {
+      label: "General",
+      fields: [custom("roll", "Roll")],
+    },
     {
       label: "Equipment",
       fields: [
@@ -27,7 +32,6 @@ export const NLP_PRESET: PresetDef = {
         custom("film-stock", "Film Stock"),
         custom("film-iso", "Film ISO", t.Number),
         custom("film-format", "Film Format", t.Choice, ["35mm", "Panoramic", "6×4.5", "6×6", "6×7", "6×9", "4×5", "8×10", "110", "127"]),
-        custom("roll", "Roll"),
         custom("gear-notes", "Gear Notes", t.Textarea),
       ],
     },
