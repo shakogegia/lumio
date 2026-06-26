@@ -58,7 +58,6 @@ export function MetadataConfigForm({
   const [busy, setBusy] = useState(false);
   const [addGroupOpen, setAddGroupOpen] = useState(false);
   const [local, setLocal] = useState(schema);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setLocal(schema);
@@ -229,14 +228,14 @@ export function MetadataConfigForm({
             <CardDescription>
               {hasGroups
                 ? "Filled per photo in the Info tab."
-                : "Start from the Negative Lab Pro preset, or add your own group."}
+                : "Start from the film preset, or add your own group."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {!hasGroups ? (
               <div className="flex flex-wrap gap-2">
                 <Button disabled={busy} onClick={() => void applyPreset()}>
-                  Apply Negative Lab Pro preset
+                  Apply film preset
                 </Button>
                 <Button variant="outline" disabled={busy} onClick={() => setAddGroupOpen(true)}>
                   Add group

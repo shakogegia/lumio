@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, FileClock, GalleryHorizontalEnd, Tags, ToggleRight, User, Users } from "lucide-react";
+import { ArrowLeft, FileClock, GalleryHorizontalEnd, ToggleRight, User, Users } from "lucide-react";
 import { NavLink, isActive, type NavItem } from "@/components/sidebar-nav-link";
 import { SettingsWorkerStatus } from "@/components/settings-worker-status";
 
@@ -15,12 +15,10 @@ import { SettingsWorkerStatus } from "@/components/settings-worker-status";
 export function SettingsSidebar({
   backHref,
   catalogSlug,
-  showMetadata,
 }: {
   backHref: string;
   /** Default catalog for the global worker poll; null when no catalogs exist. */
   catalogSlug: string | null;
-  showMetadata: boolean;
 }) {
   const pathname = usePathname() ?? "/";
 
@@ -28,9 +26,6 @@ export function SettingsSidebar({
     { href: "/settings/account", label: "Account", icon: User, match: ["/settings/account"] },
     { href: "/settings/catalogs", label: "Catalogs", icon: GalleryHorizontalEnd, match: ["/settings/catalogs"] },
     { href: "/settings/features", label: "Features", icon: ToggleRight, match: ["/settings/features"] },
-    ...(showMetadata
-      ? [{ href: "/settings/metadata", label: "Metadata", icon: Tags, match: ["/settings/metadata"] } as NavItem]
-      : []),
     { href: "/settings/logs", label: "Logs", icon: FileClock, match: ["/settings/logs"] },
     { href: "/settings/users", label: "Users", icon: Users, match: ["/settings/users"] },
   ];
