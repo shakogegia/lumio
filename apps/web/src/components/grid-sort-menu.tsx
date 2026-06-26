@@ -66,7 +66,7 @@ export function GridSortMenu({
             {dateFields.map((f) => (
               <Fragment key={f.id}>
                 <DropdownMenuSeparator />
-                <DropdownMenuLabel>{f.label}</DropdownMenuLabel>
+                <DropdownMenuLabel>{`Metadata · ${f.label}`}</DropdownMenuLabel>
                 <DropdownMenuRadioItem value={metadataSort(f.id, "desc")}>Newest first</DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value={metadataSort(f.id, "asc")}>Oldest first</DropdownMenuRadioItem>
               </Fragment>

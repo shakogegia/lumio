@@ -34,8 +34,8 @@ import { FilterPanel } from "./filter-panel";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
-import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
-import { dateSortFields, effectiveGridSort } from "@/lib/grid-sort";
+import { effectiveGridSort } from "@/lib/grid-sort";
+import { useDateSortFields } from "@/lib/hooks/use-date-sort-fields";
 
 const EMPTY: SearchFilters = { albums: [], q: "", rules: [], match: MatchType.all };
 
@@ -54,8 +54,7 @@ export function SearchView() {
   const [recent, setRecent] = useState<SearchFilters[]>(loadRecentSearches);
   const inputRef = useRef<SearchInputHandle>(null);
   const { columns, setColumns } = useGridColumns();
-  const schema = useCatalogMetadataSchema(slug);
-  const dateFields = schema ? dateSortFields(schema) : undefined;
+  const dateFields = useDateSortFields();
   const { sort: storedSort, setSort } = useGridSort();
   const sort = effectiveGridSort(storedSort, dateFields);
   const { mode, setMode } = useGridView();
