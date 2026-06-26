@@ -13,7 +13,8 @@ import {
   deleteMetadataField,
   reorderMetadataField,
   reorderMetadataGroup,
-  bulkSetPhotoMetadataValues,
+  aggregatePhotoMetadataValues,
+  bulkUpsertPhotoMetadataField,
 } from "./metadata.js";
 
 describe("getCatalogSchema", () => {
@@ -204,36 +205,68 @@ describe("reorderMetadataField", () => {
   });
 });
 
-describe("bulkSetPhotoMetadataValues", () => {
-  it("upserts each non-empty value for every photo, skipping blank values", async () => {
-    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
-    const create = vi.fn().mockResolvedValue({});
+describe("aggregatePhotoMetadataValues", () => {
+  it("returns the shared value when all selected photos agree, else mixed", async () => {
     const db = {
-      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
-        fn({ photoMetadataValue: { updateMany, create } }),
+      photoMetadataValue: {
+        findMany: async () => [
+          // f1: every selected photo (p1,p2,p3) has "120" → shared
+          { photoId: "p1", fieldId: "f1", value: "120" },
+          { photoId: "p2", fieldId: "f1", value: "120" },
+          { photoId: "p3", fieldId: "f1", value: "120" },
+          // f2: p1/p2 share "Portra", p3 has no row (counts as "") → mixed
+          { photoId: "p1", fieldId: "f2", value: "Portra" },
+          { photoId: "p2", fieldId: "f2", value: "Portra" },
+        ],
+      },
     } as never;
-    await bulkSetPhotoMetadataValues(
-      ["p1", "p2"],
-      [
-        { fieldId: "f1", value: "Kodak Portra" },
-        { fieldId: "f2", value: "  " }, // blank — must be skipped
-        { fieldId: "f3", value: "120" },
-      ],
-      db,
-    );
-    // blank "f2" is filtered: only f1 and f3 per photo → 4 upsert attempts
-    expect(updateMany).toHaveBeenCalledTimes(4);
-    expect(create).toHaveBeenCalledTimes(4); // count was 0 each time → create called
-    // ensure blank was never attempted
-    expect(updateMany).not.toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ fieldId: "f2" }) }));
+    const agg = await aggregatePhotoMetadataValues(["p1", "p2", "p3"], db);
+    expect(agg.get("f1")).toEqual({ value: "120", mixed: false });
+    expect(agg.get("f2")).toEqual({ value: "", mixed: true });
+    // f3 (no rows at all) is absent → caller treats as empty/non-mixed
+    expect(agg.has("f3")).toBe(false);
   });
 
-  it("is a no-op when no photos or no non-empty values are provided", async () => {
+  it("is a no-op (empty map) when no photos are given", async () => {
+    const findMany = vi.fn();
+    const db = { photoMetadataValue: { findMany } } as never;
+    const agg = await aggregatePhotoMetadataValues([], db);
+    expect(agg.size).toBe(0);
+    expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("bulkUpsertPhotoMetadataField", () => {
+  it("upserts the field's value on every photo", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const create = vi.fn().mockResolvedValue({});
+    const deleteMany = vi.fn();
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ photoMetadataValue: { updateMany, create, deleteMany } }),
+    } as never;
+    await bulkUpsertPhotoMetadataField(["p1", "p2"], "f1", "Kodak Portra", db);
+    expect(updateMany).toHaveBeenCalledTimes(2); // one per photo
+    expect(create).toHaveBeenCalledTimes(2); // count 0 each → created
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("clears (deletes) the field on every photo when the value is empty", async () => {
+    const updateMany = vi.fn();
+    const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ photoMetadataValue: { updateMany, deleteMany } }),
+    } as never;
+    await bulkUpsertPhotoMetadataField(["p1", "p2"], "f1", "   ", db);
+    expect(deleteMany).toHaveBeenCalledTimes(2);
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when no photos are given", async () => {
     const $transaction = vi.fn();
     const db = { $transaction } as never;
-    await bulkSetPhotoMetadataValues([], [{ fieldId: "f1", value: "x" }], db);
-    await bulkSetPhotoMetadataValues(["p1"], [], db);
-    await bulkSetPhotoMetadataValues(["p1"], [{ fieldId: "f1", value: "   " }], db);
+    await bulkUpsertPhotoMetadataField([], "f1", "x", db);
     expect($transaction).not.toHaveBeenCalled();
   });
 });

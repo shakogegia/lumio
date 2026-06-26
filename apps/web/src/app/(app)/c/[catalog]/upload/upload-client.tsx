@@ -75,7 +75,6 @@ export function UploadClient({
   const [showMeta, setShowMeta] = useState(false);
   const metaSchema = useCatalogMetadataSchema(slug);
   const hasMeta = (metaSchema ?? []).some((g) => g.fields.some((f) => f.enabled));
-  const [metaValues, setMetaValues] = useState<Record<string, string>>({});
 
   const update = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -409,7 +408,7 @@ export function UploadClient({
           <aside className="w-80 shrink-0 border-l">
             <ScrollArea className="h-full">
               <div className="p-4">
-                <UploadMetadataForm values={metaValues} onChange={setMetaValues} selectedIds={sel.selected} />
+                <UploadMetadataForm selectedIds={sel.selected} />
               </div>
             </ScrollArea>
           </aside>

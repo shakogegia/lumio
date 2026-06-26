@@ -208,21 +208,55 @@ export async function reorderMetadataField(
   });
 }
 
-/** Set (non-empty) values on many photos at once. Blank values are skipped. */
-export async function bulkSetPhotoMetadataValues(
+/**
+ * Per-field value across a selection of photos, for the selection-bound editor.
+ * For every field that at least one selected photo has stored: the shared value
+ * when all selected photos agree (a photo with no row counts as ""), otherwise
+ * `mixed: true`. Fields no selected photo has are absent (caller treats as empty).
+ */
+export async function aggregatePhotoMetadataValues(
   photoIds: string[],
-  values: { fieldId: string; value: string }[],
+  db: ValueDb = prisma,
+): Promise<Map<string, { value: string; mixed: boolean }>> {
+  const out = new Map<string, { value: string; mixed: boolean }>();
+  if (photoIds.length === 0) return out;
+  const rows = await db.photoMetadataValue.findMany({
+    where: { photoId: { in: photoIds } },
+    select: { photoId: true, fieldId: true, value: true },
+  });
+  const byField = new Map<string, Map<string, string>>();
+  for (const r of rows) {
+    let perPhoto = byField.get(r.fieldId);
+    if (!perPhoto) byField.set(r.fieldId, (perPhoto = new Map()));
+    perPhoto.set(r.photoId, r.value);
+  }
+  for (const [fieldId, perPhoto] of byField) {
+    const distinct = new Set<string>();
+    for (const id of photoIds) distinct.add(perPhoto.get(id) ?? "");
+    out.set(
+      fieldId,
+      distinct.size === 1 ? { value: [...distinct][0]!, mixed: false } : { value: "", mixed: true },
+    );
+  }
+  return out;
+}
+
+/** Set (or clear, when empty) one field's value across many photos at once. */
+export async function bulkUpsertPhotoMetadataField(
+  photoIds: string[],
+  fieldId: string,
+  value: string,
   db: TxDb = prisma,
 ): Promise<void> {
-  const clean = values
-    .map((v) => ({ fieldId: v.fieldId, value: v.value.trim() }))
-    .filter((v) => v.value !== "");
-  if (photoIds.length === 0 || clean.length === 0) return;
+  if (photoIds.length === 0) return;
+  const trimmed = value.trim();
   await db.$transaction(async (tx) => {
     for (const photoId of photoIds) {
-      for (const { fieldId, value } of clean) {
-        const updated = await tx.photoMetadataValue.updateMany({ where: { photoId, fieldId }, data: { value } });
-        if (updated.count === 0) await tx.photoMetadataValue.create({ data: { photoId, fieldId, value } });
+      if (trimmed === "") {
+        await tx.photoMetadataValue.deleteMany({ where: { photoId, fieldId } });
+      } else {
+        const updated = await tx.photoMetadataValue.updateMany({ where: { photoId, fieldId }, data: { value: trimmed } });
+        if (updated.count === 0) await tx.photoMetadataValue.create({ data: { photoId, fieldId, value: trimmed } });
       }
     }
   });
