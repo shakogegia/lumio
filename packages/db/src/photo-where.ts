@@ -106,6 +106,33 @@ function filenameClause(rule: FilterRule): Prisma.PhotoWhereInput {
 /** Custom field → EXISTS over the PhotoMetadataValue relation. */
 function metadataClause(def: FieldDef, rule: FilterRule): Prisma.PhotoWhereInput {
   const fieldId = (def.storage as { fieldId: string }).fieldId;
+
+  // Numeric custom fields: use the shadow numValue column for correct range comparisons.
+  if (def.type === ValueType.number) {
+    switch (rule.op) {
+      case RuleOp.eq:
+        return { metadataValues: { some: { fieldId, numValue: rule.value as number } } };
+      case RuleOp.ne:
+        return { metadataValues: { none: { fieldId, numValue: rule.value as number } } };
+      case RuleOp.gt:
+      case RuleOp.gte:
+      case RuleOp.lt:
+      case RuleOp.lte:
+        return { metadataValues: { some: { fieldId, numValue: { [RANGE_KEY[rule.op]!]: rule.value as number } } } };
+      case RuleOp.between: {
+        const [a, b] = rule.value as [number, number];
+        return { metadataValues: { some: { fieldId, numValue: { gte: a, lte: b } } } };
+      }
+      case RuleOp.exists:
+        return { metadataValues: { some: { fieldId } } };
+      case RuleOp.not_exists:
+        return { metadataValues: { none: { fieldId } } };
+      default:
+        return unsupported(rule);
+    }
+  }
+
+  // String / date custom fields: compare on the stored text value.
   switch (rule.op) {
     case RuleOp.eq:
       return { metadataValues: { some: { fieldId, value: { equals: rule.value as string, mode: "insensitive" } } } };

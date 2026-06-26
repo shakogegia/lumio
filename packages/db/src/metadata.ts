@@ -139,6 +139,14 @@ export async function deleteMetadataField(fieldId: string, db: FieldDb = prisma)
   await db.metadataField.delete({ where: { id: fieldId } });
 }
 
+/** Parse a stored value to a number for the numeric shadow column, or null. */
+function numValueOf(value: string): number | null {
+  const t = value.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Set (or clear, when empty) a photo's value for one field. NULL-safe upsert. */
 export async function upsertPhotoMetadataValue(
   photoId: string,
@@ -151,12 +159,13 @@ export async function upsertPhotoMetadataValue(
     await db.photoMetadataValue.deleteMany({ where: { photoId, fieldId } });
     return;
   }
+  const num = numValueOf(trimmed);
   const updated = await db.photoMetadataValue.updateMany({
     where: { photoId, fieldId },
-    data: { value: trimmed },
+    data: { value: trimmed, numValue: num },
   });
   if (updated.count === 0) {
-    await db.photoMetadataValue.create({ data: { photoId, fieldId, value: trimmed } });
+    await db.photoMetadataValue.create({ data: { photoId, fieldId, value: trimmed, numValue: num } });
   }
 }
 
@@ -255,8 +264,9 @@ export async function bulkUpsertPhotoMetadataField(
       if (trimmed === "") {
         await tx.photoMetadataValue.deleteMany({ where: { photoId, fieldId } });
       } else {
-        const updated = await tx.photoMetadataValue.updateMany({ where: { photoId, fieldId }, data: { value: trimmed } });
-        if (updated.count === 0) await tx.photoMetadataValue.create({ data: { photoId, fieldId, value: trimmed } });
+        const num = numValueOf(trimmed);
+        const updated = await tx.photoMetadataValue.updateMany({ where: { photoId, fieldId }, data: { value: trimmed, numValue: num } });
+        if (updated.count === 0) await tx.photoMetadataValue.create({ data: { photoId, fieldId, value: trimmed, numValue: num } });
       }
     }
   });

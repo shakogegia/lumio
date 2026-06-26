@@ -24,11 +24,20 @@ describe("buildSearchRegistry", () => {
     expect(def.ops).not.toContain(RuleOp.between);
   });
 
-  it("gives a custom number field equality/in/exists but NOT range ops", () => {
+  it("gives a custom number field full range ops (numValue shadow column)", () => {
     const reg = buildSearchRegistry(schema([field({ id: "f2", key: "frames", type: FieldType.Number })]));
     const def = reg.get("frames")!;
     expect(def.type).toBe(ValueType.number);
-    expect(def.ops).toEqual([RuleOp.eq, RuleOp.ne, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]);
+    expect(def.ops).toContain(RuleOp.between);
+    expect(def.ops).toContain(RuleOp.gte);
+    expect(def.ops).toContain(RuleOp.lte);
+    expect(def.ops).toContain(RuleOp.gt);
+    expect(def.ops).toContain(RuleOp.lt);
+    expect(def.ops).toContain(RuleOp.eq);
+    expect(def.ops).toContain(RuleOp.ne);
+    expect(def.ops).toContain(RuleOp.exists);
+    expect(def.ops).toContain(RuleOp.not_exists);
+    expect(def.ops).not.toContain(RuleOp.in_list); // not needed for numeric
   });
 
   it("maps a standard camera field to the cameraModel column with effective-value string ops", () => {

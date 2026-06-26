@@ -98,25 +98,29 @@ function opsForField(field: MetadataFieldDef): RuleOp[] {
     }
     return [RuleOp.eq, RuleOp.ne, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
   }
-  // custom Number/Date (text-stored): no range
+  // Custom Number: range ops via numValue shadow column
+  if (field.type === FieldType.Number) {
+    return [RuleOp.eq, RuleOp.ne, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
+  }
+  // Custom Date (text-stored): no range
   return [RuleOp.eq, RuleOp.ne, RuleOp.exists, RuleOp.not_exists];
 }
 
 // ─── Value coercion ─────────────────────────────────────────────────────────
 
 /** Coerce the widget's raw string(s) into the typed FilterRule.value.
- *  Standard Number → JS number; everything else → string(s). */
+ *  Any Number field (standard or custom) → JS number; everything else → string(s). */
 function coerceValue(
   field: MetadataFieldDef,
   op: RuleOp,
   raw: string | [string, string],
 ): FilterRule["value"] {
   if (NO_VALUE_OPS.has(op)) return undefined;
-  const isStdNum = field.kind === FieldKind.Standard && field.type === FieldType.Number;
+  const isNum = field.type === FieldType.Number;
 
   if (op === RuleOp.between && Array.isArray(raw)) {
     const [a, b] = raw;
-    if (isStdNum) {
+    if (isNum) {
       const na = Number(a);
       const nb = Number(b);
       return Number.isFinite(na) && Number.isFinite(nb) ? [na, nb] : undefined;
@@ -125,7 +129,7 @@ function coerceValue(
   }
 
   const s = raw as string;
-  if (isStdNum) {
+  if (isNum) {
     const n = Number(s);
     return Number.isFinite(n) ? n : undefined;
   }

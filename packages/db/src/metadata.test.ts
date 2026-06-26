@@ -72,8 +72,16 @@ describe("upsertPhotoMetadataValue", () => {
     const create = vi.fn().mockResolvedValue({});
     const db = { photoMetadataValue: { updateMany, create } } as never;
     await upsertPhotoMetadataValue("p1", "f1", "Kodak Portra 400", db);
-    expect(updateMany).toHaveBeenCalledWith({ where: { photoId: "p1", fieldId: "f1" }, data: { value: "Kodak Portra 400" } });
-    expect(create).toHaveBeenCalledWith({ data: { photoId: "p1", fieldId: "f1", value: "Kodak Portra 400" } });
+    expect(updateMany).toHaveBeenCalledWith({ where: { photoId: "p1", fieldId: "f1" }, data: { value: "Kodak Portra 400", numValue: null } });
+    expect(create).toHaveBeenCalledWith({ data: { photoId: "p1", fieldId: "f1", value: "Kodak Portra 400", numValue: null } });
+  });
+
+  it("populates numValue for numeric strings", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const create = vi.fn();
+    const db = { photoMetadataValue: { updateMany, create } } as never;
+    await upsertPhotoMetadataValue("p1", "f1", "36", db);
+    expect(updateMany).toHaveBeenCalledWith({ where: { photoId: "p1", fieldId: "f1" }, data: { value: "36", numValue: 36 } });
   });
 
   it("does not create when an update hit a row", async () => {
@@ -247,8 +255,22 @@ describe("bulkUpsertPhotoMetadataField", () => {
     } as never;
     await bulkUpsertPhotoMetadataField(["p1", "p2"], "f1", "Kodak Portra", db);
     expect(updateMany).toHaveBeenCalledTimes(2); // one per photo
+    expect(updateMany).toHaveBeenCalledWith({ where: { photoId: "p1", fieldId: "f1" }, data: { value: "Kodak Portra", numValue: null } });
     expect(create).toHaveBeenCalledTimes(2); // count 0 each → created
+    expect(create).toHaveBeenCalledWith({ data: { photoId: "p1", fieldId: "f1", value: "Kodak Portra", numValue: null } });
     expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("populates numValue for numeric values in bulk upsert", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const create = vi.fn();
+    const deleteMany = vi.fn();
+    const db = {
+      $transaction: async (fn: (tx: any) => Promise<unknown>) =>
+        fn({ photoMetadataValue: { updateMany, create, deleteMany } }),
+    } as never;
+    await bulkUpsertPhotoMetadataField(["p1"], "f1", "36", db);
+    expect(updateMany).toHaveBeenCalledWith({ where: { photoId: "p1", fieldId: "f1" }, data: { value: "36", numValue: 36 } });
   });
 
   it("clears (deletes) the field on every photo when the value is empty", async () => {

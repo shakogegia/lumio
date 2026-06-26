@@ -23,7 +23,8 @@ export function metadataFieldToValueType(t: FieldType): ValueType {
 
 const STRING_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.contains, RuleOp.not_contains, RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
 const CHOICE_OPS = [RuleOp.eq, RuleOp.in_list, RuleOp.not_in_list, RuleOp.exists, RuleOp.not_exists];
-const CUSTOM_NUM_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.in_list, RuleOp.exists, RuleOp.not_exists]; // no range (text-stored)
+const CUSTOM_NUM_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists]; // range via numValue shadow column
+const CUSTOM_DATE_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.exists, RuleOp.not_exists]; // text-stored; no range
 const STD_NUM_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
 const STD_DATE_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.gt, RuleOp.gte, RuleOp.lt, RuleOp.lte, RuleOp.between, RuleOp.last_30_days, RuleOp.exists, RuleOp.not_exists];
 
@@ -54,8 +55,9 @@ export function buildSearchRegistry(schema: MetadataSchema): SearchRegistry {
         const vt = metadataFieldToValueType(f.type);
         const ops =
           f.type === FieldType.Choice ? CHOICE_OPS
-          : vt === ValueType.string ? STRING_OPS
-          : CUSTOM_NUM_OPS; // number | date custom → no range
+          : vt === ValueType.number ? CUSTOM_NUM_OPS
+          : vt === ValueType.date ? CUSTOM_DATE_OPS
+          : STRING_OPS;
         const def: FieldDef = {
           key: f.key, label: f.label, type: vt,
           storage: { kind: "metadata", fieldId: f.id }, ops,

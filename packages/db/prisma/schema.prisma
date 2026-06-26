@@ -350,13 +350,15 @@ model MetadataField {
 }
 
 model PhotoMetadataValue {
-  id      String        @id @default(cuid())
-  photoId String
-  photo   Photo         @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  fieldId String
-  field   MetadataField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  value   String
+  id       String        @id @default(cuid())
+  photoId  String
+  photo    Photo         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  fieldId  String
+  field    MetadataField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value    String
+  numValue Float? // shadow column for numeric range queries; null for non-numeric values
 
   @@unique([photoId, fieldId])
   @@index([fieldId, value])
+  @@index([fieldId, numValue])
 }

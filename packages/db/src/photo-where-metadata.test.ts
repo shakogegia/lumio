@@ -5,6 +5,8 @@ import { buildPhotoWhere } from "./photo-where.js";
 const NOW = new Date("2026-06-26T00:00:00Z");
 const custom = (key: string, fieldId: string): FieldDef =>
   ({ key, label: key, type: ValueType.string, storage: { kind: "metadata", fieldId }, ops: [] });
+const customNum = (key: string, fieldId: string): FieldDef =>
+  ({ key, label: key, type: ValueType.number, storage: { kind: "metadata", fieldId }, ops: [] });
 const standardStr = (key: string, fieldId: string, column: string): FieldDef =>
   ({ key, label: key, type: ValueType.string, storage: { kind: "standard", column, fieldId }, ops: [] });
 const standardNum = (key: string, fieldId: string, column: string): FieldDef =>
@@ -119,6 +121,48 @@ describe("buildPhotoWhere — standard numeric fields (typed column)", () => {
       NOW, reg(standardNum("iso", "s2", "iso")),
     );
     expect(where).toEqual({ AND: [{ iso: { gte: 200, lte: 800 } }] });
+  });
+});
+
+describe("buildPhotoWhere — custom NUMBER metadata fields (numValue shadow column)", () => {
+  it("between [200,800] → numValue gte/lte", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "frames", op: RuleOp.between, value: [200, 800] }] },
+      NOW, reg(customNum("frames", "f5")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { some: { fieldId: "f5", numValue: { gte: 200, lte: 800 } } } }] });
+  });
+
+  it("gte 400 → numValue gte", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "frames", op: RuleOp.gte, value: 400 }] },
+      NOW, reg(customNum("frames", "f5")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { some: { fieldId: "f5", numValue: { gte: 400 } } } }] });
+  });
+
+  it("eq 400 → numValue 400", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "frames", op: RuleOp.eq, value: 400 }] },
+      NOW, reg(customNum("frames", "f5")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { some: { fieldId: "f5", numValue: 400 } } }] });
+  });
+
+  it("ne 400 → metadataValues.none on numValue", () => {
+    const where = buildPhotoWhere(
+      { match: MatchType.all, rules: [{ field: "frames", op: RuleOp.ne, value: 400 }] },
+      NOW, reg(customNum("frames", "f5")),
+    );
+    expect(where).toEqual({ AND: [{ metadataValues: { none: { fieldId: "f5", numValue: 400 } } }] });
+  });
+
+  it("exists / not_exists → some/none fieldId (no numValue filter)", () => {
+    const r = reg(customNum("frames", "f5"));
+    expect(buildPhotoWhere({ match: MatchType.all, rules: [{ field: "frames", op: RuleOp.exists }] }, NOW, r))
+      .toEqual({ AND: [{ metadataValues: { some: { fieldId: "f5" } } }] });
+    expect(buildPhotoWhere({ match: MatchType.all, rules: [{ field: "frames", op: RuleOp.not_exists }] }, NOW, r))
+      .toEqual({ AND: [{ metadataValues: { none: { fieldId: "f5" } } }] });
   });
 });
 
