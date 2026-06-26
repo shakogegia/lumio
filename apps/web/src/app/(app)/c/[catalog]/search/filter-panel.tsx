@@ -5,12 +5,10 @@ import { MatchType } from "@lumio/shared";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { useCatalog } from "@/components/providers/catalog-context";
+import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import type { SearchFilters } from "./filters";
-import { FacetMultiselect } from "./facet-multiselect";
-import { FacetRange } from "./facet-range";
-import { FacetDate } from "./facet-date";
-import { FacetToggles } from "./facet-toggles";
-import { FacetGeneric } from "./facet-generic";
+import { MetadataFacets } from "./metadata-facets";
 
 export function FilterPanel({
   filters,
@@ -19,8 +17,19 @@ export function FilterPanel({
   filters: SearchFilters;
   onChange: (next: SearchFilters) => void;
 }) {
+  const { slug } = useCatalog();
+  const schema = useCatalogMetadataSchema(slug);
+
+  const enabledGroups = (schema ?? [])
+    .map((g) => ({ ...g, fields: g.fields.filter((f) => f.enabled) }))
+    .filter((g) => g.fields.length > 0);
+
+  // No configured metadata fields → hide the filter button entirely.
+  if (enabledGroups.length === 0) return null;
+
   const activeCount = filters.rules.length;
   const setRules = (rules: SearchFilters["rules"]) => onChange({ ...filters, rules });
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -42,16 +51,12 @@ export function FilterPanel({
             />
           </label>
         </div>
-        <div className="flex flex-col gap-4">
-          <FacetMultiselect label="Camera" field="camera" fieldKey="cameraModel" rules={filters.rules} onRules={setRules} />
-          <FacetMultiselect label="Lens" field="lens" fieldKey="lensModel" rules={filters.rules} onRules={setRules} />
-          <FacetRange label="ISO" fieldKey="iso" rules={filters.rules} onRules={setRules} />
-          <FacetRange label="Aperture" fieldKey="aperture" step="0.1" rules={filters.rules} onRules={setRules} />
-          <FacetRange label="Focal length (mm)" fieldKey="focalLength" rules={filters.rules} onRules={setRules} />
-          <FacetDate label="Date taken" fieldKey="takenAt" rules={filters.rules} onRules={setRules} />
-          <FacetToggles rules={filters.rules} onRules={setRules} />
-          <FacetGeneric rules={filters.rules} onRules={setRules} />
-        </div>
+        <MetadataFacets
+          groups={enabledGroups}
+          slug={slug}
+          rules={filters.rules}
+          onRules={setRules}
+        />
       </PopoverContent>
     </Popover>
   );
