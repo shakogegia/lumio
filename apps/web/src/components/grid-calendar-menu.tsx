@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { type CalendarField, type CalendarFacets, metaCalendarField } from "@lumio/shared";
 import type { DateSortField } from "@/lib/grid-sort";
@@ -145,16 +145,14 @@ export function GridCalendarMenu({
         {loading ? (
           <CalendarSkeleton />
         ) : error ? (
-          <div className="flex h-48 flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
+          <FlyoutMessage>
             <span>Couldn&apos;t load dates.</span>
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
               Close
             </Button>
-          </div>
+          </FlyoutMessage>
         ) : !facets || facets.years.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            No photos to filter.
-          </div>
+          <FlyoutMessage>No photos to filter.</FlyoutMessage>
         ) : (
           <div className="relative">
             {/* The popover height follows the month grid, so its padding stays
@@ -260,6 +258,23 @@ function CalendarSkeleton() {
         {Array.from({ length: 12 }, (_, i) => (
           <Skeleton key={i} className="aspect-square rounded-md" />
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** A centered empty/error message sized to the picker via an invisible tile grid,
+ *  so the flyout keeps a constant height across loading / empty / error / picker. */
+function FlyoutMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      <div className="invisible ml-24 grid auto-rows-min grid-cols-3 gap-2 p-2" aria-hidden>
+        {Array.from({ length: 12 }, (_, i) => (
+          <div key={i} className="aspect-square" />
+        ))}
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-muted-foreground">
+        {children}
       </div>
     </div>
   );
