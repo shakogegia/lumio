@@ -92,10 +92,11 @@ not_exists  → { metadataValues: { none: { fieldId } } }
       { AND: [ { metadataValues: { none: { fieldId } } }, { <column>: <op clause> } ] } // no override, EXIF matches
   ] }
   in_list     → same OR shape with { in: vals }
+  not_in_list → { OR: [ { metadataValues: { some: { fieldId, value: { notIn: vals } } } }, { AND: [ { metadataValues: { none: { fieldId } } }, { <column>: { notIn: vals } } ] } ] }
   exists      → { OR: [ { metadataValues: { some: { fieldId } } }, { <column>: { not: null } } ] }
   not_exists  → { AND: [ { metadataValues: { none: { fieldId } } }, { <column>: null } ] }
   ```
-- **Numeric/date/bool standard fields (iso, aperture, focal, shutter, date, hasGps)** → typed EXIF **column** directly (correct numeric/date ordering). v1 honors overrides on these only implicitly via the column; numeric-override coalescing is deferred (overrides on numeric EXIF fields are rare). Range/eq/between map straight onto the column as PR #68 already does.
+- **Numeric/date standard fields (iso, aperture, focal, shutter, date)** → typed EXIF **column** directly (correct numeric/date ordering). v1 honors overrides on these only implicitly via the column; numeric-override coalescing is deferred (overrides on numeric EXIF fields are rare). Range/eq/between map straight onto the column as PR #68 already does. (There is no bool/`hasGps` standard field — `StandardFieldKey` is exactly camera/lens/iso/shutter/aperture/focal/date.)
 
 Top-level AND/OR aggregation (`match: all | any`) is unchanged from PR #68.
 
