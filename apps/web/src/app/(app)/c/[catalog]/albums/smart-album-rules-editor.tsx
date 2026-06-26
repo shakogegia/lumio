@@ -9,7 +9,7 @@ import {
   type FilterRule,
   type MetadataFieldDef,
 } from "@lumio/shared";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,7 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 
@@ -28,29 +31,61 @@ export type SmartRulesValue = { match: MatchType; rules: FilterRule[] };
 
 // ─── Op configuration ───────────────────────────────────────────────────────
 
-const OP_LABELS: Partial<Record<RuleOp, string>> = {
-  [RuleOp.eq]: "is",
-  [RuleOp.contains]: "contains",
-  [RuleOp.gte]: "≥",
-  [RuleOp.lte]: "≤",
-  [RuleOp.between]: "between",
-  [RuleOp.exists]: "is set",
-  [RuleOp.not_exists]: "is not set",
-};
+const NO_VALUE_OPS = new Set<RuleOp>([
+  RuleOp.exists,
+  RuleOp.not_exists,
+  RuleOp.last_30_days,
+]);
 
-const NO_VALUE_OPS = new Set<RuleOp>([RuleOp.exists, RuleOp.not_exists]);
+/** Human op label, tailored to the field type (dates read "on or after", not "≥"). */
+function opLabel(op: RuleOp, type: FieldType): string {
+  const isDate = type === FieldType.Date;
+  switch (op) {
+    case RuleOp.eq:
+      return "is";
+    case RuleOp.contains:
+      return "contains";
+    case RuleOp.in_list:
+      return "is any of";
+    case RuleOp.gte:
+      return isDate ? "on or after" : "≥";
+    case RuleOp.lte:
+      return isDate ? "on or before" : "≤";
+    case RuleOp.between:
+      return "between";
+    case RuleOp.last_30_days:
+      return "in the last 30 days";
+    case RuleOp.exists:
+      return "is set";
+    case RuleOp.not_exists:
+      return "is not set";
+    default:
+      return op;
+  }
+}
 
 /** Curated op sets per field type / kind. (Order is irrelevant for all/any, so
  *  multiple values = multiple rows + Match "any" — no list op / no reordering.) */
 function opsForField(field: MetadataFieldDef): RuleOp[] {
   if (field.type === FieldType.Choice) {
-    return [RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
+    return [RuleOp.in_list, RuleOp.exists, RuleOp.not_exists];
   }
   if (field.type === FieldType.Text || field.type === FieldType.Textarea) {
     return [RuleOp.contains, RuleOp.eq, RuleOp.exists, RuleOp.not_exists];
   }
   // Number or Date
   if (field.kind === FieldKind.Standard) {
+    if (field.type === FieldType.Date) {
+      return [
+        RuleOp.eq,
+        RuleOp.gte,
+        RuleOp.lte,
+        RuleOp.between,
+        RuleOp.last_30_days,
+        RuleOp.exists,
+        RuleOp.not_exists,
+      ];
+    }
     return [RuleOp.eq, RuleOp.gte, RuleOp.lte, RuleOp.between, RuleOp.exists, RuleOp.not_exists];
   }
   // custom Number/Date (text-stored): no range
@@ -93,9 +128,12 @@ export function rulesComplete(rules: FilterRule[]): boolean {
   if (rules.length === 0) return false;
   return rules.every((r) => {
     if (NO_VALUE_OPS.has(r.op)) return true;
-    if (r.value === undefined || r.value === null) return false;
-    if (Array.isArray(r.value)) {
+    if (r.op === RuleOp.in_list || r.op === RuleOp.not_in_list) {
+      return Array.isArray(r.value) && r.value.length > 0;
+    }
+    if (r.op === RuleOp.between) {
       return (
+        Array.isArray(r.value) &&
         r.value.length === 2 &&
         r.value[0] !== "" &&
         r.value[0] !== undefined &&
@@ -103,6 +141,7 @@ export function rulesComplete(rules: FilterRule[]): boolean {
         r.value[1] !== undefined
       );
     }
+    if (r.value === undefined || r.value === null) return false;
     if (typeof r.value === "number") return Number.isFinite(r.value);
     if (typeof r.value === "string") return r.value.trim() !== "";
     return false;
@@ -147,6 +186,54 @@ function BetweenWidget({
   );
 }
 
+/** Choice fields → "is any of": a checkable multi-select of the field's options. */
+function ChoiceMultiWidget({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: FilterRule["value"];
+  onChange: (next: string[]) => void;
+}) {
+  const selected = Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string")
+    : [];
+  function toggle(opt: string) {
+    onChange(selected.includes(opt) ? selected.filter((s) => s !== opt) : [...selected, opt]);
+  }
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-8 w-full min-w-0 items-center justify-between gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+        >
+          <span className={cn("truncate", selected.length === 0 && "text-muted-foreground")}>
+            {selected.length ? selected.join(", ") : "Select…"}
+          </span>
+          <ChevronDown className="size-4 shrink-0 opacity-60" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="max-h-60 w-48 overflow-y-auto p-1">
+        {options.length === 0 ? (
+          <p className="px-2 py-1 text-xs text-muted-foreground">No options</p>
+        ) : (
+          options.map((o) => (
+            <label
+              key={o}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-accent"
+            >
+              <Checkbox checked={selected.includes(o)} onCheckedChange={() => toggle(o)} />
+              <span className="truncate">{o}</span>
+            </label>
+          ))
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ValueWidget({
   field,
   op,
@@ -173,22 +260,7 @@ function ValueWidget({
   const strValue = value === undefined || value === null ? "" : String(value);
 
   if (field.type === FieldType.Choice) {
-    return (
-      <Select value={strValue || undefined} onValueChange={(v) => onChange(coerceValue(field, op, v))}>
-        <SelectTrigger size="sm" className="w-full">
-          <SelectValue placeholder="Select…" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {field.options.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    );
+    return <ChoiceMultiWidget options={field.options} value={value} onChange={onChange} />;
   }
 
   const inputType =
@@ -266,7 +338,7 @@ function RuleRow({
           <SelectGroup>
             {ops.map((op) => (
               <SelectItem key={op} value={op}>
-                {OP_LABELS[op] ?? op}
+                {opLabel(op, field.type)}
               </SelectItem>
             ))}
           </SelectGroup>
