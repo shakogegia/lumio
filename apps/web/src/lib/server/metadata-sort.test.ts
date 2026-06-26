@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_PHOTO_SORT } from "@lumio/shared";
-import { listPhotosByMetadata, metadataPageSlice, resolveSort } from "./metadata-sort.js";
+import { listPhotosByMetadata, metadataNeighbors, metadataSortIndexOf, metadataPageSlice, resolveSort } from "./metadata-sort.js";
 
 describe("metadataPageSlice", () => {
   it("reads entirely within segment 1", () => {
@@ -132,5 +132,73 @@ describe("listPhotosByMetadata", () => {
     );
     expect(page.items.map((p) => p.id)).toEqual(["e"]);
     expect(db.photoMetadataValue.findMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("metadataSortIndexOf", () => {
+  it("ranks a valued photo by counting valued rows before it (asc)", async () => {
+    const db = {
+      photoMetadataValue: {
+        findUnique: async () => ({ value: "2024-05-01" }),
+        count: async (args: { where: { OR?: unknown } }) => {
+          expect(args.where.OR).toEqual([
+            { value: { lt: "2024-05-01" } },
+            { value: "2024-05-01", photoId: { lt: "p5" } },
+          ]);
+          return 3;
+        },
+      },
+    };
+    const i = await metadataSortIndexOf({ id: "p5", path: "p5.jpg" }, { catalogId: "c" }, { fieldId: "d1", dir: "asc" }, db as never);
+    expect(i).toBe(3);
+  });
+
+  it("ranks an unvalued photo after all valued ones (seg1count + id rank)", async () => {
+    const db = {
+      photoMetadataValue: {
+        findUnique: async () => null,
+        count: async () => 6, // seg1count
+      },
+      photo: {
+        count: async (args: { where: { id?: unknown } }) => {
+          expect(args.where.id).toEqual({ lt: "p9" });
+          return 2;
+        },
+      },
+    };
+    const i = await metadataSortIndexOf({ id: "p9", path: "p9.jpg" }, { catalogId: "c" }, { fieldId: "d1", dir: "asc" }, db as never);
+    expect(i).toBe(8);
+  });
+});
+
+describe("metadataNeighbors", () => {
+  it("derives prev/next/strip from the window around the current index", async () => {
+    // current "b" sits at global index 4 in a fully-valued run of >=6 photos.
+    // window 1 -> from = 3, limit = (4 + 1) - 3 + 1 = 3, so the block is the 3
+    // valued rows at skip 3 (seg1 only, since seg1count 6 > from+limit).
+    const window = [
+      { id: "a", path: "a.jpg" },
+      { id: "b", path: "b.jpg" }, // current, pos = index(4) - from(3) = 1
+      { id: "c", path: "c.jpg" },
+    ];
+    const db = {
+      photoMetadataValue: {
+        findUnique: async () => ({ value: "v" }), // current is valued
+        // OR present -> "rows before current" = index 4; no OR -> seg1count = 6
+        count: async (args: { where: { OR?: unknown } }) => (args.where.OR ? 4 : 6),
+        findMany: async () => window.map((p) => ({ photo: p })),
+      },
+      photo: { findMany: async () => [] }, // seg2 not reached (window is all valued)
+    };
+    const n = await metadataNeighbors(
+      { catalogId: "c" },
+      { fieldId: "d1", dir: "asc" },
+      { id: "b", path: "b.jpg" },
+      1,
+      db as never,
+    );
+    expect(n.strip.map((s) => s.id)).toEqual(["a", "b", "c"]);
+    expect(n.prevId).toBe("a");
+    expect(n.nextId).toBe("c");
   });
 });
