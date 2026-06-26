@@ -1,4 +1,10 @@
-import { coercePhotoSort, DEFAULT_PHOTO_SORT, type PhotoSort } from "@lumio/shared";
+import {
+  coercePhotoSort,
+  DEFAULT_PHOTO_SORT,
+  type FilterSet,
+  filterSetSchema,
+  type PhotoSort,
+} from "@lumio/shared";
 
 // Pure scope helpers — NO server-only imports (no @lumio/db, no prisma), so this
 // module is safe to import from Client Components. `photo-detail-loader.ts`
@@ -11,7 +17,7 @@ import { coercePhotoSort, DEFAULT_PHOTO_SORT, type PhotoSort } from "@lumio/shar
  */
 export type DetailScope =
   | { kind: "album"; albumId: string; sort: PhotoSort }
-  | { kind: "search"; albums: string[]; q?: string; sort: PhotoSort }
+  | { kind: "search"; albums: string[]; q?: string; filter?: FilterSet; sort: PhotoSort }
   | { kind: "folder"; dir: string; sort: PhotoSort }
   | { kind: "library"; sort: PhotoSort };
 
@@ -20,8 +26,20 @@ type RawSearchParams = {
   q?: string;
   s?: string;
   sort?: string;
+  filter?: string;
   folder?: string;
 };
+
+function parseFilterParam(raw: string | undefined): FilterSet | undefined {
+  if (!raw) return undefined;
+  try {
+    const result = filterSetSchema.safeParse(JSON.parse(raw));
+    // value is validated imperatively (z.unknown) — cast to the declared interface.
+    return result.success ? (result.data as FilterSet) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** Parse a detail route's query params into a scope. `s` marks a search scope;
  *  `folder` (a catalog-relative dir, "" = root) marks a disk-folder scope. */
@@ -33,6 +51,7 @@ export function parseDetailScope(sp: RawSearchParams): DetailScope {
       kind: "search",
       albums,
       q: typeof sp.q === "string" && sp.q ? sp.q : undefined,
+      filter: parseFilterParam(sp.filter),
       sort,
     };
   }
@@ -53,6 +72,7 @@ export function detailScopeQuery(scope: DetailScope): string {
     params.set("s", "1");
     for (const album of scope.albums) params.append("album", album);
     if (scope.q) params.set("q", scope.q);
+    if (scope.filter) params.set("filter", JSON.stringify(scope.filter));
   } else if (scope.kind === "folder") {
     params.set("folder", scope.dir);
   }

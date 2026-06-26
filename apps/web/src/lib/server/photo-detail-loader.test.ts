@@ -1,3 +1,4 @@
+import { DEFAULT_PHOTO_SORT, MatchType, RuleOp } from "@lumio/shared";
 import { describe, expect, it } from "vitest";
 import { detailScopeQuery, parseDetailScope } from "./photo-detail-loader";
 
@@ -59,5 +60,53 @@ describe("detailScopeQuery", () => {
   it("round-trips a search scope with a sort", () => {
     const scope = parseDetailScope({ s: "1", album: ["a"], q: "x", sort: "imported-asc" });
     expect(detailScopeQuery(scope)).toBe("s=1&album=a&q=x&sort=imported-asc");
+  });
+});
+
+describe("filter param handling", () => {
+  it("parseDetailScope parses a valid filter param into the search scope", () => {
+    const scope = parseDetailScope({
+      s: "1",
+      filter: JSON.stringify({ match: "all", rules: [{ field: "iso", op: "gt", value: 800 }] }),
+    });
+    expect(scope).toMatchObject({
+      kind: "search",
+      filter: { match: "all", rules: [{ field: "iso", op: "gt", value: 800 }] },
+    });
+  });
+
+  it("parseDetailScope drops an invalid filter param (no throw)", () => {
+    const scope = parseDetailScope({ s: "1", filter: "{not json" });
+    expect(scope).toMatchObject({ kind: "search" });
+    expect((scope as { filter?: unknown }).filter).toBeUndefined();
+  });
+
+  it("parseDetailScope drops a schema-invalid filter (valid JSON, bad rule)", () => {
+    const scope = parseDetailScope({
+      s: "1",
+      // album + gt is invalid per filterSetSchema (gt not allowed on album)
+      filter: JSON.stringify({ match: "all", rules: [{ field: "album", op: "gt", value: 1 }] }),
+    });
+    expect(scope).toMatchObject({ kind: "search" });
+    expect((scope as { filter?: unknown }).filter).toBeUndefined();
+  });
+
+  it("detailScopeQuery re-emits the filter param for search scopes", () => {
+    const qs = detailScopeQuery({
+      kind: "search",
+      albums: [],
+      filter: { match: MatchType.all, rules: [{ field: "iso", op: RuleOp.gt, value: 800 }] },
+      sort: DEFAULT_PHOTO_SORT,
+    });
+    expect(qs).toContain("s=1");
+    expect(qs).toContain("filter=");
+  });
+
+  it("detailScopeQuery filter round-trips through parseDetailScope", () => {
+    const filter = { match: MatchType.all, rules: [{ field: "iso", op: RuleOp.gt, value: 800 }] };
+    const qs = detailScopeQuery({ kind: "search", albums: ["a1"], filter, sort: DEFAULT_PHOTO_SORT });
+    const sp = Object.fromEntries(new URLSearchParams(qs));
+    const back = parseDetailScope(sp);
+    expect(back).toMatchObject({ kind: "search", albums: ["a1"], filter });
   });
 });

@@ -9,6 +9,7 @@ import {
   setColorLabelSchema,
   setFavoriteSchema,
 } from "./api.js";
+import { MatchType, RuleOp } from "./index.js";
 import { COLOR_FIELDS } from "./photo-color.js";
 
 describe("photosQuerySchema", () => {
@@ -199,6 +200,37 @@ describe("downloadRequestSchema", () => {
   it("defaults variant to original", () => {
     const parsed = downloadRequestSchema.parse({ ids: ["a"] });
     expect(parsed.variant).toBe("original");
+  });
+});
+
+describe("searchQuerySchema filter param", () => {
+  it("parses a JSON filter string into a validated FilterSet", () => {
+    const filter = JSON.stringify({
+      match: MatchType.all,
+      rules: [{ field: "iso", op: RuleOp.gte, value: 800 }],
+    });
+    const parsed = searchQuerySchema.parse({ filter });
+    expect(parsed.filter).toEqual({
+      match: MatchType.all,
+      rules: [{ field: "iso", op: RuleOp.gte, value: 800 }],
+    });
+  });
+
+  it("omits filter when absent", () => {
+    expect(searchQuerySchema.parse({}).filter).toBeUndefined();
+  });
+
+  it("omits filter when it is an empty string", () => {
+    expect(searchQuerySchema.parse({ filter: "" }).filter).toBeUndefined();
+  });
+
+  it("rejects malformed JSON", () => {
+    expect(() => searchQuerySchema.parse({ filter: "{not json" })).toThrow();
+  });
+
+  it("rejects a filter that fails validation", () => {
+    const filter = JSON.stringify({ match: MatchType.all, rules: [{ field: "album", op: RuleOp.gt, value: 1 }] });
+    expect(() => searchQuerySchema.parse({ filter })).toThrow();
   });
 });
 

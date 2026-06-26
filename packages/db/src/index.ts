@@ -1,4 +1,6 @@
 export { prisma } from "./client.js";
+export { buildPhotoWhere } from "./photo-where.js";
+export { backfillPromoted } from "./backfill-promoted.js";
 export * from "./mappers.js";
 export * from "./smart-albums.js";
 export * from "./folders.js";
