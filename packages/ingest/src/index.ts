@@ -6,6 +6,7 @@ export * from "./renditions.js";
 export * from "./regenerate.js";
 export * from "./wb-estimate.js";
 export * from "./backfill-baseline.js";
+export * from "./backfill-taken-at.js";
 export * from "./store.js";
 export * from "./ingest.js";
 export * from "./find-by-hash.js";

@@ -1,6 +1,28 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { sanitizeMetadata, extractMetadata, flattenMetadata } from "./metadata.js";
+import { sanitizeMetadata, extractMetadata, flattenMetadata, parseExifDate } from "./metadata.js";
+
+describe("parseExifDate", () => {
+  it("accepts valid Date instances", () => {
+    expect(parseExifDate(new Date("2024-03-14T09:26:53.000Z"))?.toISOString()).toBe("2024-03-14T09:26:53.000Z");
+  });
+  it("parses ISO strings (exifr returns these for some files) as UTC when zoneless", () => {
+    expect(parseExifDate("2024-07-30T22:52:33.00")?.toISOString()).toBe("2024-07-30T22:52:33.000Z");
+  });
+  it("parses EXIF colon-format strings as UTC", () => {
+    expect(parseExifDate("2024:03:14 09:26:53")?.toISOString()).toBe("2024-03-14T09:26:53.000Z");
+  });
+  it("honours an explicit timezone offset", () => {
+    expect(parseExifDate("2024-07-30T22:52:33+02:00")?.toISOString()).toBe("2024-07-30T20:52:33.000Z");
+  });
+  it("returns null for invalid or non-date values", () => {
+    expect(parseExifDate("not a date")).toBeNull();
+    expect(parseExifDate(undefined)).toBeNull();
+    expect(parseExifDate(null)).toBeNull();
+    expect(parseExifDate(123)).toBeNull();
+    expect(parseExifDate(new Date("nope"))).toBeNull();
+  });
+});
 
 describe("sanitizeMetadata", () => {
   it("converts Dates to ISO strings", () => {

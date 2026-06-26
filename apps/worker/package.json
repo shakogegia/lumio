@@ -7,6 +7,7 @@
     "ingest": "dotenv -e ../../.env -- tsx src/main.ts",
     "backfill:thumbhash": "dotenv -e ../../.env -- tsx src/backfill-thumbhash.ts",
     "backfill:baseline": "dotenv -e ../../.env -- tsx src/backfill-baseline.ts",
+    "backfill:taken-at": "dotenv -e ../../.env -- tsx src/backfill-taken-at.ts",
     "watch": "dotenv -e ../../.env -- tsx src/watch-main.ts",
     "bench": "dotenv -e ../../.env -- tsx src/bench.ts",
     "seed": "dotenv -e ../../.env -- tsx src/seed.ts",
