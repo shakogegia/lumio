@@ -36,6 +36,17 @@ export function invalidateMetadataSchema(slug: string): void {
 }
 
 /**
+ * Pre-fill the cache from a server-rendered schema so the FIRST client read is
+ * instant — no `/metadata/schema` round-trip on dialog/panel open. Seeded once
+ * per catalog load by MetadataSchemaProvider; an in-flight fetch (rare) wins so
+ * we never clobber a fresher value mid-flight.
+ */
+export function seedMetadataSchema(slug: string, schema: MetadataSchema): void {
+  if (inflight.has(slug)) return;
+  cache.set(slug, schema);
+}
+
+/**
  * The catalog's metadata schema, served from cache when available (so the Info
  * tab can render field structure immediately). `undefined` only on the very
  * first load before the cache is warm.
