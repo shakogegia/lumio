@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_PHOTO_SORT } from "@lumio/shared";
-import { metadataPageSlice, resolveSort } from "./metadata-sort.js";
+import { listPhotosByMetadata, metadataPageSlice, resolveSort } from "./metadata-sort.js";
 
 describe("metadataPageSlice", () => {
   it("reads entirely within segment 1", () => {
@@ -20,6 +20,9 @@ describe("metadataPageSlice", () => {
   });
   it("handles a window that exhausts segment 1 with no segment 2 rows requested elsewhere", () => {
     expect(metadataPageSlice(0, 10, 3)).toEqual({ seg1: { skip: 0, take: 3 }, seg2: { skip: 0, take: 7 } });
+  });
+  it("fits the window exactly in segment 1 (seg2 null)", () => {
+    expect(metadataPageSlice(0, 5, 5)).toEqual({ seg1: { skip: 0, take: 5 }, seg2: null });
   });
 });
 
@@ -49,5 +52,85 @@ describe("resolveSort", () => {
     const db = fieldDb(false);
     const r = await resolveSort("cat1", "meta:d1:desc", db as never);
     expect(r).toEqual({ kind: "standard", sort: DEFAULT_PHOTO_SORT });
+  });
+
+  it("returns standard with no sort when sort is undefined (no field query)", async () => {
+    const db = fieldDb(true);
+    const r = await resolveSort("cat1", undefined, db as never);
+    expect(r).toEqual({ kind: "standard", sort: undefined });
+    expect(db.metadataField.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+function photoRow(id: string) {
+  return {
+    id,
+    path: `${id}.jpg`,
+    source: "filesystem" as const,
+    takenAt: new Date("2024-01-01T00:00:00.000Z"),
+    sortDate: new Date("2024-01-01T00:00:00.000Z"),
+    fileModifiedAt: new Date("2024-01-01T00:00:00.000Z"),
+    fileCreatedAt: new Date("2024-01-01T00:00:00.000Z"),
+    width: 10,
+    height: 10,
+    hash: null,
+    exif: {},
+    createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2024-01-01T00:00:00.000Z"),
+  };
+}
+
+describe("listPhotosByMetadata", () => {
+  it("concatenates valued (ordered by value) then unvalued (ordered by id), total = full count", async () => {
+    const valuedOrderBy: unknown[] = [];
+    const unvaluedWhere: unknown[] = [];
+    const db = {
+      photo: {
+        count: async () => 4,
+        findMany: async (args: { where: unknown; orderBy: unknown }) => {
+          unvaluedWhere.push(args.where);
+          // unvalued segment, ordered by id asc
+          return [photoRow("c"), photoRow("d")];
+        },
+      },
+      photoMetadataValue: {
+        count: async () => 2, // seg1count
+        findMany: async (args: { orderBy: unknown }) => {
+          valuedOrderBy.push(args.orderBy);
+          return [{ photo: photoRow("a") }, { photo: photoRow("b") }];
+        },
+      },
+    };
+    const page = await listPhotosByMetadata(
+      { catalogId: "cat1" },
+      { fieldId: "d1", dir: "asc" },
+      { limit: 50, offset: 0 },
+      db as never,
+    );
+    expect(page.items.map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
+    expect(page.total).toBe(4);
+    expect(valuedOrderBy[0]).toEqual([{ value: "asc" }, { photoId: "asc" }]);
+    expect(unvaluedWhere[0]).toMatchObject({ catalogId: "cat1", metadataValues: { none: { fieldId: "d1" } } });
+  });
+
+  it("reads only segment 2 when the offset is past all valued photos", async () => {
+    const db = {
+      photo: {
+        count: async () => 5,
+        findMany: async () => [photoRow("e")],
+      },
+      photoMetadataValue: {
+        count: async () => 2,
+        findMany: vi.fn(async () => []),
+      },
+    };
+    const page = await listPhotosByMetadata(
+      { catalogId: "cat1" },
+      { fieldId: "d1", dir: "desc" },
+      { limit: 2, offset: 4 },
+      db as never,
+    );
+    expect(page.items.map((p) => p.id)).toEqual(["e"]);
+    expect(db.photoMetadataValue.findMany).not.toHaveBeenCalled();
   });
 });
