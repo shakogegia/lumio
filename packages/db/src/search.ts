@@ -1,28 +1,39 @@
 import type { Prisma } from "@prisma/client";
-import { type FilterRule, type FilterSet, MatchType, RuleOp, type SearchRegistry } from "@lumio/shared";
+import { type FilterSet, MatchType, type SearchRegistry } from "@lumio/shared";
 import { buildPhotoWhere } from "./photo-where.js";
 
 /**
  * Translate search params into a Prisma Photo where clause via the shared
- * engine. The legacy `album` + `q` params are normalized into rules (album
- * membership, then filename contains) and stay mandatory (AND). A structured
- * `filter` honors its own match: an all-match filter folds flat into the legacy
- * AND (preserving today's shape + clause ordering); an any-match filter is
- * compiled to an OR group that the legacy constraints wrap under AND so they
- * aren't absorbed into the OR. Empty → {} (whole library). `now` is injected for
- * testability.
+ * engine. The legacy `album` + `q` params become mandatory (AND) clauses — album
+ * scope first, then filename contains. A structured `filter` honors its own
+ * match: an all-match filter folds flat into the legacy AND (preserving today's
+ * shape + clause ordering); an any-match filter is compiled to an OR group that
+ * the legacy constraints wrap under AND so they aren't absorbed into the OR.
+ * Empty → {} (whole library). `now` is injected for testability.
+ *
+ * `albumWhere` is a pre-resolved album predicate supplied by DB-backed callers:
+ * membership for regular albums OR each smart album's rule-match, OR-combined
+ * (see `albumsSearchWhere`). When given it replaces the plain-membership clause —
+ * the only way SMART albums match in search, since they have no AlbumPhoto rows.
+ * Without it we fall back to plain membership over `p.album` (regular-only),
+ * which is correct for registry-less callers (e.g. unit tests, library locate).
  */
 export function buildSearchWhere(
   p: { q?: string; album: string[]; filter?: FilterSet },
   now: Date = new Date(),
   registry?: SearchRegistry,
+  albumWhere?: Prisma.PhotoWhereInput,
 ): Prisma.PhotoWhereInput {
-  const legacy: FilterRule[] = [];
-  if (p.album.length > 0) legacy.push({ field: "album", op: RuleOp.in_album, value: p.album });
-  if (p.q) legacy.push({ field: "filename", op: RuleOp.contains, value: p.q });
+  // Mandatory (AND-ed) legacy constraints, already compiled to Prisma shape so the
+  // album predicate can be smart-album-aware. Order preserved: album, then filename.
+  const legacy: Prisma.PhotoWhereInput[] = [];
+  const album =
+    albumWhere ?? (p.album.length > 0 ? { albums: { some: { albumId: { in: p.album } } } } : undefined);
+  if (album) legacy.push(album);
+  if (p.q) legacy.push({ path: { contains: p.q, mode: "insensitive" } });
 
   // When a registry is provided, drop user filter rules whose field is not a
-  // configured (registered) metadata field. Legacy album/filename rules are
+  // configured (registered) metadata field. Legacy album/filename clauses are
   // never dropped — they are engine-internal and not user-supplied field names.
   const filterRules = registry
     ? (p.filter?.rules ?? []).filter((r) => {
@@ -35,14 +46,17 @@ export function buildSearchWhere(
   // No structured filter, or an all-match one: AND everything flat — preserves the
   // legacy output shape + clause ordering (album, filename, then filter rules).
   if (!filter || filter.match === MatchType.all) {
-    const rules = [...legacy, ...(filter?.rules ?? [])];
-    return buildPhotoWhere({ match: MatchType.all, rules }, now, registry);
+    // buildPhotoWhere returns {} for no rules, else { AND: [...] }; flatten its
+    // clauses in so they sit beside the legacy ones under a single AND.
+    const compiled = buildPhotoWhere({ match: MatchType.all, rules: filter?.rules ?? [] }, now, registry);
+    const filterClauses = "AND" in compiled ? (compiled.AND as Prisma.PhotoWhereInput[]) : [];
+    const all = [...legacy, ...filterClauses];
+    return all.length === 0 ? {} : { AND: all };
   }
 
   // any-match filter: legacy album/filename stay mandatory (AND), wrapping the
   // filter's OR group so they aren't absorbed into the OR.
   const filterClause = buildPhotoWhere(filter, now, registry);
   if (legacy.length === 0) return filterClause;
-  const legacyClause = buildPhotoWhere({ match: MatchType.all, rules: legacy }, now, registry);
-  return { AND: [legacyClause, filterClause] };
+  return { AND: [{ AND: legacy }, filterClause] };
 }

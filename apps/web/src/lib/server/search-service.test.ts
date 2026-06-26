@@ -21,10 +21,18 @@ function row(id: string) {
   };
 }
 
+// Resolve tagged albums as regular (membership) albums by echoing the requested
+// ids back — so the search where keeps its plain-membership shape in these tests.
+const regularAlbums = {
+  findMany: async ({ where }: { where: { id: { in: string[] } } }) =>
+    where.id.in.map((id) => ({ id, isSmart: false, rules: null })),
+};
+
 function fakeDb(rows: ReturnType<typeof row>[]) {
   const calls: Array<{ skip?: number; take: number; where?: unknown; orderBy?: unknown }> = [];
   return {
     calls,
+    album: regularAlbums,
     photo: {
       findMany: async (args: { skip?: number; take: number; where?: unknown; orderBy?: unknown }) => {
         calls.push(args);
@@ -91,6 +99,7 @@ function fakeCountDb(total: number) {
   const calls: Array<{ where?: unknown }> = [];
   return {
     calls,
+    album: regularAlbums,
     photo: {
       count: async (args: { where?: unknown }) => {
         calls.push(args);

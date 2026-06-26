@@ -1,31 +1,39 @@
 import { type PrismaClient, buildSearchWhere, getCatalogSchema, prisma } from "@lumio/db";
 import { type PhotosPage, type SearchQuery, buildSearchRegistry, monthRange } from "@lumio/shared";
+import { albumsSearchWhere } from "@/lib/server/albums-service";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
-type Db = Pick<PrismaClient, "photo">;
+// Needs `album` access too: tagged albums are resolved to a smart-aware predicate
+// (membership OR smart-album rules) before compiling the search where.
+type Db = Pick<PrismaClient, "photo" | "album">;
 
 /**
  * Inner (catalog-free) search where for `listPhotosForWhere` delegation. Returns
  * the search filter predicate without the `catalogId` constraint — that is added by
  * `listPhotosForWhere` itself. buildSearchWhere returns either {} or { AND: [...] };
  * the month range is ANDed in alongside it. Loads the catalog's metadata schema to
- * build a registry so only configured fields are accepted in user filter rules.
+ * build a registry so only configured fields are accepted in user filter rules, and
+ * resolves the tagged albums to a smart-aware predicate (so smart albums match).
  */
-async function searchInnerWhere(catalogId: string, params: SearchQuery) {
+async function searchInnerWhere(catalogId: string, params: SearchQuery, db: Db) {
+  const now = new Date();
   const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
-  const base = buildSearchWhere(params, new Date(), registry);
+  const albumWhere = await albumsSearchWhere(catalogId, params.album, { db, now, registry });
+  const base = buildSearchWhere(params, now, registry, albumWhere);
   if (!params.month) return base;
   return { AND: [base, { sortDate: monthRange(params.month) }] };
 }
 
 /** Catalog-scoped search where + the optional month range, AND-combined.
  *  Used only by countSearchPhotos which cannot delegate to listPhotosForWhere. */
-async function searchWhere(catalogId: string, params: SearchQuery) {
+async function searchWhere(catalogId: string, params: SearchQuery, db: Db) {
+  const now = new Date();
   const registry = buildSearchRegistry(await getCatalogSchema(catalogId));
+  const albumWhere = await albumsSearchWhere(catalogId, params.album, { db, now, registry });
   // Merge catalogId into the base where (spread is safe: buildSearchWhere returns
   // either {} or { AND: [...] }, so catalogId just adds a key).
-  const withCatalog = { catalogId, ...LIVE_PHOTO, ...buildSearchWhere(params, new Date(), registry) };
+  const withCatalog = { catalogId, ...LIVE_PHOTO, ...buildSearchWhere(params, now, registry, albumWhere) };
   return params.month
     ? { AND: [withCatalog, { sortDate: monthRange(params.month) }] }
     : withCatalog;
@@ -42,7 +50,7 @@ export async function searchPhotos(
   db: Db = prisma,
 ): Promise<PhotosPage> {
   const { limit, offset, sort } = params;
-  return listPhotosForWhere(catalogId, await searchInnerWhere(catalogId, params), { limit, offset, sort }, db);
+  return listPhotosForWhere(catalogId, await searchInnerWhere(catalogId, params, db), { limit, offset, sort }, db);
 }
 
 /**
@@ -55,5 +63,5 @@ export async function countSearchPhotos(
   params: SearchQuery,
   db: Db = prisma,
 ): Promise<number> {
-  return db.photo.count({ where: await searchWhere(catalogId, params) });
+  return db.photo.count({ where: await searchWhere(catalogId, params, db) });
 }
