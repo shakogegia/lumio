@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { PhotoSort, CalendarField } from "@lumio/shared";
+import { type PhotoSort, type CalendarField, DEFAULT_CALENDAR_FIELD } from "@lumio/shared";
 import { cn } from "@/lib/utils";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
@@ -86,6 +86,10 @@ export function PhotoLibraryView({
   const { field: storedField, setField } = useCalendarField();
   const calField = effectiveCalendarField(storedField, dateFields);
   const [month, setMonth] = useState<string | null>(null);
+  // The date dimension actually applied to the grid — committed together with the
+  // month when a tile is picked, so switching the dropdown's tab (browsing facets)
+  // never re-filters the grid until a new month is chosen.
+  const [appliedField, setAppliedField] = useState<CalendarField>(DEFAULT_CALENDAR_FIELD);
   const [total, setTotal] = useState<number | null>(null);
   // Whether any selected photo is edited — reported up from inside the provider
   // (the toolbar renders outside it), so Download can offer edited vs original.
@@ -94,7 +98,7 @@ export function PhotoLibraryView({
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, ...actionOptions });
 
-  const src = collection({ sort, month, field: calField });
+  const src = collection({ sort, month, field: appliedField });
   const totalLabel = total !== null ? countLabel(total, noun[0], noun[1]) : undefined;
   const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
 
@@ -142,8 +146,12 @@ export function PhotoLibraryView({
                   <GridCalendarMenu
                     facetsEndpoint={calendar.facetsEndpoint}
                     value={month}
-                    onChange={setMonth}
+                    onChange={(m) => {
+                      setMonth(m);
+                      if (m) setAppliedField(calField);
+                    }}
                     field={calField}
+                    appliedField={appliedField}
                     onFieldChange={setField}
                     dateFields={dateFields ?? []}
                   />

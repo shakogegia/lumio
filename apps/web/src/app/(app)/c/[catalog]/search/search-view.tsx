@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { usePhotoActions } from "@/components/photo-actions/use-photo-actions";
-import { MatchType } from "@lumio/shared";
+import { type CalendarField, DEFAULT_CALENDAR_FIELD, MatchType } from "@lumio/shared";
 import { SelectionActions } from "@/components/photo-actions/selection-actions";
 import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-context";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,8 @@ export function SearchView() {
   const calField = effectiveCalendarField(storedField, dateFields);
   const { mode, setMode } = useGridView();
   const [month, setMonth] = useState<string | null>(null);
+  // Dimension applied to the grid — committed with the month on pick (see PhotoLibraryView).
+  const [appliedField, setAppliedField] = useState<CalendarField>(DEFAULT_CALENDAR_FIELD);
   const sel = useGridSelection();
   const gridRef = useRef<PhotoGridHandle>(null);
   // Any selected photo edited → Download offers edited vs original. Reported up
@@ -213,8 +215,12 @@ export function SearchView() {
                       <GridCalendarMenu
                         facetsEndpoint={catalogApiUrl(slug, `/search/calendar?${paramsFor(filters).toString()}`)}
                         value={month}
-                        onChange={setMonth}
+                        onChange={(m) => {
+                          setMonth(m);
+                          if (m) setAppliedField(calField);
+                        }}
                         field={calField}
+                        appliedField={appliedField}
                         onFieldChange={setField}
                         dateFields={dateFields ?? []}
                       />
@@ -223,13 +229,13 @@ export function SearchView() {
                 </div>
               </div>
               <PhotoCollectionProvider
-                key={`${serialized}:${sort}:${month ?? ""}${month ? `:${calField}` : ""}`}
+                key={`${serialized}:${sort}:${month ?? ""}${month ? `:${appliedField}` : ""}`}
                 endpoint={catalogApiUrl(slug, "/search")}
                 params={(() => {
                   const p = paramsFor(filters, sort);
                   if (month) {
                     p.set("month", month);
-                    p.set("dateField", calField);
+                    p.set("dateField", appliedField);
                   }
                   return p;
                 })()}
