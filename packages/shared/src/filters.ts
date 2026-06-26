@@ -13,7 +13,9 @@ export type FieldStorage =
   | { kind: "column"; column: string } // promoted Photo column
   | { kind: "json"; path: string[] } // exif JSONB path
   | { kind: "album" } // membership (special)
-  | { kind: "filename" }; // Photo.path (special)
+  | { kind: "filename" } // Photo.path (special)
+  | { kind: "metadata"; fieldId: string } // custom field → PhotoMetadataValue relation
+  | { kind: "standard"; column: string; fieldId: string }; // EXIF-backed → effective value
 
 export interface FieldDef {
   key: string;
@@ -23,6 +25,9 @@ export interface FieldDef {
   ops: RuleOp[];
   aliases?: string[];
 }
+
+/** Per-catalog field resolver: field key → its def. Built from the metadata schema. */
+export type SearchRegistry = Map<string, FieldDef>;
 
 const STR_OPS = [RuleOp.eq, RuleOp.ne, RuleOp.contains, RuleOp.exists, RuleOp.not_exists];
 const STR_COL_OPS = [
