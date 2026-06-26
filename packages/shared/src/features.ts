@@ -15,6 +15,7 @@ export enum FeatureKey {
   DiskExplorer = "diskExplorer",
   Metadata = "metadata",
   StandardMetadata = "standardMetadata",
+  Sharing = "sharing",
 }
 
 export enum FeatureScope {
@@ -52,6 +53,13 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = {
     description: "Show camera, lens, and exposure (from EXIF) on photos.",
     scopes: [FeatureScope.Catalog],
     default: true,
+  },
+  [FeatureKey.Sharing]: {
+    key: FeatureKey.Sharing,
+    label: "Share links",
+    description: "Create public links to share selected photos. Requires a Public base URL in General settings.",
+    scopes: [FeatureScope.Global],
+    default: false,
   },
 };
 

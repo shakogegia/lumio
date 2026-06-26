@@ -15,9 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
 import { useImageLoaded } from "@/lib/hooks/use-image-loaded";
-import { baseDisplayUrl, displayUrl, renditionVersion } from "@/lib/rendition-url";
-import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/components/providers/catalog-context";
+import { useRenditions } from "@/features/photo-grid/rendition-context";
 import { MAX_ZOOM } from "./zoom-math";
 import { useBlurBox } from "./use-blur-box";
 import { useZoomPan } from "./use-zoom-pan";
@@ -54,16 +52,14 @@ export function ZoomableImage({
    *  by the lightbox so the editor never imports lightbox chrome. */
   renderHeader: (zoomHeader: ZoomHeaderProps) => ReactNode;
 }) {
-  const { slug } = useCatalog();
+  const r = useRenditions();
   const { working, editing, cropMode, orientedBase, setBaseSize, baseline } = useEditSession();
   const savedRecipe = photo.edits ?? NO_EDITS;
 
-  const displaySrc = displayUrl(slug, photo);
-  const originalSrc = catalogApiUrl(slug, `/photos/${photo.id}/original`);
-  const baseSrc = baseDisplayUrl(slug, photo);
-  const hiResSrc = hasEdits(photo.edits)
-    ? catalogApiUrl(slug, `/photos/${photo.id}/edited?v=${renditionVersion(photo.updatedAt)}`)
-    : originalSrc;
+  const displaySrc = r.display(photo);
+  const originalSrc = r.fullOriginal(photo);
+  const baseSrc = r.base(photo);
+  const hiResSrc = hasEdits(photo.edits) ? r.fullEdited(photo) : originalSrc;
 
   // Double-buffer the display rendition: when an Apply changes the rendition
   // (same photo, new ?v=), keep showing the current one — transformed by the

@@ -11,6 +11,8 @@ import {
   COLUMNS_MIN,
   DEFAULT_COLUMNS,
   GRID_COLUMNS_STORAGE_KEY,
+  SHARE_COLUMNS_STORAGE_KEY,
+  SHARE_DEFAULT_COLUMNS,
 } from "@/lib/grid-layout";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -21,9 +23,11 @@ const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 // skeleton's --grid-columns; the albums listing's --album-columns) paint at the
 // chosen density instead of flashing the default and snapping after hydration
 // reads localStorage. (Same approach as the theme no-flash script.)
-const gridColumnsScript = `try{function s(k,d,p){var v=localStorage.getItem(k);var n=v?parseInt(v,10):d;if(!(n>=${COLUMNS_MIN}&&n<=${COLUMNS_MAX}))n=d;document.documentElement.style.setProperty(p,n+'');}s(${JSON.stringify(
+const gridColumnsScript = `try{function s(k,d,p){var v=localStorage.getItem(k);var n=v?parseInt(v,10):d;if(!(n>=${COLUMNS_MIN}&&n<=${COLUMNS_MAX}))n=d;document.documentElement.style.setProperty(p,n+'');}var share=location.pathname.indexOf('/share/')===0;s(share?${JSON.stringify(
+  SHARE_COLUMNS_STORAGE_KEY,
+)}:${JSON.stringify(
   GRID_COLUMNS_STORAGE_KEY,
-)},${DEFAULT_COLUMNS},'--grid-columns');s(${JSON.stringify(
+)},share?${SHARE_DEFAULT_COLUMNS}:${DEFAULT_COLUMNS},'--grid-columns');s(${JSON.stringify(
   ALBUM_COLUMNS_STORAGE_KEY,
 )},${ALBUM_DEFAULT_COLUMNS},'--album-columns');}catch(e){}`;
 

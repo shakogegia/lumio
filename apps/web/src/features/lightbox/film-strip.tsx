@@ -9,8 +9,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { createWheelStepper } from "@/lib/wheel-step-nav";
-import { catalogApiUrl } from "@/lib/catalog-api";
-import { useCatalog } from "@/components/providers/catalog-context";
+import { useRenditions } from "@/features/photo-grid/rendition-context";
 
 // Width of the soft fade applied at a scrollable edge, in px.
 const FADE = 28;
@@ -36,7 +35,7 @@ export function FilmStrip({
   /** Advance the active photo by ±1 (wheel/trackpad navigation). */
   onStep: (delta: 1 | -1) => void;
 }) {
-  const { slug } = useCatalog();
+  const r = useRenditions();
   const viewportRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLButtonElement>(null);
 
@@ -148,7 +147,7 @@ export function FilmStrip({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={catalogApiUrl(slug, `/photos/${item.id}/thumbnail?v=${item.v}`)}
+                  src={r.thumbVersioned(item.id, item.v)}
                   alt=""
                   loading="lazy"
                   className="h-full w-full object-cover"

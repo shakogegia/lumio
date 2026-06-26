@@ -15,11 +15,11 @@ import { PHOTO_PAGE_SIZE } from "@/lib/grid-layout";
 import { isPhotoDetailPath, photoIdFromPathname } from "@/lib/pathname-photo-id";
 import type { DetailScope } from "@/lib/detail-scope";
 import { collectionForScope } from "@/lib/photo-collection-scope";
-import { displayUrl } from "@/lib/rendition-url";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { LightboxTab } from "@/lib/lightbox-tab";
 import { usePhotoPages } from "./use-photo-pages";
+import { useRenditions } from "./rendition-context";
 
 /** How far around the open photo to keep loaded (neighbors + film strip). */
 const LIGHTBOX_WINDOW = PHOTO_PAGE_SIZE;
@@ -87,6 +87,7 @@ export function PhotoCollectionProvider({
   children: React.ReactNode;
 }) {
   const { slug } = useCatalog();
+  const r = useRenditions();
   const pathname = usePathname() ?? "/";
   // Seeded from a Server Component? Derive the store source + URLs from `scope` on
   // the client (collectionForScope is pure/client-safe). Otherwise use the
@@ -153,11 +154,11 @@ export function PhotoCollectionProvider({
         const p = photoForIndex(i);
         if (p) {
           const img = new Image();
-          img.src = displayUrl(slug, p);
+          img.src = r.display(p);
         }
       }
     }
-  }, [openIndex, photoForIndex]);
+  }, [openIndex, photoForIndex, r]);
 
   // Keep the address bar on the current photo. Also covers the post-trash shift,
   // where the index is unchanged but the photo at it changes (photoForIndex's

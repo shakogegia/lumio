@@ -28,3 +28,5 @@ export * from "./metadata-resolve.js";
 export * from "./metadata-presets.js";
 export * from "./metadata-preset-nlp.js";
 export * from "./search-registry.js";
+export * from "./app-settings.js";
+export * from "./share-links.js";

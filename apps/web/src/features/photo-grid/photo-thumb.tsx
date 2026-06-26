@@ -4,8 +4,8 @@ import { Palette } from "lucide-react";
 import { hasEdits, type PhotoDTO } from "@lumio/shared";
 import type { GridViewMode } from "@/lib/hooks/use-grid-view";
 import { thumbhashDataUrl } from "@/lib/thumbhash-url";
-import { thumbUrl } from "@/lib/rendition-url";
-import { useCatalog } from "@/components/providers/catalog-context";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
+import { useRenditions } from "./rendition-context";
 
 /**
  * One grid tile's photo. Renders the thumbnail at its *cover* size inside an
@@ -17,7 +17,8 @@ import { useCatalog } from "@/components/providers/catalog-context";
  * contain) keeps the default fill view pixel-crisp.
  */
 export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMode }) {
-  const { slug } = useCatalog();
+  const r = useRenditions();
+  const caps = usePhotoCapabilities();
   const [loaded, setLoaded] = useState(false);
   const blurUrl = useMemo(() => thumbhashDataUrl(photo.thumbhash), [photo.thumbhash]);
 
@@ -47,7 +48,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={thumbUrl(slug, photo)}
+        src={r.thumb(photo)}
         alt={photo.path}
         loading="lazy"
         decoding="async"
@@ -59,7 +60,7 @@ export function PhotoThumb({ photo, mode }: { photo: PhotoDTO; mode: GridViewMod
         className="absolute left-1/2 top-1/2 max-w-none object-cover transition-[transform,opacity] duration-300 ease-out"
         style={boxStyle}
       />
-      {hasEdits(photo.edits) && (
+      {caps.edit && hasEdits(photo.edits) && (
         <span
           className="pointer-events-none absolute bottom-1 right-1 flex items-center justify-center rounded-full bg-black/55 p-1 text-white shadow-sm backdrop-blur-sm"
           title="Edited"

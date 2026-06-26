@@ -10,5 +10,11 @@ export function isPublicPath(pathname: string): boolean {
     return true;
   }
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
+  // Public share links: the no-login gallery page and its token-scoped API.
+  // The proxy is only an optimistic cookie gate; real access control (feature
+  // flag, expiry, password, photo membership) is enforced by the /share page
+  // and the withShare-wrapped /api/share routes.
+  if (pathname.startsWith("/share/")) return true;
+  if (pathname === "/api/share" || pathname.startsWith("/api/share/")) return true;
   return false;
 }

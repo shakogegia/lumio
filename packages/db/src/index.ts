@@ -10,5 +10,7 @@ export * from "./catalogs.js";
 export * from "./user-settings.js";
 export * from "./features.js";
 export * from "./metadata.js";
+export * from "./app-settings.js";
+export * from "./share-links.js";
 export { PhotoSource, Prisma } from "@prisma/client";
-export type { Photo, Album, AlbumPhoto, Folder, TrashedPhoto, Job, WorkerStatus, WorkerLog, Catalog, UserSettings, PrismaClient } from "@prisma/client";
+export type { Photo, Album, AlbumPhoto, Folder, TrashedPhoto, Job, WorkerStatus, WorkerLog, Catalog, UserSettings, ShareLink, ShareLinkPhoto, AppSetting, PrismaClient } from "@prisma/client";

@@ -12,6 +12,7 @@ import { PhotoContextMenu } from "./photo-context-menu";
 import { PhotoThumb } from "./photo-thumb";
 import { SelectionRing } from "./selection-ring";
 import { usePhotoActionsContext } from "@/components/photo-actions/photo-actions-context";
+import { usePhotoCapabilities } from "@/components/photo-actions/photo-capabilities";
 
 /**
  * One grid cell. Selection is always available: a plain left click selects only
@@ -54,6 +55,7 @@ export function PhotoGridTile({
   const { slug } = useCatalog();
   const thumb = <PhotoThumb photo={photo} mode={mode} />;
   const actions = usePhotoActionsContext();
+  const caps = usePhotoCapabilities();
 
   // In card mode a labeled photo tints its mat. The hex is exposed as a CSS
   // variable and the `.label-mat` class (in globals.css) decides how to render it
@@ -98,7 +100,7 @@ export function PhotoGridTile({
         style={labelStyle}
       >
         {thumb}
-        {actions && (
+        {actions && caps.favorite && (
           <FavoriteHeart
             active={photo.isFavorite}
             onToggle={() => void actions.favorite([photo.id], !photo.isFavorite)}

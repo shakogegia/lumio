@@ -13,4 +13,5 @@ export const apiPaths = {
   features: "/api/features",
   /** Current user profile settings. */
   profile: "/api/profile",
+  settingsGeneral: "/api/settings/general",
 } as const;

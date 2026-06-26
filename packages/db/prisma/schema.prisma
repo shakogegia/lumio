@@ -33,6 +33,7 @@ model Catalog {
   featureSettings FeatureSetting[]
   metadataGroups  MetadataGroup[]
   metadataFields  MetadataField[]
+  shareLinks      ShareLink[]
 }
 
 model FeatureSetting {
@@ -110,6 +111,7 @@ model Photo {
   updatedAt      DateTime     @updatedAt
   albums         AlbumPhoto[]
   metadataValues PhotoMetadataValue[]
+  shareLinks     ShareLinkPhoto[]
 
   @@unique([catalogId, path])
   @@index([catalogId])
@@ -328,6 +330,27 @@ model MetadataGroup {
   @@index([catalogId])
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ShareLink {
+  id           String           @id @default(cuid())
+  token        String           @unique
+  catalogId    String
+  catalog      Catalog          @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  title        String?
+  passwordHash String?
+  expiresAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  photos       ShareLinkPhoto[]
+
+  @@index([catalogId])
+}
+
 model MetadataField {
   id         String               @id @default(cuid())
   catalogId  String
@@ -361,4 +384,14 @@ model PhotoMetadataValue {
   @@unique([photoId, fieldId])
   @@index([fieldId, value])
   @@index([fieldId, numValue])
+}
+
+model ShareLinkPhoto {
+  shareLinkId String
+  shareLink   ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  photoId     String
+  photo       Photo     @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([shareLinkId, photoId])
+  @@index([photoId])
 }
