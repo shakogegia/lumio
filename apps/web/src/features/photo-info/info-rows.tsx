@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { resolveStandardFields, StandardFieldKey, type PhotoDTO } from "@lumio/shared";
+import type { PhotoDTO } from "@lumio/shared";
 
 /** The fixed per-photo facts shown in the Info tab. */
 export function InfoRows({ photo }: { photo: PhotoDTO }) {
   return (
     <div className="space-y-1">
       <Row label="Source" value={<span className="capitalize">{photo.source}</span>} />
-      <Row label="Date taken" value={takenAtDisplay(photo)} />
+      <Row label="Date taken" value={formatDate(photo.takenAt)} />
       <Row label="Date imported" value={formatDate(photo.createdAt)} />
       <Row label="File created" value={formatDate(photo.fileCreatedAt)} />
     </div>
@@ -24,14 +24,6 @@ function formatDate(iso: string | null): string {
     day: "numeric",
     timeZone: "UTC",
   });
-}
-
-/** Capture date for display: the `takenAt` column when set, else the EXIF
- *  capture date (the same source the standard-metadata summary shows) — some
- *  imports populate the EXIF blob but leave the `takenAt` column null. */
-function takenAtDisplay(photo: PhotoDTO): string {
-  if (photo.takenAt) return formatDate(photo.takenAt);
-  return resolveStandardFields(photo.exif)[StandardFieldKey.Date] ?? "—";
 }
 
 function Row({ label, value }: { label: string; value: ReactNode }) {
