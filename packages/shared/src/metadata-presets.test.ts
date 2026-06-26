@@ -10,13 +10,15 @@ describe("built-in presets", () => {
   it("NLP preset mirrors NLP's four sections with the right field count", () => {
     const nlp = getPreset("nlp")!;
     expect(nlp.groups.map((g) => g.label)).toEqual([
+      "General",
       "Equipment",
       "Shooting",
       "Digitization",
       "Development",
     ]);
     // 26 fields mirror NLP's documented sections 2–5, plus an intentional "Roll"
-    // (film frames share a roll; matches filmexif:RollID seen in real scans).
+    // (film frames share a roll; matches filmexif:RollID seen in real scans), which
+    // lives in the leading "General" group.
     const total = nlp.groups.reduce((n, g) => n + g.fields.length, 0);
     expect(total).toBe(27);
     expect(nlp.groups[0]!.fields.some((f) => f.key === "roll")).toBe(true);
@@ -26,12 +28,13 @@ describe("built-in presets", () => {
     const keys = nlp.groups.flatMap((g) => g.fields.map((f) => f.key));
     expect(new Set(keys).size).toBe(keys.length);
     // a representative field
-    expect(nlp.groups[0]!.fields.find((f) => f.key === "film-iso")).toMatchObject({
+    const equipment = nlp.groups.find((g) => g.label === "Equipment")!;
+    expect(equipment.fields.find((f) => f.key === "film-iso")).toMatchObject({
       label: "Film ISO",
       type: FieldType.Number,
     });
     // choice fields ship with seeded options
-    const filmFormat = nlp.groups[0]!.fields.find((f) => f.key === "film-format");
+    const filmFormat = equipment.fields.find((f) => f.key === "film-format");
     expect(filmFormat?.options?.length).toBeGreaterThan(0);
   });
 
