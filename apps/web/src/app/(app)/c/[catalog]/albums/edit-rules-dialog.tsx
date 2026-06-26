@@ -54,7 +54,14 @@ export function EditRulesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-2xl"
+        onInteractOutside={(e) => {
+          // While a Select/Popover is open, an outside-click is dismissing IT,
+          // not the dialog — don't close the dialog.
+          if (document.querySelector("[data-radix-popper-content-wrapper]")) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Edit smart album rules</DialogTitle>
         </DialogHeader>

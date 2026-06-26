@@ -52,6 +52,7 @@ export function NewAlbumDialog({
   });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prevOpen, setPrevOpen] = useState(isOpen);
 
   const title = smart ? "New smart album" : "New album";
 
@@ -59,6 +60,13 @@ export function NewAlbumDialog({
     setName("");
     setSmartRules({ match: MatchType.all, rules: [] });
     setError(null);
+  }
+
+  // Reset to a fresh form when the dialog OPENS — not on close — so the content
+  // doesn't blank out mid close-animation.
+  if (isOpen !== prevOpen) {
+    setPrevOpen(isOpen);
+    if (isOpen) reset();
   }
 
   const disabled =
@@ -103,7 +111,6 @@ export function NewAlbumDialog({
   function handleOpenChange(value: boolean) {
     if (controlled) onOpenChange?.(value);
     else setInternalOpen(value);
-    if (!value) reset();
   }
 
   return (
@@ -113,7 +120,14 @@ export function NewAlbumDialog({
           <Button size="sm">{title}</Button>
         </DialogTrigger>
       )}
-      <DialogContent className={smart ? "sm:max-w-lg" : "sm:max-w-md"}>
+      <DialogContent
+        className={smart ? "sm:max-w-2xl" : "sm:max-w-md"}
+        onInteractOutside={(e) => {
+          // While a Select/Popover is open, an outside-click is dismissing IT,
+          // not the dialog — don't close the dialog.
+          if (document.querySelector("[data-radix-popper-content-wrapper]")) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

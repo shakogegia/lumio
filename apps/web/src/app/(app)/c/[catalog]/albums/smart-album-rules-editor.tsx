@@ -8,19 +8,22 @@ import {
   buildSearchRegistry,
   type FilterRule,
   type MetadataFieldDef,
+  type MetadataSchema,
 } from "@lumio/shared";
-import { X, Plus, ChevronDown } from "lucide-react";
+import { Trash2, Plus, ChevronDown } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
@@ -157,9 +160,6 @@ export function rulesComplete(rules: FilterRule[]): boolean {
 
 // ─── Value widgets (all flex to fill the row) ────────────────────────────────
 
-const INPUT_CLS =
-  "h-8 w-full min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring";
-
 function BetweenWidget({
   field,
   value,
@@ -176,18 +176,18 @@ function BetweenWidget({
   const inputType = field.type === FieldType.Date ? "date" : "number";
   return (
     <div className="flex items-center gap-1">
-      <input
+      <Input
         type={inputType}
         value={tuple[0]}
         onChange={(e) => onChange([e.target.value, tuple[1]])}
-        className={INPUT_CLS}
+        className="h-8 min-w-0"
       />
       <span className="shrink-0 text-xs text-muted-foreground">–</span>
-      <input
+      <Input
         type={inputType}
         value={tuple[1]}
         onChange={(e) => onChange([tuple[0], e.target.value])}
-        className={INPUT_CLS}
+        className="h-8 min-w-0"
       />
     </div>
   );
@@ -216,13 +216,13 @@ function ChoiceMultiWidget({
           type="button"
           className="flex h-8 w-full min-w-0 items-center justify-between gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:border-ring"
         >
-          <span className={cn("truncate", selected.length === 0 && "text-muted-foreground")}>
+          <span className={cn("min-w-0 truncate", selected.length === 0 && "text-muted-foreground")}>
             {selected.length ? selected.join(", ") : "Select…"}
           </span>
           <ChevronDown className="size-4 shrink-0 opacity-60" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="max-h-60 w-48 overflow-y-auto p-1">
+      <PopoverContent align="start" className="max-h-60 w-56 overflow-y-auto p-1">
         {options.length === 0 ? (
           <p className="px-2 py-1 text-xs text-muted-foreground">No options</p>
         ) : (
@@ -264,21 +264,20 @@ function ValueWidget({
     );
   }
 
-  const strValue = value === undefined || value === null ? "" : String(value);
-
   if (field.type === FieldType.Choice) {
     return <ChoiceMultiWidget options={field.options} value={value} onChange={onChange} />;
   }
 
+  const strValue = value === undefined || value === null ? "" : String(value);
   const inputType =
     field.type === FieldType.Number ? "number" : field.type === FieldType.Date ? "date" : "text";
   return (
-    <input
+    <Input
       type={inputType}
       value={strValue}
       placeholder="value"
       onChange={(e) => onChange(coerceValue(field, op, e.target.value))}
-      className={INPUT_CLS}
+      className="h-8 min-w-0"
     />
   );
 }
@@ -288,16 +287,17 @@ function ValueWidget({
 function RuleRow({
   rule,
   index,
-  allFields,
+  groups,
   onChange,
   onRemove,
 }: {
   rule: FilterRule;
   index: number;
-  allFields: MetadataFieldDef[];
+  groups: MetadataSchema;
   onChange: (next: FilterRule) => void;
   onRemove: () => void;
 }) {
+  const allFields = groups.flatMap((g) => g.fields);
   const field = allFields.find((f) => f.key === rule.field) ?? allFields[0];
   if (!field) return null;
 
@@ -320,25 +320,28 @@ function RuleRow({
 
   return (
     <div className="flex items-center gap-2">
-      {/* Field */}
+      {/* Field — grouped by metadata group */}
       <Select value={field.key} onValueChange={handleFieldChange}>
-        <SelectTrigger size="sm" className="w-32 shrink-0">
+        <SelectTrigger size="sm" className="w-36 shrink-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectGroup>
-            {allFields.map((f) => (
-              <SelectItem key={f.key} value={f.key}>
-                {f.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
+          {groups.map((g) => (
+            <SelectGroup key={g.id}>
+              <SelectLabel>{g.label}</SelectLabel>
+              {g.fields.map((f) => (
+                <SelectItem key={f.key} value={f.key}>
+                  {f.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
         </SelectContent>
       </Select>
 
       {/* Operator */}
       <Select value={currentOp} onValueChange={(v) => handleOpChange(v as RuleOp)}>
-        <SelectTrigger size="sm" className="w-24 shrink-0">
+        <SelectTrigger size="sm" className="w-28 shrink-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -369,9 +372,9 @@ function RuleRow({
         size="icon-sm"
         onClick={onRemove}
         aria-label={`Remove rule ${index + 1}`}
-        className="shrink-0 text-muted-foreground hover:text-foreground"
+        className="shrink-0 text-muted-foreground hover:text-destructive"
       >
-        <X className="size-4" aria-hidden />
+        <Trash2 className="size-4" aria-hidden />
       </Button>
     </div>
   );
@@ -390,9 +393,11 @@ export function SmartAlbumRulesEditor({
   const schema = useCatalogMetadataSchema(slug);
 
   const registry = buildSearchRegistry(schema ?? []);
-  const allFields: MetadataFieldDef[] = (schema ?? []).flatMap((g) =>
-    g.fields.filter((f) => f.enabled && registry.has(f.key)),
-  );
+  // Enabled fields kept under their groups (for a grouped field picker).
+  const groups: MetadataSchema = (schema ?? [])
+    .map((g) => ({ ...g, fields: g.fields.filter((f) => f.enabled && registry.has(f.key)) }))
+    .filter((g) => g.fields.length > 0);
+  const allFields = groups.flatMap((g) => g.fields);
 
   if (schema === undefined) return null; // loading
 
@@ -441,7 +446,7 @@ export function SmartAlbumRulesEditor({
               key={i}
               rule={rule}
               index={i}
-              allFields={allFields}
+              groups={groups}
               onChange={(next) => setRules(value.rules.map((r, idx) => (idx === i ? next : r)))}
               onRemove={() => setRules(value.rules.filter((_, idx) => idx !== i))}
             />
