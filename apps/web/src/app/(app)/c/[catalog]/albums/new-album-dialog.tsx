@@ -19,6 +19,7 @@ import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
 import {
   SmartAlbumRulesEditor,
+  rulesComplete,
   type SmartRulesValue,
 } from "./smart-album-rules-editor";
 
@@ -61,7 +62,7 @@ export function NewAlbumDialog({
   }
 
   const disabled =
-    pending || name.trim() === "" || (smart && smartRules.rules.length === 0);
+    pending || name.trim() === "" || (smart && !rulesComplete(smartRules.rules));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { patchJson } from "@/lib/http";
 import { catalogApiUrl } from "@/lib/catalog-api";
-import { SmartAlbumRulesEditor, type SmartRulesValue } from "./smart-album-rules-editor";
+import { SmartAlbumRulesEditor, rulesComplete, type SmartRulesValue } from "./smart-album-rules-editor";
 
 export function EditRulesDialog({
   albumId,
@@ -38,7 +38,7 @@ export function EditRulesDialog({
   const [busy, setBusy] = useState(false);
 
   async function save() {
-    if (value.rules.length === 0 || busy) return;
+    if (!rulesComplete(value.rules) || busy) return;
     setBusy(true);
     try {
       await patchJson(catalogApiUrl(slug, `/albums/${albumId}`), { rules: value });
@@ -65,7 +65,7 @@ export function EditRulesDialog({
           </Button>
           <Button
             onClick={() => void save()}
-            disabled={value.rules.length === 0 || busy}
+            disabled={!rulesComplete(value.rules) || busy}
           >
             Save
           </Button>
