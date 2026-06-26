@@ -2,8 +2,12 @@
 "use client";
 
 import { useState } from "react";
+import { format, parse } from "date-fns";
 import { FieldType } from "@lumio/shared";
 import { catalogApiUrl } from "@/lib/catalog-api";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -56,6 +60,11 @@ export function MetadataValueInput({
       </Select>
     );
   }
+  if (type === FieldType.Date) {
+    return (
+      <DateField value={value} placeholder={placeholder} onChange={onChange} onCommit={onCommit} />
+    );
+  }
   if (type === FieldType.Textarea) {
     return (
       <textarea
@@ -74,6 +83,66 @@ export function MetadataValueInput({
       value={value} placeholder={placeholder} onChange={onChange} onCommit={onCommit}
     />
   );
+}
+
+/** Date fields edit via a shadcn calendar popover. The value is stored as
+ *  `yyyy-MM-dd` (sortable, chronological as a string); the trigger shows it as
+ *  "MMM d, yyyy". An unparseable legacy value is shown verbatim. */
+function DateField({
+  value,
+  placeholder,
+  onChange,
+  onCommit,
+}: Pick<MetadataValueInputProps, "value" | "placeholder" | "onChange" | "onCommit">) {
+  const [open, setOpen] = useState(false);
+  const date = toDate(value);
+
+  function set(next: Date | undefined) {
+    const v = next ? format(next, "yyyy-MM-dd") : "";
+    onChange(v);
+    void onCommit?.(v);
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="h-5 w-40 cursor-pointer text-right text-sm outline-none">
+          {date ? (
+            format(date, "MMM d, yyyy")
+          ) : value ? (
+            value
+          ) : (
+            <span className="text-muted-foreground/40">{placeholder}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-auto p-0">
+        <Calendar mode="single" selected={date} defaultMonth={date} onSelect={set} />
+        <div className="border-t p-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            disabled={!value}
+            onClick={() => set(undefined)}
+          >
+            Clear
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Parse a stored value to a Date: prefer `yyyy-MM-dd` (local), else a loose
+ *  `new Date` fallback; `undefined` when neither parses. */
+function toDate(v: string): Date | undefined {
+  if (!v) return undefined;
+  const iso = parse(v, "yyyy-MM-dd", new Date());
+  if (!Number.isNaN(iso.getTime())) return iso;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
 function Autocomplete({
