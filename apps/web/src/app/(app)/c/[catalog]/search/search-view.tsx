@@ -34,6 +34,9 @@ import { FilterPanel } from "./filter-panel";
 import { countLabel } from "@/lib/count-label";
 import { catalogApiUrl, catalogPath } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
+import { effectiveGridSort } from "@/lib/grid-sort";
+import { useDateSortFields } from "@/lib/hooks/use-date-sort-fields";
+import { useCalendarField, effectiveCalendarField } from "@/lib/hooks/use-calendar-field";
 
 const EMPTY: SearchFilters = { albums: [], q: "", rules: [], match: MatchType.all };
 
@@ -52,7 +55,11 @@ export function SearchView() {
   const [recent, setRecent] = useState<SearchFilters[]>(loadRecentSearches);
   const inputRef = useRef<SearchInputHandle>(null);
   const { columns, setColumns } = useGridColumns();
-  const { sort, setSort } = useGridSort();
+  const dateFields = useDateSortFields();
+  const { sort: storedSort, setSort } = useGridSort();
+  const sort = effectiveGridSort(storedSort, dateFields);
+  const { field: storedField, setField } = useCalendarField();
+  const calField = effectiveCalendarField(storedField, dateFields);
   const { mode, setMode } = useGridView();
   const [month, setMonth] = useState<string | null>(null);
   const sel = useGridSelection();
@@ -202,22 +209,28 @@ export function SearchView() {
                       <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <GridViewMenu mode={mode} onModeChange={setMode} />
                       <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                      <GridSortMenu sort={sort} onSortChange={setSort} />
+                      <GridSortMenu sort={sort} onSortChange={setSort} dateFields={dateFields ?? []} />
                       <GridCalendarMenu
                         facetsEndpoint={catalogApiUrl(slug, `/search/calendar?${paramsFor(filters).toString()}`)}
                         value={month}
                         onChange={setMonth}
+                        field={calField}
+                        onFieldChange={setField}
+                        dateFields={dateFields ?? []}
                       />
                     </>
                   )}
                 </div>
               </div>
               <PhotoCollectionProvider
-                key={`${serialized}:${sort}:${month ?? ""}`}
+                key={`${serialized}:${sort}:${month ?? ""}${month ? `:${calField}` : ""}`}
                 endpoint={catalogApiUrl(slug, "/search")}
                 params={(() => {
                   const p = paramsFor(filters, sort);
-                  if (month) p.set("month", month);
+                  if (month) {
+                    p.set("month", month);
+                    p.set("dateField", calField);
+                  }
                   return p;
                 })()}
                 urlForId={(id) => catalogPath(slug, `/photo/${id}?${scopeQuery(filters, sort)}`)}

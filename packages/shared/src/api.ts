@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type CalendarField, isCalendarField } from "./calendar.js";
 import { colorLabelSchema } from "./color-labels.js";
 import { type FilterSet, filterSetSchema } from "./filters.js";
 import { COLOR_FIELDS } from "./photo-color.js";
@@ -14,20 +15,50 @@ export const PHOTO_SORTS = [
   "file-created-asc",
 ] as const;
 
-export type PhotoSort = (typeof PHOTO_SORTS)[number];
+export type PhotoSort =
+  | (typeof PHOTO_SORTS)[number]
+  | `meta:${string}:asc`
+  | `meta:${string}:desc`;
 
 /** The default ordering: newest imported-date first. */
 export const DEFAULT_PHOTO_SORT: PhotoSort = "imported-desc";
 
-/** Zod enum for a sort value (strict — used in API query schemas). */
-export const photoSortSchema = z.enum(PHOTO_SORTS);
+/** `meta:<fieldId>:<dir>` — sort by a custom metadata field's value. fieldId is a
+ *  cuid (lowercase alphanumeric); dir is asc|desc. Single regex for test+parse. */
+const META_SORT_RE = /^meta:([a-z0-9]+):(asc|desc)$/;
+
+/** Build a metadata-field sort token. */
+export function metadataSort(fieldId: string, dir: "asc" | "desc"): PhotoSort {
+  return `meta:${fieldId}:${dir}`;
+}
+
+/** Parse a metadata-field sort token, or null if it is not one. */
+export function parseMetadataSort(
+  sort: string | undefined,
+): { fieldId: string; dir: "asc" | "desc" } | null {
+  const m = sort ? META_SORT_RE.exec(sort) : null;
+  return m ? { fieldId: m[1]!, dir: m[2] as "asc" | "desc" } : null;
+}
+
+/** A valid sort token: a fixed sort or a well-formed metadata sort. Field
+ *  existence is validated server-side (see resolveSort). */
+export function isPhotoSort(value: unknown): value is PhotoSort {
+  return (
+    (typeof value === "string" && META_SORT_RE.test(value)) ||
+    (PHOTO_SORTS as readonly unknown[]).includes(value)
+  );
+}
+
+/** Zod schema for a sort value (used in API query schemas). Accepts fixed and
+ *  metadata sorts; rejects malformed input. */
+export const photoSortSchema = z.custom<PhotoSort>((v) => isPhotoSort(v), {
+  message: "invalid sort",
+});
 
 /** Coerce arbitrary input to a known sort, falling back to the default.
  *  Lenient (never throws) — for localStorage and detail-route query params. */
 export function coercePhotoSort(value: unknown): PhotoSort {
-  return (PHOTO_SORTS as readonly unknown[]).includes(value)
-    ? (value as PhotoSort)
-    : DEFAULT_PHOTO_SORT;
+  return isPhotoSort(value) ? value : DEFAULT_PHOTO_SORT;
 }
 
 /** A `YYYY-MM` month filter (e.g. "2026-06"). Strict zero-padded month 01–12. */
@@ -35,12 +66,18 @@ export const monthParamSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM form");
 
+/** Which date dimension the calendar month-filter uses. */
+export const calendarFieldSchema = z.custom<CalendarField>((v) => isCalendarField(v), {
+  message: "invalid date field",
+});
+
 /** Query params for GET /api/photos. */
 export const photosQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
   month: monthParamSchema.optional(),
+  dateField: calendarFieldSchema.optional(),
   favorite: z
     .enum(["true", "false"])
     .transform((v) => v === "true")
@@ -147,6 +184,7 @@ export const searchQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
   month: monthParamSchema.optional(),
+  dateField: calendarFieldSchema.optional(),
 });
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;

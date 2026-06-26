@@ -1,12 +1,13 @@
 import { type PrismaClient, buildSearchWhere, getCatalogSchema, prisma } from "@lumio/db";
-import { type PhotosPage, type SearchQuery, buildSearchRegistry, monthRange } from "@lumio/shared";
+import { DEFAULT_CALENDAR_FIELD, type PhotosPage, type SearchQuery, buildSearchRegistry } from "@lumio/shared";
 import { albumsSearchWhere } from "@/lib/server/albums-service";
+import { calendarWhere } from "@/lib/server/calendar-where";
 import { listPhotosForWhere } from "@/lib/server/photos-service";
 import { LIVE_PHOTO } from "@/lib/server/photo-filters";
 
 // Needs `album` access too: tagged albums are resolved to a smart-aware predicate
 // (membership OR smart-album rules) before compiling the search where.
-type Db = Pick<PrismaClient, "photo" | "album">;
+type Db = Pick<PrismaClient, "photo" | "album" | "photoMetadataValue" | "metadataField">;
 
 /**
  * Inner (catalog-free) search where for `listPhotosForWhere` delegation. Returns
@@ -22,7 +23,7 @@ async function searchInnerWhere(catalogId: string, params: SearchQuery, db: Db) 
   const albumWhere = await albumsSearchWhere(catalogId, params.album, { db, now, registry });
   const base = buildSearchWhere(params, now, registry, albumWhere);
   if (!params.month) return base;
-  return { AND: [base, { sortDate: monthRange(params.month) }] };
+  return { AND: [base, calendarWhere(params.dateField ?? DEFAULT_CALENDAR_FIELD, params.month)] };
 }
 
 /** Catalog-scoped search where + the optional month range, AND-combined.
@@ -35,7 +36,7 @@ async function searchWhere(catalogId: string, params: SearchQuery, db: Db) {
   // either {} or { AND: [...] }, so catalogId just adds a key).
   const withCatalog = { catalogId, ...LIVE_PHOTO, ...buildSearchWhere(params, now, registry, albumWhere) };
   return params.month
-    ? { AND: [withCatalog, { sortDate: monthRange(params.month) }] }
+    ? { AND: [withCatalog, calendarWhere(params.dateField ?? DEFAULT_CALENDAR_FIELD, params.month)] }
     : withCatalog;
 }
 

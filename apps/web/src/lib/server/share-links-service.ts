@@ -16,7 +16,7 @@ import { PHOTO_ORDER } from "@/lib/photo-order";
 import { generateShareToken, hashPassword as hashPasswordImpl } from "@/lib/server/share-crypto";
 import { isExpired } from "@/lib/server/share-access";
 
-type Db = Pick<PrismaClient, "shareLink" | "shareLinkPhoto" | "photo">;
+type Db = Pick<PrismaClient, "shareLink" | "shareLinkPhoto" | "photo" | "photoMetadataValue" | "metadataField">;
 
 export class ShareLinkNotFoundError extends Error {
   constructor(message = "Share link not found") {

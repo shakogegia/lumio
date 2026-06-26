@@ -103,6 +103,10 @@ describe("photosQuerySchema sort", () => {
     expect(photosQuerySchema.parse({ sort: "taken-desc" }).sort).toBe("taken-desc");
   });
 
+  it("accepts a metadata sort", () => {
+    expect(photosQuerySchema.parse({ sort: "meta:clx1abc:asc" }).sort).toBe("meta:clx1abc:asc");
+  });
+
   it("rejects an unknown sort", () => {
     expect(() => photosQuerySchema.parse({ sort: "bogus" })).toThrow();
   });
@@ -112,6 +116,10 @@ describe("searchQuerySchema sort", () => {
   it("accepts a known sort and defaults to undefined", () => {
     expect(searchQuerySchema.parse({}).sort).toBeUndefined();
     expect(searchQuerySchema.parse({ sort: "imported-desc" }).sort).toBe("imported-desc");
+  });
+
+  it("accepts a metadata sort", () => {
+    expect(searchQuerySchema.parse({ sort: "meta:clx1abc:desc" }).sort).toBe("meta:clx1abc:desc");
   });
 });
 

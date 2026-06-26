@@ -11,12 +11,12 @@ export function LibraryView() {
     <PhotoLibraryView
       title="Library"
       calendar={{ facetsEndpoint: catalogApiUrl(slug, "/photos/calendar") }}
-      collection={({ sort, month }) => ({
+      collection={({ sort, month, field }) => ({
         endpoint: catalogApiUrl(slug, "/photos"),
-        params: new URLSearchParams(month ? { sort, month } : { sort }),
+        params: new URLSearchParams(month ? { sort, month, dateField: field } : { sort }),
         urlForId: (id) => photoHref(slug, id, undefined, sort),
         baseUrl: catalogPath(slug, "/photos"),
-        key: `${sort}:${month ?? ""}`,
+        key: `${sort}:${month ?? ""}${month ? `:${field}` : ""}`,
       })}
     />
   );

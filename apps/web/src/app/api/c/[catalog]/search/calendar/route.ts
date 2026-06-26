@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildSearchWhere, getCatalogSchema } from "@lumio/db";
-import { buildSearchRegistry, searchQuerySchema } from "@lumio/shared";
+import { buildSearchRegistry, coerceCalendarField, searchQuerySchema } from "@lumio/shared";
 import { albumsSearchWhere } from "@/lib/server/albums-service";
 import { buildCalendarFacets } from "@/lib/server/calendar-service";
 import { errorJson } from "@/lib/server/route-helpers";
@@ -24,7 +24,8 @@ export const GET = withCatalog(async (request, _context, { catalog }) => {
   // Resolve tagged albums to a smart-aware predicate so the calendar dots reflect
   // smart albums too (not just regular-album membership).
   const albumWhere = await albumsSearchWhere(catalog.id, parsed.data.album, { now, registry });
+  const dateField = coerceCalendarField(searchParams.get("dateField") ?? undefined);
   // buildSearchWhere reads only album + q, so any `month` param is ignored here.
-  const facets = await buildCalendarFacets(catalog.id, buildSearchWhere(parsed.data, now, registry, albumWhere));
+  const facets = await buildCalendarFacets(catalog.id, buildSearchWhere(parsed.data, now, registry, albumWhere), dateField);
   return NextResponse.json(facets);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { PhotoSort } from "@lumio/shared";
+import type { PhotoSort, CalendarField } from "@lumio/shared";
 import { cn } from "@/lib/utils";
 import { useGridSelection } from "@/lib/hooks/use-grid-selection";
 import { useGridView } from "@/lib/hooks/use-grid-view";
@@ -13,6 +13,9 @@ import { GridSortMenu } from "@/components/grid-sort-menu";
 import { GridCalendarMenu } from "@/components/grid-calendar-menu";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, CollectionTotalReporter, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
+import { effectiveGridSort } from "@/lib/grid-sort";
+import { useDateSortFields } from "@/lib/hooks/use-date-sort-fields";
+import { useCalendarField, effectiveCalendarField } from "@/lib/hooks/use-calendar-field";
 import { countLabel } from "@/lib/count-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HeaderBar } from "@/components/header-bar";
@@ -34,8 +37,8 @@ export interface PhotoCollectionSource {
 }
 
 export interface PhotoLibraryViewProps {
-  /** Build the collection from the grid's current sort + month. */
-  collection: (args: { sort: PhotoSort; month: string | null }) => PhotoCollectionSource;
+  /** Build the collection from the grid's current sort + month + calendar field. */
+  collection: (args: { sort: PhotoSort; month: string | null; field: CalendarField }) => PhotoCollectionSource;
   title: React.ReactNode;
   noun?: [singular: string, plural: string];
   empty?: React.ReactNode;
@@ -77,7 +80,11 @@ export function PhotoLibraryView({
   const sel = useGridSelection();
   const { mode, setMode } = useGridView();
   const { columns, setColumns } = useGridColumns();
-  const { sort, setSort } = useGridSort();
+  const dateFields = useDateSortFields();
+  const { sort: storedSort, setSort } = useGridSort();
+  const sort = effectiveGridSort(storedSort, dateFields);
+  const { field: storedField, setField } = useCalendarField();
+  const calField = effectiveCalendarField(storedField, dateFields);
   const [month, setMonth] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
   // Whether any selected photo is edited — reported up from inside the provider
@@ -87,7 +94,7 @@ export function PhotoLibraryView({
   const gridRef = useRef<PhotoGridHandle>(null);
   const actions = usePhotoActions({ gridRef, ...actionOptions });
 
-  const src = collection({ sort, month });
+  const src = collection({ sort, month, field: calField });
   const totalLabel = total !== null ? countLabel(total, noun[0], noun[1]) : undefined;
   const countSubtitle = totalLabel ?? <Skeleton className="inline-block h-3 w-16 align-middle" />;
 
@@ -130,12 +137,15 @@ export function PhotoLibraryView({
                 {headerActions}
                 <GridViewMenu mode={mode} onModeChange={setMode} />
                 <GridSizeMenu columns={columns} onColumnsChange={setColumns} />
-                <GridSortMenu sort={sort} onSortChange={setSort} />
+                <GridSortMenu sort={sort} onSortChange={setSort} dateFields={dateFields ?? []} />
                 {calendar && (
                   <GridCalendarMenu
                     facetsEndpoint={calendar.facetsEndpoint}
                     value={month}
                     onChange={setMonth}
+                    field={calField}
+                    onFieldChange={setField}
+                    dateFields={dateFields ?? []}
                   />
                 )}
               </>

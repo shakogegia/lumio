@@ -147,7 +147,10 @@ function numValueOf(value: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Set (or clear, when empty) a photo's value for one field. NULL-safe upsert. */
+/** Set (or clear, when empty) a photo's value for one field. NULL-safe upsert.
+ *  Date-type values are written as ISO YYYY-MM-DD by the date picker
+ *  (metadata-value-input's DateField); the grid's metadata-Date sort relies on
+ *  that (ISO text sorts chronologically). No non-picker path writes date fields. */
 export async function upsertPhotoMetadataValue(
   photoId: string,
   fieldId: string,
@@ -250,7 +253,9 @@ export async function aggregatePhotoMetadataValues(
   return out;
 }
 
-/** Set (or clear, when empty) one field's value across many photos at once. */
+/** Set (or clear, when empty) one field's value across many photos at once.
+ *  Like upsertPhotoMetadataValue, date values arrive as ISO YYYY-MM-DD from the
+ *  date picker — the invariant the metadata-Date grid sort depends on. */
 export async function bulkUpsertPhotoMetadataField(
   photoIds: string[],
   fieldId: string,
