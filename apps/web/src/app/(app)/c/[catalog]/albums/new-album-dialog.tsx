@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { invalidateLibraryTree } from "@/components/library-tree/library-tree";
 import { catalogApiUrl } from "@/lib/catalog-api";
 import { useCatalog } from "@/components/providers/catalog-context";
@@ -23,12 +22,20 @@ import {
   type SmartRulesValue,
 } from "./smart-album-rules-editor";
 
+/**
+ * Create an album. `smart` makes it a dedicated smart-album dialog: the metadata
+ * rule builder is shown directly (no toggle, no card wrapper) and the album is
+ * created with its rules. "New album" and "New smart album" are two menu items
+ * sharing this one dialog + the reusable SmartAlbumRulesEditor.
+ */
 export function NewAlbumDialog({
   folderId = null,
+  smart = false,
   open,
   onOpenChange,
 }: {
   folderId?: string | null;
+  smart?: boolean;
   open?: boolean;
   onOpenChange?: (v: boolean) => void;
 } = {}) {
@@ -38,25 +45,23 @@ export function NewAlbumDialog({
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlled ? open : internalOpen;
   const [name, setName] = useState("");
-  const [isSmart, setIsSmart] = useState(false);
-  const [smart, setSmart] = useState<SmartRulesValue>({
+  const [smartRules, setSmartRules] = useState<SmartRulesValue>({
     match: MatchType.all,
     rules: [],
   });
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const title = smart ? "New smart album" : "New album";
+
   function reset() {
     setName("");
-    setIsSmart(false);
-    setSmart({ match: MatchType.all, rules: [] });
+    setSmartRules({ match: MatchType.all, rules: [] });
     setError(null);
   }
 
   const disabled =
-    pending ||
-    name.trim() === "" ||
-    (isSmart && smart.rules.length === 0);
+    pending || name.trim() === "" || (smart && smartRules.rules.length === 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,13 +69,8 @@ export function NewAlbumDialog({
     setPending(true);
     setError(null);
     try {
-      const body = isSmart
-        ? {
-            name: name.trim(),
-            isSmart: true,
-            folderId,
-            rules: smart,
-          }
+      const body = smart
+        ? { name: name.trim(), isSmart: true, folderId, rules: smartRules }
         : { name: name.trim(), isSmart: false, folderId };
 
       const res = await fetch(catalogApiUrl(slug, "/albums"), {
@@ -109,12 +109,12 @@ export function NewAlbumDialog({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {!controlled && (
         <DialogTrigger asChild>
-          <Button size="sm">New album</Button>
+          <Button size="sm">{title}</Button>
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New album</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div className="space-y-1.5">
@@ -128,22 +128,8 @@ export function NewAlbumDialog({
             />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Switch
-              id="is-smart"
-              checked={isSmart}
-              onCheckedChange={(val) => {
-                setIsSmart(val);
-                if (!val) setSmart({ match: MatchType.all, rules: [] });
-              }}
-            />
-            <Label htmlFor="is-smart">Smart album</Label>
-          </div>
-
-          {isSmart && (
-            <div className="rounded-lg border border-border p-3">
-              <SmartAlbumRulesEditor value={smart} onChange={setSmart} />
-            </div>
+          {smart && (
+            <SmartAlbumRulesEditor value={smartRules} onChange={setSmartRules} />
           )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
