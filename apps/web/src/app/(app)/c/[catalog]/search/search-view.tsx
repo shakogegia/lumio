@@ -23,6 +23,8 @@ import { PhotoActionsProvider } from "@/components/photo-actions/photo-actions-c
 import { cn } from "@/lib/utils";
 import { PhotoGrid, type PhotoGridHandle, PhotoCollectionProvider, SelectionEditReporter, GridShortcuts } from "@/features/photo-grid";
 import { Lightbox } from "@/features/lightbox";
+import { SidePanel } from "@/components/ui/side-panel";
+import { SelectionInfoPanel, InspectorToggle } from "@/features/photo-info";
 import { SearchInput, type SearchInputHandle } from "./search-input";
 import { SearchEmpty } from "./search-empty";
 import { RecentSearches, loadRecentSearches, recordRecentSearch } from "./recent-searches";
@@ -58,6 +60,7 @@ export function SearchView() {
   // Any selected photo edited → Download offers edited vs original. Reported up
   // from inside the provider, since this toolbar renders outside it.
   const [anySelectedEdited, setAnySelectedEdited] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const empty = isEmptyFilters(filters);
   const [searchCount, setSearchCount] = useSearchCount(filters, active && !empty, month);
@@ -113,6 +116,7 @@ export function SearchView() {
           // the box in flow, so its sticky header band never sweeps over the grid.
           "transition-[padding] duration-500 ease-out",
           active ? "pt-0" : "pt-[32vh]",
+          panelOpen && "pr-80",
         )}
       >
         {/* Sticky search header. The full-width band (-mx-4/px-4 bg-background) only
@@ -171,6 +175,7 @@ export function SearchView() {
                 <div className="flex items-center gap-2">
                   {sel.count > 0 ? (
                     <>
+                      <InspectorToggle open={panelOpen} onToggle={() => setPanelOpen((o) => !o)} />
                       <SelectionActions
                         actions={actions}
                         selectedIds={sel.selected}
@@ -230,6 +235,14 @@ export function SearchView() {
                   <Lightbox />
                   <GridShortcuts selectedIds={sel.selected} />
                 </PhotoActionsProvider>
+                {panelOpen && (
+                  <SidePanel
+                    title={sel.count > 1 ? `${sel.count} selected` : "Details"}
+                    onClose={() => setPanelOpen(false)}
+                  >
+                    <SelectionInfoPanel selectedIds={sel.selected} />
+                  </SidePanel>
+                )}
               </PhotoCollectionProvider>
             </div>
           ))}
