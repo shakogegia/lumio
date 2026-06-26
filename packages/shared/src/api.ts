@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type CalendarField, isCalendarField } from "./calendar.js";
 import { colorLabelSchema } from "./color-labels.js";
 import { type FilterSet, filterSetSchema } from "./filters.js";
 import { COLOR_FIELDS } from "./photo-color.js";
@@ -65,12 +66,18 @@ export const monthParamSchema = z
   .string()
   .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "month must be in YYYY-MM form");
 
+/** Which date dimension the calendar month-filter uses. */
+export const calendarFieldSchema = z.custom<CalendarField>((v) => isCalendarField(v), {
+  message: "invalid date field",
+});
+
 /** Query params for GET /api/photos. */
 export const photosQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
   month: monthParamSchema.optional(),
+  dateField: calendarFieldSchema.optional(),
   favorite: z
     .enum(["true", "false"])
     .transform((v) => v === "true")
@@ -177,6 +184,7 @@ export const searchQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
   sort: photoSortSchema.optional(),
   month: monthParamSchema.optional(),
+  dateField: calendarFieldSchema.optional(),
 });
 
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
