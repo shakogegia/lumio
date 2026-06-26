@@ -20,7 +20,7 @@ export function MetadataFieldsList({
     <div className="space-y-3">
       {groups.map((group) => (
         <div key={group.id} className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {group.label}
           </p>
           {group.fields.map((field) => (
