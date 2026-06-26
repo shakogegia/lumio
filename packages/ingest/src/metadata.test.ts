@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { sanitizeMetadata, extractMetadata, flattenMetadata, parseExifDate } from "./metadata.js";
+import { sanitizeMetadata, extractMetadata, flattenMetadata, parseExifDate, captureDate } from "./metadata.js";
 
 describe("parseExifDate", () => {
   it("accepts valid Date instances", () => {
@@ -21,6 +21,26 @@ describe("parseExifDate", () => {
     expect(parseExifDate(null)).toBeNull();
     expect(parseExifDate(123)).toBeNull();
     expect(parseExifDate(new Date("nope"))).toBeNull();
+  });
+});
+
+describe("captureDate", () => {
+  it("prefers DateTimeOriginal, then CreateDate", () => {
+    expect(
+      captureDate({ DateTimeOriginal: "2024-07-30T10:00:00", CreateDate: "2020-01-01T00:00:00" })?.toISOString(),
+    ).toBe("2024-07-30T10:00:00.000Z");
+    expect(captureDate({ CreateDate: "2020-01-01T00:00:00" })?.toISOString()).toBe("2020-01-01T00:00:00.000Z");
+  });
+  it("falls back to xmp:CreateDate (film scans) when standard tags are absent", () => {
+    expect(
+      captureDate({ "xmp:CreateDate": "2023-11-12T21:36:53", "xmp:ModifyDate": "2026-01-01T00:00:00" })?.toISOString(),
+    ).toBe("2023-11-12T21:36:53.000Z");
+  });
+  it("ignores modification / metadata dates", () => {
+    expect(captureDate({ "xmp:ModifyDate": "2026-01-01T00:00:00", ModifyDate: "2026-02-02T00:00:00" })).toBeNull();
+  });
+  it("returns null when no capture date is present", () => {
+    expect(captureDate({ Make: "NIKON" })).toBeNull();
   });
 });
 
