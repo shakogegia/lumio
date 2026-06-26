@@ -182,6 +182,9 @@ async function readWindow(
  * Prev/next + film-strip window for a metadata-sorted scope. Reuses the same
  * two-segment reader as the grid: find the current photo's global index, then
  * read the `window`-sized block around it and split into prev/current/next.
+ * Degrades to `[current]` only when the window is empty; a mid-session delete of
+ * `current` (block non-empty but `current` absent) is not specially recovered,
+ * matching the standard-sort neighbor path.
  */
 export async function metadataNeighbors(
   full: Prisma.PhotoWhereInput,

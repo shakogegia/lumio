@@ -160,7 +160,8 @@ describe("metadataSortIndexOf", () => {
         count: async () => 6, // seg1count
       },
       photo: {
-        count: async (args: { where: { id?: unknown } }) => {
+        count: async (args: { where: { id?: unknown; metadataValues?: unknown } }) => {
+          expect(args.where.metadataValues).toEqual({ none: { fieldId: "d1" } });
           expect(args.where.id).toEqual({ lt: "p9" });
           return 2;
         },
@@ -168,6 +169,23 @@ describe("metadataSortIndexOf", () => {
     };
     const i = await metadataSortIndexOf({ id: "p9", path: "p9.jpg" }, { catalogId: "c" }, { fieldId: "d1", dir: "asc" }, db as never);
     expect(i).toBe(8);
+  });
+
+  it("ranks a valued photo by counting rows before it (desc)", async () => {
+    const db = {
+      photoMetadataValue: {
+        findUnique: async () => ({ value: "2024-05-01" }),
+        count: async (args: { where: { OR?: unknown } }) => {
+          expect(args.where.OR).toEqual([
+            { value: { gt: "2024-05-01" } },
+            { value: "2024-05-01", photoId: { gt: "p5" } },
+          ]);
+          return 1;
+        },
+      },
+    };
+    const i = await metadataSortIndexOf({ id: "p5", path: "p5.jpg" }, { catalogId: "c" }, { fieldId: "d1", dir: "desc" }, db as never);
+    expect(i).toBe(1);
   });
 });
 
