@@ -15,7 +15,7 @@ name: lumio
 
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     container_name: lumio-db
     restart: unless-stopped
     environment:
@@ -23,7 +23,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lumio}
       POSTGRES_DB: ${POSTGRES_DB:-lumio}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18+ stores data in a version-specific subdir and wants the mount
+      # at the parent dir (not .../data). This path also works for 16/17.
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lumio} -d ${POSTGRES_DB:-lumio}"]
       interval: 5s
