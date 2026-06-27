@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import { type FilterSet, MatchType, type SearchRegistry } from "@lumio/shared";
+import { type FilterSet, MatchType, resolveField, SYSTEM_FIELD_KEYS, type SearchRegistry } from "@lumio/shared";
 import { buildPhotoWhere } from "./photo-where.js";
 
 /**
@@ -32,12 +32,13 @@ export function buildSearchWhere(
   if (album) legacy.push(album);
   if (p.q) legacy.push({ path: { contains: p.q, mode: "insensitive" } });
 
-  // When a registry is provided, drop user filter rules whose field is not a
-  // configured (registered) metadata field. Legacy album/filename clauses are
-  // never dropped — they are engine-internal and not user-supplied field names.
+  // When a registry is provided, drop user filter rules whose field is neither a
+  // configured (registered) metadata field NOR a built-in system field (e.g.
+  // `extension`). Legacy album/filename clauses are never dropped — they are
+  // engine-internal and not user-supplied field names.
   const filterRules = registry
     ? (p.filter?.rules ?? []).filter((r) => {
-        const d = registry.get(r.field);
+        const d = registry.get(r.field) ?? (SYSTEM_FIELD_KEYS.has(r.field) ? resolveField(r.field) : undefined);
         return !!d && (d.ops.length === 0 || d.ops.includes(r.op));
       })
     : (p.filter?.rules ?? []);
