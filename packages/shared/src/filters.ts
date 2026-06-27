@@ -62,7 +62,7 @@ export const FIELD_REGISTRY: Record<string, FieldDef> = {
  * user never configures (vs. user-curated metadata fields). Keep this set tight —
  * it deliberately does NOT open the whole FIELD_REGISTRY to the search page.
  */
-export const SYSTEM_FIELD_KEYS = new Set<string>(["extension"]);
+export const SYSTEM_FIELD_KEYS = new Set<keyof typeof FIELD_REGISTRY>(["extension"]);
 
 const GENERIC_JSON_OPS = [
   RuleOp.eq, RuleOp.ne, RuleOp.contains, RuleOp.gt, RuleOp.gte, RuleOp.lt,

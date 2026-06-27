@@ -113,10 +113,20 @@ describe("extension system field", () => {
     expect(def.storage).toEqual({ kind: "column", column: "extension" });
     expect(def.ops).toContain(RuleOp.in_list);
     expect(def.ops).toContain(RuleOp.not_in_list);
+    expect(def.ops).toContain(RuleOp.eq);
+    expect(def.ops).toContain(RuleOp.ne);
+    expect(def.ops).not.toContain(RuleOp.contains); // exact-match only: no substring matching
     expect(resolveField("ext").key).toBe("extension");
     expect(resolveField("filetype").key).toBe("extension");
   });
   it("is in the system-field allowlist", () => {
     expect(SYSTEM_FIELD_KEYS.has("extension")).toBe(true);
+  });
+  it("filterSetSchema rejects a contains op on extension (exact-match only)", () => {
+    const result = filterSetSchema.safeParse({
+      match: MatchType.all,
+      rules: [{ field: "extension", op: RuleOp.contains, value: "cr" }],
+    });
+    expect(result.success).toBe(false);
   });
 });
