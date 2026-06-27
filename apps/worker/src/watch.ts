@@ -78,8 +78,10 @@ export async function startWatcher(signal: AbortSignal): Promise<FSWatcher> {
       if (!catalog) return;
       const rel = path.relative(catalog.path, abs);
       try {
-        await removePath(rel, removeDepsFor(catalog));
-        log.info(`removed ${rel}`, { scope: "watch", catalogId: catalog.id });
+        // A move repoints the row before the file leaves its old path, so the
+        // unlink finds no row — don't log a misleading "removed" for that.
+        const removed = await removePath(rel, removeDepsFor(catalog));
+        if (removed) log.info(`removed ${rel}`, { scope: "watch", catalogId: catalog.id });
       } catch (err) {
         log.warn(`remove failed ${rel}: ${errorMessage(err)}`, { scope: "watch", catalogId: catalog.id });
       }

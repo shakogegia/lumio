@@ -93,7 +93,7 @@ describe("removePath", () => {
       },
     };
 
-    await removePath("sub/img.jpg", {
+    const result = await removePath("sub/img.jpg", {
       db: fakeDb as never,
       catalogId: "cat1",
       thumbnailsDir: tmpThumbs,
@@ -101,6 +101,7 @@ describe("removePath", () => {
       editedDisplaysDir: tmpEditedDisplays,
     });
 
+    expect(result).toBe(true);
     expect(deleteCalls).toHaveLength(1);
     expect((deleteCalls[0] as { where: { id: string } }).where).toEqual({ id: "pX" });
 
@@ -122,7 +123,7 @@ describe("removePath", () => {
       },
     };
 
-    await removePath("nonexistent/img.jpg", {
+    const result = await removePath("nonexistent/img.jpg", {
       db: fakeDb as never,
       catalogId: "cat1",
       thumbnailsDir: tmpThumbs,
@@ -130,6 +131,7 @@ describe("removePath", () => {
       editedDisplaysDir: tmpEditedDisplays,
     });
 
+    expect(result).toBe(false);
     expect(deleteCalls).toHaveLength(0);
   });
 });

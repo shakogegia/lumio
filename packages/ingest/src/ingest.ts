@@ -44,14 +44,17 @@ export interface RemoveDeps {
   editedDisplaysDir: string;
 }
 
-export async function removePath(relPath: string, deps: RemoveDeps): Promise<void> {
+/** Returns true if a row existed at `relPath` and was deleted, false if there
+ *  was nothing to remove (e.g. the path was already repointed by a move). */
+export async function removePath(relPath: string, deps: RemoveDeps): Promise<boolean> {
   const found = await deps.db.photo.findUnique({
     where: { catalogId_path: { catalogId: deps.catalogId, path: relPath } },
     select: { id: true },
   });
-  if (!found) return;
+  if (!found) return false;
   await deps.db.photo.delete({ where: { id: found.id } });
   await rm(path.join(deps.thumbnailsDir, `${found.id}.webp`), { force: true });
   await rm(path.join(deps.displaysDir, `${found.id}.webp`), { force: true });
   await rm(path.join(deps.editedDisplaysDir, `${found.id}.webp`), { force: true });
+  return true;
 }
