@@ -11,18 +11,18 @@ export function StandardMetadata({ exif }: { exif: ExifData }) {
   return (
     <div className="space-y-3">
       {(lines.camera || lines.exposure) && (
-        <Line icon={<Camera className="size-5" aria-hidden />}>
+        <Line icon={<Camera className="size-4" aria-hidden />}>
           {lines.camera && <div className="font-medium">{lines.camera}</div>}
           {lines.exposure && <div className="text-muted-foreground">{lines.exposure}</div>}
         </Line>
       )}
       {lines.optics && (
-        <Line icon={<Aperture className="size-5" aria-hidden />}>
+        <Line icon={<Aperture className="size-4" aria-hidden />}>
           <div className="font-medium">{lines.optics}</div>
         </Line>
       )}
       {lines.date && (
-        <Line icon={<Calendar className="size-5" aria-hidden />}>
+        <Line icon={<Calendar className="size-4" aria-hidden />}>
           <div>{lines.date}</div>
         </Line>
       )}
