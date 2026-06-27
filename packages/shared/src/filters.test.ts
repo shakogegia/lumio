@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ValueType, MatchType, RuleOp } from "./index.js";
-import { filterSetSchema, resolveField } from "./filters.js";
+import { filterSetSchema, resolveField, SYSTEM_FIELD_KEYS } from "./filters.js";
 
 describe("resolveField", () => {
   it("resolves a known field by key", () => {
@@ -103,5 +103,20 @@ describe("in_list operator", () => {
       rules: [{ field: "format", op: RuleOp.in_list, value: ["6×6", "6×7"] }],
     });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("extension system field", () => {
+  it("resolves a column-backed extension field with in_list ops and ext/filetype aliases", () => {
+    const def = resolveField("extension");
+    expect(def.key).toBe("extension");
+    expect(def.storage).toEqual({ kind: "column", column: "extension" });
+    expect(def.ops).toContain(RuleOp.in_list);
+    expect(def.ops).toContain(RuleOp.not_in_list);
+    expect(resolveField("ext").key).toBe("extension");
+    expect(resolveField("filetype").key).toBe("extension");
+  });
+  it("is in the system-field allowlist", () => {
+    expect(SYSTEM_FIELD_KEYS.has("extension")).toBe(true);
   });
 });
