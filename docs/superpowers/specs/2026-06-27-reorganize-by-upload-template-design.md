@@ -1,7 +1,7 @@
 # Reorganize files by upload template (Danger Zone) — design
 
 - **Date:** 2026-06-27
-- **Status:** Approved (pending implementation plan)
+- **Status:** Implemented
 - **Branch:** gego/upload-template-dates
 
 ## Summary
