@@ -24,7 +24,7 @@ export function MetadataFieldsList({
             {group.label}
           </p>
           {group.fields.map((field) => (
-            <div key={field.id} className="grid grid-cols-2 items-center gap-3">
+            <div key={field.id} className="grid grid-cols-2 gap-3">
               <span className="text-right text-xs text-muted-foreground">{field.label}</span>
               {renderValue(field)}
             </div>
