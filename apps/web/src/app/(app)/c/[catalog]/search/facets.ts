@@ -72,6 +72,25 @@ async function loadMetadataOptions(slug: string): Promise<TributeFacetItem[]> {
   return items;
 }
 
+/**
+ * File-type `@` options: every distinct extension present in the catalog, each
+ * inserting an `extension in_list` chip. The `@`-picker mirror of the panel's
+ * File-type facet. Always available (extension is a built-in system field), even
+ * when the catalog has no metadata schema.
+ */
+async function loadExtensionOptions(slug: string): Promise<TributeFacetItem[]> {
+  const res = await fetch(catalogApiUrl(slug, "/extensions")).catch(() => null);
+  if (!res || !res.ok) return [];
+  const { extensions } = (await res.json()) as { extensions: string[] };
+  return (extensions ?? []).map((ext) => ({
+    facetKey: "extension",
+    facetLabel: "File type",
+    value: ext,
+    label: ext,
+    rule: { field: "extension", op: RuleOp.in_list, value: [ext] },
+  }));
+}
+
 const albumFacet: SearchFacet = {
   key: "album",
   label: "Album",
@@ -112,6 +131,7 @@ export function loadAllOptions(slug: string): Promise<TributeFacetItem[]> {
         ),
       ),
       loadMetadataOptions(slug),
+      loadExtensionOptions(slug),
     ])
       .then((groups) => groups.flat())
       .catch((err) => {
