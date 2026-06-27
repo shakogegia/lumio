@@ -1,4 +1,4 @@
-export const DEFAULT_UPLOAD_TEMPLATE = "{YYYY}/{YYYY}-{MM}-{DD}/{filename}";
+export const DEFAULT_UPLOAD_TEMPLATE = "{TAKEN_YYYY}/{TAKEN_YYYY}-{TAKEN_MM}-{TAKEN_DD}/{filename}";
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 
@@ -8,7 +8,10 @@ function sanitizeFilename(name: string): string {
 }
 
 export interface TemplateContext {
+  /** Capture date — EXIF taken-at, falling back to file-modified then upload time. */
   date: Date;
+  /** Wall-clock time the upload is happening, for the {NOW_*} tokens. */
+  now: Date;
   originalFilename: string;
 }
 
@@ -17,14 +20,32 @@ export function renderTemplate(template: string, ctx: TemplateContext): string {
   const filename = sanitizeFilename(ctx.originalFilename);
   const dot = filename.lastIndexOf(".");
   const ext = dot > 0 ? filename.slice(dot + 1) : "";
+  const taken = {
+    YYYY: String(ctx.date.getUTCFullYear()),
+    MM: pad(ctx.date.getUTCMonth() + 1),
+    DD: pad(ctx.date.getUTCDate()),
+  };
   const tokens: Record<string, string> = {
-    "{YYYY}": String(ctx.date.getUTCFullYear()),
-    "{MM}": pad(ctx.date.getUTCMonth() + 1),
-    "{DD}": pad(ctx.date.getUTCDate()),
+    // Taken-at date: when the photo was captured (EXIF, with fallbacks).
+    "{TAKEN_YYYY}": taken.YYYY,
+    "{TAKEN_MM}": taken.MM,
+    "{TAKEN_DD}": taken.DD,
+    // Current date: when the upload happens.
+    "{NOW_YYYY}": String(ctx.now.getUTCFullYear()),
+    "{NOW_MM}": pad(ctx.now.getUTCMonth() + 1),
+    "{NOW_DD}": pad(ctx.now.getUTCDate()),
     "{filename}": filename,
     "{ext}": ext,
+    // Legacy unprefixed aliases for the taken-at date (templates saved before
+    // the TAKEN_ prefix existed — keep rendering them identically).
+    "{YYYY}": taken.YYYY,
+    "{MM}": taken.MM,
+    "{DD}": taken.DD,
   };
-  return template.replace(/\{YYYY\}|\{MM\}|\{DD\}|\{filename\}|\{ext\}/g, (m) => tokens[m] ?? m);
+  return template.replace(
+    /\{TAKEN_YYYY\}|\{TAKEN_MM\}|\{TAKEN_DD\}|\{NOW_YYYY\}|\{NOW_MM\}|\{NOW_DD\}|\{filename\}|\{ext\}|\{YYYY\}|\{MM\}|\{DD\}/g,
+    (m) => tokens[m] ?? m,
+  );
 }
 
 export type TemplateValidation = { ok: true } | { ok: false; error: string };

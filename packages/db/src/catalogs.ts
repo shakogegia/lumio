@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { type CreateCatalogInput, slugify } from "@lumio/shared";
+import { type CreateCatalogInput, DEFAULT_UPLOAD_TEMPLATE, slugify } from "@lumio/shared";
 import { prisma } from "./client.js";
 
 type CatalogDb = Pick<PrismaClient, "catalog">;
@@ -34,7 +34,11 @@ export function getCatalogById(id: string, db: CatalogDb = prisma) { return db.c
 
 export async function createCatalog(input: CreateCatalogInput, db: CatalogDb = prisma) {
   const slug = await uniqueSlug(slugify(input.name), db);
-  return db.catalog.create({ data: { name: input.name, slug, path: input.path } });
+  // Seed the canonical (prefixed-token) default so new catalogs match the
+  // tokens documented in the editor, rather than the legacy DB column default.
+  return db.catalog.create({
+    data: { name: input.name, slug, path: input.path, uploadTemplate: DEFAULT_UPLOAD_TEMPLATE },
+  });
 }
 
 export async function renameCatalog(id: string, name: string, db: CatalogDb = prisma) {

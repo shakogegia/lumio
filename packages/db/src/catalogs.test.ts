@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_UPLOAD_TEMPLATE } from "@lumio/shared";
 import { createCatalog, setUploadTemplate, uniqueSlug } from "./catalogs.js";
 
 function fakeDb(initial: Array<{ slug: string }> = []) {
@@ -16,6 +17,17 @@ describe("uniqueSlug", () => {
 
 describe("createCatalog", () => {
   it("derives a unique slug from the name", async () => { const db = fakeDb([{ slug: "trip" }]); const cat = await createCatalog({ name: "Trip", path: "/media/trip" }, db as never); expect(cat.slug).toBe("trip-2"); expect(cat.path).toBe("/media/trip"); });
+
+  it("seeds the canonical default upload template", async () => {
+    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "c1", ...data }));
+    const db = { catalog: { findUnique: async () => null, create } } as never;
+    await createCatalog({ name: "Trip", path: "/media/trip" }, db);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ uploadTemplate: DEFAULT_UPLOAD_TEMPLATE }),
+      }),
+    );
+  });
 });
 
 describe("setUploadTemplate", () => {
