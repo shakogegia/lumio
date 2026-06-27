@@ -139,4 +139,17 @@ describe("buildHandlers", () => {
     expect(reorganize).not.toHaveBeenCalled();
     expect(report).not.toHaveBeenCalled();
   });
+
+  it("reorganize_all is a no-op when catalogId is null", async () => {
+    const reorganize = vi.fn();
+    const handlers = buildHandlers(() => ({
+      scan: vi.fn(), purgeAll: vi.fn(), emptyTrash: vi.fn(), processTrash: vi.fn(), reorganize,
+    }));
+    const report = vi.fn();
+
+    await handlers[JobType.reorganize_all](report, { catalogId: null } as never);
+
+    expect(reorganize).not.toHaveBeenCalled();
+    expect(report).not.toHaveBeenCalled();
+  });
 });
