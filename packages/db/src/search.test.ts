@@ -171,4 +171,13 @@ describe("buildSearchWhere — extension system field", () => {
     );
     expect(where).toEqual({});
   });
+
+  it("still drops a non-system FIELD_REGISTRY field absent from the per-catalog registry", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "cameraMake", op: RuleOp.eq, value: "Canon" }] } },
+      NOW,
+      reg, // reg only contains "film"; cameraMake is in FIELD_REGISTRY but NOT in SYSTEM_FIELD_KEYS
+    );
+    expect(where).toEqual({});
+  });
 });

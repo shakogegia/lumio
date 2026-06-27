@@ -38,6 +38,8 @@ export function buildSearchWhere(
   // engine-internal and not user-supplied field names.
   const filterRules = registry
     ? (p.filter?.rules ?? []).filter((r) => {
+        // resolveField is safe here: SYSTEM_FIELD_KEYS is Set<keyof typeof FIELD_REGISTRY>,
+        // so a system key always resolves to a static FieldDef (never the generic exif.* fallback).
         const d = registry.get(r.field) ?? (SYSTEM_FIELD_KEYS.has(r.field) ? resolveField(r.field) : undefined);
         return !!d && (d.ops.length === 0 || d.ops.includes(r.op));
       })
