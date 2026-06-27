@@ -248,4 +248,23 @@ describe("storePhoto", () => {
     expect(args.create).toMatchObject({ asShotTempK: null, asShotTint: null });
     expect(args.update).toMatchObject({ asShotTempK: null, asShotTint: null });
   });
+
+  it("derives the file extension from the path (lowercased) on create and update", async () => {
+    const db = fakeDb("p-ext");
+    await storePhoto(
+      {
+        catalogId: "cat1",
+        path: "vacation/IMG_001.CR2",
+        source: PhotoSource.filesystem,
+        processed,
+        fileSize: 1,
+        fileMtimeMs: 1,
+        fileBirthtimeMs: 1700000000000,
+      },
+      { db: db as never, thumbnailsDir: path.join(dir, "text"), displaysDir: path.join(dir, "dext") },
+    );
+    const args = db.calls[0] as { create: Record<string, unknown>; update: Record<string, unknown> };
+    expect(args.create.extension).toBe("cr2");
+    expect(args.update.extension).toBe("cr2");
+  });
 });

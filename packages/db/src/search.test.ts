@@ -147,3 +147,37 @@ describe("buildSearchWhere — metadata registry", () => {
     expect(where).toEqual({});
   });
 });
+
+describe("buildSearchWhere — extension system field", () => {
+  const reg: SearchRegistry = new Map<string, FieldDef>([
+    ["film", { key: "film", label: "Film", type: ValueType.string, storage: { kind: "metadata", fieldId: "f1" }, ops: [] }],
+  ]);
+  const NOW = new Date("2026-06-27T00:00:00Z");
+
+  it("admits an extension in_list rule through the gate even when it is not a metadata field", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "extension", op: RuleOp.in_list, value: ["cr2", "jpeg"] }] } },
+      NOW,
+      reg,
+    );
+    expect(where).toEqual({ AND: [{ extension: { in: ["cr2", "jpeg"] } }] });
+  });
+
+  it("drops an extension rule whose op is not allowed (e.g. contains)", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "extension", op: RuleOp.contains, value: "cr" }] } },
+      NOW,
+      reg,
+    );
+    expect(where).toEqual({});
+  });
+
+  it("still drops a non-system FIELD_REGISTRY field absent from the per-catalog registry", () => {
+    const where = buildSearchWhere(
+      { album: [], filter: { match: MatchType.all, rules: [{ field: "cameraMake", op: RuleOp.eq, value: "Canon" }] } },
+      NOW,
+      reg, // reg only contains "film"; cameraMake is in FIELD_REGISTRY but NOT in SYSTEM_FIELD_KEYS
+    );
+    expect(where).toEqual({});
+  });
+});

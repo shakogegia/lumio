@@ -53,7 +53,16 @@ export const FIELD_REGISTRY: Record<string, FieldDef> = {
   hasGps: { key: "hasGps", label: "Has location", type: ValueType.bool, storage: { kind: "column", column: "hasGps" }, ops: [RuleOp.eq], aliases: ["gps", "located"] },
   album: { key: "album", label: "Album", type: ValueType.string, storage: { kind: "album" }, ops: [RuleOp.in_album, RuleOp.not_in_album] },
   filename: { key: "filename", label: "Filename", type: ValueType.string, storage: { kind: "filename" }, ops: [RuleOp.contains, RuleOp.eq] },
+  extension: { key: "extension", label: "File type", type: ValueType.string, storage: { kind: "column", column: "extension" }, ops: [RuleOp.eq, RuleOp.ne, RuleOp.in_list, RuleOp.not_in_list], aliases: ["ext", "filetype"] },
 };
+
+/**
+ * Built-in "system" fields admitted through the per-catalog search gate even when
+ * they are not part of a catalog's metadata schema. These are hard file facts the
+ * user never configures (vs. user-curated metadata fields). Keep this set tight —
+ * it deliberately does NOT open the whole FIELD_REGISTRY to the search page.
+ */
+export const SYSTEM_FIELD_KEYS = new Set<keyof typeof FIELD_REGISTRY>(["extension"]);
 
 const GENERIC_JSON_OPS = [
   RuleOp.eq, RuleOp.ne, RuleOp.contains, RuleOp.gt, RuleOp.gte, RuleOp.lt,

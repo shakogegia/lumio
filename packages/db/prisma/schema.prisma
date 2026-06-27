@@ -90,6 +90,7 @@ model Photo {
   fileMtimeMs    Float // mtimeMs from fs.stat (fractional ms) — exact change-detection fingerprint
   fileModifiedAt DateTime // readable mirror of fileMtimeMs; feeds sortDate's fallback chain
   fileCreatedAt  DateTime // birthtime mirror; the other input to sortDate's earliest() fallback
+  extension      String   @default("") // literal ext, lowercased, no dot: "cr2", "jpeg"; "" = none
   exif           Json
   cameraMake     String?
   cameraModel    String?
@@ -127,6 +128,7 @@ model Photo {
   @@index([iso])
   @@index([fNumber])
   @@index([focalLength])
+  @@index([catalogId, extension])
 }
 
 model Album {

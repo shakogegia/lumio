@@ -115,7 +115,7 @@ describe("restorePhotos", () => {
     await writeFile(path.join(trashDir, "thumbnails", "a.webp"), "thumb");
     await writeFile(path.join(trashDir, "displays", "a.webp"), "display");
 
-    let upsertArgs: { where: { id: string }; create: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; albums: { create: { albumId: string }[] } }; update: { trashedAt: null } } | null = null;
+    let upsertArgs: { where: { id: string }; create: { id: string; catalogId: string; path: string; colorLabel: unknown; fileSize: number; fileModifiedAt: Date; fileCreatedAt: Date; extension: string; albums: { create: { albumId: string }[] } }; update: { trashedAt: null } } | null = null;
     const db = {
       trashedPhoto: {
         findFirst: async () => ({ ...trashRow("a"), colorLabel: "blue", albumIds: ["keep", "gone"] }),
@@ -139,6 +139,7 @@ describe("restorePhotos", () => {
     // Scoping assertion: restored photo carries catalogId
     expect(upsertArgs!.create.catalogId).toBe(CAT);
     expect(upsertArgs!.create.path).toBe("a.jpg");
+    expect(upsertArgs!.create.extension).toBe("jpg");
     expect(upsertArgs!.create.colorLabel).toBe("blue");
     expect(upsertArgs!.create.albums.create).toEqual([{ albumId: "keep" }]);
     expect(upsertArgs!.create.fileSize).toBe(4); // "orig" is 4 bytes

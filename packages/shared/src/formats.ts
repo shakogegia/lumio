@@ -22,3 +22,16 @@ export function isSupportedImage(filename: string): boolean {
   if (dot < 0) return false;
   return SUPPORTED_EXTENSIONS.has(filename.slice(dot).toLowerCase());
 }
+
+/**
+ * The last ".xxx" segment of a filename or path, lowercased, without the dot.
+ * Returns "" when there is none (no dot, dotfile like ".gitignore", trailing
+ * dot, or a dot only in a parent directory). Pure string op (no fs) so the
+ * browser, ingest pipeline, and tests share one definition.
+ */
+export function fileExtension(nameOrPath: string): string {
+  const base = nameOrPath.slice(nameOrPath.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  if (dot <= 0) return ""; // no dot, or leading-dot dotfile
+  return base.slice(dot + 1).toLowerCase();
+}

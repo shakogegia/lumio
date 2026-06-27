@@ -9,6 +9,8 @@ import { useCatalog } from "@/components/providers/catalog-context";
 import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import type { SearchFilters } from "./filters";
 import { MetadataFacets } from "./metadata-facets";
+import { FileTypeFacet } from "./file-type-facet";
+import { useExtensions } from "./use-extensions";
 
 export function FilterPanel({
   filters,
@@ -19,13 +21,15 @@ export function FilterPanel({
 }) {
   const { slug } = useCatalog();
   const schema = useCatalogMetadataSchema(slug);
+  const extensions = useExtensions(slug);
 
   const enabledGroups = (schema ?? [])
     .map((g) => ({ ...g, fields: g.fields.filter((f) => f.enabled) }))
     .filter((g) => g.fields.length > 0);
 
-  // No configured metadata fields → hide the filter button entirely.
-  if (enabledGroups.length === 0) return null;
+  // Hide the filter button only when there is nothing to filter on at all —
+  // no configured metadata fields AND no file types present.
+  if (enabledGroups.length === 0 && extensions.length === 0) return null;
 
   const activeCount = filters.rules.length;
   const setRules = (rules: SearchFilters["rules"]) => onChange({ ...filters, rules });
@@ -51,12 +55,12 @@ export function FilterPanel({
             />
           </label>
         </div>
-        <MetadataFacets
-          groups={enabledGroups}
-          slug={slug}
-          rules={filters.rules}
-          onRules={setRules}
-        />
+        <div className="space-y-4">
+          <FileTypeFacet extensions={extensions} rules={filters.rules} onRules={setRules} />
+          {enabledGroups.length > 0 && (
+            <MetadataFacets groups={enabledGroups} slug={slug} rules={filters.rules} onRules={setRules} />
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
