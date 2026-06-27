@@ -6,6 +6,8 @@ export enum JobType {
   purge_all = "purge_all",
   empty_trash = "empty_trash",
   process_trash = "process_trash",
+  reorganize = "reorganize",
+  reorganize_all = "reorganize_all",
 }
 
 /** Job lifecycle states. Mirrors the Job.status column 1:1. */
