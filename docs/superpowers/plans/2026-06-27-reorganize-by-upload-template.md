@@ -393,7 +393,7 @@ describe("reorganizePhotos", () => {
     // Repoint then revert: last update restores the original path.
     expect(db.photo.update).toHaveBeenLastCalledWith({
       where: { id: "p1" },
-      data: { path: "incoming/IMG.jpg", dirPath: "" },
+      data: { path: "incoming/IMG.jpg", dirPath: "incoming" },
     });
   });
 
