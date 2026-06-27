@@ -95,15 +95,16 @@ export function ReorganizePhotos() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2">
+        <Field orientation="horizontal">
           <Checkbox
             id="include-filesystem"
+            name="include-filesystem"
             checked={includeFilesystem}
             disabled={busy}
             onCheckedChange={(v) => setIncludeFilesystem(v === true)}
           />
           <Label htmlFor="include-filesystem">Include filesystem-imported photos</Label>
-        </div>
+        </Field>
 
         <p className="text-sm text-muted-foreground tabular-nums">
           {preview === null
