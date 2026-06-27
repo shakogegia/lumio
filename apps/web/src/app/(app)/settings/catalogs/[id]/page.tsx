@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InfoList, InfoRow } from "@/components/ui/info-list";
 import { DeleteAllPhotos } from "./danger-zone";
+import { ReorganizePhotos } from "./reorganize-photos";
 import { RefreshStatsButton } from "./refresh-stats-button";
 import { RelativeTime } from "./relative-time";
 import { RescanButton } from "./rescan-button";
@@ -192,6 +193,18 @@ export default async function CatalogSettingsPage({
           </TabsContent>
 
           <TabsContent value="danger">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Reorganize files</CardTitle>
+                <CardDescription>
+                  Move existing photos into the folder structure your upload template produces.
+                  Edits and metadata are preserved.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReorganizePhotos />
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle>Delete all photos</CardTitle>

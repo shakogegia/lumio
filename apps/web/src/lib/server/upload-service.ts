@@ -48,8 +48,13 @@ export async function handleUpload(input: UploadInput, deps: UploadDeps): Promis
     return { status: "error", message: `Invalid upload template: ${templateCheck.error}` };
   }
 
-  const date = await extractUploadDate(input.bytes, input.lastModified, deps.now ?? new Date());
-  const desired = renderTemplate(deps.uploadTemplate, { date, originalFilename: input.originalFilename });
+  const now = deps.now ?? new Date();
+  const date = await extractUploadDate(input.bytes, input.lastModified, now);
+  const desired = renderTemplate(deps.uploadTemplate, {
+    date,
+    now,
+    originalFilename: input.originalFilename,
+  });
 
   let relPath: string;
   try {

@@ -280,7 +280,7 @@ export function ZoomableImage({
                     src={blurUrl}
                     alt=""
                     aria-hidden
-                    className="pointer-events-none absolute object-cover transition-opacity duration-500"
+                    className="pointer-events-none absolute object-cover transition-opacity duration-200"
                     style={{
                       left: blurBox.left,
                       top: blurBox.top,

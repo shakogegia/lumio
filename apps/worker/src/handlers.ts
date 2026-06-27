@@ -1,6 +1,13 @@
 import path from "node:path";
 import { getCatalogById, prisma } from "@lumio/db";
-import { type JobHandlers, finalizeTrash, purgeAllPhotos, purgePendingPhotos, purgeTrash } from "@lumio/jobs";
+import {
+  type JobHandlers,
+  finalizeTrash,
+  purgeAllPhotos,
+  purgePendingPhotos,
+  purgeTrash,
+  reorganizePhotos,
+} from "@lumio/jobs";
 import { JobType } from "@lumio/shared";
 import { CACHE_DIR, TRASH_DIR } from "./config.js";
 import { log } from "./log.js";
@@ -12,6 +19,10 @@ export interface HandlerDeps {
   purgeAll: () => Promise<{ deleted: number }>;
   emptyTrash: () => Promise<{ deleted: number }>;
   processTrash: (onProgress?: (done: number) => void) => Promise<{ finalized: number }>;
+  reorganize: (
+    includeFilesystem: boolean,
+    onProgress?: (done: number, total: number) => void,
+  ) => Promise<{ moved: number; skipped: number; failed: number }>;
 }
 
 /** Build the per-catalog deps a job needs, resolving the catalog row + its dirs. */
@@ -40,6 +51,19 @@ function depsForCatalog(catalogId: string): HandlerDeps {
         { db: prisma, catalogId, photosDir: c.path, cacheDir: path.join(CACHE_DIR, catalogId), trashDir: path.join(TRASH_DIR, catalogId) },
         onProgress,
       );
+    },
+    reorganize: async (includeFilesystem, onProgress) => {
+      const c = await getCatalogById(catalogId);
+      if (!c) return { moved: 0, skipped: 0, failed: 0 };
+      return reorganizePhotos({
+        db: prisma,
+        catalogId,
+        photosDir: c.path,
+        uploadTemplate: c.uploadTemplate,
+        includeFilesystem,
+        onProgress,
+        onWarn: (message) => log.warn(message, { scope: "consumer", catalogId }),
+      });
     },
   };
 }
@@ -76,6 +100,22 @@ export function buildHandlers(makeDeps: (catalogId: string) => HandlerDeps = dep
         void report(done, null, "Moving photos to Trash…").catch(() => {});
       });
       await report(finalized, finalized, null);
+    },
+    [JobType.reorganize]: async (report, job) => {
+      if (!job.catalogId) return;
+      await report(0, null, "Reorganizing files…");
+      const { moved } = await makeDeps(job.catalogId).reorganize(false, (done, total) => {
+        void report(done, total, "Reorganizing files…").catch(() => {});
+      });
+      await report(moved, moved, null);
+    },
+    [JobType.reorganize_all]: async (report, job) => {
+      if (!job.catalogId) return;
+      await report(0, null, "Reorganizing files…");
+      const { moved } = await makeDeps(job.catalogId).reorganize(true, (done, total) => {
+        void report(done, total, "Reorganizing files…").catch(() => {});
+      });
+      await report(moved, moved, null);
     },
   };
 }

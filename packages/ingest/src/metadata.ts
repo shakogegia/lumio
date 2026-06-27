@@ -33,7 +33,7 @@ export function sanitizeMetadata(value: unknown): unknown {
 }
 
 /** Every block exifr can read, grouped (not merged) so we can flatten with namespace-prefixing ourselves. */
-const EXIFR_OPTIONS = {
+export const EXIFR_OPTIONS = {
   tiff: true,
   exif: true,
   gps: true,

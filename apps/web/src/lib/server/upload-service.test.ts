@@ -90,4 +90,20 @@ describe("handleUpload", () => {
       expect.objectContaining({ catalogId: CAT }),
     );
   });
+
+  it("renders {NOW_*} from deps.now, independent of the capture date", async () => {
+    const lastModified = Date.UTC(2023, 4, 20); // capture date 2023-05-20
+    const now = new Date("2026-06-27T18:30:00.000Z"); // upload date
+    const result = await handleUpload(
+      { bytes: await jpeg(), originalFilename: "IMG_3.jpg", lastModified },
+      {
+        ...deps(null),
+        now,
+        uploadTemplate: "{NOW_YYYY}/{NOW_MM}-{NOW_DD}/{YYYY}-{MM}-{DD}/{filename}",
+      },
+    );
+    expect(result.status).toBe("added");
+    if (result.status !== "added") throw new Error("expected added");
+    expect(result.path).toBe("2026/06-27/2023-05-20/IMG_3.jpg");
+  });
 });
