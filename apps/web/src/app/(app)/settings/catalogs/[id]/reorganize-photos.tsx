@@ -99,6 +99,7 @@ export function ReorganizePhotos() {
           <Checkbox
             id="include-filesystem"
             checked={includeFilesystem}
+            disabled={busy}
             onCheckedChange={(v) => setIncludeFilesystem(v === true)}
           />
           <Label htmlFor="include-filesystem">Include filesystem-imported photos</Label>
