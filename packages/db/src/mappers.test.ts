@@ -36,6 +36,7 @@ describe("toPhotoDTO", () => {
     expect(dto.createdAt).toBe("2024-02-01T00:00:00.000Z");
     expect(dto.exif).toEqual({ cameraMake: "Lumio" });
     expect(dto.isFavorite).toBe(true);
+    expect(dto.fileSize).toBe(12345);
   });
 
   it("maps a null takenAt to null", () => {
@@ -115,6 +116,7 @@ describe("toTrashedPhotoDTO", () => {
     expect(dto.updatedAt).toBe("2026-06-19T00:00:00.000Z");
     expect(dto.fileModifiedAt).toBeNull();
     expect(dto.fileCreatedAt).toBeNull();
+    expect(dto.fileSize).toBeNull();
   });
 });
 

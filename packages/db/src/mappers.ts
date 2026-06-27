@@ -20,6 +20,7 @@ export function toPhotoDTO(row: Photo): PhotoDTO {
     fileCreatedAt: row.fileCreatedAt.toISOString(),
     width: row.width,
     height: row.height,
+    fileSize: row.fileSize,
     hash: row.hash,
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,
@@ -43,6 +44,7 @@ export function toTrashedPhotoDTO(row: TrashedPhoto): PhotoDTO {
     fileCreatedAt: null, // TrashedPhoto has no file-stat columns
     width: row.width,
     height: row.height,
+    fileSize: null, // TrashedPhoto has no file-stat columns
     hash: row.hash,
     thumbhash: row.thumbhash,
     exif: (row.exif ?? {}) as ExifData,

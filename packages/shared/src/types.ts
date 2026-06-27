@@ -101,6 +101,8 @@ export interface PhotoDTO {
   fileCreatedAt: string | null; // ISO string; null for trashed photos (no such column)
   width: number;
   height: number;
+  /** File size in bytes (from fs.stat). null for trashed photos (no such column). */
+  fileSize: number | null;
   hash: string | null;
   /** Base64 ThumbHash — a ~25-byte blurred preview shown while the thumbnail loads. */
   thumbhash: string | null;
