@@ -1,5 +1,9 @@
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { desiredPath, previewReorganize } from "./reorganize.js";
+import { desiredPath, previewReorganize, reorganizePhotos } from "./reorganize.js";
 
 const TEMPLATE = "{TAKEN_YYYY}/{TAKEN_MM}-{TAKEN_DD}/{filename}";
 
@@ -58,5 +62,170 @@ describe("previewReorganize", () => {
       where: { catalogId: "cat1", trashedAt: null },
       select: expect.anything(),
     });
+  });
+});
+
+async function photosRoot() {
+  return mkdtemp(path.join(tmpdir(), "lumio-reorg-"));
+}
+
+function moverDb(rows: unknown[], findUnique = vi.fn().mockResolvedValue(null)) {
+  return {
+    photo: {
+      findMany: vi.fn().mockResolvedValue(rows),
+      findUnique,
+      update: vi.fn().mockResolvedValue({}),
+    },
+  };
+}
+
+describe("reorganizePhotos", () => {
+  it("repoints the row then moves the file to its template path", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "incoming"), { recursive: true });
+    await writeFile(path.join(photosDir, "incoming/IMG.jpg"), "data");
+    const db = moverDb([row({ path: "incoming/IMG.jpg" })]);
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+    });
+
+    expect(res).toEqual({ moved: 1, skipped: 0, failed: 0 });
+    expect(existsSync(path.join(photosDir, "2024/03-14/IMG.jpg"))).toBe(true);
+    expect(existsSync(path.join(photosDir, "incoming/IMG.jpg"))).toBe(false);
+    expect(await readFile(path.join(photosDir, "2024/03-14/IMG.jpg"), "utf8")).toBe("data");
+    expect(db.photo.update).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: { path: "2024/03-14/IMG.jpg", dirPath: "2024/03-14" },
+    });
+  });
+
+  it("skips a photo already at its template path", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "2024/03-14"), { recursive: true });
+    await writeFile(path.join(photosDir, "2024/03-14/IMG.jpg"), "data");
+    const db = moverDb([row({ path: "2024/03-14/IMG.jpg" })]);
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+    });
+
+    expect(res).toEqual({ moved: 0, skipped: 1, failed: 0 });
+    expect(db.photo.update).not.toHaveBeenCalled();
+  });
+
+  it("suffixes -1 when the target path is already taken by another row", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "incoming"), { recursive: true });
+    await writeFile(path.join(photosDir, "incoming/IMG.jpg"), "data");
+    const findUnique = vi
+      .fn()
+      .mockResolvedValueOnce({ id: "other" })
+      .mockResolvedValue(null);
+    const db = moverDb([row({ path: "incoming/IMG.jpg" })], findUnique);
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+    });
+
+    expect(res.moved).toBe(1);
+    expect(existsSync(path.join(photosDir, "2024/03-14/IMG-1.jpg"))).toBe(true);
+    expect(db.photo.update).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: { path: "2024/03-14/IMG-1.jpg", dirPath: "2024/03-14" },
+    });
+  });
+
+  it("prunes directories left empty by the move", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "incoming"), { recursive: true });
+    await writeFile(path.join(photosDir, "incoming/IMG.jpg"), "data");
+    const db = moverDb([row({ path: "incoming/IMG.jpg" })]);
+
+    await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+    });
+
+    expect(existsSync(path.join(photosDir, "incoming"))).toBe(false);
+    expect(existsSync(photosDir)).toBe(true);
+  });
+
+  it("counts a missing source file as failed without touching the DB", async () => {
+    const photosDir = await photosRoot();
+    const db = moverDb([row({ path: "incoming/GONE.jpg" })]);
+    const warnings: string[] = [];
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+      onWarn: (m) => warnings.push(m),
+    });
+
+    expect(res).toEqual({ moved: 0, skipped: 0, failed: 1 });
+    expect(db.photo.update).not.toHaveBeenCalled();
+    expect(warnings.length).toBe(1);
+  });
+
+  it("reverts the row repoint when the rename fails", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "incoming"), { recursive: true });
+    await writeFile(path.join(photosDir, "incoming/IMG.jpg"), "data");
+    // Make "2024" a FILE so mkdir of "2024/03-14" throws ENOTDIR.
+    await writeFile(path.join(photosDir, "2024"), "i am a file");
+    const db = moverDb([row({ path: "incoming/IMG.jpg" })]);
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+      onWarn: () => {},
+    });
+
+    expect(res).toEqual({ moved: 0, skipped: 0, failed: 1 });
+    expect(existsSync(path.join(photosDir, "incoming/IMG.jpg"))).toBe(true);
+    expect(db.photo.update).toHaveBeenLastCalledWith({
+      where: { id: "p1" },
+      data: { path: "incoming/IMG.jpg", dirPath: "incoming" },
+    });
+  });
+
+  it("reports progress for every photo considered", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "2024/03-14"), { recursive: true });
+    await writeFile(path.join(photosDir, "2024/03-14/IMG.jpg"), "data");
+    const db = moverDb([row({ path: "2024/03-14/IMG.jpg" })]);
+    const progress: Array<[number, number]> = [];
+
+    await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+      onProgress: (p, t) => { progress.push([p, t]); },
+    });
+
+    expect(progress).toEqual([[1, 1]]);
   });
 });
