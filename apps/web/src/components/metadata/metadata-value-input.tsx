@@ -51,7 +51,7 @@ export function MetadataValueInput({
       >
         <SelectTrigger
           size="sm"
-          className="w-40 justify-end gap-1 border-0 bg-transparent px-0 py-0 text-right shadow-none focus-visible:ring-0 data-[size=sm]:h-5 data-placeholder:text-muted-foreground/40"
+          className="w-max justify-start gap-1 border-0 bg-transparent px-0 py-0 text-left text-xs shadow-none focus-visible:ring-0 data-[size=sm]:h-4 data-placeholder:text-muted-foreground/40"
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -79,7 +79,7 @@ export function MetadataValueInput({
         rows={2}
         onChange={(e) => onChange(e.target.value)}
         onBlur={() => void onCommit?.()}
-        className="w-40 resize-none border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground/40"
+        className="w-full resize-none border-0 bg-transparent p-0 text-left text-xs outline-none placeholder:text-muted-foreground/40"
       />
     );
   }
@@ -113,7 +113,7 @@ function DateField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className="h-5 w-40 cursor-pointer text-right text-sm outline-none">
+        <button type="button" className="h-4 w-full cursor-pointer text-left text-xs outline-none">
           {date ? (
             format(date, "MMM d, yyyy")
           ) : value ? (
@@ -176,7 +176,7 @@ function Autocomplete({
     .filter((s) => s !== value).slice(0, 8);
   function pick(s: string) { onChange(s); void onCommit?.(s); setOpen(false); }
   return (
-    <div className="relative w-40">
+    <div className="relative w-full">
       <input
         value={value}
         placeholder={placeholder}
@@ -184,10 +184,10 @@ function Autocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => { void load(); setOpen(true); }}
         onBlur={() => { setTimeout(() => setOpen(false), 120); void onCommit?.(); }}
-        className="w-full border-0 bg-transparent p-0 text-right text-sm outline-none placeholder:text-muted-foreground/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="block w-full border-0 bg-transparent p-0 text-left text-xs outline-none placeholder:text-muted-foreground/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       {open && suggests && matches.length > 0 && (
-        <ul className="absolute right-0 z-30 mt-1 max-h-48 w-48 overflow-auto rounded-md border border-border bg-popover p-1 text-sm shadow-md">
+        <ul className="absolute left-0 z-30 mt-1 max-h-48 w-48 overflow-auto rounded-md border border-border bg-popover p-1 text-xs shadow-md">
           {matches.map((s) => (
             <li key={s}>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}
