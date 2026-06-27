@@ -148,6 +148,32 @@ describe("reorganizePhotos", () => {
     });
   });
 
+  it("suffixes -1 when an unrelated file already occupies the target path on disk", async () => {
+    const photosDir = await photosRoot();
+    await mkdir(path.join(photosDir, "incoming"), { recursive: true });
+    await writeFile(path.join(photosDir, "incoming/IMG.jpg"), "data");
+    // A stray file already sits at the template target; no DB row points at it.
+    await mkdir(path.join(photosDir, "2024/03-14"), { recursive: true });
+    await writeFile(path.join(photosDir, "2024/03-14/IMG.jpg"), "stray");
+    const db = moverDb([row({ path: "incoming/IMG.jpg" })]); // findUnique defaults to null
+
+    const res = await reorganizePhotos({
+      db: db as never,
+      catalogId: "cat1",
+      photosDir,
+      uploadTemplate: TEMPLATE,
+      includeFilesystem: true,
+    });
+
+    expect(res.moved).toBe(1);
+    expect(existsSync(path.join(photosDir, "2024/03-14/IMG-1.jpg"))).toBe(true);
+    expect(await readFile(path.join(photosDir, "2024/03-14/IMG.jpg"), "utf8")).toBe("stray");
+    expect(db.photo.update).toHaveBeenCalledWith({
+      where: { id: "p1" },
+      data: { path: "2024/03-14/IMG-1.jpg", dirPath: "2024/03-14" },
+    });
+  });
+
   it("prunes directories left empty by the move", async () => {
     const photosDir = await photosRoot();
     await mkdir(path.join(photosDir, "incoming"), { recursive: true });

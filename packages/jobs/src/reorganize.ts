@@ -181,10 +181,22 @@ export async function reorganizePhotos(
       moved += 1;
     } catch (err) {
       // Revert the repoint so the row keeps matching the still-in-place file.
-      await deps.db.photo.update({
-        where: { id: row.id },
-        data: { path: row.path, dirPath: relDir(row.path) },
-      });
+      // Guard the revert itself: if it also fails, the row is left desynced —
+      // warn loudly but keep processing the rest of the batch.
+      try {
+        await deps.db.photo.update({
+          where: { id: row.id },
+          data: { path: row.path, dirPath: relDir(row.path) },
+        });
+      } catch (revertErr) {
+        deps.onWarn?.(
+          `CRITICAL: could not revert row ${row.id} after a failed move; it now points at a missing file: ${
+            revertErr instanceof Error ? revertErr.message : String(revertErr)
+          }`,
+        );
+      }
+      // mkdir may have created an empty target dir before rename failed — prune it.
+      vacated.add(path.dirname(toAbs));
       failed += 1;
       deps.onWarn?.(
         `move failed for ${row.path}: ${err instanceof Error ? err.message : String(err)}`,
