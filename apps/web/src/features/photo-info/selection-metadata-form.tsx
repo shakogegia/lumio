@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { MetadataFieldDef } from "@lumio/shared";
+import { FieldType, type MetadataFieldDef } from "@lumio/shared";
 import { useCatalogMetadataSchema } from "@/features/lightbox/use-metadata-schema";
 import { useCatalog } from "@/components/providers/catalog-context";
 import { MetadataValueInput } from "@/components/metadata/metadata-value-input";
@@ -83,7 +83,10 @@ export function SelectionMetadataForm({ selectedIds }: { selectedIds: Set<string
                 />
               );
             }
-            if (loading || !loaded) return <Skeleton className="h-5 w-24" />;
+            if (loading || !loaded)
+              return (
+                <Skeleton className={field.type === FieldType.Textarea ? "h-8 w-full" : "h-4 w-24"} />
+              );
             // Keyed by selection so switching photos remounts with fresh values.
             return (
               <SelectionMetadataField

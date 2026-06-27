@@ -34,7 +34,7 @@ function Line({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
       <span className="flex w-5 shrink-0 justify-center text-muted-foreground">{icon}</span>
-      <div className="min-w-0 leading-tight">{children}</div>
+      <div className="min-w-0 text-xs leading-tight">{children}</div>
     </div>
   );
 }

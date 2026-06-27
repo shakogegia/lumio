@@ -28,9 +28,9 @@ function formatDate(iso: string | null): string {
 
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="truncate text-right">{value}</span>
+    <div className="grid grid-cols-2 items-center gap-3">
+      <span className="text-right text-xs text-muted-foreground">{label}</span>
+      <span className="truncate text-left text-xs">{value}</span>
     </div>
   );
 }
