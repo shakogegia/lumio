@@ -13,7 +13,7 @@ It's self-hosted: run it on a NAS, home server, or any box you control — a sel
 alternative to cloud photo services.
 
 > [!WARNING]
-> Lumio is an early-stage project built primarily for personal use and experimentation. It is not production-ready, may contain bugs, and should be used at your own risk.
+> Lumio is an project built primarily for personal use and experimentation. It may contain bugs, and should be used at your own risk.
 
 <img width="1286" height="929" alt="image" src="https://github.com/user-attachments/assets/97a52dfb-fba5-448a-9b98-755fc2028a92" />
 
